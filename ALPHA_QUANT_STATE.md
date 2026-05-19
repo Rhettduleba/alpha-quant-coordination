@@ -1,7 +1,7 @@
 # ALPHA QUANT — STATE OF RECORD
 **The single source of truth for the Alpha Quant project.**
 
-- **Version:** 1.4
+- **Version:** 1.5
 - **Created:** 2026-05-18
 - **Owner:** Rhett Duleba
 - **Maintained by:** Planning chat (Claude, browser) for decisions/standards; Claude Code for verified system state.
@@ -14,6 +14,7 @@
 ## CHANGELOG
 *(Newest first. Every material change gets one dated line. This is how a reader sees what moved since they last read the doc.)*
 
+- **2026-05-18 — v1.5** — Claude Code §1.4 + §4 update (verified-state ownership per §10), from Handoff 009 Phase 1 journal analysis. §1.4 now leads with the journal-verified 540-trade baseline (57.2% WR, $69.66 avg P&L); the prior "~4,274 trades / 60.6% WR" baseline is preserved as unreconciled because its source can't be found in any file. §4 afternoon-block bullet updated with verified source: `prompt_builder.py:60-67` hardcoded "STANDING RULES FROM HISTORICAL ANALYSIS" text — the unverified "ChatGPT-era test artifact" characterization is removed. Three hardcoded prompt statistics (10-11 AM = 73.7% WR; 11-12 AM = 36.6% WR; 25,520 all-time trades) are contradicted by the journal — see §1.4. Phase 2 of the afternoon-block work is planning-chat owned and pending.
 - **2026-05-18 — v1.4** — §10 wording corrected (caught by Claude Code, rule 6): the coordination repo holds the coordination *documents* (State of Record + C1 + README), not "this file and nothing else." Also recorded: the repo's local working tree lives outside OneDrive (`C:\repos\alpha-quant-coordination\`) to avoid OneDrive/git lock conflicts.
 - **2026-05-18 — v1.3** — (a) Removed the §2.5 note about `ALPHA_QUANT_HANDOFF.md`'s stale "12:30" — Claude Code corrected that source file, so the note is resolved. (b) §7 now carries a prominent **NOT FIT FOR USE** warning on the C1 statistical thresholds: Claude Code's critique is correct — §3.1's 100-trade minimum is statistically incompatible with §3.2's +2pp effect-size bar (2pp is inside the noise band of a 100-trade sample). C1 §3 needs a structural rewrite and the §1.4 baseline needs verification before C1 can evaluate anything, including roadmap item #3. This is logged honestly: the planning chat initially answered the C1 critique with a label change rather than engaging it; that was a dodge, now corrected.
 - **2026-05-18 — v1.2** — Two corrections caught by Claude Code's Handoff 006 Response review: (a) the §0 "supersedes (001–005)" phrasing referenced numbered handoffs that were never separate files on disk — reworded to name the actual archived files; (b) §7 referenced `AQ_EVALUATION_STANDARDS_C1.md` as "archived" but that file was never installed in the workspace — it exists only as a planning-chat draft. §7 reworded to treat C1 as a companion file to be installed alongside this one. Both were planning-chat rule-1 violations (asserting unverified file state); both fixed.
@@ -86,8 +87,19 @@ Alpha Quant ("AQ") is a SIM-only automated intraday equity day-trading system on
 
 > **Flagged:** These values are tight by day-trading convention (0.5% hard stop vs textbook 1–2%; all trailing tiers active within 1.5% profit). Roadmap #2 is a discussion of whether to loosen. Do not change without explicit decision.
 
-### 1.4 Backtest baseline (historical, ~4,274 closed trades)
-60.6% win rate, 1.30 profit factor, $35.85 avg P&L/trade. 10–11 AM is the strongest window; 11 AM–12 PM is weak (see §5 item 10 and §9). Short win rate historically ~32% — in line with retail day-trading literature, not a system failure (see §5 item context).
+### 1.4 Backtest baseline
+
+**Verified 2026-05-18 by Claude Code from `trade_journal.csv` (BOT_LOG_CONTEXT tier, FIFO entry/exit pairing):** n = **540 closed trades**, 2026-04-16 → 2026-05-18 (~22 trading days). **57.2% WR, $69.66 avg P&L/trade, $37,614 total P&L.** Longs (n=407): 64.1% WR, ~$135 avg. Shorts (n=133): 38.3% WR, ~−$80 avg.
+
+**Hour-of-day pattern (combined, entry-time ET, journal assumed ET — see §9):** Strongest hour = **15 ET (72.1% WR / $302 avg / n=43)**, driven by longs. Weakest = **11 ET (48.7% WR / −$34 avg / n=78)** — but the weakness is shorts-only at 11 AM (21.1% WR, n=19); longs at 11 AM are profitable (57.6% WR / +$17 avg / n=59). 09 ET is also weak (52.9% combined / −$28 avg) driven by shorts.
+
+**Unreconciled prior claims** (preserved per rule 6 — sources not found in any file I read):
+- "~4,274 closed trades / 60.6% WR / 1.30 PF / $35.85 avg" baseline carried in earlier State of Record versions. Origin unknown; may refer to a longer historical dataset not in the current journal (per-machine archives `trade_journal-BOOK-*-*.csv` were not loaded and merged).
+- `ai-trading-strategy-agent/src/advisor/prompt_builder.py:60-67` hardcodes "25,520 trades / 57.0% WR / $42.02 avg" plus "10-11 AM = 73.7% WR / 11-12 AM = 36.6% WR" as **"STANDING RULES FROM HISTORICAL ANALYSIS (always apply these)"** prompt text. The 73.7% and 36.6% figures specifically are contradicted by the journal-verified numbers above (10 AM = 60.2%, 11 AM = 48.7%). The 25,520 trade-count source is unknown.
+
+Short win rate ~38% (this journal) is roughly in line with retail day-trading literature (~32%) and is not a system failure — but the magnitude of short losses concentrated at 9 AM (−$140 avg, n=38) and 11 AM (−$193 avg, n=19) is a structural issue worth flagging.
+
+Full Phase 1 evidence and methodology: Handoff 009 Phase 1 response.
 
 ---
 
@@ -152,7 +164,7 @@ Plus a drawdown trigger at −$2,000 (30-min cooldown). Earnings-freshness check
 *(As of 2026-05-18. Re-verify when starting work — files change.)*
 
 - **Freeze fix:** Code-complete in `run_bot.py` (Option B — heartbeat-while-waiting + orphan reaper). Compile-checked. **Deployment AMBIGUOUS** — VPS bot last restarted 16:07 ET, ~35 min before the fixed code's local mtime. Verify at next 8 AM advisor slot: no "Heartbeat stale" entry, `advisor_running.json` appears briefly, PID stable. If not deployed, restart bot on VPS (market closed, with approval).
-- **Afternoon block:** `BLOCK_ENTRIES_AFTER_TIME` at 11:00 ET firing on ~61% of advisor runs. Decision made: remove it (it's a stale ChatGPT-era test artifact). Handoff 004 covers analyze-then-remove. See §5 item 10.
+- **Afternoon block:** `BLOCK_ENTRIES_AFTER_TIME` at 11:00 ET firing on ~61% of advisor runs (23,324 cumulative bot-side block events in `advisor_filter_engine.log`). **Source verified 2026-05-18 (Claude Code, Handoff 009 Phase 1, Task C):** the block originates in hardcoded "STANDING RULES FROM HISTORICAL ANALYSIS" prompt text at [`ai-trading-strategy-agent/src/advisor/prompt_builder.py:60-67`](ai-trading-strategy-agent/src/advisor/prompt_builder.py#L60-L67) — line 64 explicitly tells the model to *"Consider BLOCK_ENTRIES_AFTER_TIME: 11:00:00 on neutral/bearish days."* Not config-driven; removing or replacing is a prompt edit. Roadmap item #10 (replace with `REQUIRE_MIN_SCORE_DURING_WINDOW`) is the agreed permanent fix. Phase 2 (the actual change — remove, replace, or keep) is planning-chat owned and pending. See §1.4 for the verified hour-by-hour data that contradicts the prompt's hardcoded statistics.
 - **`requirements.txt` gap:** The `anthropic` package is NOT listed in `ai-trading-strategy-agent/requirements.txt`. Verified 2026-05-18: it IS installed on the VPS (v0.101.0, Python 3.14), so the silent-failure risk is not currently live — but a fresh machine would hit it. `anthropic` should still be added to `requirements.txt`. Also: the `pydantic==2.11.3` pin fails on Python 3.14 and should be loosened.
 - **Bot live state at last check:** PID 5468, alive, manual restart at 16:07 ET 2026-05-18.
 
