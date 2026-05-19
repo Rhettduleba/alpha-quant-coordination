@@ -1,6 +1,6 @@
 # Alpha Quant — State of Record
 
-**Version:** 2.3
+**Version:** 2.4
 **Last updated:** May 19, 2026
 **Owner:** Rhett
 **Scope:** Current operational state, open verifications, recent decisions.
@@ -39,6 +39,7 @@ Historical edits live in `CHANGELOG.md`.
 
 ## §2 Recent decisions (last 7 days)
 
+- **May 19, 2026** — System Review Plan v1.0 written and pushed to `SYSTEM_REVIEW_PLAN.md` in this repo. Triggered by Rhett's correct observation that the bot runs 24/7 and logs 20k+ "Market closed" rejections per day (including weekends), and that the advisor reads this noise and emits `BLOCK_ALL_NEW_ENTRIES` defensively (May 15 lost a full trading day this way; May 19 lost the morning). Plan proposes R1–R8 investigation scope, fix prioritization framework, and explicit no-performance-work-until-plumbing-fixed hard rule. Awaiting browser Claude's review per Rhett's direction.
 - **May 19, 2026** — V4 partial result: for 11 trading days (May 1-18), broker truth shows 297 closed pairs / $-2,846.49 net of fees. SOR v1.7's claimed "540 trades / $-37,614" baseline is materially overstated for this verifiable window. The earlier 10 days (April 17-30) returned zero broker fills via `historicalorders?since=` — cause distinguishing TBD in V5. Per-day breakdown was generated in the bot folder and discarded; rerunnable any time by re-creating the V4 script that loops `get_pnl_for_date` over a date list.
 - **May 19, 2026** — Workspace root cleanup: archived 14 items (Marketing/, Learning/, Trades/, Launchers/, Sync/, broken .lnk launchers, handoff docs, build_discussion_log.js, etc.) to `Archive/Root_Cleanup_2026-05-19/`. Deleted stale v1.7 .md duplicates at root (canonical lives in this repo). Root now shows exactly five files: `Start TradeStation Bot.bat`, `Stop TradeStation Bot.bat`, `Start_Dashboard.bat`, `Alpha_Quant_Discussion_Log.docx`, `CLAUDE.md`.
 - **May 19, 2026** — Replaced broken .lnk bot launchers with new portable .bat files. **Start TradeStation Bot.bat** launches `watchdog_supervisor.py` with a duplicate-detection safety check (filters to `python.exe` to avoid self-referencing PowerShell). **Stop TradeStation Bot.bat** runs `exit_bot.py` to flatten open positions, then kills all `python.exe` matching `watchdog_supervisor.py` or `run_bot.py` by command-line. Old .lnk files targeted hardcoded `C:\Users\rdule\...` paths from an old user profile AND called `run_bot.py` directly, which would conflict with the modern watchdog architecture.
