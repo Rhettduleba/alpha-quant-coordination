@@ -1,8 +1,25 @@
-# Handoff for Browser Claude (Planning Chat)
+# Handoff for Browser Claude (Planning Chat) — v2
 
 **From:** Rhett (via Claude Code on the VPS)
-**Date:** May 19, 2026
-**Purpose:** Review the system review plan before execution. Weigh in on open architectural questions. Push back if anything is wrong.
+**Date:** May 19, 2026 — second handoff of the day
+**Purpose:** Resync. Browser Claude's first response was substantively useful but cited non-existent sections of STATE.md and a wrong line of `run_bot.py`. This handoff is meant to put us on the EXACT same page so the next round of work is grounded in current files.
+
+---
+
+## ⚠ READ THIS BEFORE YOU CITE ANYTHING
+
+Your prior response (v1.0 plan review) cited these references that **do not exist in the actual files**:
+
+| You cited | Reality |
+|---|---|
+| "STATE.md §2.5 + changelog v1.1" | STATE.md is currently v2.5; it has §1–§5 only, no §2.5. CHANGELOG.md uses v2.x versions matching STATE.md (not v1.x). |
+| "STATE §6 rejected more-frequent advisor calls 'for now.'" | STATE.md has no §6. The cadence question is OPEN, not closed. |
+| "STATE §1.1/§3" (for hard risk floors) | STATE.md §1 = open verifications; §3 = active proposals. Risk floors live in the project `CLAUDE.md` files, not STATE.md. |
+| "run_bot.py:32" (for the midday advisor slot) | Line 32 is `ACCOUNT_ID = os.getenv("TS_ACCOUNT_ID", "SIM1623888M")` — unrelated to the schedule. The schedule isn't in `run_bot.py` at all. |
+
+**Going forward: when you cite a fact, quote the actual text from a fresh fetch.** Don't reason from a remembered structure. This matches Claude Code's operating rule "never reason from incomplete data" (also added to STATE.md operating rules).
+
+**You are not at fault for not seeing the current files** — the State of Record gets edited multiple times per day. The fix is: always fetch fresh, always quote exact text.
 
 ---
 
@@ -13,71 +30,96 @@ You are the **planning chat** in Rhett's Alpha Quant workflow. Your role:
 - Strategy, filtering, evaluation standards. The brain.
 - Push back honestly on Claude Code's findings if you see flaws.
 - Weigh in on design questions where two AI perspectives + Rhett's call is the right process.
-- Own the §5–§9 sections of the State of Record (decisions, standards, scope).
 
-**Claude Code** is your counterpart. It runs on the Windows VPS and has direct file/code/process access. It owns §1 (verified facts) and §4 (current state). It's the hands.
+**Claude Code** runs on the Windows VPS with direct file/code/process access. It owns §1 (verified facts) and §4 (current bot/advisor state) of STATE.md. It's the hands.
 
 **Rhett** owns every decision that changes live behavior. He arbitrates when you and Claude Code disagree.
 
 ---
 
-## What to read first (in this order)
+## Re-fetch these files BEFORE responding
 
-All in the `Rhettduleba/alpha-quant-coordination` GitHub repo:
+In order, from the `Rhettduleba/alpha-quant-coordination` GitHub repo:
 
-1. **`ALPHA_QUANT_STATE.md`** (~9 KB, v2.4) — the State of Record. Current state, open verifications, recent decisions, today's bot/advisor state.
-   - Raw URL: `https://raw.githubusercontent.com/Rhettduleba/alpha-quant-coordination/main/ALPHA_QUANT_STATE.md`
+1. **`ALPHA_QUANT_STATE.md` — currently v2.5**
+   `https://raw.githubusercontent.com/Rhettduleba/alpha-quant-coordination/main/ALPHA_QUANT_STATE.md`
+   §1 open verifications, §2 recent decisions, §3 active proposals, §4 current state, §5 maintenance rules. **That's it. No §6. No §2.5.**
 
-2. **`SYSTEM_REVIEW_PLAN.md`** (~12 KB, v1.0) — **the document Rhett wants you to review.** Written today after he correctly identified a structural problem: the bot runs 24/7 and generates ~20k "Market closed" rejections per day (including weekends), which contaminates the advisor's reasoning and causes recurring `BLOCK_ALL_NEW_ENTRIES` over-blocking.
-   - Raw URL: `https://raw.githubusercontent.com/Rhettduleba/alpha-quant-coordination/main/SYSTEM_REVIEW_PLAN.md`
+2. **`SYSTEM_REVIEW_PLAN.md` — currently v1.1 (folded your v1.0 corrections in)**
+   `https://raw.githubusercontent.com/Rhettduleba/alpha-quant-coordination/main/SYSTEM_REVIEW_PLAN.md`
+   The v1.1 changelog at the bottom (§11) lists exactly what changed from v1.0.
 
-3. **`AQ_EVALUATION_STANDARDS_C1.md`** — evaluation standards (only fetch if a proposed change needs evaluation). Note: §3 is marked NOT FIT FOR USE pending rewrite.
-   - Raw URL: `https://raw.githubusercontent.com/Rhettduleba/alpha-quant-coordination/main/AQ_EVALUATION_STANDARDS_C1.md`
+3. **`CHANGELOG.md`** — running edit log if you want history.
+   `https://raw.githubusercontent.com/Rhettduleba/alpha-quant-coordination/main/CHANGELOG.md`
 
-4. **`CHANGELOG.md`** — running edit log. Skip unless you want history.
-
----
-
-## Today's context
-
-**The trigger:** at 8:04 AM ET today (May 19, 2026), the advisor emitted `BLOCK_ALL_NEW_ENTRIES` blocking all bot trades until the next advisor run at 12:30 PM. Rhett pushed back — his bot is supposed to be a deterministic executor with hard criteria (`MIN_PRICE`, `MIN_VOLUME`, etc.); a blanket block overrides all of that.
-
-**What investigation confirmed:**
-
-1. The bot does run 24/7, scanning every ~5 seconds even on weekends. Journal counts: 33-40k entries on weekdays, 20k on Saturdays and Sundays.
-2. The bot does nothing useful outside trading hours — verified by reading `bot_loop.py:225-231`. When market is closed it logs ONE `ENTRY_BLOCKED` event with note "Market closed" and moves on. No scanning, no fetching, no monitoring.
-3. The advisor reads the journal (including pre-market and weekend noise) and sometimes concludes "the market is closed all day" or "something is wrong with conditions" and emits `BLOCK_ALL_NEW_ENTRIES` defensively.
-4. This has happened before, not just today: May 15 (Fri) lost a full trading day; May 17 (Sun) had no impact (weekend); May 19 (today) is losing the morning.
-5. V4 baseline re-verification (broker truth vs. journal-derived) showed the historical "540 trades / -$37,614" baseline was overstated — broker truth for 11 verifiable days is 297 pairs / -$2,846 net.
-
-**What the bot actually gives the advisor:** verified from `data_collector.py` — only two things, both files the bot writes: `trade_journal.csv` and `session_reports/*.json`. Everything else (quotes, positions, P&L, news, sector data) comes directly from the TradeStation API. So stopping the bot outside RTH loses nothing the advisor needs.
-
-**What's broken:** the journal is the contamination path. The advisor's `recent_journal_rows` loader includes all events from the last 5 days unfiltered — so pre-market and weekend `ENTRY_BLOCKED` noise flows straight into the advisor's prompt.
+4. **`AQ_EVALUATION_STANDARDS_C1.md`** — only fetch if a proposed change needs formal evaluation. §3 is marked NOT FIT FOR USE pending rewrite.
 
 ---
 
-## What Rhett wants from you
+## What you got right in v1.0 review
 
-1. **Read `SYSTEM_REVIEW_PLAN.md` (raw URL above) in full.** It's ~12 KB and has nine numbered sections plus an open-questions section (§8).
+All four of your corrections were valid and are folded into v1.1:
 
-2. **Push back honestly.** If anything in the plan is wrong, badly scoped, missing a category, or proposes the wrong fix order, say so plainly with the specific reason. Don't fake agreement to look collaborative.
+1. **§3 relabeled as HYPOTHESIS, not confirmed root cause.** You correctly noticed the same-noise-different-outcome contradiction (May 18 didn't block, May 19 did, both had the same weekend in their journal window). R3 and R4 now required to produce a causal explanation.
+2. **R4b added: `advisor_memory.json` inspection before deciding wipe-vs-keep.**
+3. **R3 widened to all 9 control types**, not just `BLOCK_ALL_NEW_ENTRIES`.
+4. **Midday slot corrected** — empirically verified at ~12:00–12:05 PM ET from the run log (not 12:30 PM as the stale `run_advisor.py` docstring claims). Your citation pointer was wrong but your point was right.
 
-3. **Weigh in on §8 (the seven open questions).** These are decisions where Rhett wants two AI perspectives before deciding. The questions cover:
-   - 24/7 bot vs. RTH-only bot
-   - Whether `BLOCK_ALL_NEW_ENTRIES` should exist as an autonomous control at all
-   - Whether to filter pre-market journal data from the advisor's prompt
-   - Whether to wipe `advisor_memory.json` and rebuild from broker truth
-   - Whether to cite the V4 broker-truth baseline (297 pairs / -$2,846 / 11 days) as authoritative replacement for the wrong 540 / -$37,614
-   - Right cadence for advisor runs (currently 3x daily)
-   - Bot launcher mechanism (icons vs. Task Scheduler)
-
-4. **If you propose changes:** restate the plan section, give your alternative, give your reason. Rhett will arbitrate.
-
-5. **If you agree:** say so and signal "ready to execute" — Claude Code will then start the R1–R8 investigation per §5 of the plan.
+Your §8 input was also adopted (Q2 reframe to RECOMMEND_HALT, Q3 agree, Q4 inspect first, Q5 don't promote V4 baseline). Q6 left open pending verifiable source.
 
 ---
 
-## Operating rules for both of us (already in STATE.md §1)
+## Rhett's decision since your v1.0 review
+
+**Q1 (DECIDED):** Bot stays running 24/7 but goes SILENT outside RTH via `is_market_open()` gate — no scanning, no journal writes when market is closed. Smaller change than process lifecycle machinery (an if-statement in the existing loop vs. new scheduling). Watchdog already keeps the process warm. Implementation lands as a P0 in R1–R8 execution.
+
+---
+
+## What's happened today (in chronological order)
+
+This timeline is the current "ground truth" for both of us. Verify any line by reading the cited file.
+
+| Time (ET) | Event |
+|---|---|
+| 8:04 AM | Advisor run #1 emits `BLOCK_ALL_NEW_ENTRIES` with reason "Market is closed — all 3,368 entry attempts were blocked with 'Market closed' reason and zero trades executed today." Bot is blocked from market open. |
+| ~10:30 AM | Rhett pushes back. Claude Code investigates, confirms (a) bot does run 24/7, (b) BLOCK_ALL has fired before (May 15 Fri, May 17 Sun, May 19 Tue), (c) the SAME-NOISE-DIFFERENT-OUTCOME contradiction is real. |
+| 11:18 AM | Rhett approves manual edit. Claude Code removes `BLOCK_ALL_NEW_ENTRIES` from `active_controls` in `advisor_control_latest.json`. Bot resumes trading; verified `ALL_CONTROLS_PASSED` in `advisor_filter_engine.log`. |
+| ~11:30 AM | SYSTEM_REVIEW_PLAN v1.1 + STATE.md v2.5 published with your v1.0 corrections folded in. |
+| 12:03 PM | Advisor run #2 emits `BLOCK_ALL_NEW_ENTRIES` AGAIN — but with completely different reasoning: "BROAD_SELLOFF regime with 52% bearish symbols, earnings calendar unavailable creating unknown risk across all 31 symbols, and recent 6-day P&L of -$1,352 with 43.7% win rate well below the 57% historical baseline." Bot is blocked again. |
+
+**Important difference between 8:04 AM and 12:03 PM emissions:**
+
+- 8:04 AM reason was based on the noise-contamination hypothesis (bot logs lots of "Market closed" rejections pre-market, advisor confused those for a market closure).
+- 12:03 PM reason is based on something more defensible: real-time regime read (52% bearish symbols, sector weakness, earnings calendar unavailable, recent losing streak). The 57% baseline figure cited is the OLD WRONG baseline (V4 showed it should be different) — but the advisor doesn't know that yet because R4b memory inspection hasn't happened.
+
+This second emission is exactly the failure mode your reframe (Q2: downgrade BLOCK_ALL to RECOMMEND_HALT) was designed to handle. The advisor's reasoning is plausible-but-aggressive; it should surface as a recommendation, not unilaterally block.
+
+---
+
+## What Rhett wants from you this round
+
+1. **Re-fetch the files above** to confirm we're on the same page. Quote actual text in any citation.
+
+2. **Review `SYSTEM_REVIEW_PLAN.md` v1.1** — confirm the corrections you wanted are in, and flag any new gaps you see now that you know about:
+   - Rhett's Q1 decision (bot 24/7 with RTH silence)
+   - The 12:03 PM re-emission with different reasoning
+   - The need to either accept that re-blocking will keep happening or implement the RECOMMEND_HALT mechanism faster
+
+3. **Specifically weigh in on:** given the advisor will likely keep emitting BLOCK_ALL with plausible-sounding reasoning until R8 ships RECOMMEND_HALT, what's the right interim posture? Options:
+   - (a) Manually edit every emission as it happens (Rhett's call each time) — slow, requires Rhett to be present every advisor run
+   - (b) Auto-strip `BLOCK_ALL_NEW_ENTRIES` from the control file via a watcher script — fast, removes Rhett-in-the-loop, but pre-empts the advisor's judgment
+   - (c) Accelerate R3/R8 to land RECOMMEND_HALT in the next 1–2 days as a hot fix — properly fixes the architecture but takes effort
+   - (d) Some combination
+
+4. **If you have any further plan v1.1 edits**, restate the section, give your alternative, give your reason.
+
+5. **If plan v1.1 is clear to proceed**, say so explicitly. Claude Code will then start R1–R8 investigation and produce `SYSTEM_REVIEW_FINDINGS.md`.
+
+---
+
+## Operating rules (current, both of us)
+
+From STATE.md v2.5 §1 operating rules + Claude Code's memory:
 
 1. **Verify before asserting.** No system-state claim without reading the file. If unread, label it "unverified."
 2. **Surface conflicts, don't silently resolve them.** When two sources disagree, flag to Rhett — don't pick.
@@ -86,22 +128,21 @@ All in the `Rhettduleba/alpha-quant-coordination` GitHub repo:
 5. **End every report with "What I did NOT verify."** Explicit section. Catches confabulation.
 6. **One question per turn to Rhett.** Never stack multiple asks; never ask + report other items in the same turn.
 7. **Times in user-facing text: 12-hour clock with AM/PM.** "9:09 AM ET" not "09:09 ET". Know the current time.
-
-A new rule was added today for Claude Code (and applies to you too): **never reason from incomplete data.** If you find yourself filling a gap with plausible inference, stop and ask Rhett to query the actual file/log/data via Claude Code instead.
-
----
-
-## What Claude Code will do next
-
-Wait for your review. After your response (whether agree, disagree, or want edits), Rhett will pass it back to Claude Code. Then Claude Code starts the R1–R8 investigation and produces `SYSTEM_REVIEW_FINDINGS.md` for another round of your review.
-
-No code changes, no fixes, no behavior changes are happening until you and Rhett both sign off on the plan.
+8. **Never reason from incomplete data.** Identify load-bearing claims, verify each from the source BEFORE explaining. Phrases like "probably/likely/would" are triggers to STOP and read the file. (New today.)
 
 ---
 
-## Bot state right now
+## Bot state right now (12:25 PM ET-ish)
 
-- **PID 2360**, alive, last_seen ~9:09 AM ET, loop_count growing normally.
-- **Active controls:** `BLOCK_ALL_NEW_ENTRIES` (until 12:30 PM advisor run replaces it), 3× `BLOCK_SYMBOL`, plus position-size and time-block overrides. Bot is not entering trades right now because of `BLOCK_ALL_NEW_ENTRIES`.
-- **Watchdog supervisor** (separate python.exe) is keeping the bot alive.
-- **No code changes are pending.** Rhett asked Claude Code to pause until this plan is reviewed.
+- **PID 2360**, alive, watchdog managing it 24/7.
+- **Active controls (12:03 PM advisor run):** `BLOCK_ALL_NEW_ENTRIES` (the new one with selloff reasoning), `SET_MAX_POSITION_PCT` 0.10, 7× `BLOCK_SYMBOL` (ABBV, AMZN, MSFT, QCOM, AMD, META, CAT), `REDUCE_MAX_POSITIONS` 2.
+- **Bot is blocked again.** The 11:18 AM manual unblock was overwritten by the 12:03 PM advisor run as predicted. Rhett has not yet decided whether to manually unblock again.
+- **Currently held:** 2 open positions (per advisor's reasoning citing "already holding 2 open positions with unrealized loss").
+
+---
+
+## What Claude Code commits to
+
+- No code changes, no fixes, no behavior changes until you and Rhett both sign off on plan v1.1.
+- If Rhett asks for another manual unblock, Claude Code will execute it. Otherwise the BLOCK stands.
+- Will surface (not auto-resolve) any disagreement with your response per operating rule 2.
