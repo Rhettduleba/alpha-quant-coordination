@@ -1,6 +1,6 @@
 # Alpha Quant — State of Record
 
-**Version:** 2.4
+**Version:** 2.5
 **Last updated:** May 19, 2026
 **Owner:** Rhett
 **Scope:** Current operational state, open verifications, recent decisions.
@@ -39,6 +39,10 @@ Historical edits live in `CHANGELOG.md`.
 
 ## §2 Recent decisions (last 7 days)
 
+- **May 19, 2026, ~11:20 AM ET** — **Bot manually unblocked for today.** Rhett approved editing `advisor_control_latest.json` to remove the `BLOCK_ALL_NEW_ENTRIES` entry. Other controls (BLOCK_SYMBOL × 3, REQUIRE_MIN_NEG_CHANGE_PCT, SET_MAX_POSITION_PCT, REDUCE_MAX_POSITIONS, BLOCK_ENTRIES_AFTER_TIME) left intact. Verified at 11:18:41 AM ET: bot's filter engine now returns `block=False ALL_CONTROLS_PASSED`. `manual_edits[]` array added to the control file recording the change. Next advisor run at ~12:00 PM ET will overwrite.
+- **May 19, 2026** — **Q1 DECIDED (Rhett):** Bot stays running 24/7 but goes SILENT outside RTH via `is_market_open()` gate — no scanning, no journal writes when market closed. Smaller change than process lifecycle machinery; watchdog already keeps process warm. Implementation lands as part of R1–R8 execution (P0 candidate).
+- **May 19, 2026** — **Q2 REFRAMED (browser Claude + Rhett):** Don't delete `BLOCK_ALL_NEW_ENTRIES` — downgrade it to a `RECOMMEND_HALT` semantic that surfaces for human confirmation rather than a control the bot silently honors. Preserves advisor's ability to flag real concerns without unilateral total-halt power. Implementation folds into R8.
+- **May 19, 2026** — SYSTEM_REVIEW_PLAN v1.1 published with browser-Claude review corrections folded in: §3 relabeled as hypothesis, R3 widened to all 9 control types, R4 expanded with advisor_memory.json inspection, midday slot corrected from 12:30 PM to ~12:00 PM ET (verified empirically). Q6 flagged as unresolved — browser Claude's cited "STATE §6" doesn't exist in actual STATE.md.
 - **May 19, 2026** — System Review Plan v1.0 written and pushed to `SYSTEM_REVIEW_PLAN.md` in this repo. Triggered by Rhett's correct observation that the bot runs 24/7 and logs 20k+ "Market closed" rejections per day (including weekends), and that the advisor reads this noise and emits `BLOCK_ALL_NEW_ENTRIES` defensively (May 15 lost a full trading day this way; May 19 lost the morning). Plan proposes R1–R8 investigation scope, fix prioritization framework, and explicit no-performance-work-until-plumbing-fixed hard rule. Awaiting browser Claude's review per Rhett's direction.
 - **May 19, 2026** — V4 partial result: for 11 trading days (May 1-18), broker truth shows 297 closed pairs / $-2,846.49 net of fees. SOR v1.7's claimed "540 trades / $-37,614" baseline is materially overstated for this verifiable window. The earlier 10 days (April 17-30) returned zero broker fills via `historicalorders?since=` — cause distinguishing TBD in V5. Per-day breakdown was generated in the bot folder and discarded; rerunnable any time by re-creating the V4 script that loops `get_pnl_for_date` over a date list.
 - **May 19, 2026** — Workspace root cleanup: archived 14 items (Marketing/, Learning/, Trades/, Launchers/, Sync/, broken .lnk launchers, handoff docs, build_discussion_log.js, etc.) to `Archive/Root_Cleanup_2026-05-19/`. Deleted stale v1.7 .md duplicates at root (canonical lives in this repo). Root now shows exactly five files: `Start TradeStation Bot.bat`, `Stop TradeStation Bot.bat`, `Start_Dashboard.bat`, `Alpha_Quant_Discussion_Log.docx`, `CLAUDE.md`.
@@ -63,12 +67,12 @@ _None tracked yet. Populate from `ai-trading-strategy-agent/outputs/proposals/` 
 ## §4 Current bot / advisor state
 
 - **Bot:** PID **2360**, alive, last_seen 9:09 AM ET May 19, loop_count 3254. Continuous uptime ~15.5 hours since the May 18 5:35 PM ET restart.
-- **Advisor last run:** 8:04 AM ET May 19 (PRE_MARKET, post-prompt-fix). Control file TTL valid through 8:04 AM ET May 20.
-- **Advisor next scheduled:** 12:30 PM ET May 19 (MID_DAY).
+- **Advisor last run:** 8:04 AM ET May 19 (PRE_MARKET, post-prompt-fix). Control file TTL valid through 8:04 AM ET May 20. Control file was manually edited at ~11:18 AM ET to remove `BLOCK_ALL_NEW_ENTRIES` and unblock the bot.
+- **Advisor next scheduled:** ~12:00 PM ET May 19 (MID_DAY) — verified from empirical run log, NOT 12:30 PM as `run_advisor.py:22-25` docstring claims (stale).
 - **Heartbeat-stale events on May 19:** 0.
 - **Today's regime read (from 8 AM advisor):** BROAD_SELLOFF, 86% bearish symbols, data quality POOR.
 - **Active controls in force:**
-  - `BLOCK_ALL_NEW_ENTRIES` — reason cited "Market is closed" (advisor ran at 8:04 AM, ~86 min before market open). Control persists until next advisor run at 12:30 PM. **Means the bot will not enter new positions from market open (9:30 AM) until at least 12:30 PM today — ~3 hours of trading time blocked.**
+  - ~~`BLOCK_ALL_NEW_ENTRIES`~~ — **REMOVED via manual edit at 11:18 AM ET May 19 per Rhett approval. Bot is now trading normally.**
   - `BLOCK_SYMBOL` × 3: MSFT, AAPL, META
   - `REQUIRE_MIN_NEG_CHANGE_PCT` −0.8%
   - `SET_MAX_POSITION_PCT` 0.15
