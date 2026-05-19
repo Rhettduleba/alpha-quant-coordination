@@ -1,0 +1,237 @@
+{
+  "window_start": "2026-04-17",
+  "window_end": "2026-05-18",
+  "trading_days_in_window": 22,
+  "days_with_fills": 21,
+  "total_fills": 1194,
+  "total_closed_pairs": 593,
+  "total_gross_pnl": -916.87,
+  "total_commissions": 1365.54,
+  "total_net_pnl": -2282.41,
+  "avg_pnl_per_pair": -3.85,
+  "errors": [],
+  "per_day": [
+    {
+      "date": "2026-04-17",
+      "day": "Fri",
+      "fills": 2,
+      "pairs": 0,
+      "gross_pnl": 0,
+      "commissions": 2.0,
+      "routing_fees": 0.0,
+      "net_pnl": -2.0
+    },
+    {
+      "date": "2026-04-20",
+      "day": "Mon",
+      "fills": 30,
+      "pairs": 12,
+      "gross_pnl": -449.23,
+      "commissions": 30.04,
+      "routing_fees": 0.0,
+      "net_pnl": -479.27
+    },
+    {
+      "date": "2026-04-21",
+      "day": "Tue",
+      "fills": 4,
+      "pairs": 0,
+      "gross_pnl": 0,
+      "commissions": 4.0,
+      "routing_fees": 0.0,
+      "net_pnl": -4.0
+    },
+    {
+      "date": "2026-04-22",
+      "day": "Wed",
+      "fills": 44,
+      "pairs": 22,
+      "gross_pnl": 1036.48,
+      "commissions": 44.0,
+      "routing_fees": 0.0,
+      "net_pnl": 992.48
+    },
+    {
+      "date": "2026-04-23",
+      "day": "Thu",
+      "fills": 8,
+      "pairs": 4,
+      "gross_pnl": -564.55,
+      "commissions": 8.48,
+      "routing_fees": 0.0,
+      "net_pnl": -573.03
+    },
+    {
+      "date": "2026-04-24",
+      "day": "Fri",
+      "fills": 80,
+      "pairs": 40,
+      "gross_pnl": 1432.96,
+      "commissions": 85.66,
+      "routing_fees": 0.0,
+      "net_pnl": 1347.3
+    },
+    {
+      "date": "2026-04-27",
+      "day": "Mon",
+      "fills": 88,
+      "pairs": 44,
+      "gross_pnl": 398.74,
+      "commissions": 92.86,
+      "routing_fees": 0.0,
+      "net_pnl": 305.88
+    },
+    {
+      "date": "2026-04-28",
+      "day": "Tue",
+      "fills": 50,
+      "pairs": 25,
+      "gross_pnl": -984.99,
+      "commissions": 50.76,
+      "routing_fees": 0.0,
+      "net_pnl": -1035.75
+    },
+    {
+      "date": "2026-04-29",
+      "day": "Wed",
+      "fills": 92,
+      "pairs": 48,
+      "gross_pnl": -121.67,
+      "commissions": 100.2,
+      "routing_fees": 0.0,
+      "net_pnl": -221.87
+    },
+    {
+      "date": "2026-04-30",
+      "day": "Thu",
+      "fills": 136,
+      "pairs": 68,
+      "gross_pnl": -27.12,
+      "commissions": 138.12,
+      "routing_fees": 0.0,
+      "net_pnl": -165.24
+    },
+    {
+      "date": "2026-05-01",
+      "day": "Fri",
+      "fills": 102,
+      "pairs": 51,
+      "gross_pnl": -319.81,
+      "commissions": 103.4,
+      "routing_fees": 0.0,
+      "net_pnl": -423.21
+    },
+    {
+      "date": "2026-05-04",
+      "day": "Mon",
+      "fills": 40,
+      "pairs": 20,
+      "gross_pnl": -796.12,
+      "commissions": 42.64,
+      "routing_fees": 0.0,
+      "net_pnl": -838.76
+    },
+    {
+      "date": "2026-05-05",
+      "day": "Tue",
+      "fills": 76,
+      "pairs": 38,
+      "gross_pnl": -382.37,
+      "commissions": 76.54,
+      "routing_fees": 0.0,
+      "net_pnl": -458.91
+    },
+    {
+      "date": "2026-05-06",
+      "day": "Wed",
+      "fills": 106,
+      "pairs": 53,
+      "gross_pnl": 635.68,
+      "commissions": 112.46,
+      "routing_fees": 0.0,
+      "net_pnl": 523.22
+    },
+    {
+      "date": "2026-05-07",
+      "day": "Thu",
+      "fills": 108,
+      "pairs": 54,
+      "gross_pnl": -895.23,
+      "commissions": 112.86,
+      "routing_fees": 0.0,
+      "net_pnl": -1008.09
+    },
+    {
+      "date": "2026-05-08",
+      "day": "Fri",
+      "fills": 62,
+      "pairs": 31,
+      "gross_pnl": 650.04,
+      "commissions": 64.76,
+      "routing_fees": 0.0,
+      "net_pnl": 585.28
+    },
+    {
+      "date": "2026-05-11",
+      "day": "Mon",
+      "fills": 80,
+      "pairs": 40,
+      "gross_pnl": 496.08,
+      "commissions": 83.18,
+      "routing_fees": 0.0,
+      "net_pnl": 412.9
+    },
+    {
+      "date": "2026-05-12",
+      "day": "Tue",
+      "fills": 22,
+      "pairs": 11,
+      "gross_pnl": -576.81,
+      "commissions": 106.42,
+      "routing_fees": 0.0,
+      "net_pnl": -683.23
+    },
+    {
+      "date": "2026-05-13",
+      "day": "Wed",
+      "fills": 18,
+      "pairs": 9,
+      "gross_pnl": 6.91,
+      "commissions": 26.88,
+      "routing_fees": 0.0,
+      "net_pnl": -19.97
+    },
+    {
+      "date": "2026-05-14",
+      "day": "Thu",
+      "fills": 12,
+      "pairs": 6,
+      "gross_pnl": -129.76,
+      "commissions": 27.68,
+      "routing_fees": 0.0,
+      "net_pnl": -157.44
+    },
+    {
+      "date": "2026-05-15",
+      "day": "Fri",
+      "fills": 0,
+      "pairs": 0,
+      "gross_pnl": 0,
+      "commissions": 0,
+      "routing_fees": 0,
+      "net_pnl": 0
+    },
+    {
+      "date": "2026-05-18",
+      "day": "Mon",
+      "fills": 34,
+      "pairs": 17,
+      "gross_pnl": -326.1,
+      "commissions": 52.6,
+      "routing_fees": 0.0,
+      "net_pnl": -378.7
+    }
+  ],
+  "source": "TRADESTATION_HISTORICAL_ORDERS with since+until parameters (V5 server-side scoping)",
+  "generated_at": "2026-05-19T13:15:00-04:00"
+}

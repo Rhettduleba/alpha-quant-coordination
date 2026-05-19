@@ -1,6 +1,6 @@
 # Alpha Quant — State of Record
 
-**Version:** 2.5
+**Version:** 2.6
 **Last updated:** May 19, 2026
 **Owner:** Rhett
 **Scope:** Current operational state, open verifications, recent decisions.
@@ -32,13 +32,30 @@ Historical edits live in `CHANGELOG.md`.
 | V1 | Prompt fix removes the 11 AM `BLOCK_ENTRIES_AFTER_TIME` nudge | 8 AM advisor run May 19 | **RESOLVED (nuanced).** The 11 AM block from the deleted prompt lines is gone. Advisor independently emitted a new `BLOCK_ENTRIES_AFTER_TIME` at **3:00 PM ET** based on data ("Worst setups cluster at 15:xx for META LONG and NVDA SHORT"). Architecture working as designed — prompt no longer biases, advisor reasons from data. |
 | V2 | PID 2360 survives the 8 AM advisor run with no Heartbeat stale event | 8 AM advisor run May 19 | **PASSED.** PID 2360 alive at 9:09 AM ET May 19, loop_count 3254. **Zero "Heartbeat stale" events on May 19** (every day May 13-18 had one at ~8:03 AM). Option B freeze fix verified. |
 | V3 | TradeStation UI shows ~$-378.70 for May 18 daily P&L | Rhett checks TS UI | **CLOSED (no UI validation available).** SIM accounts don't expose P&L through the TradeStation web UI. We trust the broker API result: $-378.70 net of fees ($-326.10 gross + $52.60 commissions). |
-| V4 | Re-verify the 540-trade / $-37,614 baseline using broker fills | Reconciliation across the 22-day window | **PARTIAL — significant finding.** For the 11 trading days May 1-18 (with May 15 as a no-trade day), broker truth shows **297 closed pairs, $-2,846.49 net of fees** (avg $-9.58/pair). The earlier 10 days (April 17-30) returned zero broker fills — cause unknown, see V5. For the 11 verifiable days, the journal-derived methodology overstated losses by roughly $35k vs. broker truth. |
-| V5 | Distinguish: did the 600-order API cap truncate April 17-30 fills, or was the bot not running then? | Test `historicalorders` pagination + check earliest run_bot.py launch | **NEW.** Needed to fully close V4. If pagination works, complete the 22-day reconciliation. If the bot truly wasn't running in late April, the SOR v1.7 "540 trades over 22 days" claim was wrong about the window, not just the methodology. |
+| V4 | Re-verify the 540-trade / $-37,614 baseline using broker fills | Reconciliation across the 22-day window | **CLOSED by V5.** See V5 below. |
+| V5 | Get full 22-day broker baseline (was: pagination missing / bot not running?) | `historicalorders?since=&until=` server-side scoping | **CLOSED May 19, 2026.** TS API supports `until=` (verified). Modified `get_broker_fills()` to send both. Full result: **1,194 fills, 593 closed pairs, $-2,282.41 net, avg $-3.85/pair across 21/22 trading days April 17 to May 18**. The 600-cap was silently truncating the older 10 days; `until=` scopes server-side and eliminates the cap. Authoritative result in `V5_BROKER_TRUTH_BASELINE.json`. The bot WAS running in late April (not pre-launch as one hypothesis suggested) — the missing data was purely the API cap. The SOR v1.7 cited "$-37,614" baseline was overstated by ~$35,331. |
 
 ---
 
 ## §2 Recent decisions (last 7 days)
 
+- **May 19, 2026, ~1:00–1:30 PM ET** — **FIX SPRINT EXECUTED (Rhett-approved, all 7 steps complete).**
+  1. **Trading halted** via `daily_shutdown.json` (`shutdown_active=true`, reason: fix sprint). Verified bot logs `Daily shutdown active` for both bot_loop and short_bot at 1:07 PM ET.
+  2. **RTH-silence gate** added to `tradestation-bot/bot_loop.py` (line 173) and `tradestation-bot/short_bot.py` (line 172): immediately after SIM account confirmation, `is_market_open()` is checked; if false, `raise SystemExit(0)` skips all per-cycle work. Heartbeat continues to be written by `run_bot.py:470`. Syntax verified PASS for both.
+  3. **Hardcoded wrong baseline removed** from `ai-trading-strategy-agent/src/advisor/prompt_builder.py:62-63`. The "25,520 all-time trades, 57.0% win rate, $42.02 avg P&L" and "SHORT trades 32.2% win rate, -$70.29 avg P&L" lines were derived from journal limit prices and V4-disproven. Replaced with explanatory note pointing advisor to reason from recent-performance + historical-pattern sections (not a single global claim).
+  4. **`advisor_memory.json` archived + wiped.** Prior 27-run memory (20.2 KB) preserved at `Archive/Root_Cleanup_2026-05-19/advisor_memory_2026-05-19_pre_wipe.json`. Active memory reset to blank `_blank_memory()` schema with a `wipe_history` audit field recording why and where the original lives.
+  5. **`BLOCK_ALL_NEW_ENTRIES` downgraded to RECOMMEND_HALT semantic** in `tradestation-bot/advisor_filter_engine.py:129-138`. Bot now returns `block=False` and logs `RECOMMENDED_HALT_NOT_HONORED` with the advisor's reason. Advisor keeps alarm capability; bot keeps trading; humans use `daily_shutdown.json` to actually halt. Functional test PASS — emitted BLOCK_ALL no longer blocks any entry.
+  6. **V5 pagination implemented + baseline reconciliation complete.** Probe found TS API supports `until=` parameter (verified) and `pageSize=N`+`NextToken` cursor pagination. Used `until=` for server-side date-range scoping; modified `get_broker_fills()` in `daily_reconciliation.py` to send `&until=<date+1>` alongside `since=`, eliminating the 600-cap silent truncation. Full 22-day window (April 17 to May 18) now returns: **1,194 fills, 593 closed pairs, $-2,282.41 net of $1,365.54 fees, avg $-3.85/pair**. Authoritative baseline saved to `V5_BROKER_TRUTH_BASELINE.json` in this repo.
+  7. **Bot trading restarted** by clearing `daily_shutdown.json` (`shutdown_active=false`). Verified next bot cycle resumed normal evaluation.
+- **V4/V5 reconciled comparison:**
+
+  | Source | Closed pairs | Net P/L | Avg per pair | Window |
+  |---|---:|---:|---:|---|
+  | SOR v1.7 cited "baseline" | 540 | $-37,614 | $-69.66 | 22 days (per claim) |
+  | **V5 broker truth (authoritative)** | **593** | **$-2,282.41** | **$-3.85** | 22 days (April 17 to May 18) |
+  | Delta vs cited | +53 | +$35,331.59 | +$65.81 | — |
+
+  The cited "verified baseline" was overstated by ~$35k. Real system performance is nearly break-even, not the catastrophic loss the prior baseline implied. V5 closes the V4 partial finding and supersedes the prior cited number.
 - **May 19, 2026, ~11:20 AM ET** — **Bot manually unblocked for today.** Rhett approved editing `advisor_control_latest.json` to remove the `BLOCK_ALL_NEW_ENTRIES` entry. Other controls (BLOCK_SYMBOL × 3, REQUIRE_MIN_NEG_CHANGE_PCT, SET_MAX_POSITION_PCT, REDUCE_MAX_POSITIONS, BLOCK_ENTRIES_AFTER_TIME) left intact. Verified at 11:18:41 AM ET: bot's filter engine now returns `block=False ALL_CONTROLS_PASSED`. `manual_edits[]` array added to the control file recording the change. Next advisor run at ~12:00 PM ET will overwrite.
 - **May 19, 2026** — **Q1 DECIDED (Rhett):** Bot stays running 24/7 but goes SILENT outside RTH via `is_market_open()` gate — no scanning, no journal writes when market closed. Smaller change than process lifecycle machinery; watchdog already keeps process warm. Implementation lands as part of R1–R8 execution (P0 candidate).
 - **May 19, 2026** — **Q2 REFRAMED (browser Claude + Rhett):** Don't delete `BLOCK_ALL_NEW_ENTRIES` — downgrade it to a `RECOMMEND_HALT` semantic that surfaces for human confirmation rather than a control the bot silently honors. Preserves advisor's ability to flag real concerns without unilateral total-halt power. Implementation folds into R8.
