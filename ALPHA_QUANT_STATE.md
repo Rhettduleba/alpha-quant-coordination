@@ -1,6 +1,6 @@
 # Alpha Quant — State of Record
 
-**Version:** 2.7
+**Version:** 2.8
 **Last updated:** May 20, 2026
 **Owner:** Rhett
 **Scope:** Current operational state, open items, recent decisions. Stable rules/architecture live in the `CLAUDE.md` files (auto-loaded by Claude Code). Historical detail lives in `CHANGELOG.md`.
@@ -22,12 +22,11 @@
 
 ## §1 Open items
 
-The May-19 verification series **V1–V5 is all CLOSED** — see `CHANGELOG.md` and §2. Two items are open now:
+The May-19 verification series **V1–V5 is all CLOSED**; **GIT is now CLOSED** (May 20 — see §2) — see `CHANGELOG.md` and §2. One item is open now:
 
 | # | Item | Status |
 |---|---|---|
 | **OBS** | **Observation period** — watch the post-fix-sprint bot for 5+ clean trading days before any tuning or architectural work. | IN PROGRESS (started May 19) |
-| **GIT** | **Version-control the code** — put `tradestation-bot/` and `ai-trading-strategy-agent/` under git. Today they are NOT in git; the only history is OneDrive file recovery (no diffs, no clean rollback, no commit messages). | **NEXT SESSION'S TASK** |
 
 **OBSERVATION — what to watch, re-verify each trading day:**
 - **Journal noise** should drop hard — from ~30k rows/day to ~1–3k/day — confirming the RTH-silence gate works. Count rows in `trade_journal.csv` per day.
@@ -40,6 +39,7 @@ The May-19 verification series **V1–V5 is all CLOSED** — see `CHANGELOG.md` 
 
 ## §2 Recent decisions (most recent first; full detail in `CHANGELOG.md`)
 
+- **May 20, 2026 — GIT open item CLOSED.** Bot + advisor code now under git. One repo (rooted at `Trade station Main`, captures both project folders + root docs/launchers) — chosen over two repos because cross-cutting changes like the fix sprint touch both halves and the bot↔advisor relative-path coupling means they ship as a unit. Git directory lives at `C:\repos\trade-station-main-git\` **outside OneDrive**, with `core.worktree` pointed into the OneDrive tree, so OneDrive never syncs git internals and there is **zero `.git` artifact inside OneDrive**. Initial commit `98620d9` = post-fix-sprint baseline, 303 files. `.gitignore` excludes secrets (`.env`, `token_cache*.json`), logs, journals (`trade_journal*.csv`), per-machine state, and runtime outputs. No pre-sprint history is recoverable. Local-only — no remote pushed.
 - **May 19, 2026 — FIX SPRINT COMPLETE** (Rhett-approved, 7 steps): halted trading; added RTH-silence gate to `bot_loop.py` + `short_bot.py`; removed hardcoded wrong baseline from `prompt_builder.py:62-63`; archived + wiped `advisor_memory.json`; downgraded `BLOCK_ALL_NEW_ENTRIES` to a RECOMMEND_HALT semantic in `advisor_filter_engine.py`; implemented V5 `until=` pagination in `daily_reconciliation.py`; restarted trading. Full 7-step detail in `CHANGELOG.md`. **These bot/advisor code changes are NOT in git** — the GIT open item exists to fix that.
 - **May 19, 2026 — V5 authoritative baseline:** 22-day broker truth = 1,194 fills, 593 closed pairs, **$-2,282.41 net, $-3.85/pair**. Supersedes the disproven SOR v1.7 "$-37,614 / 540-trade" baseline (overstated by ~$35k). Per-day detail in `V5_BROKER_TRUTH_BASELINE.json`.
 - **May 19, 2026 — Profitability strategy drafted** — a five-wave plan (trade-quality filters → regime-aware promotion controls → richer advisor info → dynamic universe → re-fit scoring from clean data). Implementation deferred until the observation period confirms plumbing is stable. Doc currently held by Rhett; not yet in this repo.
