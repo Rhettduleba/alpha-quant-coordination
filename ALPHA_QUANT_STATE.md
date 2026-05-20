@@ -1,6 +1,6 @@
 # Alpha Quant — State of Record
 
-**Version:** 2.9
+**Version:** 3.0
 **Last updated:** May 20, 2026
 **Owner:** Rhett
 **Scope:** Current operational state, open items, recent decisions. Stable rules/architecture live in the `CLAUDE.md` files (auto-loaded by Claude Code). Historical detail lives in `CHANGELOG.md`.
@@ -39,6 +39,7 @@ The May-19 verification series **V1–V5 is all CLOSED**; **GIT is now CLOSED** 
 
 ## §2 Recent decisions (most recent first; full detail in `CHANGELOG.md`)
 
+- **May 20, 2026 — Advisor truncation bug found + fixed (observation day 1).** The May 20 08:05 advisor run hit *exactly* 2048 output tokens, truncating the response mid-JSON; `response_parser.py` rejected it (`parse_errors: 1`) and the advisor fell back to `NO_CONTROLS` / "Unable to parse advisor response" / `data_quality: POOR` — i.e. the advisor produced no real guidance that run. Bot unaffected (the `NO_CONTROLS` fail-safe = trade normally). Root cause: `MAX_TOKENS = 2048` in `claude_client.py:15`; the operational loop calls `call_claude()` with no explicit override. Fixed → `4096` (commit `1f19087`, `alpha-quant` repo). First parse failure in 45 logged runs. **Not a billing/funding issue** — the API call succeeded and returned a full 2048-token response; it was a config ceiling. This is exactly the kind of plumbing fault the observation period exists to catch.
 - **May 20, 2026 — GIT open item CLOSED.** Bot + advisor code now under git. One repo (rooted at `Trade station Main`, captures both project folders + root docs/launchers) — chosen over two repos because cross-cutting changes like the fix sprint touch both halves and the bot↔advisor relative-path coupling means they ship as a unit. Git directory lives at `C:\repos\trade-station-main-git\` **outside OneDrive**, with `core.worktree` pointed into the OneDrive tree, so OneDrive never syncs git internals and there is **zero `.git` artifact inside OneDrive**. Initial commit `98620d9` = post-fix-sprint baseline, 303 files. `.gitignore` excludes secrets (`.env`, `token_cache*.json`), logs, journals (`trade_journal*.csv`), per-machine state, and runtime outputs. No pre-sprint history is recoverable. Pushed to a **private** GitHub remote: `github.com/Rhettduleba/alpha-quant` (pairs with `alpha-quant-coordination`).
 - **May 19, 2026 — FIX SPRINT COMPLETE** (Rhett-approved, 7 steps): halted trading; added RTH-silence gate to `bot_loop.py` + `short_bot.py`; removed hardcoded wrong baseline from `prompt_builder.py:62-63`; archived + wiped `advisor_memory.json`; downgraded `BLOCK_ALL_NEW_ENTRIES` to a RECOMMEND_HALT semantic in `advisor_filter_engine.py`; implemented V5 `until=` pagination in `daily_reconciliation.py`; restarted trading. Full 7-step detail in `CHANGELOG.md`. **These bot/advisor code changes are NOT in git** — the GIT open item exists to fix that.
 - **May 19, 2026 — V5 authoritative baseline:** 22-day broker truth = 1,194 fills, 593 closed pairs, **$-2,282.41 net, $-3.85/pair**. Supersedes the disproven SOR v1.7 "$-37,614 / 540-trade" baseline (overstated by ~$35k). Per-day detail in `V5_BROKER_TRUTH_BASELINE.json`.

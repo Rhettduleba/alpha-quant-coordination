@@ -6,6 +6,7 @@ This file is **not** fetched at ramp-up. Consult only when answering "what chang
 
 ---
 
+- **May 20, 2026** — STATE.md v3.0 — Advisor truncation bug found + fixed on observation day 1. The May 20 08:05 advisor run truncated at exactly 2048 output tokens, failed to parse, and fell back to NO_CONTROLS. Root cause `MAX_TOKENS = 2048` in `claude_client.py:15`; fixed → 4096 (commit `1f19087`, `alpha-quant` repo — first versioned code change). Not a funding issue. Bot unaffected.
 - **May 20, 2026** — STATE.md v2.9 — Code repo pushed to a private GitHub remote `github.com/Rhettduleba/alpha-quant` (initial commit `98620d9`). Supersedes the v2.8 "local-only" note.
 - **May 20, 2026** — STATE.md v2.8 — GIT open item CLOSED. Bot + advisor code put under git: one repo rooted at `Trade station Main`, git directory at `C:\repos\trade-station-main-git\` outside OneDrive with `core.worktree` into the OneDrive tree (no `.git` artifact syncs). Initial commit `98620d9`, 303 files, post-fix-sprint baseline. `.gitignore` excludes secrets, logs, journals, per-machine state, runtime outputs. Local-only, no remote. §1 now has one open item (OBS).
 - **2026-05-19** — File swap — Renamed `STATE.md` → `ALPHA_QUANT_STATE.md` and the previous v1.7 → `ARCHIVE_ALPHA_QUANT_STATE_v1.7.md`. Browser Claude's existing raw-URL fetch (`.../main/ALPHA_QUANT_STATE.md`) now returns the slim v2.2 content instead of v1.7. v1.7 preserved as archive for history.
