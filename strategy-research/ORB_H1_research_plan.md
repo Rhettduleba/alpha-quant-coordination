@@ -20,6 +20,21 @@ Brain universe) is sound and is kept. Only the **strategy logic** is being rebui
 
 ---
 
+## Goal & risk constraints (Rhett, stated 2026-05-22)
+
+- **Capital:** $100,000 — fixed; this is the entire account.
+- **Target:** make ~$10,000 (≈10% on capital).
+- **Daily risk limit:** lose no more than **$500 in any single day** (0.5% of
+  capital), at least until the account is up.
+- **Implication for this research:** the $500/day limit is ~20× tighter than the
+  live bot's current $10,000 daily guard. Any strategy validated here must be
+  sized and judged against ~$500/day — and a strategy with frequent days worse
+  than −0.5% is not viable under this constraint regardless of total return.
+  Backtests must therefore report the **distribution of daily P&L** (worst days,
+  count of days beyond −$500), not just the headline return.
+
+---
+
 ## Hypothesis H1
 
 > **On liquid US large-cap stocks that open with elevated relative volume
@@ -123,5 +138,6 @@ defence.
 | Date | Entry |
 |---|---|
 | 2026-05-22 | Sub-project created. H1 (ORB) plan written. v1 QC code written: `strategy-research/orb_h1_backtest.py`. Next: Rhett pastes it into QC, runs the train period (Run A), sends results back. |
+| 2026-05-22 | Recorded Rhett's goal/constraints (see section above). Handoff prepared for browser Claude to run Run A + Run B in QC. Awaiting results. |
 
 *(append-only — newest at the bottom)*
