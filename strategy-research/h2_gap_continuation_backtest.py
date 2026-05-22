@@ -8,6 +8,10 @@
 #
 # RESEARCH BACKTEST ONLY -- not the Alpha Quant bot, not live trading.
 #
+# v2: removed the _reset_day() helper method (its logic is now inlined in both
+# places it was used). No helper methods remain, so a transcription/paste error
+# cannot reintroduce a method-name mismatch.
+#
 # HOW TO RUN:
 #   Run A: paste as-is (SLIPPAGE = 0.0005), backtest.
 #   Run B: set SLIPPAGE = 0.0, backtest again.
@@ -61,14 +65,13 @@ class GapContinuation_H2(QCAlgorithm):
         self.last_close  = {}   # most recent close (rolls into prev_close)
         self.prev_close  = {}   # prior trading day's close
         self.trades = 0
-        self._reset_day()
 
-    def _reset_day(self):
-        self.day_open     = {}
-        self.or_high      = {}
-        self.or_low       = {}
-        self.stop_price   = {}
-        self.day_decided  = False
+        # per-day state (reset each day in on_data)
+        self.day_open    = {}
+        self.or_high     = {}
+        self.or_low      = {}
+        self.stop_price  = {}
+        self.day_decided = False
 
     def on_data(self, data):
         t = self.time
@@ -80,7 +83,12 @@ class GapContinuation_H2(QCAlgorithm):
                 if s in self.last_close:
                     self.prev_close[s] = self.last_close[s]
             self.current_day = t.date()
-            self._reset_day()
+            # reset per-day state
+            self.day_open    = {}
+            self.or_high     = {}
+            self.or_low      = {}
+            self.stop_price  = {}
+            self.day_decided = False
 
         # ---- forced EOD flatten ----
         if hm >= FLATTEN_TIME:
