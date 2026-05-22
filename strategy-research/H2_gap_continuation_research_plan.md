@@ -2,7 +2,7 @@
 
 **Sub-project:** Rebuild Alpha Quant's strategy layer on evidence.
 **Created:** May 22, 2026 · **Lab:** QuantConnect
-**Status:** PLAN + v1 CODE WRITTEN — awaiting train-period backtest.
+**Status:** H2 TESTED — **FAILED** the train-period net-of-costs gate (near miss; real small gross edge present). See status log.
 
 Shared methodology — goal & risk constraints, cost model, train/test split,
 success criteria, how AI is used — is in `ORB_H1_research_plan.md`. This file
@@ -76,5 +76,6 @@ would widen the universe to gather more setups before trusting it.
 |---|---|
 | 2026-05-22 | H2 (gap continuation) plan + v1 QC code written, after H1 failed the train gate. Code: `strategy-research/h2_gap_continuation_backtest.py`. Next: run the train period in QC (Run A + Run B), send results back. |
 | 2026-05-22 | H2 Run A errored in QC: `'GapContinuation_H2' object has no attribute '_reset_day'`. Verified the committed file defines and calls `_reset_day` consistently and H1 used the same pattern fine — so the code was altered in transit (browser-Claude transcription), not a code bug. Fixed defensively (H2 v2): removed the `_reset_day` helper method, inlined its 5 lines into `initialize` and the day-rollover. Class now has only `initialize` / `on_data` / `on_end_of_algorithm` — no helper-method name a paste error can mismatch. Re-handoff issued. |
+| 2026-05-22 | **H2 RESULT — train period 2016–2021 (QC project H2-GapCont-v2).** Run A (0.05% slippage): −5.7%, end equity $94,269, win rate 42%, P/L ratio 1.27, expectancy −0.038, 608 orders, max DD 20.1%. Run B (0% slippage): +1.5%, end equity $101,546, win rate 44%, P/L ratio 1.32, expectancy +0.016, 608 orders, max DD 16.1%. **Verdict: H2 FAILS the net-of-costs gate** (Run A expectancy negative). BUT — a real, small *gross* edge exists (Run B positive, where H1 was zero). The catalyst filter is doing genuine work; H2 trades ~16× less than H1, cost drag fell from 68pp to 7pp. 2020 COVID is in the data; long AND short setups are coded; the strategy LOST during COVID despite short-side access (a finding — gap-down "continuations" in 2020 evidently didn't continue cleanly enough, or stops were knocked out by volatility). Holdout NOT run (didn't pass train). Cumulative: 3 strategies (Alpha Quant −99.9%, H1 −72%, H2 −5.7%); trend is clearly improving as the signal becomes more selective, but no winner yet. Next: Rhett's call — pull long/short breakdown from QC (diagnostic), design H3, or change direction. |
 
 *(append-only — newest at the bottom)*
