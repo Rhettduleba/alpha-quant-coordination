@@ -75,5 +75,6 @@ would widen the universe to gather more setups before trusting it.
 | Date | Entry |
 |---|---|
 | 2026-05-22 | H2 (gap continuation) plan + v1 QC code written, after H1 failed the train gate. Code: `strategy-research/h2_gap_continuation_backtest.py`. Next: run the train period in QC (Run A + Run B), send results back. |
+| 2026-05-22 | H2 Run A errored in QC: `'GapContinuation_H2' object has no attribute '_reset_day'`. Verified the committed file defines and calls `_reset_day` consistently and H1 used the same pattern fine — so the code was altered in transit (browser-Claude transcription), not a code bug. Fixed defensively (H2 v2): removed the `_reset_day` helper method, inlined its 5 lines into `initialize` and the day-rollover. Class now has only `initialize` / `on_data` / `on_end_of_algorithm` — no helper-method name a paste error can mismatch. Re-handoff issued. |
 
 *(append-only — newest at the bottom)*
