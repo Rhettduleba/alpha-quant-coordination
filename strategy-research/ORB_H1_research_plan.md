@@ -2,7 +2,7 @@
 
 **Sub-project:** Rebuild Alpha Quant's strategy layer on evidence.
 **Created:** May 22, 2026 · **Owner:** Rhett · **Lab:** QuantConnect
-**Status:** PLAN + v1 CODE WRITTEN — awaiting first train-period backtest.
+**Status:** H1 TESTED — **FAILED** the train-period gate (no edge, even before costs). See status log.
 
 ---
 
@@ -139,5 +139,6 @@ defence.
 |---|---|
 | 2026-05-22 | Sub-project created. H1 (ORB) plan written. v1 QC code written: `strategy-research/orb_h1_backtest.py`. Next: Rhett pastes it into QC, runs the train period (Run A), sends results back. |
 | 2026-05-22 | Recorded Rhett's goal/constraints (see section above). Handoff prepared for browser Claude to run Run A + Run B in QC. Awaiting results. |
+| 2026-05-22 | **H1 RESULT — train period 2016–2021 (QC project ORB-H1).** Run A (0.05% slippage): −72.2%, end equity $27,762, win rate 43%, profit-loss ratio 1.10, negative expectancy, 10,033 orders, max DD 73%. Run B (0% slippage): −3.8%, end equity $96,171, ~breakeven, same 10,033 orders. **Verdict: H1 FAILED.** The ORB signal is ~break-even *before* costs (no real gross edge) and a heavy loser *after* realistic costs. Per the plan, H1 is recorded dead and NOT tuned. Holdout (2022–present) NOT run — it is only run for a strategy that passes the train gate. Cumulative: 2 strategies tested (original Alpha Quant −99.9%, ORB-H1 −72%); both died to ~zero gross edge vs. transaction costs. Next: Rhett decides H2 direction. |
 
 *(append-only — newest at the bottom)*
