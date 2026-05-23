@@ -61,6 +61,181 @@ small-loss profile that exposes the true underlying expectancy.
 
 ---
 
+## Project context (one-paragraph onboard for new reviewers)
+
+Alpha Quant is Rhett Duleba's automated trading research project. An earlier
+Claude Code session built a SIM trading bot on TradeStation; that bot's
+original strategy (intraday momentum with very tight trailing stops) lost
+−99.92% when backtested in QuantConnect. That kicked off this **strategy
+research sub-project** in May 2026: testing falsifiable hypotheses one at a
+time in QC to find one with real edge before any live deployment. Three
+strategies have been tested so far; all three failed catastrophically; AND
+Claude Code has admitted (and documented below) that its own implementation
+errors account for a meaningful portion of those losses. The multi-AI
+review protocol below exists specifically to catch those errors before the
+next round.
+
+---
+
+## Rhett's goal, capital, and risk constraints
+
+- **Capital:** $300,000 funded in the actual TradeStation account →
+  $1,200,000 of intraday buying power via 4× margin. Lab backtests use
+  $100,000 starting cash; scaling decisions are deferred until a strategy
+  has cleared the "works" bar below.
+- **Return goal:** ≥ $10,000 / year, net. (Rhett's original aspiration was
+  $10k / month; Claude Code has flagged that as not realistic at this
+  capital scale with retail constraints — it would require returns no
+  fund has sustained over time. The lab targets the annual figure.)
+- **Live daily loss tolerance:** −$500 / day. Lab backtests use a wider
+  −$2,000 daily cap (G2 above) to give research headroom.
+- **Tradable instruments:** liquid US equities only. No options, futures,
+  or crypto. 4× intraday margin is part of the plan, which constrains us
+  to TradeStation-margin-eligible names.
+
+---
+
+## Trader context — what Rhett's actual trading history shows
+
+Claude Code audited Rhett's live TradeStation account on 2026-05-23 from
+his full exported trade log (11,769 closed trades, 2022–2025). The
+findings are directly relevant to strategy selection — any live
+deployment will sit on top of behaviours this audit revealed.
+
+- **Full record:** −$6,657,353 net realized.
+- **Intraday only (same-day exits):** **+$1,448 — essentially break-even**
+  across 3,294 trades.
+- **Held overnight:** −$6,654,898 across 8,475 trades. **Virtually all
+  of the loss came from positions held past the close.** Same instincts,
+  same screens, same setups — the discipline of flatten-by-EOD was the
+  difference between break-even and catastrophic loss.
+- **Best scalp hold window:** 30 sec–1 min — the only net-positive bucket
+  in the under-5-min range. Sub-30-sec exits leaked to panic; over-1-min
+  holds leaked to pride.
+- **Stock affinity:** intraday TSLA was **+$126,586** (742 trades, 58.5%
+  win rate, winners 1.11× size of losers). Intraday NVDA was
+  **−$117,701** (1,242 trades, 47.7% win, 0.89× win/loss). Stocks that
+  respect price action: Rhett reads. Stocks in relentless one-way trends
+  (NVDA 2024): Rhett gets whipsawed.
+- **Stated style:** "Read candles, go in heavy with full buying power for
+  ~30 seconds, get out." Emotional overrides (panic vs. pride) were the
+  dominant failure mode, not strategy choice.
+
+**Implication for strategy selection:** Rhett's edge — to the extent he
+has one — is intraday scalping on stocks that respect price action.
+Strategies the lab tests should either fit that profile or have an
+explicit reason to differ.
+
+---
+
+## What "works" means (the bar a strategy must clear)
+
+A strategy is "works" only if ALL of the following hold:
+
+| Criterion | Bar |
+|---|---|
+| Net P&L after slippage (lab default 0.05%, see M2) | Positive |
+| Profit factor | ≥ 1.2 |
+| Sharpe ratio | ≥ 1.0 |
+| Train period (2016-2021) | Net positive |
+| Holdout period (2022 to present) | Net positive (run ONCE) |
+| Annual return, net of costs | ≥ ~10% |
+| Worst-day P&L distribution | Survives G2 ($2,000/day) at reasonable sizing |
+
+Anything that clears most but not all stays in development. No partial
+credit for "almost works."
+
+---
+
+## Claude Code's documented failure modes — what every reviewer must watch for
+
+These are documented blind spots of Claude Code (the lead AI on this
+project), agreed by both Rhett and Claude Code on 2026-05-23. Every
+reviewer (AI or human) should specifically check for these on every
+deliverable.
+
+1. **"Translating faithfully" while drifting from spec.** Claude Code
+   reads a paper, then writes code *labeled* "faithful" while silently
+   substituting its own defaults for paper-specified values. H3 is the
+   documented example: code committed as "faithful Zarattini" had the
+   stop logic, direction filter, and profit-target rule all changed from
+   the paper. **Reviewers: line-by-line audit each Exact Spec section
+   against its cited source. This is the single highest-yield check.**
+2. **Filling gaps with reasonable-looking defaults instead of asking.**
+   When the source is under-specified, Claude Code substitutes "typical"
+   trading-code defaults rather than flagging the gap. Reviewers: any
+   spec value without a source citation is suspect.
+3. **Treating paraphrase as faithful copy.** Claude Code summarizes
+   papers from memory and treats the summary as a reliable copy.
+   Reviewers should check that each Exact Spec section contains *direct
+   quotes* from the source, not Claude Code's reword.
+4. **Insufficient skepticism of catastrophic results.** When a backtest
+   returns ≤ −50% / year, Claude Code's reflex has been "the strategy
+   doesn't work" rather than "the framework or my implementation may be
+   broken." Reviewers should push back on any catastrophic result by
+   asking whether the framework sanity check (H0 / M1) was run first.
+5. **Producing before verifying.** Claude Code optimizes for completing a
+   deliverable rather than pausing to verify assumptions. Reviewers
+   should ask whether Claude Code asked any clarifying questions before
+   the work was done — silence on a non-trivial task is a flag.
+
+These are common LLM failure modes, not unique character flaws of Claude
+Code. The point of documenting them here is so the protocol catches them.
+
+---
+
+## Claude Code's protocol commitments
+
+Claude Code committed to the following on 2026-05-23. Reviewers can hold
+Claude Code to any of these on any deliverable.
+
+1. **State assumptions before acting.** Before non-trivial work, write
+   out what is being assumed and what might be wrong, before delivering.
+2. **Quote sources, don't paraphrase.** When implementing a published
+   strategy, quote the spec from the source with section/page citations.
+3. **Audit extreme results first.** Backtest ≤ −50% or ≥ +100% / year →
+   first hypothesis is implementation error; sanity-check the framework
+   before treating the result as a verdict on the strategy.
+4. **Smaller commits with checkpoints.** No more 300-line single-shot
+   deliverables; build incrementally with confirmation pauses.
+5. **Honest uncertainty.** "I don't know" beats a confident default. If
+   I'm guessing, the guess is labeled as a guess.
+
+---
+
+## Reviewer protocol — six stages, every new strategy
+
+To prevent the H1/H2/H3 pattern (strategies tested that didn't actually
+match their cited source), every new strategy follows this sequence:
+
+| Stage | Who | What |
+|---|---|---|
+| 1. Spec construction | Claude Code | Write Exact Spec from the cited source, with direct quotes and section/page citations for every parameter. State all assumptions. **No code yet.** |
+| 2. Spec audit | Another AI (Codex via repo / Claude desktop / ChatGPT) | Audit the spec against the cited source. Flag every deviation. Flag every uncited default. Confirm G1 + G2 are included. Append commentary to the strategy's "AI commentary" section. |
+| 3. Spec approval | Rhett | Read the audited spec. Approve for code, or send back for revision. The locked spec is point-of-no-return for that strategy version — any later change creates a new version (H4.2, etc.). |
+| 4. Code | Claude Code | Write QC code that matches the locked spec line-by-line. Add code reference to the entry. |
+| 5. Backtest | Browser-Claude operator (or Claude Code via QC API) | Run in QC with the lab's standard cost assumptions. Record results verbatim. |
+| 6. Result review | Any AI | Append commentary. Decision recorded (continue / kill / variant). |
+
+This is deliberately more process than H1/H2/H3 used. The extra friction
+is the price of catching the failure modes above.
+
+---
+
+## Calibration assumptions in use
+
+| Assumption | Default | Status |
+|---|---|---|
+| Slippage per fill | 0.05% (`ConstantSlippageModel(0.0005)`) | M2: likely too harsh; verify post-H0 |
+| TradeStation real-world borrow (SIM, EOD flatten) | $0 | Confirmed by Rhett |
+| TradeStation real-world commission on US stocks | $0 | Commission-free since 2019 |
+| QC's backtest simulation of TS fees | Unverified | M3: open question — backtests reported large fee numbers that need explaining |
+| Train window | 2016-01-01 to 2021-12-31 | Locked |
+| Holdout window | 2022-01-01 to present | Locked; run **once** per strategy |
+| Starting cash for lab backtests | $100,000 | Locked |
+
+---
+
 ## Open meta-issues across all strategies
 
 These are problems that affect multiple strategies and need to be resolved
@@ -367,3 +542,12 @@ Any AI can append here.)
 - 2026-05-23 — Created by Claude Code at Rhett's direction after three
   consecutive catastrophic strategy results revealed systematic process
   errors. Initial entries for H0 (sanity check), H1, H2, H3.
+- 2026-05-23 (expanded) — Per Rhett's "ultimate-performance" request,
+  added: project-context onboard paragraph; Rhett's goal/capital/risk
+  block; trader context from the 11,769-trade live-history audit; the
+  "works" bar; Claude Code's documented failure modes (so reviewers
+  know what to catch); Claude Code's protocol commitments; six-stage
+  reviewer protocol (spec → audit → approval → code → backtest →
+  review); calibration assumptions table. Designed so any new AI
+  reviewer can read this document cold and immediately know the
+  project, the rules, the trust calibration, and how to contribute.
