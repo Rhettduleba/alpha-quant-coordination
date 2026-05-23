@@ -56,8 +56,8 @@ class ZarattiniORB_H3(QCAlgorithm):
         self.set_warm_up(timedelta(days=25))
 
         self.universe_settings.resolution = Resolution.MINUTE
-        self.add_universe(self._coarse_selector)
-        self.set_security_initializer(self._sec_init)
+        self.add_universe(self.coarse_selector)
+        self.set_security_initializer(self.sec_init)
 
         # per-symbol state
         self.atr_inds    = {}    # symbol -> AverageTrueRange indicator
@@ -78,10 +78,10 @@ class ZarattiniORB_H3(QCAlgorithm):
         self.last_close = {}
         self.trades = 0
 
-    def _sec_init(self, security):
+    def sec_init(self, security):
         security.set_slippage_model(ConstantSlippageModel(SLIPPAGE))
 
-    def _coarse_selector(self, coarse):
+    def coarse_selector(self, coarse):
         filtered = [c for c in coarse
                     if c.has_fundamental_data
                     and c.price is not None and c.price > MIN_PRICE
@@ -163,7 +163,7 @@ class ZarattiniORB_H3(QCAlgorithm):
         # ---- once per day, just after OR closes: rank and pick top-N ----
         if not self.day_decided:
             self.day_decided = True
-            self._rank_and_select()
+            self.rank_and_select()
 
         # ---- manage exits on any open position (ATR stop) ----
         for sym in symbols:
@@ -241,7 +241,7 @@ class ZarattiniORB_H3(QCAlgorithm):
             if open_count >= MAX_POSITIONS:
                 break
 
-    def _rank_and_select(self):
+    def rank_and_select(self):
         scored = []
         for sym, vol in self.or_volume.items():
             hist = self.vol_history.get(sym)
