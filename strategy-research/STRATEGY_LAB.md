@@ -33,6 +33,34 @@ spec gets edited first, then the code, then we re-run.
 
 ---
 
+## MANDATORY GLOBAL RULES — every strategy, no exceptions
+
+These rules are non-negotiable. Set by Rhett 2026-05-23. They apply to every
+strategy tested in this project, current and future. Any strategy that does
+not implement these is INVALID and must be re-coded before its results count.
+
+### G1 — End-of-day flatten
+All positions must be liquidated by **3:50 PM ET** every trading day. No
+overnight positions ever, regardless of P&L, regardless of strategy.
+
+### G2 — Hard daily loss cap of $2,000
+If realized + unrealized intraday P&L drops to **−$2,000** on any trading
+day, the strategy stops opening new positions for the rest of that day and
+liquidates anything still open. State resets at the next session open.
+(This is 0.67% of a $300k account or 2% of a $100k account — tight, but
+matches Rhett's risk tolerance for live deployment.)
+
+### How this affects already-tested strategies
+H1, H2, and H3 were tested with a $10k daily cap (inherited from the bot's
+original risk config) and no portion of their loss caps was tight enough to
+prevent the catastrophic single-day damages. Their results stand as
+documented — they failed even under loose rules — but **all three should be
+re-run with G1+G2 enabled** before any verdict is treated as final, because
+the $2k cap might convert a "death-spiral" loss profile into a survivable
+small-loss profile that exposes the true underlying expectancy.
+
+---
+
 ## Open meta-issues across all strategies
 
 These are problems that affect multiple strategies and need to be resolved
@@ -57,11 +85,16 @@ Compound across 10,000 trades and a strategy that would be flat ends up
 −40%. Worth re-running H1/H2 with `0.0001` (0.01%) as the realistic-retail
 slippage assumption.
 
-### M3 — Brokerage model commission/borrow costs unaudited
-TradeStation is commission-free for US stocks since 2019, but the QC
-brokerage model may include phantom commissions or short-borrow costs that
-don't reflect reality. Need to inspect QC's TradeStation model source or
-test by comparing fees against TradeStation's actual fee schedule.
+### M3 — QC brokerage simulation accuracy (NOT a claim about real TradeStation)
+Real TradeStation in SIM mode with same-day flatten has **zero** borrow cost
+and **zero** equity commission (Rhett confirmed). The open question here is
+whether QC's *backtest simulation* of the TradeStation brokerage model
+accurately reflects that — i.e., whether the H3 backtest's $22,877 in "Fees"
+represents real-world charges that would apply or phantom backtest costs.
+Action: inspect QC's TradeStation brokerage model source, or compare the
+backtest's reported fees against a live-SIM day's actual TradeStation
+charges on similar volume. This is a calibration question for QC, NOT a
+claim about TradeStation's real-world rules.
 
 ### M4 — Position sizing creates death-spiral asymmetry
 Our sizing scales positions DOWN as equity drops (correct from a risk
