@@ -202,11 +202,13 @@ class H4_ZarattiniORB(QCAlgorithm):
     def _place_breakout(self, sym, sd, direction):
         """Sizing per spec:
             shares = (slice * 1%) / (0.10 * ATR), capped by per-position notional cap.
+        QC's Python order API can't always match overloads when args come through as Decimal
+        rather than float; explicit float()/int() coercion below avoids that.
         """
-        equity = self.portfolio.total_portfolio_value
+        equity = float(self.portfolio.total_portfolio_value)
         slice_cap = equity / TOP_N                          # $5k at $100k [QC-IMPL-CHOICE]
         risk_dollars = slice_cap * SLICE_RISK_PCT           # $50 [PAPER 1% of slice]
-        stop_dist = ATR_STOP_MULT * sd.atr_value            # 0.10 x ATR [PAPER]
+        stop_dist = ATR_STOP_MULT * float(sd.atr_value)     # 0.10 x ATR [PAPER]
         if stop_dist <= 0:
             return
         shares_by_risk = int(risk_dollars / stop_dist)
@@ -214,24 +216,24 @@ class H4_ZarattiniORB(QCAlgorithm):
             return
 
         if direction > 0:
-            trigger = sd.or_high
+            trigger = float(sd.or_high)
             stop_price = trigger - stop_dist
         else:
-            trigger = sd.or_low
+            trigger = float(sd.or_low)
             stop_price = trigger + stop_dist
         if trigger <= 0:
             return
 
         per_pos_notional_cap = equity * PER_POS_LEV_CAP     # 0.2 * equity [OUR-ADD safeguard]
         shares_by_lev = int(per_pos_notional_cap / trigger)
-        shares = min(shares_by_risk, shares_by_lev)
+        shares = int(min(shares_by_risk, shares_by_lev))
         if shares <= 0:
             return
         qty = shares if direction > 0 else -shares
 
-        ticket = self.stop_market_order(sym, qty, trigger, "H4 entry")
+        ticket = self.stop_market_order(sym, qty, trigger, tag="H4 entry")
         sd.pending_entry_id = ticket.order_id
-        sd.pending_stop_price = stop_price
+        sd.pending_stop_price = float(stop_price)
         sd.pending_direction = direction
 
     def on_order_event(self, oe):
@@ -245,9 +247,9 @@ class H4_ZarattiniORB(QCAlgorithm):
         # Entry filled -> attach protective stop at 0.10 x ATR.
         if sd.pending_entry_id is not None and oe.order_id == sd.pending_entry_id:
             self.diag["breakouts"] += 1
-            filled_qty = oe.fill_quantity
-            protective = self.stop_market_order(sym, -filled_qty, sd.pending_stop_price,
-                                                "H4 protective stop")
+            filled_qty = int(oe.fill_quantity)
+            protective = self.stop_market_order(
+                sym, -filled_qty, float(sd.pending_stop_price), tag="H4 protective stop")
             sd.protective_stop_id = protective.order_id
             sd.entry_filled = True
             sd.pending_entry_id = None
