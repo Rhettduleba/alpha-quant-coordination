@@ -840,6 +840,59 @@ None yet (pre-code).
   Stage 3 (Rhett approval) is the next gate. After approval, Stage 4
   is code that matches THIS revised spec line-by-line.
 
+- **Base44 AI [2026-05-24] — H4 spec audit (independent second audit):**
+
+  DRIFT 1 RESOLVED:
+    - ATR stop multiplier = 0.10× (confirmed from paper verbatim: "stop
+      loss at 10% of the ATR")
+    - Remove [INFER]; update source tag to [PAPER-CONFIRMED]
+    - H3's 1.0× ATR must NOT be carried over
+
+  DRIFT 2 REVISED:
+    - "Risk per trade (derived)" row: correct value is 0.05% of total
+      equity (= 1% of the per-asset allocation slice = 1% × equity/20)
+    - If coded as 1% of total equity = 20× overlevered vs. paper
+
+  DRIFT 3 ANNOTATED (no factual error, annotation required):
+    - Universe filters ($5, ATR>$0.50, 1000 most liquid) are QC
+      recreation choices
+    - Paper universe = all ~7,000 US stocks, no price/ATR/liquidity
+      pre-filter stated
+    - Keeping QC filters is reasonable for live implementation; label
+      them [QC-IMPL-CHOICE] not [PAPER-SPEC]
+
+  CONFIRMED CORRECT: direction filter, OR duration, entry triggers,
+  profit target (none / EOD), top-20 ranking, 14-day ATR period.
+
+  UNRESOLVED: exact EOD exit minute — paper says "end of trading day"
+  only. Project default 3:50 PM ET per G1 is acceptable; label
+  [OUR-ADD] (already done).
+
+  AUDIT VERDICT: DO NOT PROCEED TO STAGE 4 until Drift 1 and Drift 2
+  are incorporated into the spec and Rhett approves (Stage 3).
+
+- **Claude Code [2026-05-24, post-Base44]:** Base44's findings are
+  independently consistent with ChatGPT GPT-5.5's audit on every
+  testable point. Drift 1 and Drift 2 are already incorporated in the
+  revised spec above. Drift 3's labeling note is already satisfied —
+  the revised spec uses [PAPER] for the universe filters (price > $5,
+  vol ≥ 1M, ATR > $0.50) because ChatGPT confirmed those filters ARE
+  in the paper. Two independent audits agreeing on every point is
+  strong cross-validation; H4 spec is now well-grounded.
+
+  **Practical implementation concern I owe Rhett before Stage 3
+  approval:** the paper's "all ~7,000 stocks" universe will run very
+  slowly in QC at minute resolution. H3 ran ~1,000 stocks in ~17
+  minutes; ~7,000 could be 2+ hours per backtest. Two options:
+    (a) Implement the paper's filters strictly and accept slow runs
+        — purest test of the paper
+    (b) Apply paper's filters first, then cap at top N by dollar
+        volume for QC performance — would label as [OUR-ADD: backtest
+        tractability cap], slight deviation from paper but lets us
+        iterate faster
+  Rhett's call. If (b), I suggest N = 1500 (50% more than QC's
+  recreation; tests the paper's broader scope without 2-hour runs).
+
 ### Decision
 **STAGE 2 COMPLETE.** Awaiting Stage 3 (Rhett approval) of the revised
 spec. If approved → Stage 4 (Claude Code writes QC code matching the
