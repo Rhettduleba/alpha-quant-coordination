@@ -3,74 +3,116 @@
 **Use this when:** Rhett prompts Codex (Cursor, Aider, or another repo-aware
 agent) to contribute to Alpha Quant strategy research.
 
+**Latest update:** 2026-05-24 — refreshed for the "deep research, propose
+NEW strategies beyond C1–C6" push. H4 is in flight; we want NEW candidates.
+
 ---
 
 ## Repo and document
 
 - **Repo:** https://github.com/Rhettduleba/alpha-quant-coordination
 - **Read first, in full:** `strategy-research/STRATEGY_LAB.md`
-- Other strategy code: `strategy-research/` and `quantconnect/`.
+- Other strategy code: `strategy-research/` (includes `h4_zarattini_orb.py`
+  the current in-flight implementation).
 
 ## Required reading
 
 Read `STRATEGY_LAB.md` in full before any work. Including:
 - The purpose statement and the 6-stage protocol
-- Rhett's goal, capital, and risk constraints
-- The mandatory rules (G1, G2, intraday-only, margin-eligible universe)
+- Rhett's goal ($300k @ 4× intraday margin), capital, and risk constraints
+- The mandatory rules (G1 3:50 PM flatten, G2 $2k daily cap,
+  intraday-only, margin-eligible universe)
 - Claude Code's documented failure modes (so you know what to catch)
-- Every strategy entry (H0-H3) including the "Constraints applied" table
-- Open meta-issues M1-M4
-- The Candidate Strategies menu
+- Every strategy entry (H0–H4) including the "Constraints applied" table
+- Open meta-issues M1–M4
+- The Candidate Strategies menu (C1–C6)
 
 Do not skim. The history matters. The constraints matter.
 
 ---
 
-## REQUIRED DISCIPLINE — apply on every task, no exceptions
+## What's currently in flight (don't re-propose)
 
-These are non-negotiable for every contribution you make:
+Tested + RESULT KNOWN:
+- H0 buy-and-hold SPY framework sanity (PASSED, +160.97%)
+- H1 internal-bar ORB (FAILED catastrophically)
+- H2 (see lab doc)
+- H3 drift-version Zarattini (FAILED −99.97%, drift was the cause)
 
-1. **State your assumptions before acting.** Before doing the work, write
-   what you're assuming and what you might be wrong about.
-2. **Ask yourself what's the most likely way you're wrong.** Run an
-   adversarial self-check before delivering.
-3. **Quote sources — don't paraphrase.** If you cite a paper or book, give
-   the direct quote, author, year, page/section. Don't summarize from
-   memory.
-4. **Walk through your reasoning before committing to action.** Other AIs
-   and Rhett must be able to audit your logic, not just your conclusion.
-5. **Honest uncertainty.** "I don't know" beats a confident default. Label
-   guesses as guesses.
+In flight:
+- H4 faithful Zarattini ORB on Stocks in Play (Stage 4 coded; awaiting
+  backtest; spec audited 3×)
+
+Queued in C-menu, not yet tested:
+- C2 Zarattini TQQQ leveraged-ETF ORB
+- C3 Crabel NR7 / inside-bar ORB
+- C4 Connors short-term mean reversion
+- C5 first-half-hour momentum follow-through
+- C6 post-earnings-announcement drift intraday
+
+Your NEW proposal must be different from all of the above, OR explicitly
+strengthen the case for one of the queued candidates with NEW evidence
+or refined spec.
 
 ---
 
-## Default task — what Rhett wants from you unless he says otherwise
+## REQUIRED DISCIPLINE — apply on every task, no exceptions
 
-**Deep research + propose your best candidate strategy** for Rhett's
-constraints. Specifically:
+1. **State your assumptions before acting.** Write what you're assuming
+   and what you might be wrong about.
+2. **Ask yourself what's the most likely way you're wrong.** Run an
+   adversarial self-check before delivering.
+3. **Quote sources — don't paraphrase.** If you cite a paper or book,
+   give the direct quote, author, year, page/section. Don't summarize
+   from memory.
+4. **Walk through your reasoning before committing to action.** Other AIs
+   and Rhett must be able to audit your logic, not just your conclusion.
+5. **Honest uncertainty.** "I don't know" beats a confident default.
+   Label guesses as guesses.
 
-1. Use any research tools you have (web search, codebase search, training
-   knowledge) to identify credible day-trading strategies with documented
-   evidence of edge. Look at academic finance literature (SSRN, JFE),
-   practitioner books with backtested results, QuantConnect's strategy
-   library, and other credible sources.
+---
 
-2. From everything you find, identify ONE candidate that you believe is
-   the best fit for Rhett's constraints:
-   - $300k account, 4× intraday margin
-   - Liquid US equities (margin-eligible)
+## Default task — THINK HARD + DEEP RESEARCH + PROPOSE NEW
+
+Rhett's exact instruction for this round (2026-05-24):
+*"Think hard and come up with new ideas and currently available strategy
+information, but inside our guidelines."*
+
+So:
+
+1. Use every research tool available to you — web search, your training
+   knowledge, the QC strategy library, SSRN, JFE, RFS, finance blogs,
+   prop-firm publications, working papers. Don't rely on memory alone.
+
+2. Search specifically for INTRADAY DAY-TRADING edge on US equities. Areas
+   worth searching:
+   - Opening-range, opening-drive, gap-and-go, gap-fade
+   - Intraday momentum / reversal at time-of-day patterns (lunch reversal,
+     last-hour reversal, FOMC-day patterns)
+   - Liquidity-event-driven (PEAD, FOMC, CPI, earnings, M&A, dividend-ex,
+     index-rebalance, IPO lockup)
+   - Microstructure (auction imbalance, opening cross, closing cross arb)
+   - Volatility-regime-conditional (low-VIX vs high-VIX edge)
+   - Cross-asset / lead-lag (sector ETF leads single names, etc.)
+   - Anything else credible with PUBLISHED backtest evidence
+
+3. Identify ONE candidate that you believe is the best fit for Rhett's
+   constraints AND meaningfully diversifies the C-menu:
+   - $300k account, 4× intraday margin (up to $1.2M buying power); lab
+     tests use $100k scaled-down
+   - Liquid US equities, margin-eligible
    - Intraday-only (flatten by 3:50 PM ET, no overnight)
    - $2k daily loss cap
    - QuantConnect-backtestable
 
-3. **Edit `strategy-research/STRATEGY_LAB.md` directly** to add your
-   proposal under "Candidate strategies" as a new entry. Use the format
+4. **Edit `strategy-research/STRATEGY_LAB.md` directly** to add your
+   proposal under "Candidate strategies" as a new C-entry. Use the format
    in the next section.
 
-4. Commit and push your edit with a clear message like
+5. Commit and push with a clear message like
    `Codex: propose candidate C7 — <strategy name>`.
 
-5. Reply to Rhett in chat with a short summary of what you found and what
+6. Reply to Rhett in chat with a short summary of what you found and what
    you added to the doc.
 
 ---
@@ -81,10 +123,14 @@ constraints. Specifically:
 ## C<N+1> — <Strategy name> [proposed by Codex <YYYY-MM-DD>]
 
 **Source:** [Direct citation. Author(s), year, paper/book, link, section
-or page. Quote key rules verbatim from the source.]
+or page. QUOTE key rules verbatim from the source. If you can't quote it,
+label "summarized from memory, needs verification."]
 
 **Hypothesis (one falsifiable sentence + why it might be true):**
 [...]
+
+**Why this is DIFFERENT from H0-H4 and C1-C6:**
+[Different universe / timeframe / edge mechanism / exit logic / etc.]
 
 **Why this fits Rhett's constraints:**
 - Intraday: [yes/how]
@@ -94,6 +140,10 @@ or page. Quote key rules verbatim from the source.]
 
 **Proposed exact spec (every parameter, source-cited where possible):**
 [full spec]
+
+**Published evidence of edge:**
+[Backtest results from source paper, out-of-sample tests, replications.
+Numbers with citations.]
 
 **What's most likely to go wrong:**
 [Your adversarial self-check on this proposal]
@@ -108,12 +158,14 @@ or page. Quote key rules verbatim from the source.]
 
 ## If Rhett asks for something else
 
-Default is deep-research-and-propose. But Rhett may instead ask for:
+Default is THINK HARD + DEEP RESEARCH + PROPOSE NEW. But Rhett may instead
+ask for:
 - **SPEC AUDIT** — read a specific strategy entry, audit it line-by-line
   against the cited source. Flag every deviation. Flag every uncited
   default. Confirm G1+G2+intraday+margin-eligible are present.
-- **CODE AUDIT** — review a code file in the repo. Flag bugs, drift from
-  spec, or missing constraints.
+- **CODE AUDIT** — review a code file in the repo (e.g.
+  `h4_zarattini_orb.py`). Flag bugs, drift from spec, or missing
+  constraints. Verify every line traces to a spec row.
 - **META REVIEW** — review the lab document, the protocol, the
   constraints, the framework.
 
@@ -129,7 +181,8 @@ your findings to the appropriate section of the lab doc and commit.
 - **Margin-eligible universe only.** No leveraged ETFs, no names that
   TradeStation won't grant 4× intraday margin on. If you can't verify
   margin-eligibility, propose a conservative approximation (NYSE/NASDAQ,
-  price ≥ $5, ADV ≥ 1M shares, listed ≥ 1 year, exclude leveraged ETFs).
+  price ≥ $7 [our lab buffer above paper's $5], ADV ≥ 1M shares, listed
+  ≥ 1 year, exclude leveraged ETFs).
 - Any strategy proposal that doesn't enforce all four is INVALID.
 
 ---
@@ -137,10 +190,13 @@ your findings to the appropriate section of the lab doc and commit.
 ## What not to do
 
 - Don't invent backtest numbers. If you don't have a result, say so.
-- Don't paraphrase papers from memory and treat the paraphrase as faithful.
+- Don't paraphrase papers from memory and treat the paraphrase as
+  faithful.
 - Don't propose strategies without source citations.
 - Don't silently fix Claude Code's specs. Flag drift, don't correct it.
 - Don't delete prior AI commentary in the doc. Append only.
+- Don't propose multi-day swing trades or overnight holds — G1 is
+  non-negotiable.
 
 ---
 

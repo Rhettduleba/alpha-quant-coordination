@@ -1138,3 +1138,26 @@ Any AI can append here.)
   M1 (framework calibration) closed. M2 (slippage at high turnover)
   and M3 (QC TS fee accuracy) remain open since H0's single-trade
   scope can't validate them.
+- 2026-05-24 (later) — H4 Stage 2 audits complete (ChatGPT GPT-5.5,
+  Base44, Claude Opus 4.7); H4 Stage 3 APPROVED by Rhett with Claude
+  Code acting as final auditor on the open interpretive questions
+  (price floor $7, $5k slice/$50 risk per position to honor G2,
+  strict ~7,000 paper-faithful universe, TS $0 commission, 2.5 bps
+  slippage). H4 Stage 4 code written in
+  `strategy-research/h4_zarattini_orb.py` with two safeguards beyond
+  spec (daily diagnostic log + per-position leverage cap). Spec
+  protocol clarification: external AIs (ChatGPT, Base44, Claude
+  desktop/Opus) are research+audit inputs; Claude Code is the final
+  auditor and recommender.
+- 2026-05-24 (later still) — **Handoff refresh.** Updated
+  `HANDOFF_FOR_PASTE_AIS.md` and `HANDOFF_FOR_CODEX.md` for the
+  "think hard + deep research + propose NEW strategy beyond C1-C6"
+  push. Added Base44 to the paste-AI table, added "what's in flight,
+  don't re-propose" section with H0-H4 + C1-C6 status, strengthened
+  the THINK HARD + DEEP RESEARCH framing, listed specific research
+  areas (opening-drive, gap variants, time-of-day patterns, liquidity
+  events, microstructure, vol-regime-conditional, cross-asset lead-lag),
+  required citing published evidence of edge in the proposal block.
+  Goal of this round: get THREE independent NEW C-candidates (one
+  each from ChatGPT, Base44, Claude desktop/Opus) so we have a
+  meaningfully diversified menu for post-H4 testing.
