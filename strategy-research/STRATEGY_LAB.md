@@ -687,9 +687,11 @@ treated as preliminary until H4 retests under all four constraints.
 
 ## H4 — Faithful Zarattini ORB on Stocks in Play
 
-**Status:** STAGE 1 (Exact Spec) — **awaiting external-AI spec audit (Stage 2)
-before Claude Code writes any code.**
-**Date spec created:** 2026-05-24
+**Status:** STAGE 2 COMPLETE (external audit by ChatGPT GPT-5.5 on 2026-05-24
+returned verified paper values + REVISE verdict; spec has been revised
+below) — **awaiting Stage 3 (Rhett approval) before Claude Code writes
+any code.**
+**Date spec created:** 2026-05-24 · **Date Stage 2 audit completed:** 2026-05-24
 
 ### Hypothesis (one falsifiable sentence + why it might be true)
 > "On a broad universe of liquid U.S. stocks, the 20 stocks per day with
@@ -716,42 +718,48 @@ spec line against the paper before approval.**
 article, *"Opening Range Breakout for Stocks in Play"*, URL:
 `https://www.quantconnect.com/research/18444/opening-range-breakout-for-stocks-in-play/`. Fetched by Claude Code on 2026-05-24.
 
-### Exact spec (cite-marker per line)
+### Exact spec — REVISED post-audit 2026-05-24
 
-Each spec line is marked with:
-- **[QC]** = direct quote or close paraphrase from the QuantConnect article
-- **[INFER]** = Claude Code's inference, needs Stage 2 verification
-- **[OUR-ADD]** = required by our project's mandatory rules (G1/G2/etc.)
+Cite-markers:
+- **[PAPER]** = verified from Zarattini & Aziz (2024) paper PDF via ChatGPT
+  GPT-5.5 audit on 2026-05-24, with direct paper quotes attached in AI
+  commentary below.
+- **[QC]** = from the QuantConnect research article recreation (not the paper)
+- **[OUR-ADD]** = project-specific addition (G1/G2/margin-universe) or
+  deliberate deviation from paper. **Reviewers and code must treat these
+  as our additions, not as paper-faithful.**
 
 | Element | Value | Source |
 |---|---|---|
-| Universe size | "1,000 most liquid US Equities" | [QC] verbatim |
-| Universe filter — price | "> $5/share" | [QC] verbatim |
-| Universe filter — ATR | "ATR > $0.50" | [QC] verbatim (ATR period unspecified in quote; likely 14-day) |
-| Universe filter — exchange | NYSE / NASDAQ listed | [INFER] standard for "liquid US Equities" |
-| Universe filter — margin-eligible | Exclude leveraged ETFs (TQQQ, SOXL, SQQQ, etc.); listed ≥ 1 year | [OUR-ADD] required by our margin-universe rule |
-| Daily ranking metric | Current-day first-5-min volume ÷ prior-14-day average first-5-min volume (= "relative volume") | [QC] verbatim |
-| Tradeable set per day | Top **20** stocks by relative volume | [QC] verbatim |
-| Opening range duration | First **5 minutes** of regular trading hours (9:30–9:35 ET) | [QC] verbatim |
-| Direction filter | If OR bar's close > OR bar's open → look for LONG breakout only. If close < open → look for SHORT breakout only. If close = open → no trade. | [QC] verbatim |
-| Long entry | Stop order at OR high. Fills when price breaks above. | [QC] verbatim |
-| Short entry | Stop order at OR low. Fills when price breaks below. | [QC] verbatim |
-| Stop loss formula | Entry price ± (14-day ATR × **multiplier**) | [QC] verbatim ("stop loss as a function of the entry price and the 14-day ATR") |
-| Stop loss multiplier exact value | **UNKNOWN — Stage 2 must verify from paper.** Claude Code's guess based on standard ORB practice: 0.1× ATR (very tight). Could also be 1× ATR. Materially affects results. | [INFER] needs paper |
-| Profit target | **None** — hold to market close | [QC] verbatim ("exit the position at close with a profit") |
-| Holding period | Intraday only | [QC] |
-| Exit time | Market close — paper exact time UNCLEAR. Our project default: 3:50 PM ET | [OUR-ADD] G1 |
-| Position sizing | "Trade quantity set so that if stop loss is hit, we lose 1% of the portfolio value allocated to the asset" with "equal-weight cap" | [QC] verbatim |
-| Risk per trade (derived) | 1% of equity (allocated to asset) per trade | [INFER] from quote — exact phrasing ambiguous |
-| Equal-weight cap | 1/20 of portfolio per position = 5% notional cap | [INFER] from "equal-weight cap" given top-20 list |
-| Max concurrent positions | 20 | [INFER] from top-20 |
-| Daily loss cap (G2) | **$2,000** — if intraday P&L ≤ −$2,000, stop new entries, liquidate open positions, halt for the day | [OUR-ADD] required |
-| EOD flatten (G1) | All positions liquidated by 3:50 PM ET | [OUR-ADD] required |
-| Brokerage model | QC TradeStation, Margin account | [OUR-ADD] project standard |
-| Slippage | `ConstantSlippageModel(0.0005)` = 0.05% per fill | [OUR-ADD] project standard |
-| Backtest train window | 2016-01-01 to 2021-12-31 | [OUR-ADD] project standard |
-| Backtest holdout (run later) | 2022-01-01 to present, **run once** | [OUR-ADD] project standard |
-| Starting cash | $100,000 | [OUR-ADD] project standard |
+| Universe — base | All equities listed on US exchanges (NYSE + NASDAQ) — "approximately 7,000 stocks" | [PAPER] verbatim |
+| Universe filter — opening price | > $5 | [PAPER] |
+| Universe filter — 14-day avg volume | ≥ **1,000,000 shares/day** (previous 14-day average) | [PAPER] — Claude Code had MISSED this filter in Stage 1 |
+| Universe filter — 14-day ATR | > $0.50 (previous 14-day ATR) | [PAPER] |
+| Universe filter — Relative Volume | ≥ 100% (current-day first-5-min volume ≥ prior-14-day avg first-5-min volume) | [PAPER] |
+| Universe filter — exclude leveraged ETFs (TQQQ, SOXL, SQQQ, etc.); listed ≥ 1 year | Excluded | **[OUR-ADD]** — required by our margin-universe rule, NOT in paper |
+| Daily ranking metric | Relative Volume = current-day first-5-min volume ÷ prior-14-day average first-5-min volume | [PAPER] |
+| Tradeable set per day | Top **20** by Relative Volume | [PAPER] |
+| Opening range duration | First **5 minutes** of regular trading hours (9:30–9:35 ET) | [PAPER] |
+| Direction filter | First 5-min OR bar bullish (close > open) → LONG breakout only. Bearish (close < open) → SHORT breakout only. Doji (close = open) → no trade. | [PAPER] verbatim |
+| Long entry | Stop order at OR high. Fills when price breaks above. | [PAPER] |
+| Short entry | Stop order at OR low. Fills when price breaks below. | [PAPER] |
+| Stop loss multiplier | **0.10 × 14-day ATR** from entry price | [PAPER] verbatim — verified by audit |
+| Stop loss formula | Long stop = entry − (0.10 × 14-day ATR). Short stop = entry + (0.10 × 14-day ATR). | [PAPER] |
+| Profit target | None — hold to market close | [PAPER] |
+| Exit time (paper) | 4:00 PM ET — "If the stop loss was not reached intraday, we closed the position at the end of the trading session (i.e., 4:00 pm ET)." | [PAPER] verbatim |
+| Exit time (lab override, G1) | **3:50 PM ET** — 10 minutes earlier than the paper, for project G1 safety. | **[OUR-ADD]** — DEVIATION FROM PAPER, clearly labeled. |
+| Position sizing — risk basis | Risk is computed against the **capital allocated to that position**, NOT total equity | [PAPER] verbatim: "the loss on the capital allocated to that position would not exceed 1%" |
+| Position sizing — allocation slice | Equal-weight: equity ÷ 20 per position | [PAPER] (top-20 + equal-weight) / [QC] recreation pattern |
+| Position sizing — max loss per position | 1% of allocation slice = 0.05% of total equity per position | [PAPER] |
+| Position sizing — share formula | shares = (allocation_slice × 0.01) ÷ (0.10 × ATR), capped by leverage | derived from [PAPER] |
+| Max concurrent positions | 20 | [PAPER] (top-20) |
+| Max leverage (account-wide) | **4×** total deployed not to exceed | [PAPER] mentioned + matches Rhett's TradeStation 4× intraday margin |
+| Daily loss cap (G2) | **$2,000** — if intraday P&L ≤ −$2,000, halt new entries, liquidate, halt for the day | **[OUR-ADD]** required by project; NOT in paper |
+| Brokerage model | QC TradeStation, Margin account | **[OUR-ADD]** project standard |
+| Slippage | `ConstantSlippageModel(0.0005)` = 0.05% per fill | **[OUR-ADD]** project standard |
+| Backtest train window | 2016-01-01 to 2021-12-31 | **[OUR-ADD]** project standard |
+| Backtest holdout (run later) | 2022-01-01 to present, **run once** | **[OUR-ADD]** project standard |
+| Starting cash | $100,000 | **[OUR-ADD]** project standard ($300k actual scaled down for the lab) |
 
 ### Constraints applied (vs mandatory rules) — REQUIRED for H4+
 | Constraint | Applied? | Note |
@@ -768,19 +776,74 @@ Each spec line is marked with:
 None yet (pre-code).
 
 ### AI commentary
-- **Claude Code [2026-05-24]:** Spec built from the QuantConnect recreation,
-  not the actual paper PDF (SSRN blocked WebFetch). **The single biggest
-  open question is the ATR stop multiplier** — paper specifies a function
-  of ATR but the QC quote doesn't give the exact multiplier. My H3 used
-  1.0× ATR; standard ORB practice often uses 0.1× ATR. Difference is
-  10×. A Stage 2 reviewer with paper access MUST resolve this before
-  Stage 4 coding. Also worth verifying: exact wording of position
-  sizing (does "1% of portfolio value allocated to the asset" mean 1%
-  of equity or 1% of the allocation slice?) and the EOD flatten time
-  (paper unclear; we default to 3:50 PM per G1).
+- **Claude Code [2026-05-24]:** Stage 1 spec built from the QuantConnect
+  recreation, not the actual paper PDF (SSRN blocked WebFetch). Flagged
+  the ATR stop multiplier, position sizing wording, and exit time as
+  uncertain. Awaited Stage 2 audit.
+
+- **ChatGPT GPT-5.5 Thinking [2026-05-24] — H4 spec audit:**
+  1. ATR stop multiplier: **Verified: 0.10× 14-day ATR.** Paper quote:
+     "The stop loss was set at 10% of the daily ATR (10% x $5 = $0.50)
+     from the entry point." Paper also states: "we placed a stop loss
+     order at a 10% ATR distance from the executed entry price." In the
+     Stocks in Play section, paper says: "we set a stop loss at 10% of
+     the ATR." Replace Claude's "UNKNOWN" with **0.10× ATR**.
+  2. Position sizing: **Revise wording.** Paper quote: "Each stock was
+     traded such that in case of the stop loss being hit, the resulting
+     loss incurred on the capital deployed for that position would be
+     1%." Stocks in Play quote: "the loss on the capital allocated to
+     that position would not exceed 1%." This should not be coded as
+     plainly 1% of total account equity per trade. Use: **risk 1% of
+     the capital allocated/deployed to that position, subject to the
+     4× maximum leverage constraint.** QC's recreation implements this
+     as 1% of an equal-weight allocation slice, not 1% of total equity.
+  3. Direction filter: **Verified correct.** Paper quotes confirm OR
+     bar's close vs open determines side, not overnight gap. Doji = no
+     trade.
+  4. Exit time: **Verified: 4:00 pm ET in the paper.** Paper quote: "If
+     the stop loss was not reached intraday, we closed the position at
+     the end of the trading session (i.e., 4:00 pm ET)." Claude's 3:50
+     pm ET is a project G1 safety override, not paper-faithful. If
+     retained, label clearly as **OUR-ADD deviation from paper**.
+  5. Universe filters: **Revise. Paper does not use QC's 1,000-most-
+     liquid universe.** Paper quote: "all equities listed on US exchanges
+     (both NYSE and Nasdaq)" and "This universe comprised approximately
+     7,000 stocks." Paper filters: opening price > $5; previous 14-day
+     average trading volume at least 1,000,000 shares/day; previous
+     14-day ATR > $0.50; Relative Volume at least 100%; trade top 20
+     Relative Volume.
+  6. Other drift found: H4 must add the missing prior-14-day average
+     volume ≥ 1,000,000 shares/day filter. H4 must separate paper rules
+     from project additions: leveraged ETF exclusion, listed ≥1 year,
+     TradeStation brokerage model, slippage assumption, $2k daily loss
+     cap, 3:50 pm flatten, 2016–2021 train window, 2022-present holdout,
+     and $100k starting cash are project guardrails/additions, not
+     paper rules. H4 should keep them only if clearly labeled OUR-ADD
+     and not described as paper-faithful.
+  **Overall: REVISE before Stage 3.**
+
+- **Claude Code [2026-05-24, post-audit]:** All six audit findings
+  incorporated above. Spec table now uses [PAPER]/[QC]/[OUR-ADD] cite-
+  markers distinguishing paper-faithful values from project additions.
+  Key changes from Stage 1:
+    * Universe: "~7,000 stocks" (all NYSE+NASDAQ) replaces "1,000 most
+      liquid" (the QC recreation shortcut)
+    * Added the missing 14-day-avg-volume ≥1M filter
+    * Stop loss multiplier resolved: 0.10× ATR (was "unknown")
+    * Position sizing rewritten: 1% of allocation slice, not 1% of equity
+      (potentially ~20× less per-trade risk than my Stage 1 ambiguity
+      suggested — this materially changes the strategy's behaviour at
+      $100k scale)
+    * Exit time: paper is 4:00 PM ET; our 3:50 PM is now labeled an
+      OUR-ADD deviation
+    * The 4× max leverage constraint is now explicit
+  Stage 3 (Rhett approval) is the next gate. After approval, Stage 4
+  is code that matches THIS revised spec line-by-line.
 
 ### Decision
-**Pending Stage 2 (external-AI spec audit) and Stage 3 (Rhett approval).**
+**STAGE 2 COMPLETE.** Awaiting Stage 3 (Rhett approval) of the revised
+spec. If approved → Stage 4 (Claude Code writes QC code matching the
+revised spec exactly). If revisions needed → Stage 1.
 
 ---
 
