@@ -336,6 +336,18 @@ both more realistic and prevents the −99% style results we keep seeing.
 - Slippage model: [exact value]
 - Brokerage model: [QC name]
 
+### Constraints applied (vs mandatory rules) — REQUIRED for H4+
+| Constraint | Applied? | Note |
+|---|---|---|
+| G1 — EOD flatten by 3:50 PM | YES / NO | [confirm in code] |
+| G2 — $2k daily loss cap | YES / NO | [confirm in code] |
+| Intraday-only | YES / NO | [confirm in code] |
+| Margin-eligible universe | YES / NO | [confirm filter excludes leveraged ETFs and non-marginable names] |
+
+**For H4 and beyond, all four must be YES. Any spec with a NO is
+invalid and goes back to Stage 1.** Reviewers: confirm before
+approving the spec for Stage 4 coding.
+
 ### Code reference
 [file path in repo]
 
@@ -414,6 +426,19 @@ strategy is trusted.**
 - Brokerage model: TradeStation, Margin
 - Backtest period: 2016-01-01 to 2021-12-31
 
+### Constraints applied (vs mandatory rules)
+| Constraint | Applied? | Note |
+|---|---|---|
+| G1 — EOD flatten by 3:50 PM | NO | Exempt by design — buy-and-hold benchmark |
+| G2 — $2k daily loss cap | NO | Exempt by design — not a real strategy |
+| Intraday-only | NO | Exempt by design — 5-year hold |
+| Margin-eligible universe | N/A | Just SPY (trivially margin-eligible) |
+
+H0 is the framework sanity check, not a deployable strategy. The four
+constraints exist to make active strategies match real live-trading
+conditions; applying them to a buy-and-hold baseline would defeat the
+calibration test. All four MUST be applied on H4 and beyond.
+
 ### Code reference
 `strategy-research/h0_framework_sanity_check.py` — 54 lines, daily resolution,
 single SPY position, same brokerage model + slippage as H1/H2/H3.
@@ -454,6 +479,18 @@ faithful test of the Zarattini paper.** See lessons learned.
 - Slippage: 0.05%
 - Brokerage: TradeStation, Margin
 - Backtest period: 2016-01-01 to 2021-12-31
+
+### Constraints applied (vs mandatory rules)
+| Constraint | Applied? | Note |
+|---|---|---|
+| G1 — EOD flatten by 3:50 PM | YES | Scheduled flatten at 15:50 ET |
+| G2 — $2k daily loss cap | **NO** | H1 inherited the bot's $10k daily loss limit (5× looser than G2). G2 was added 2026-05-23, after H1 had already been tested. |
+| Intraday-only | YES | Open and close same day |
+| Margin-eligible universe | Effectively YES | 36 hand-picked liquid mega-caps, all clearly 4×-margin-eligible on TradeStation |
+
+H1's −72% result was achieved under a 5× looser daily-loss cap than G2.
+A re-run with G2 enforced would tell us how much of the loss was
+structural vs. caused by unbounded-bad-day damage.
 
 ### Code reference
 `strategy-research/orb_h1_backtest.py`
@@ -501,6 +538,18 @@ the first 15 minutes continue in the gap direction through the session.
 - Slippage: 0.05%
 - Backtest period: 2016-2021
 
+### Constraints applied (vs mandatory rules)
+| Constraint | Applied? | Note |
+|---|---|---|
+| G1 — EOD flatten by 3:50 PM | YES | Scheduled flatten at 15:50 ET |
+| G2 — $2k daily loss cap | **NO** | Same as H1 — pre-G2 era |
+| Intraday-only | YES | One decision per symbol per day at 9:45 |
+| Margin-eligible universe | Effectively YES | Same 36 liquid mega-caps as H1 |
+
+H2's −5.7% near-miss with realistic slippage might land closer to
+break-even under G2, since the cap would have prevented some of the
+worst-day damage.
+
 ### Code reference
 `strategy-research/h2_gap_continuation_backtest.py`
 
@@ -544,6 +593,20 @@ was NOT faithful to the published paper. See lessons learned.
   bias (gap up → only long; gap down → only short)
 - Profit target: **none** — ✗ paper uses R-multiple target
 - Sizing: 1% risk by ATR — partially matches paper
+
+### Constraints applied (vs mandatory rules)
+| Constraint | Applied? | Note |
+|---|---|---|
+| G1 — EOD flatten by 3:50 PM | YES | Scheduled flatten at 15:50 ET |
+| G2 — $2k daily loss cap | **NO** | Pre-G2 |
+| Intraday-only | YES | Same-day exits enforced via EOD flatten + ATR stops |
+| Margin-eligible universe | **NO** | Universe filter (price > $5, dollar-volume > $10M, top 1000 by dollar volume, `has_fundamental_data`) does NOT exclude leveraged ETFs (TQQQ, SOXL, NVDL, SQQQ etc.) which have non-standard TradeStation margin treatment. Some names in H3's tradeable universe could not have been traded at 4× margin in real life. |
+
+H3's −99.97% result therefore reflects a universe that included names
+Rhett could not actually have traded under his 4× margin constraint.
+This is one of three serious problems with H3 (the others being spec
+drift from the Zarattini paper, and no G2 cap). H3's result should be
+treated as preliminary until H4 retests under all four constraints.
 
 ### Code reference
 `strategy-research/h3_zarattini_orb_backtest.py`
@@ -637,3 +700,12 @@ Any AI can append here.)
   Strategies** menu (C1–C6) so reviewers and Rhett can pick the next
   strategy to enter the 6-stage protocol. Claude Code's recommended
   order added to the Cross-AI parking lot.
+- 2026-05-24 (later) — Added an explicit "Constraints applied" table to
+  every strategy entry (H0, H1, H2, H3) showing which of the four
+  mandatory rules (G1 EOD flatten, G2 $2k daily loss cap, intraday-only,
+  margin-eligible universe) were actually present at the time each
+  strategy was tested. Honest record: H1/H2/H3 all lacked G2 (pre-G2);
+  H3 additionally lacked margin-eligible-universe enforcement
+  (universe included leveraged ETFs). Added the same table as a
+  mandatory section in the entry template — every H4+ strategy must
+  declare YES on all four before its spec can be approved.
