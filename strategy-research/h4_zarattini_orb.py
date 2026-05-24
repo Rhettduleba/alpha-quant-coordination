@@ -148,6 +148,9 @@ class H4_ZarattiniORB(QCAlgorithm):
                 continue
             sec.set_slippage_model(ConstantSlippageModel(SLIPPAGE))
             sec.set_data_normalization_mode(DataNormalizationMode.ADJUSTED)
+            # QC's TradeStation brokerage model defaults to RegT 2x (50% initial margin).
+            # Paper p.9 uses 4x intraday FINRA margin. Set it explicitly per security.
+            sec.set_leverage(ACCOUNT_LEV_CAP)
             self.symbol_data[sym] = SymbolData(self, sym)
         for sec in changes.removed_securities:
             sym = sec.symbol
