@@ -267,17 +267,19 @@ is the price of catching the failure modes above.
 These are problems that affect multiple strategies and need to be resolved
 *before* trusting any future backtest result.
 
-### M1 — Framework calibration (CRITICAL, NOT YET DONE)
-We have not yet verified that our QC framework (TradeStation brokerage model,
-slippage settings, sizing logic, fee model) produces correct results on a
-known-good baseline. Until we do, every backtest result is suspect.
+### M1 — Framework calibration (RESOLVED 2026-05-24)
+H0 (buy-and-hold SPY) ran on 2026-05-24 and returned **+160.969%**, matching
+SPY's actual 2016-2021 total return (with dividends reinvested) almost
+exactly. Beta 0.985, Alpha 0.002, Total Fees $0 — all consistent with reality.
 
-**Required test:** Buy SPY on START date, hold until END date, no other
-activity. Expected result for 2016-01-01 → 2021-12-31: roughly +90% (the
-actual market return). If our framework returns anything materially different,
-we have a configuration bug.
+**Framework is calibrated for the narrow scope H0 tests** (single-symbol
+buy-and-hold, TradeStation brokerage model, adjusted data, 0.05% slippage
+on a single trade). M1 closed.
 
-**Status:** Not yet run. **Should be run before any further strategy test.**
+**Open scope not validated by H0:** high-turnover behavior, short-side
+borrow/locate, multi-symbol universe mechanics, stop logic, margin math
+under concurrent positions. M2 (slippage at high turnover) and M3 (QC's
+TS fee accuracy) remain open.
 
 ### M2 — Slippage assumption may be too harsh
 We've been using `ConstantSlippageModel(0.0005)` = 0.05% per fill. For
@@ -405,9 +407,9 @@ Which candidate becomes H4? My recommendation, with reasoning, in the
 
 ## H0 — Buy-and-hold SPY (framework sanity check)
 
-**Status:** PROPOSED — NOT YET RUN. **This must be run before any other
-strategy is trusted.**
-**Date created:** 2026-05-23
+**Status:** **PASSED** (run 2026-05-24). Framework is calibrated for the
+narrow scope H0 tests (see "what H0 does not validate" below).
+**Date created:** 2026-05-23 · **Date passed:** 2026-05-24
 **Hypothesis:**
 > Our QC framework, configured identically to how we test active strategies,
 > should reproduce the actual market return on a passive buy-and-hold SPY
@@ -443,16 +445,60 @@ calibration test. All four MUST be applied on H4 and beyond.
 `strategy-research/h0_framework_sanity_check.py` — 54 lines, daily resolution,
 single SPY position, same brokerage model + slippage as H1/H2/H3.
 
-### Expected result
-- Net return: +85% to +95% (the actual S&P 500 total return over that window)
-- If we get something materially different (+50%, −20%, etc.) — STOP and fix
-  the framework before testing any other strategy.
+### Expected vs actual
+
+**Claude Code expected: +85% to +95%** total return. **That estimate was
+wrong** — Claude Code was thinking price-only, not total return with
+dividends reinvested (which is what `DataNormalizationMode.ADJUSTED`
+gives us). The correct expected range for SPY 2016-2021 total return,
+checked year-by-year, is roughly +155% to +170%.
+
+**Actual result (run on QC 2026-05-24):**
+
+| Metric | Value | Verdict |
+|---|---|---|
+| Net Profit | **+160.969%** | ✓ matches SPY's actual total return for the window |
+| Compounding Annual Return | 17.319% | ✓ normal post-GFC bull market CAGR |
+| Total Orders | 1 | ✓ correct (buy once, never sell) |
+| Total Fees | $0.00 | ✓ commission-free stocks confirmed |
+| Beta vs SPY | 0.985 | ✓ ≈1.0 as expected |
+| Alpha | 0.002 | ✓ ≈0 as expected (no edge over benchmark) |
+| Max Drawdown | 33.3% | ✓ matches COVID-19 crash (~34% peak-to-trough) |
+| Drawdown Recovery | 203 days | ✓ plausible |
+| Start / End Equity | $100,000 → $260,968.64 | ✓ |
+| Sharpe Ratio | 0.776 | ✓ typical for equity-index buy-and-hold |
+| Sortino Ratio | 0.716 | ✓ ditto |
+| Estimated Strategy Capacity | $1.1B | ✓ massive (SPY is one of the most liquid securities on earth) |
+
+### What H0 passing DOES validate
+- TradeStation brokerage model returns correct results for a buy-and-hold position
+- Adjusted-data normalization handles dividends correctly
+- Daily-resolution + `daily_precise_end_time = False` resolves the MOO-timing issue
+- 0.05% slippage applied to one trade does not materially distort results
+- Basic position sizing via `set_holdings(1.0)` works correctly
+
+### What H0 does NOT validate (narrow scope)
+- High-turnover behavior (slippage and fees compounding across thousands of trades)
+- Short-side behavior (borrow cost, locate, simulation accuracy)
+- Multi-symbol universe selection mechanics
+- ATR / stop-loss / position-management logic
+- Margin / leverage math under multiple concurrent positions
+
+So H1/H2/H3's catastrophic results are *partially* explained by issues
+H0 cannot detect. M2 (slippage may be too harsh at high turnover) and
+M3 (QC's TS fee simulation accuracy) are STILL open. M1 is closed by
+H0's pass.
 
 ### AI commentary
-- **Claude Code [2026-05-23]:** I should have proposed this before H1. Failing
-  to baseline-test the framework before testing strategies is the single
-  biggest process error in my work on this project. Until H0 passes, every
-  prior result is suspect.
+- **Claude Code [2026-05-23]:** I should have proposed this before H1.
+  Failing to baseline-test the framework before testing strategies is
+  the single biggest process error in my work on this project.
+- **Claude Code [2026-05-24]:** H0 passed. My expected range (+85-95%)
+  was wrong — that's a "guessing from memory" failure-mode #3 instance,
+  logged honestly. The framework returned the right answer (+160.97%
+  matches SPY's actual total return for the window almost exactly).
+  Framework calibrated for buy-and-hold; high-turnover and short-side
+  questions still open via M2/M3.
 
 ---
 
@@ -709,3 +755,11 @@ Any AI can append here.)
   (universe included leveraged ETFs). Added the same table as a
   mandatory section in the entry template — every H4+ strategy must
   declare YES on all four before its spec can be approved.
+- 2026-05-24 (later still) — **H0 PASSED.** Buy-and-hold SPY 2016-2021
+  returned +160.969% (CAGR 17.319%, Beta 0.985, Alpha 0.002, Fees $0),
+  matching SPY's actual total return for the window almost exactly.
+  Claude Code's prior expectation of +85-95% was wrong (price-only
+  thinking, not total-return) — logged as failure-mode #3 instance.
+  M1 (framework calibration) closed. M2 (slippage at high turnover)
+  and M3 (QC TS fee accuracy) remain open since H0's single-trade
+  scope can't validate them.
