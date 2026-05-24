@@ -415,7 +415,8 @@ strategy is trusted.**
 - Backtest period: 2016-01-01 to 2021-12-31
 
 ### Code reference
-**TO BE BUILT.**
+`strategy-research/h0_framework_sanity_check.py` — 54 lines, daily resolution,
+single SPY position, same brokerage model + slippage as H1/H2/H3.
 
 ### Expected result
 - Net return: +85% to +95% (the actual S&P 500 total return over that window)
