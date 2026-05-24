@@ -749,14 +749,19 @@ Cite-markers:
 | Exit time (paper) | 4:00 PM ET — "If the stop loss was not reached intraday, we closed the position at the end of the trading session (i.e., 4:00 pm ET)." | [PAPER] verbatim |
 | Exit time (lab override, G1) | **3:50 PM ET** — 10 minutes earlier than the paper, for project G1 safety. | **[OUR-ADD]** — DEVIATION FROM PAPER, clearly labeled. |
 | Position sizing — risk basis | Risk is computed against the **capital allocated to that position**, NOT total equity | [PAPER] verbatim: "the loss on the capital allocated to that position would not exceed 1%" |
-| Position sizing — allocation slice | Equal-weight: equity ÷ 20 per position | [PAPER] (top-20 + equal-weight) / [QC] recreation pattern |
-| Position sizing — max loss per position | 1% of allocation slice = 0.05% of total equity per position | [PAPER] |
-| Position sizing — share formula | shares = (allocation_slice × 0.01) ÷ (0.10 × ATR), capped by leverage | derived from [PAPER] |
+| Position sizing — allocation slice | Equal-weight: equity ÷ 20 per position = $5,000 (at $100k equity) | **[QC-IMPL-CHOICE / OUR-ADD]** — Claude Opus audit confirms paper does NOT explicitly use equal-weight cap; this is the QC recreation pattern. Alternative interpretation (Claude Opus): per-position slice could be equity × max_leverage / N_positions = $20k. Open interpretation — see AI commentary. |
+| Position sizing — max loss per position | 1% of allocation slice = $50 = 0.05% of total equity per position | derived from above [QC-IMPL-CHOICE / OUR-ADD] interpretation |
+| Position sizing — share formula | shares = (allocation_slice × 0.01) ÷ (0.10 × ATR), capped by leverage | derived from [PAPER] formula with [QC-IMPL-CHOICE] slice |
 | Max concurrent positions | 20 | [PAPER] (top-20) |
 | Max leverage (account-wide) | **4×** total deployed not to exceed | [PAPER] mentioned + matches Rhett's TradeStation 4× intraday margin |
 | Daily loss cap (G2) | **$2,000** — if intraday P&L ≤ −$2,000, halt new entries, liquidate, halt for the day | **[OUR-ADD]** required by project; NOT in paper |
 | Brokerage model | QC TradeStation, Margin account | **[OUR-ADD]** project standard |
 | Slippage | `ConstantSlippageModel(0.0005)` = 0.05% per fill | **[OUR-ADD]** project standard |
+| Commission (paper) | $0.0035/share (Interactive Brokers Pro Tiered, EOY 2023 fee schedule) | [PAPER] p.9 — Claude Opus audit |
+| Commission (lab) | $0 (TradeStation commission-free for stocks since 2019) | **[OUR-ADD]** — DEVIATION from paper. Our backtest will be more optimistic than paper's by the commission amount per share. Worth noting on every result. |
+| Data adjustment (paper) | UNADJUSTED intraday data (p.7: "intraday data remained unadjusted for stock splits or dividends") | [PAPER] |
+| Data adjustment (lab) | QC default = ADJUSTED. Effect on intraday OR strategies on split days needs verification — likely fine for within-day calculations, may distort 14-day ATR/volume on a split day | **[OUR-ADD / VERIFY]** |
+| Survivorship-bias-free universe | Required — paper explicitly states (p.6) | [PAPER] — Stage 4 must verify QC's coarse universe in backtest includes delisted stocks |
 | Backtest train window | 2016-01-01 to 2021-12-31 | **[OUR-ADD]** project standard |
 | Backtest holdout (run later) | 2022-01-01 to present, **run once** | **[OUR-ADD]** project standard |
 | Starting cash | $100,000 | **[OUR-ADD]** project standard ($300k actual scaled down for the lab) |
@@ -892,6 +897,99 @@ None yet (pre-code).
         iterate faster
   Rhett's call. If (b), I suggest N = 1500 (50% more than QC's
   recreation; tests the paper's broader scope without 2-hour runs).
+
+- **Claude Opus 4.7 [2026-05-24] — H4 spec audit (third independent
+  audit, full paper PDF retrieved via wealth-lab.com mirror, with
+  direct page citations):**
+
+  RESOLVED [INFER] items:
+  1. ATR stop multiplier: **0.10 × ATR** — three paper citations:
+     - p.6 BLDR worked example: "stop loss was set at 10% of the
+       daily ATR (10% x $5 = $0.50) from the entry point."
+     - p.8 Stop Loss section: "10% ATR distance from the executed
+       entry price."
+     - p.15 Stocks in Play: "stop loss at 10% of the ATR."
+     Worked-example arithmetic removes all ambiguity.
+  2. ATR period: 14-day Wilder — p.6 footnote 1, p.8 filter #3.
+
+  DRIFTS REQUIRING SPEC REVISION:
+  3. Universe "1,000 most liquid" is DRIFT — paper p.6 uses
+     "approximately 7,000 stocks" with absolute filters (p.8), no
+     top-N liquidity ranking.
+  4. Missing universe filter: avg 14-day volume ≥ 1,000,000
+     shares/day (p.8 filter #2).
+  5. Price filter is "OPENING price > $5" (p.8 filter #1) — not
+     previous close, not last price.
+  6. **"Equal-weight cap" is NOT in the paper** — searched for
+     "equal weight"/"equal-weight" in the paper; does not appear.
+     Paper imposes only the global 4× leverage cap (p.9). The
+     equal-weight cap is a QC simplification that caps tight-stop
+     trades more aggressively than the paper does. Remove or
+     relabel [OUR-ADD].
+  7. Missing leverage row: "We also set a maximum leverage
+     constraint at 4x, in accordance with the majority of US
+     FINRA-regulated brokers" (p.9). Footnote 3 (p.9): "The
+     leverage constraint may imply that in some trades, the
+     maximum loss per trade is less than 1%."
+  8. Risk-per-trade language clarification: paper p.9: "Each
+     stock was traded such that in case of the stop loss being
+     hit, the resulting loss incurred on the capital deployed for
+     that position would be 1%." Restated p.15: "the loss on the
+     capital allocated to that position would not exceed 1%."
+     This is 1% of PER-POSITION allocated capital, not total
+     equity. With 20 positions and 4× leverage, per-position
+     slice is ~1/20 of capacity.
+  9. Exit time "UNCLEAR" is wrong: paper p.8 says explicitly
+     "If the stop loss was not reached intraday, we closed the
+     position at the end of the trading session (i.e., 4:00 pm
+     ET)."
+
+  MISSING-BUT-RECOMMENDED:
+  10. Commission: paper p.9 used $0.0035/share IB Pro Tiered
+      (EOY 2023). On high-priced stocks this exceeds slippage.
+  11. Data adjustment: paper p.7 "intraday data remained
+      unadjusted for stock splits or dividends." Verify QC's
+      handling.
+  12. Survivorship-bias-free universe — p.6.
+
+  VERIFIED CORRECT: direction filter, OR duration, entry triggers,
+  top-20 ranking, RelVol formula, no profit target, EOD exit, OR
+  window 9:30-9:35, max 20 concurrent positions.
+
+  ADVERSARIAL SELF-CHECK: 10% × ATR confirmed by worked-example
+  arithmetic, no ambiguity. 4× leverage explicit p.9. "Equal
+  weight" does not appear in paper. Exit 4:00 PM stated
+  explicitly. "1000 most liquid" does not appear; 7,000 (full
+  universe) does. Confirmed drifts.
+
+  **VERDICT: REVISE. Blocking items: #3, #4, #5, #6, #7, #8, #9.
+  Strongly recommended: #10, #11, #12. Do not advance to Stage 4
+  until corrected.**
+
+- **Claude Code [2026-05-24, post-Claude-Opus]:** Three independent
+  audits now confirm the spec. Claude Opus's audit is the strongest
+  with direct page citations from the actual paper PDF. All blocking
+  items #3, #4, #5, #6, #7, #8, #9 are already incorporated above
+  from the ChatGPT/Base44 round (items #6 equal-weight and #8 sizing
+  language are now more precisely labeled [QC-IMPL-CHOICE / OUR-ADD]
+  per Claude Opus's specific finding that the paper does NOT contain
+  an equal-weight cap). Items #10 commission, #11 data adjustment,
+  and #12 survivorship are NEW additions from Claude Opus, now added
+  as spec rows.
+
+  **Remaining open interpretation question:** the position-sizing
+  per-position "slice" size. The paper says "1% of capital allocated
+  to that position" but doesn't define the allocation rule explicitly.
+  Two readings:
+    - QC's recreation (used in current spec): slice = equity / 20
+      = $5,000. Risk per trade = $50. Conservative.
+    - Claude Opus reading: slice = equity × max_leverage / 20 = $20,000
+      (full capacity used). Risk per trade = $200. More aggressive,
+      ~4× larger positions.
+  The current spec uses the QC-recreation interpretation, clearly
+  labeled [QC-IMPL-CHOICE / OUR-ADD]. If Rhett prefers Claude Opus's
+  reading, the row gets updated and positions scale ~4× larger.
+  Either way, G2 ($2k daily cap) catches catastrophic days.
 
 ### Decision
 **STAGE 2 COMPLETE.** Awaiting Stage 3 (Rhett approval) of the revised
