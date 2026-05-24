@@ -687,11 +687,12 @@ treated as preliminary until H4 retests under all four constraints.
 
 ## H4 — Faithful Zarattini ORB on Stocks in Play
 
-**Status:** STAGE 2 COMPLETE (external audit by ChatGPT GPT-5.5 on 2026-05-24
-returned verified paper values + REVISE verdict; spec has been revised
-below) — **awaiting Stage 3 (Rhett approval) before Claude Code writes
-any code.**
+**Status:** **STAGE 3 APPROVED 2026-05-24** by Rhett, with Claude Code
+acting as final auditor on the open interpretive questions (universe size,
+position-sizing slice, commission, price floor, slippage). Moving to Stage 4
+(code).
 **Date spec created:** 2026-05-24 · **Date Stage 2 audit completed:** 2026-05-24
+· **Date Stage 3 approved:** 2026-05-24
 
 ### Hypothesis (one falsifiable sentence + why it might be true)
 > "On a broad universe of liquid U.S. stocks, the 20 stocks per day with
@@ -732,7 +733,7 @@ Cite-markers:
 | Element | Value | Source |
 |---|---|---|
 | Universe — base | All equities listed on US exchanges (NYSE + NASDAQ) — "approximately 7,000 stocks" | [PAPER] verbatim |
-| Universe filter — opening price | > $5 | [PAPER] |
+| Universe filter — opening price | > **$7** (paper says >$5; lab uses $7 as a conservative marginability buffer) | [PAPER] + **[OUR-ADD deviation]** — Stage 3 decision 2026-05-24 |
 | Universe filter — 14-day avg volume | ≥ **1,000,000 shares/day** (previous 14-day average) | [PAPER] — Claude Code had MISSED this filter in Stage 1 |
 | Universe filter — 14-day ATR | > $0.50 (previous 14-day ATR) | [PAPER] |
 | Universe filter — Relative Volume | ≥ 100% (current-day first-5-min volume ≥ prior-14-day avg first-5-min volume) | [PAPER] |
@@ -749,14 +750,14 @@ Cite-markers:
 | Exit time (paper) | 4:00 PM ET — "If the stop loss was not reached intraday, we closed the position at the end of the trading session (i.e., 4:00 pm ET)." | [PAPER] verbatim |
 | Exit time (lab override, G1) | **3:50 PM ET** — 10 minutes earlier than the paper, for project G1 safety. | **[OUR-ADD]** — DEVIATION FROM PAPER, clearly labeled. |
 | Position sizing — risk basis | Risk is computed against the **capital allocated to that position**, NOT total equity | [PAPER] verbatim: "the loss on the capital allocated to that position would not exceed 1%" |
-| Position sizing — allocation slice | Equal-weight: equity ÷ 20 per position = $5,000 (at $100k equity) | **[QC-IMPL-CHOICE / OUR-ADD]** — Claude Opus audit confirms paper does NOT explicitly use equal-weight cap; this is the QC recreation pattern. Alternative interpretation (Claude Opus): per-position slice could be equity × max_leverage / N_positions = $20k. Open interpretation — see AI commentary. |
-| Position sizing — max loss per position | 1% of allocation slice = $50 = 0.05% of total equity per position | derived from above [QC-IMPL-CHOICE / OUR-ADD] interpretation |
+| Position sizing — allocation slice | **Equal-weight: equity ÷ 20 per position = $5,000 (at $100k equity)** — Stage 3 decision: QC-recreation interpretation chosen because Claude-Opus's $20k-slice reading produces 20×$200=$4,000 worst-case daily loss, breaching G2 ($2k cap). | **[QC-IMPL-CHOICE / OUR-ADD]** — Stage 3 decision 2026-05-24 |
+| Position sizing — max loss per position | 1% of allocation slice = **$50** = 0.05% of total equity per position. 20×$50 = $1,000 worst-case daily loss, under G2. | derived from above [QC-IMPL-CHOICE / OUR-ADD] interpretation |
 | Position sizing — share formula | shares = (allocation_slice × 0.01) ÷ (0.10 × ATR), capped by leverage | derived from [PAPER] formula with [QC-IMPL-CHOICE] slice |
 | Max concurrent positions | 20 | [PAPER] (top-20) |
 | Max leverage (account-wide) | **4×** total deployed not to exceed | [PAPER] mentioned + matches Rhett's TradeStation 4× intraday margin |
 | Daily loss cap (G2) | **$2,000** — if intraday P&L ≤ −$2,000, halt new entries, liquidate, halt for the day | **[OUR-ADD]** required by project; NOT in paper |
 | Brokerage model | QC TradeStation, Margin account | **[OUR-ADD]** project standard |
-| Slippage | `ConstantSlippageModel(0.0005)` = 0.05% per fill | **[OUR-ADD]** project standard |
+| Slippage | `ConstantSlippageModel(0.00025)` = **0.025% (2.5 bps) per fill** — Stage 3 decision: Rhett's live TS fill experience supports 2.5 bps for liquid (ADV≥1M) names; Claude Code's original 5 bps was theoretical pessimism. Sensitivity re-run at 5 bps will follow base run as a diagnostic. | **[OUR-ADD]** — Stage 3 decision 2026-05-24 |
 | Commission (paper) | $0.0035/share (Interactive Brokers Pro Tiered, EOY 2023 fee schedule) | [PAPER] p.9 — Claude Opus audit |
 | Commission (lab) | $0 (TradeStation commission-free for stocks since 2019) | **[OUR-ADD]** — DEVIATION from paper. Our backtest will be more optimistic than paper's by the commission amount per share. Worth noting on every result. |
 | Data adjustment (paper) | UNADJUSTED intraday data (p.7: "intraday data remained unadjusted for stock splits or dividends") | [PAPER] |
@@ -991,10 +992,71 @@ None yet (pre-code).
   reading, the row gets updated and positions scale ~4× larger.
   Either way, G2 ($2k daily cap) catches catastrophic days.
 
+- **Claude Code [2026-05-24] — final-auditor recommendation (Stage 3
+  prep):** Rhett established the audit protocol explicitly today: the
+  external AIs (ChatGPT, Base44, Claude desktop/Opus) are research+audit
+  inputs; Claude Code is the final auditor, holds the full constraint
+  set, and recommends the next test. My recommendation on the four open
+  interpretive questions, with reasoning:
+
+  1. **Position sizing slice — $5k slice / $50 max risk per position.**
+     Decisive against G2. The Claude-Opus reading ($20k slice / $200
+     risk) yields 20×$200=$4,000 worst-case daily loss, which breaches
+     the $2k G2 cap. The QC-recreation reading yields 20×$50=$1,000,
+     under G2. Not a judgment call — G2 is a hard rule. Picked $5k.
+
+  2. **Universe size — strict ~7,000 paper-faithful, NOT a top-1500
+     cap.** We are testing paper faithfulness. A top-1500 cap is a
+     deviation that would muddle the result. ~2-hour backtests are
+     acceptable since we run a handful, not hundreds. Picked strict.
+
+  3. **Commission — TradeStation $0 (lab) vs paper's $0.0035/share IB
+     Pro.** TS $0 is our actual broker reality. Paper's edge survived
+     $0.0035/share, so $0 only helps; clearly labeled [OUR-ADD
+     deviation]. Picked TS $0.
+
+  4. **Price floor — $7 (one notch above the paper's $5).** Rhett asked
+     about marginability: paper's NYSE+NASDAQ+>$5+ADV≥1M filters get us
+     ~95% margin-eligible; residual ~5% is TS-broker-specific
+     non-marginable names. Bumping floor from $5 to $7 catches the most
+     fragile names without materially changing the strategy's character.
+     Labeled [OUR-ADD deviation]. Picked $7.
+
+  5. **Slippage — 2.5 bps (0.00025).** Rhett pushed back on my original
+     5 bps citing live TS fill experience on liquid names. I steel-manned
+     both: 5 bps is theoretically defensible for stop orders on momentum
+     names at breakouts (worst-case liquidity moment), but Rhett's
+     real-fill instinct on ADV≥1M names is stronger evidence than my
+     desk-trader theorizing. Picked 2.5 bps for the base run, with a
+     sensitivity re-run at 5 bps after the base result — that's a free
+     diagnostic showing how slippage-fragile the edge is.
+
+  **Two safeguards added to the Stage 4 code, not in the paper:**
+    * Pre-flight daily diagnostic logging — counts of universe
+      candidates, top-20 selected, breakouts triggered, stop-outs,
+      held-to-close — so if results look weird, we can debug what
+      the filter actually did rather than guess.
+    * Per-position leverage cap — the paper's share formula can
+      exceed the $5k slice on low-ATR high-priced stocks. The 4×
+      account-wide cap is in spec, but adding a per-position cap so
+      one ticker can't eat the whole leverage budget.
+
+  **Pre-committed result interpretation (so we don't gaslit ourselves
+  post-hoc):** if H4 lands at Sharpe ~1.5 instead of paper's 2.81, the
+  most likely cause is slippage friction on tight 0.10×ATR stops with
+  20 round-trips/day — not strategy failure. Direction will indicate
+  edge; absolute Sharpe will trail paper unless slippage assumption
+  was too pessimistic. The 2.5-bps + 5-bps sensitivity pair will tell
+  us how much of any gap is execution-cost-driven.
+
+- **Rhett [2026-05-24] — Stage 3 approval:** Approved with all five
+  Claude-Code-recommended values. Moving to Stage 4 (code).
+
 ### Decision
-**STAGE 2 COMPLETE.** Awaiting Stage 3 (Rhett approval) of the revised
-spec. If approved → Stage 4 (Claude Code writes QC code matching the
-revised spec exactly). If revisions needed → Stage 1.
+**STAGE 3 APPROVED 2026-05-24.** Final spec locked. Claude Code now
+writes Stage 4 QC code (`strategy-research/h4_zarattini_orb.py`)
+implementing the spec line-by-line, with the two added safeguards.
+Stage 5 = backtest run; Stage 6 = multi-AI result review.
 
 ---
 
