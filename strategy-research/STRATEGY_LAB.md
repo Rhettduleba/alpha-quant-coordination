@@ -1,11 +1,37 @@
 # Alpha Quant Strategy Lab — Multi-AI Test Log
 
-**Purpose:** the single canonical record of every trading strategy tested for
-this project. Designed for review by multiple AI tools — Claude Code, Codex,
-Claude desktop, ChatGPT, browser Claude — each of which has different blind
-spots. Cross-checking each other's reasoning is the protection against any
-single AI's bad assumptions (especially Claude Code's track record of
-"translating faithfully" while drifting from spec).
+## What we are trying to do — the purpose of this collaboration
+
+**Goal:** Identify the best day-trading strategy possible for Rhett to deploy
+on a $300,000 TradeStation account (with 4× intraday margin), using evidence
+from rigorous backtests instead of social-media claims or marketing
+material.
+
+**Method:** A multi-AI collaboration. Multiple AI tools (Claude Code, Codex,
+Claude desktop, ChatGPT, browser Claude) review the same candidate
+strategies, audit each other's specs, and surface mistakes that any single
+AI would miss. **Every candidate strategy gets backtested in QuantConnect
+before it can be considered a contender** — and "best" is defined by the
+"works" bar below (positive net P&L on both train and holdout, profit
+factor ≥ 1.2, Sharpe ≥ 1.0, ≥ 10% annual net, survives the daily-loss cap).
+
+**Process for each candidate strategy:**
+1. **Spec construction** — Claude Code writes the Exact Spec from the source
+   paper / book, with direct quotes and citations. No paraphrasing.
+2. **Spec audit** — another AI checks the spec against the source.
+3. **Approval** — Rhett locks the spec.
+4. **Code** — Claude Code writes the QC algorithm to match the spec.
+5. **Backtest** — Rhett (or a browser-Claude operator) runs the code in QC
+   and reports results verbatim back to this document.
+6. **Review** — all AIs comment, decision recorded, next candidate selected.
+
+Repeat until we find a strategy that clears the "works" bar — or until we've
+honestly exhausted credible candidates and have to revisit the goal.
+
+**This document is the canonical record** for that collaboration: every
+candidate proposed, every spec audited, every backtest run, every decision
+made. Designed to be read by Claude Code and Codex via the repo, and by
+Claude desktop / ChatGPT / browser Claude via paste.
 
 ---
 
@@ -334,6 +360,35 @@ both more realistic and prevents the −99% style results we keep seeing.
 
 ---
 
+# Candidate strategies (proposed menu — awaiting Stage 1)
+
+Claude Code proposed the following candidates on 2026-05-24 from training
+knowledge. Each is a documented day-trading approach with at least one
+credible source. **None are coded or even spec'd yet** — they are a menu
+for Rhett to choose from. The chosen candidate becomes H4 (then H5, H6...)
+and goes through the full 6-stage reviewer protocol.
+
+Citation status:
+- **CONFIRMED** = Claude Code is confident of the source / author / claim.
+- **TO VERIFY** = likely correct but needs Codex or paste-AI confirmation
+  before Stage 1 begins.
+
+| # | Strategy | Source | Cite status | Why it might fit Rhett |
+|---|---|---|---|---|
+| C1 | **Zarattini ORB on Stocks in Play (FAITHFUL version)** | Carlo Zarattini & Andrew Aziz, "A Profitable Day Trading Strategy For The U.S. Equity Market," SSRN 2024 | CONFIRMED | Best-documented public day-trading edge of the last few years. H3 was meant to be this but drifted from spec. C1 would be the actual faithful build — top 20 by abnormal opening volume, 5-min OR, ATR-based stops, R-multiple profit target, gap-direction filter. |
+| C2 | **Zarattini TQQQ Opening Range Breakout** | Carlo Zarattini, "Beat the Market: An Effective Intraday Momentum Strategy for the S&P500 ETF (SPY)" / TQQQ companion paper, SSRN | TO VERIFY | Single-instrument ORB on a leveraged index ETF. Simpler universe than C1; tests the ORB concept on a known liquid leveraged name. |
+| C3 | **Crabel NR7 / Inside-Bar Opening Range Expansion** | Toby Crabel, *Day Trading with Short Term Price Patterns and Opening Range Breakout* (1990) | CONFIRMED | Pre-Zarattini foundational ORB research. Filters: narrow-range bars (NR4/NR7) and inside days precede expansion. Pattern-based, simple, intraday — well-suited to Rhett's "read candles" style. |
+| C4 | **Connors RSI(2) Short-Term Mean Reversion** | Larry Connors & Cesar Alvarez, *Short Term Trading Strategies That Work* (2008); also Connors & Alvarez SSRN papers | CONFIRMED (book) | Buy stocks closing weak (RSI(2) < 10), exit on bounce. Originally end-of-day; intraday adaptations exist. Mean-reversion style — different family from ORB / breakout. Useful as a "different bet" if breakouts keep failing in our backtests. |
+| C5 | **First-Half-Hour / Intraday Momentum** | Lei Gao, Yufeng Han, Sophia Zhengzi Li, Guofu Zhou, "Market Intraday Momentum," Journal of Financial Economics 2018 | TO VERIFY | First-half-hour return predicts last-half-hour return. Academic peer-reviewed; tested on broad equity markets. Trade at end of day based on opening move. Quick exit aligns with EOD flatten. |
+| C6 | **Post-Earnings Announcement Drift, intraday slice** | Original: Bernard & Thomas (1989). Many follow-ups in academic literature. | CONFIRMED (concept) / TO VERIFY (specific spec) | Trade stocks that just reported earnings, in the surprise direction. PEAD is one of the most robust academic anomalies. Intraday slice = enter on the earnings day, exit by close. Fewer setups (earnings season heavy) → less cost drag. |
+
+## Open question (for Rhett)
+
+Which candidate becomes H4? My recommendation, with reasoning, in the
+"Cross-AI parking lot" below — but the call is yours.
+
+---
+
 # Strategies tested
 
 ## H0 — Buy-and-hold SPY (framework sanity check)
@@ -529,6 +584,29 @@ Any AI can append here.)
   besides SPY? E.g., a momentum-factor ETF like MTUM, or a sector-rotation
   ETF, to verify our framework on stocks that move differently than the
   index.
+- **[Claude Code 2026-05-24]** My recommendation on the candidate menu
+  ordering, with reasoning, for Rhett to consider:
+  - **First (H4): C1 — faithful Zarattini.** We already burned a backtest
+    on a drift version (H3). Closing the loop with the actual paper is
+    the highest-information test we can run, AND it tests whether the
+    most-credible public day-trading paper holds up in our hands.
+  - **Second (H5): C3 — Crabel NR7 / inside-bar ORB.** Different
+    universe-selection mechanism (pattern-based vs. volume-rank), so
+    independent evidence about whether the ORB family works at all.
+  - **Third (H6): C5 — first-half-hour momentum.** Different timeframe
+    and direction (afternoon trade based on morning move) — diversifies
+    the kinds of edge we're testing.
+  - C4 (Connors mean-reversion) is the right "if all breakouts fail"
+    pivot — a different bet family entirely. Defer until we know
+    breakouts don't work.
+  - C2 (Zarattini TQQQ) and C6 (PEAD intraday) are interesting but more
+    specialized — propose deferring unless Rhett has a specific reason
+    to prioritize.
+  Reasoning behind ordering: maximize *independent information* per
+  backtest. Testing two ORB variants in a row (C1 then C3) gives us
+  data on whether the family works, not just one paper. Then C5 tests
+  a fundamentally different setup. By the time three are tested we'll
+  know whether the family has any signal at all.
 - **[Claude Code 2026-05-23]** The Zarattini paper has multiple variants.
   Before we re-implement, we should agree on WHICH variant we're testing,
   cite the section/page, and lock the spec.
@@ -551,3 +629,10 @@ Any AI can append here.)
   review); calibration assumptions table. Designed so any new AI
   reviewer can read this document cold and immediately know the
   project, the rules, the trust calibration, and how to contribute.
+- 2026-05-24 — Replaced the doc's opening with an explicit "What we are
+  trying to do" purpose statement (collaboratively identify the best
+  day-trading strategy via backtested evidence; every candidate gets
+  backtested before it can be considered). Added the **Candidate
+  Strategies** menu (C1–C6) so reviewers and Rhett can pick the next
+  strategy to enter the 6-stage protocol. Claude Code's recommended
+  order added to the Cross-AI parking lot.
