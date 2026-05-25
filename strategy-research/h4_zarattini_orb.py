@@ -1,9 +1,21 @@
 # ============================================================================
-# Strategy Lab -- H4: Faithful Zarattini ORB on Stocks in Play (Stage 4)
+# Strategy Lab -- H4: Faithful Zarattini ORB on Stocks in Play (Stage 4 v4)
 # ============================================================================
 # Stage 3 APPROVED by Rhett 2026-05-24. Spec source of truth:
 #   strategy-research/STRATEGY_LAB.md  (master)
 #   strategy-research/H4_spec_for_audit.md  (standalone copy)
+#
+# v2 fix: float()/int() coercion for QC Python order dispatcher.
+# v3 fix: sec.set_leverage(4.0) so QC TradeStation honors 4x intraday margin.
+# v4 fix:
+#   - EOD flatten switched from fixed at(15, 50) to before_market_close(spy, 10)
+#     so early-close days (Black Friday, day before holidays) don't try to
+#     submit liquidation orders after the session is closed.
+#   - History warmup hardened: check column existence on the DataFrame before
+#     accessing it (QC's PandasMapper KeyError sometimes bypasses Python
+#     try/except via the C# bridge).
+#   - SMOKE_TEST toggle added at the top. Default ON: 2-month window for fast
+#     iteration on bugs; flip OFF for the full train window.
 #
 # Spec summary (every choice tagged: [PAPER] / [QC-IMPL-CHOICE] / [OUR-ADD]):
 #   - [PAPER] Universe = NYSE+NASDAQ, ~7,000 stocks
@@ -33,6 +45,14 @@
 from AlgorithmImports import *
 from datetime import time as dt_time, timedelta
 import math
+
+
+# ----------------------------------------------------------------------------
+# SMOKE TEST TOGGLE -- set to False once we have a clean smoke run.
+# True  -> 2-month window (Jan-Feb 2016), ~5-10 min run, validate end-to-end.
+# False -> full train window (2016-01-01 to 2021-12-31), 1-2 hr run.
+# ----------------------------------------------------------------------------
+SMOKE_TEST            = True
 
 
 # --- Constants (every constant traces to a spec row) ---
@@ -66,8 +86,12 @@ class H4_ZarattiniORB(QCAlgorithm):
     # ---------------- initialize ----------------
 
     def initialize(self):
-        self.set_start_date(2016, 1, 1)
-        self.set_end_date(2021, 12, 31)                  # train window [OUR-ADD]
+        if SMOKE_TEST:
+            self.set_start_date(2016, 1, 4)              # first trading day of 2016
+            self.set_end_date(2016, 2, 29)               # ~2 months for fast iteration
+        else:
+            self.set_start_date(2016, 1, 1)
+            self.set_end_date(2021, 12, 31)              # train window [OUR-ADD]
         self.set_cash(STARTING_CASH)
         self.set_brokerage_model(BrokerageName.TRADE_STATION, AccountType.MARGIN)
 
@@ -91,8 +115,12 @@ class H4_ZarattiniORB(QCAlgorithm):
                          self.time_rules.at(9, 36),
                          self.on_or_close)
 
+        # G1 EOD flatten: 10 min before whatever today's close is.
+        # before_market_close auto-adjusts on early-close days (Black Friday,
+        # day before Christmas/July 4th, etc.) so we don't try to liquidate
+        # after the session has already closed.
         self.schedule.on(self.date_rules.every_day(self.spy),
-                         self.time_rules.at(15, 50),
+                         self.time_rules.before_market_close(self.spy, 10),
                          self.on_eod_flatten)                # G1
 
         self.symbol_data = {}
@@ -348,11 +376,23 @@ class SymbolData:
 
         # Warm the ATR + daily-volume window from history so this symbol is
         # tradeable on its first day in the universe (instead of waiting 14 days).
+        # Hardened in v4: QC's PandasMapper KeyError can bypass Python try/except
+        # via the C# bridge, so verify column structure BEFORE accessing.
         try:
             hist = algo.history(symbol, ATR_PERIOD + 5, Resolution.DAILY)
-            if hist is not None and not hist.empty and symbol in hist.index.get_level_values(0):
-                for _, row in hist.loc[symbol].iterrows():
-                    self.daily_vol.add(float(row["volume"]))
+            if hist is not None and not hist.empty:
+                sym_hist = None
+                try:
+                    if symbol in hist.index.get_level_values(0):
+                        sym_hist = hist.loc[symbol]
+                except Exception:
+                    sym_hist = None
+                if sym_hist is not None and hasattr(sym_hist, "columns") and "volume" in sym_hist.columns:
+                    for _, row in sym_hist.iterrows():
+                        try:
+                            self.daily_vol.add(float(row["volume"]))
+                        except Exception:
+                            continue
                     # ATR auto-warms via register_indicator + history events; no manual update needed.
         except Exception as ex:
             algo.debug(f"history warmup failed for {symbol}: {ex}")
