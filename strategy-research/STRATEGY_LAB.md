@@ -1161,3 +1161,125 @@ Any AI can append here.)
   Goal of this round: get THREE independent NEW C-candidates (one
   each from ChatGPT, Base44, Claude desktop/Opus) so we have a
   meaningfully diversified menu for post-H4 testing.
+- 2026-05-26 — **H4 STAGE 4 (v4.1) READY FOR FULL BACKTEST.** Smoke
+  test passed Jan-Feb 2016: +6.08% net, $0 fees, PSR 85.8%, 287s
+  runtime, no runtime errors. Iterative fix history: v2 added
+  float()/int() coercion (QC Python order dispatcher couldn't match
+  overloads when args were Decimal); v3 added `sec.set_leverage(4.0)`
+  per security (QC TradeStation default is RegT 2x — all orders
+  were getting buying-power-rejected before this); v4 added
+  SMOKE_TEST toggle + holiday/early-close-aware EOD flatten via
+  `before_market_close(spy, 10)` + hardened history warmup;
+  v4.1 flipped SMOKE_TEST=False, ready for full 2016-2021 window.
+  Awaiting Rhett to run the full backtest in QC.
+- 2026-05-26 — **MASSIVE bot + advisor infrastructure overhaul**
+  (parallel to H4 strategy work). Documented in detail in the
+  Alpha Quant workspace (not this repo) but summarized here so
+  external-AI reviewers know what the surrounding system can now
+  do:
+  * **Bot safety fixes (all live)**: pre-10am entry gate (audit-
+    driven, 09:00 hour = 42% WR vs 78% at 12pm); spread hard
+    filter $0.10 (was 0.20 weighting); per-symbol daily stop-out
+    circuit breaker (2 stops → block symbol rest of day); EOD
+    cutoff tightened 3:50→3:30; EOD flatten now via
+    `before_market_close(spy, 10)` so early-close days work;
+    open-orders-fetch fail-safe + scan-error circuit breaker
+    (50%/cycle → halt); honor advisor `BLOCK_ALL_NEW_ENTRIES`
+    (reversed prior "log-but-ignore" design that ignored 12k+
+    advisor halt recommendations); **broken 15-min cooldown bug
+    fixed** (root cause: broker /orders endpoint eventual-
+    consistency lag; fixed via new `recent_exits_tracker.py`
+    local state file populated by `broker_fill_logger`).
+  * **New typed advisor → bot control vocabulary**:
+    `BLOCK_SYMBOL_DUE_TO_NEWS`, `PROMOTE_SYMBOL` (with
+    side+conviction_score), `WATCHLIST_TODAY` (up to 20 names),
+    `EXIT_PROFILE` (BASELINE / TREND_AGGRESSIVE / CHOP_TIGHT,
+    hard-stop can only TIGHTEN), `VETO_CANDIDATE` (time-bounded
+    block on symbol+side, 1-60 min). All shipped end-to-end:
+    advisor response_parser + prompt_builder, bot
+    advisor_filter_engine honoring; bot ranking uses
+    PROMOTE/WATCHLIST as scoring nudges (never bypass hard
+    filters).
+  * **New advisor modules (all wired into run_advisor.py)**:
+    `trade_review_writer.py` (daily qualitative markdown trade
+    review with patterns + recommendations);
+    `bot_health_watcher.py` (scans journal for DEGRADED /
+    SAFETY_HALT / G2_HIT and surfaces to Claude prompt);
+    `config_change_replayer.py` (replays current rules against
+    historical journal — first run on May 13-22 audit window
+    showed 82 of 187 historical entries would have been blocked
+    by today's safety rules); `regime_detector.py` (machine-
+    readable TREND_UP/DOWN, CHOP, BROAD_RALLY/SELLOFF,
+    HIGH_VOL_DIRECTIONLESS); `sector_flow.py` (11 SPDR ETFs
+    ranked + per-symbol alignment check); `pre_market_scanner.py`
+    (top gappers up/down, replaces stalled `src/universe/
+    preopen_scan.py` data feed); `macro_calendar.py` (FOMC, CPI,
+    NFP 2026 dates → advisor prompt awareness).
+  * **New bot indicator modules**: `relative_volume.py` (RelVol
+    = today_cum / 20d-avg with intraday U-curve normalization;
+    HARD FILTER at 1.5x — the single biggest "stock is in play"
+    signal the bot was missing); `vwap_calculator.py` (intraday
+    VWAP cached 60s); `market_levels.py` (prior-day HLC + floor-
+    trader pivots + R1/R2/S1/S2 + proximity tags);
+    `slippage_tracker.py` (actual vs intended fill price per
+    BROKER_FILL; daily summary; 7d rolling escalation if >30bps);
+    `daily_symbol_loss_tracker.py` (per-symbol stop-count
+    persisted across bot restarts); `recent_exits_tracker.py`
+    (local cooldown truth source — fixes the WULF 11-trade-day
+    bug).
+  * **Scoring enhancements live**: composite × (1 + promote
+    bonus + watchlist bonus + time-of-day bonus). Time-of-day:
+    +0.10 at 12pm, +0.15 at 14:30-15:29 (audit-derived).
+    Conviction-based sizing: composite 0.40 → 0.5x size,
+    composite 1.00 → 1.25x size, linear.
+  * **Verified live**: Brain universe channel (150 symbols
+    daily from research_brain_v1, bot actively using).
+    **Verified broken**: opportunity_ranker (no outputs;
+    queued for fix). **Verified stalled**: preopen_scan
+    (last data April 28; replaced by new
+    `pre_market_scanner.py`).
+  * **Backlog tracked** at `ai-trading-strategy-agent/outputs/
+    proposals/PROP-DEFERRED-AND-FUTURE.md`: 14 of 18 ranked
+    performance enhancements shipped today; 4 deferred
+    (event-driven advisor re-runs, real-time news streaming,
+    strategy module pluggability, pyramiding) require runtime
+    infrastructure beyond pure code edits. Memory commitment
+    saved to complete one-by-one across future sessions.
+  * **Bot audit findings** (May 13-22 trade journal, 161
+    round trips): 57.8% win rate but profit factor 0.85 →
+    structurally unprofitable math. Shorts = 100% of realized
+    loss (-$922 net on 20 trades vs longs -$0.89 net on 146).
+    Hard-stop slippage observed at -0.79% (TSLA), -1.07%
+    (QCOM) vs intended -0.50%. The bot wasn't measuring
+    relative volume, regime, sector flow, or news — all
+    now wired.
+
+## What an external AI should know walking in on 2026-05-27
+
+If you are an external AI (ChatGPT, Base44, Claude desktop, browser
+Claude, Codex) being onboarded for the next session, here is the
+state in one paragraph:
+
+H4 (Faithful Zarattini ORB on Stocks in Play) is the only strategy
+through Stage 4 — code shipped at
+`strategy-research/h4_zarattini_orb.py` v4.1, smoke-tested
+clean, awaiting full 2016-2021 QC backtest. C2-C6 are queued. The
+SIM bot has been substantially upgraded in parallel (see the
+changelog entry for 2026-05-26 for the inventory); the bot is
+running with the new code; an active streaming journal monitor is
+in place. The advisor has new typed control vocabulary
+(BLOCK_SYMBOL_DUE_TO_NEWS, PROMOTE_SYMBOL, WATCHLIST_TODAY,
+EXIT_PROFILE, VETO_CANDIDATE) and new prompt sections (regime,
+sector flow, pre-market, macro, bot health) — the next advisor
+run at ~4:30 PM ET 2026-05-26 will be the first to exercise all
+of it. The deferred backlog (4 items requiring infrastructure)
+plus lower-priority enhancements (VWAP scoring wiring,
+prior-day-pivot scoring wiring, heartbeat write bug, etc.) live
+at `ai-trading-strategy-agent/outputs/proposals/
+PROP-DEFERRED-AND-FUTURE.md` and are the ongoing commitment.
+
+**The next decision point** for the strategy-research subproject
+is the H4 full backtest result. Until then, all bot improvements
+are quality-of-life and operational safety — the strategic
+question of "does the Zarattini paper hold up in our hands" is
+the gating answer.
