@@ -1,5 +1,5 @@
 # ============================================================================
-# Strategy Lab -- H4: Faithful Zarattini ORB on Stocks in Play (Stage 4 v4)
+# Strategy Lab -- H4: Faithful Zarattini ORB on Stocks in Play (Stage 4 v4.2)
 # ============================================================================
 # Stage 3 APPROVED by Rhett 2026-05-24. Spec source of truth:
 #   strategy-research/STRATEGY_LAB.md  (master)
@@ -8,14 +8,19 @@
 # v2 fix: float()/int() coercion for QC Python order dispatcher.
 # v3 fix: sec.set_leverage(4.0) so QC TradeStation honors 4x intraday margin.
 # v4 fix:
-#   - EOD flatten switched from fixed at(15, 50) to before_market_close(spy, 10)
-#     so early-close days (Black Friday, day before holidays) don't try to
-#     submit liquidation orders after the session is closed.
-#   - History warmup hardened: check column existence on the DataFrame before
-#     accessing it (QC's PandasMapper KeyError sometimes bypasses Python
-#     try/except via the C# bridge).
-#   - SMOKE_TEST toggle added at the top. Default ON: 2-month window for fast
-#     iteration on bugs; flip OFF for the full train window.
+#   - EOD flatten switched from at(15, 50) to before_market_close(spy, 10)
+#     so early-close days don't try to submit liquidation orders after close.
+#   - History warmup hardened against QC PandasMapper KeyError quirks.
+#   - SMOKE_TEST toggle for fast iteration.
+# v4.1 (2026-05-26): smoke test passed (+6.08% / $0 fees / PSR 85.8% / 287s).
+# v4.2 fix (2026-05-26): REMOVED the per-symbol algo.history() warmup from
+#   SymbolData.__init__. At full 6-year scale with daily universe rotation,
+#   that call fired thousands of times and was almost certainly the cause
+#   of the runtime errors that didn't appear in the 2-month smoke test.
+#   Now relying entirely on self.set_warmup(30 days) + the daily consolidator
+#   + register_indicator to warm ATR and daily_vol. Tradeoff: each new
+#   symbol takes ~14 days in the universe before it's tradeable instead
+#   of day-1. Acceptable at 6-year scale.
 #
 # Spec summary (every choice tagged: [PAPER] / [QC-IMPL-CHOICE] / [OUR-ADD]):
 #   - [PAPER] Universe = NYSE+NASDAQ, ~7,000 stocks
@@ -377,28 +382,15 @@ class SymbolData:
         self.daily_consolidator.data_consolidated += self._on_daily_bar
         algo.subscription_manager.add_consolidator(symbol, self.daily_consolidator)
 
-        # Warm the ATR + daily-volume window from history so this symbol is
-        # tradeable on its first day in the universe (instead of waiting 14 days).
-        # Hardened in v4: QC's PandasMapper KeyError can bypass Python try/except
-        # via the C# bridge, so verify column structure BEFORE accessing.
-        try:
-            hist = algo.history(symbol, ATR_PERIOD + 5, Resolution.DAILY)
-            if hist is not None and not hist.empty:
-                sym_hist = None
-                try:
-                    if symbol in hist.index.get_level_values(0):
-                        sym_hist = hist.loc[symbol]
-                except Exception:
-                    sym_hist = None
-                if sym_hist is not None and hasattr(sym_hist, "columns") and "volume" in sym_hist.columns:
-                    for _, row in sym_hist.iterrows():
-                        try:
-                            self.daily_vol.add(float(row["volume"]))
-                        except Exception:
-                            continue
-                    # ATR auto-warms via register_indicator + history events; no manual update needed.
-        except Exception as ex:
-            algo.debug(f"history warmup failed for {symbol}: {ex}")
+        # v4.2 (2026-05-26): per-symbol history warmup REMOVED.
+        # At full 6-year scale this fired thousands of times against QC's
+        # history API and was the most likely cause of the full-window
+        # runtime errors that didn't appear in the 2-month smoke test.
+        # ATR auto-warms via register_indicator + self.set_warmup(30d).
+        # daily_vol fills as the consolidator's _on_daily_bar fires.
+        # Tradeoff: each new symbol takes ~14 days in the universe before
+        # is_ready() returns True. Acceptable at 6-year scale; most
+        # symbols persist many days in the rotation anyway.
 
         # Per-day state
         self.reset_for_new_day()
