@@ -51,8 +51,11 @@ import math
 # SMOKE TEST TOGGLE -- set to False once we have a clean smoke run.
 # True  -> 2-month window (Jan-Feb 2016), ~5-10 min run, validate end-to-end.
 # False -> full train window (2016-01-01 to 2021-12-31), 1-2 hr run.
+#
+# 2026-05-26: smoke test passed cleanly (Jan-Feb 2016, +6.08%, $0 fees,
+# PSR 85.8%, 287 sec). Flipping to False for the real Stage 5 run.
 # ----------------------------------------------------------------------------
-SMOKE_TEST            = True
+SMOKE_TEST            = False
 
 
 # --- Constants (every constant traces to a spec row) ---
