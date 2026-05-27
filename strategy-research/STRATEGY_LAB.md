@@ -1283,3 +1283,109 @@ is the H4 full backtest result. Until then, all bot improvements
 are quality-of-life and operational safety — the strategic
 question of "does the Zarattini paper hold up in our hands" is
 the gating answer.
+
+---
+
+# H4 STAGE 5 RESULT (2026-05-27) — FAILED
+
+Full backtest froze at 80% completion (2016-01-01 to 2020-12-18, 1,209
+of 1,511 planned trading days, suspected universe-rotation scale issue
+in 2021 recovery rally). v4.2 had already removed the per-symbol
+history warmup — a related but different edge case in
+`on_securities_changed` consolidator lifecycle remains.
+
+**Headline numbers:**
+- Total return: **-17.65%** ($100k → $82,353)
+- CAGR: **-3.83%** over 4.97 years
+- SPY same period: **+100.08%** / CAGR +14.98% (strategy underperformed
+  buy-and-hold by ~118 percentage points)
+- Max drawdown: **-29.28%** (trough 2018-02-22)
+- PSR: **0.095%** (statistically zero edge detected)
+- Total trade events: 9,146 across 195 unique symbols
+- Year-by-year: 2016 -6.55%, 2017 -15.08%, 2018 +27.84%, 2019 +2.71%,
+  2020 -20.97%
+
+**Works-bar gate: 0 of 5 criteria met.** REJECTED.
+
+The Zarattini paper's claimed Sharpe 2.81 does NOT replicate in our
+faithful implementation. Three independent spec audits, smoke test
+passed, all hard constraints honored — the strategy itself has no
+detectable edge in our hands.
+
+## Stage 6 multi-AI review
+
+External AI handoff prepared at
+`strategy-research/HANDOFF_2026-05-27_post_H4_failure.md` and dispatched
+to ChatGPT, Base44, Claude desktop for independent review. Three lanes
+posed:
+- Lane A: retry H4 with the disputed $20k slice / $200 risk sizing
+- Lane B: propose next strategy candidate (C2-C6 or fresh)
+- Lane C: critique the live bot's current strategy
+
+### Stage 6 review — ChatGPT GPT-5.5 Thinking (2026-05-27)
+
+**Lane chosen:** B — Next strategy candidate
+**Recommendation:** Move to C7 — Late-Day Intraday Momentum / Same-Day
+Continuation. Do NOT spend the next serious research cycle on H4 sizing.
+
+**Reasoning:**
+- 4× sizing change scales returns and drawdowns but cannot create edge
+  from a strategy with negative return, high drawdown, PSR near zero.
+- H4's PSR of 0.095% is effectively a dead-edge result.
+- A sizing change does not fix signal quality.
+
+**Lane A verdict:** if Rhett insists, ONE cheap sensitivity test at
+$20k slice / $200 risk can be run as verification, but should NOT be
+the main path forward.
+
+**Proposed C7 strategy source citations (verbatim):**
+- Gao, Han, Li, Zhou, "Market Intraday Momentum":
+  > "the first half-hour return on the market as measured from the
+  >  previous day's market close predicts the last half-hour return"
+  > "both statistically and economically significant"
+- Heston, Korajczyk, Sadka, "Intraday Patterns in the Cross-Section of
+  Stock Returns":
+  > "We find a striking pattern of return continuation at half-hour
+  >  intervals that are exact multiples of a trading day, and this
+  >  effect lasts for at least 40 trading days."
+
+**Stated limitation by GPT-5.5:**
+> "The best-known evidence is strongest for market-level timing and
+>  recurring half-hour continuation patterns. Rhett's implementation
+>  constraints may weaken or eliminate the edge, especially because the
+>  project requires flattening by 3:50 PM ET instead of holding through
+>  the official 4:00 PM close."
+
+**Adversarial self-check by GPT-5.5:**
+> "the published evidence behind the recommended strategy may not
+>  survive Rhett's exact implementation constraints, especially the
+>  3:50 PM ET forced flatten."
+
+**Proposed C7 spec (partial — paste truncated in chat at the signal
+construction section; full spec to be retrieved or re-requested):**
+- Universe: NYSE/NASDAQ common stocks, margin-eligible, no leveraged or
+  inverse ETFs, listed >= 1 year, price > $7, 20-day avg dollar volume
+  >= $20M, spread <= 10 bps of price OR <= $0.05 absolute (hard veto)
+- Optional first cut: top 500-1000 by dollar volume, then compare
+  against the in-house Research Brain 150-symbol universe
+- Signal: early return computed as `r_open = price_10_00 / prior_close
+  - 1` (full signal/entry/exit/sizing rules truncated in paste)
+
+**Status of C7 spec:** INCOMPLETE — Rhett's paste cut off mid-formula.
+Full spec needs to be re-retrieved from GPT-5.5 before C7 can enter
+Stage 2 (audit). Until then, C7 is a PROPOSAL placeholder.
+
+### Stage 6 review — Base44
+
+**Pending.** Awaiting Rhett's paste of Base44's response.
+
+### Stage 6 review — Claude desktop / Opus
+
+**Pending.** Awaiting Rhett's paste of Claude desktop's response.
+
+### Claude Code (final auditor) verdict
+
+**PENDING** — holding until all three external reviews are in. Once
+Base44 + Claude desktop respond, Claude Code will synthesize the three
+opinions, weigh against the project's constraints, and recommend the
+single next strategy to enter Stage 1 (spec construction).
