@@ -3,6 +3,12 @@
 Paste the block below at the start of a new Claude Code session (working
 directory = the "Trade station Main" project root), filling in the task.
 
+**FIRST STEP — name the session so it is findable in the sidebar later:**
+run the slash command `/rename "<sub-project name>"` (e.g.
+`/rename "Alpha Costs"`). A session name is set only by `/rename` or by
+`claude -n "<name>"` at launch; an unnamed session just shows an
+auto-generated summary, which is hard to navigate back to.
+
 ---
 
 Ramp up on the Alpha Quant project before doing anything:

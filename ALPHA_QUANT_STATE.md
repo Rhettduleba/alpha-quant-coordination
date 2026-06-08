@@ -1,93 +1,93 @@
 # Alpha Quant — State of Record
 
-**Version:** 3.7
-**Last updated:** May 21, 2026
+**Version:** 3.8
+**Last updated:** June 8, 2026
 **Owner:** Rhett
-**Scope:** Current operational state, open items, recent decisions. Stable rules/architecture live in the `CLAUDE.md` files (auto-loaded by Claude Code). Historical detail lives in `CHANGELOG.md`.
+**Scope:** Current operational state, open items, recent decisions. Stable rules/architecture live in the `CLAUDE.md` files. Historical detail lives in `CHANGELOG.md`.
+**Supersedes:** v3.7 (May 21) — which predated the 5/26 megabuild, ORB v1.6, H5, the `C:\AlphaQuant` migration, and P0, and nearly misled a loop. Rebuilt from Claude-Code-verified live facts (2026-06-07/08).
 
 ---
 
 ## Operating rules (every session, both Claudes)
 
-1. **Verify before asserting.** No system-state claim without reading the file. If unread, label it "unverified."
-2. **Surface conflicts, don't silently resolve them.** When two sources disagree, flag to Rhett — don't pick.
-3. **No process actions without approval.** Restart bot, kill PID, deploy code, edit risk config → propose first, act after.
-4. **Push back honestly.** Don't soften objections. Don't fake disagreement to look critical either.
-5. **End every report with "What I did NOT verify."** Explicit section. Catches confabulation.
-6. **One question per turn to Rhett.** Never stack multiple asks; never ask + report other items in the same turn.
-7. **Times in user-facing text: 12-hour clock with AM/PM ET.** "9:09 AM ET" not "09:09 ET".
-8. **Never reason from incomplete data.** Verify load-bearing claims at the source first. "probably / likely / should be" is a trigger to STOP and read the file.
+1. **Verify before asserting.** No system-state claim without reading the file. Label unread claims `unverified`.
+2. **Verify every loose end.** "What I did NOT verify" is a list to CLOSE now, not an escape hatch — only genuine reach limits (needs a live session / broker data not yet produced) may remain.
+3. **Surface conflicts, don't silently resolve them.** Flag to Rhett.
+4. **No process actions without approval.** Restart bot, kill PID, deploy, edit risk config → propose first.
+5. **Push back honestly.** Don't soften objections; don't fake disagreement either. Stress-test external-AI input, don't process it as a to-do list.
+6. **End every report with "What I did NOT verify."**
+7. **One question per turn to Rhett.**
+8. **User-facing times: 12-hour clock + AM/PM ET.**
+9. **Measure ≠ fix. Plumbing freeze:** zero trading-behavior change unless a task explicitly authorizes it (write-only logging is allowed; order logic is not).
+10. **Broker truth > internal logs.** Cite the highest evidence source; don't infer a cause from a pattern.
+11. **Copiable handoffs.** Replies destined for Planning Claude / other AIs are rendered as a full copy-paste markdown block.
 
 ---
 
-## §1 Open items
+## §0 Environment (verified 2026-06-08)
 
-The May-19 verification series **V1–V5 is all CLOSED**; **GIT is now CLOSED** (May 20 — see §2) — see `CHANGELOG.md` and §2. One item is open now:
+- **Live root: `C:\AlphaQuant\`.** VPS migration DONE. OneDrive (`…\Trade station Main`) is **backup-only**. All work targets `C:\AlphaQuant` via absolute paths.
+- **`C:\AlphaQuant` is NOT a git repo** — the live code lost version control in the migration. See Go-Live Safety Checklist + OPS-3: **this is now a prerequisite to fix before the first trading-behavior change** (the reject fix must be reversible).
+- Both engines running, supervised: ORB `run_bot.py` (PID 10808, restarted 6/08 08:10) → subprocesses `orb_runner.py` each cycle (so logging-code edits auto-load with no restart). H5 `run_h5.py` (PID 7324) imports `h5_runner` once and loops 30s (holds imports until restarted). Chain: runners ← `watchdog_supervisor` (3524) + `h5_supervisor` (6544) ← `Supervisor Guardian` task (2-min) ← OS Task Scheduler.
+- Advisor (`run_advisor.py`) live ~3×/day (08:0x / 12:0x / 16:31 ET), real tokens, mostly `parse_errors:0`.
+- Accounts flat AM 6/08; ORB ~$990k, H5 ~$1.00M. Preflight `_preflight_diagnostic.py` = 45/46 pre-open (the lone FAIL `scan_completed=False` is correct before 9:35; clears post-scan). CSHV 0 FAIL. Heartbeat at `C:\AlphaQuant\bot_heartbeat.json`, atomic-written (transient read-miss = the temp+replace window, not a fault).
 
-| # | Item | Status |
+## §1 Honest system state
+
+- **No validated edge. Net-negative in SIM.** **Success = genuinely good-quality trades producing a positive P&L, with trade QUALITY weighted above dollar magnitude** — Rhett doesn't care whether it's $400 or $4,000 as long as the trades are sound. SIM account resets when a winning, bug-free system is confirmed.
+- The "longs profit / shorts lose" asymmetry is **unproven and unstable** — it inverted on 6/05 and the journal is phantom-contaminated. Do not act on it.
+- **P0 (broker-truth ingestion) is the gate** for utilization, reject attribution, capital deployment.
+
+## §2 P0 status (active work)
+
+- **Tier-1 code-complete.** `broker_fill_logger.log_new_terminal_orders()` (`broker_fill_logger.py:371`) wired into `orb_runner.py:604` + `h5_runner.py:327` → `tradestation-bot/broker_orders_unified.csv` (all terminal states). Reject-half **proven**; fill-half **unproven** — no live ORB session since wiring (mtime 6/06 08:11). The file having only ever held 4 weekend `h5_v1` REJECTED rows and never any ORB rows is **`reasoned`** (content was 4 h5 rejects when first read; no backup holds ORB rows; wiring post-dated Friday's close) — NOT `verified` via creation-time/git (no version control; the migration rewrote the birth time).
+- **Tier-2 diagnostic fields added 2026-06-07 (write-only; `broker_fill_logger` join only — no order-path change; verified additive via mtimes):** `broker_response_time` (OpenedDateTime), `market_price_ref_at_submit` (broker `PriceUsedForBuyingPower` — proxy **validated 6/08**: weekend value 7429.5 sat within ~0.4% of MES Fri close 7400.5 / Mon 7456; trustworthy as a near-submission reference, live-tick confirmation comes from today's rejects), `submit_time` + `signal_trigger_px` (join from `fill_quality` by order_id). 19-col schema; file migrated; ORB auto-loads 6/08; H5 picks up on next restart.
+- **Deferred (would touch order path):** true NBBO `market_price_at_submit`; distinct `signal_time` (≈ submit_time).
+- **Monday harness ready:** `tradestation-bot/p0_verify_harness.py` (measure-only). `--live` = `historicalorders` API (independent FILLS ref; **excludes rejects**); `--export <csv>` = TS executed-orders download (reject-inclusive). Validated end-to-end on real 6/05 data.
+- `intended_price` = STOP for ORB stop-limit — **verified** (unit-tested 66.95 vs limit 66.98).
+
+## §3 Phantom-fill bug — contained but ARMED
+
+- `fill_quality` writes `status="FILLED"` + placeholder `fill_px` at submit (`orb_orders.py:152,308`; `h5_orders.py:143`). Not truth.
+- Audit (6/07): `slippage_recalibrator` reads it as truth but has never run + output unused; advisor reads `trade_journal`, not `fill_quality`; `slippage_tracker` uses real fills. **No live decision currently poisoned.** Containment: do NOT run `slippage_recalibrator` until fills are real.
+
+## §4 Sequencing (decided)
+
+P0 verify (post-close harness) → **measure** (time-weighted utilization; idle-capital by cause; per-side & per-reject attribution) → **diagnose rejects** (`H-REJECT-STOPSIDE-01`, diagnostic only) → **fix the leak** (Stage-5, pre-registered, only if a fixable construction/timing fault; **gated on OPS-3 git so it's reversible**) → **decide if a replacement queue is needed** (dry-run, gated on fill-selection-bias) → **rotation** (gated on `H-SCORE-RANK-01`). $400k deployment amplifies a negative edge — gated on proven positive expectancy.
+- **Post-P0 item:** the advisor has **no real fill prices for the live strategies** — it reads `trade_journal`, which only gets `BROKER_FILL` rows from the dormant `bot_loop` (the runners use `log_new_terminal_orders`, which does not mirror to the journal). Once broker-truth fills exist, **repoint the advisor at `broker_orders_unified.csv`**.
+- **Gated / out of scope now:** utilization engine, replacement queue, rotation, fixing invalid-stop, fixing `fill_quality` writes (contain not fix), any sizing/entry/exit/veto/news/VWAP change.
+
+## §5 Pre-registered hypotheses (descriptive first; tiny samples)
+
+`H-REJECT-STOPSIDE-01` (invalid-stop timing race / fill-selection bias; diagnostic only); `H-ORB-OUTLIER-01`; `H-ORB-LONG-ONLY-01` (after costs); `H-VWAP-CONFIRM-01` (log-only); `H-VIX-ORB-01 / H-NR4-*` (descriptive only, no broad regime battery); **H5 signal integrity + session/window discipline** (6/05 08:15 pre-market + weekend "session closed" submissions → audit, don't hot-fix); `H-SCORE-RANK-01` (gates rotation); `H-RECYCLE-01`.
+
+## §6 Latest verified results
+
+- **2026-06-05:** 20 ORB candidates → 8 filled / 8 rejected / 4 untriggered; ORB −$107.81 (longs −$190.91, shorts +$83.10); H5/MES +$492.15 (one EOD-held short); day +$384, −$111 ex-outlier. 5/8 entries triggered far too late (no entry cutoff). Protective stops are Market, slipped 3–9¢.
+- **6/05 untriggered-order counterfactual (verified 6/08 from TS minute bars):** all 4 buy-stops were **DODGED BULLETS, no fill-bug** — none crossed its trigger, all closed below it. APP (trig 595.30, high 588.49, close 557.11), UNH (404.24 / 402.96 / 399.70), PNR (73.91 / 73.74 / 73.17), HUM (352.05 / 350.97 / 349.64). The buy-stop mechanism correctly avoided 4 would-be losers.
+
+## §7 Risk config (verified, SIM) + inconsistencies
+
+`DAILY_MAX_LOSS` intentionally **SIM-disabled** (=$1e9). MAX_LOSS_PER_TRADE $750 (benchmarked to the old $2k daily cap); STRATEGY_MAX_LOSS $500/strategy/day; ACCOUNT_DD_KILL 5%; STRATEGY_DD_KILL 10%; MAX_TRADES_PER_DAY 30; MAX_LEVERAGE 4.0; ORB sizes off intended LIVE $100k base; ORB v1.6 stop-limit, 5 bps collar, parallel scan.
+
+- **CONFIRMED inconsistency:** MAX_LOSS_PER_TRADE ($750) **exceeds** STRATEGY_MAX_LOSS ($500/day) — a single trade can lose more than its strategy's whole daily cap. Different scopes (per-trade vs per-strategy-day) do NOT resolve it because the per-trade cap is the larger of the two. Also unconfirmed whether STRATEGY_MAX_LOSS is wired into enforcement. **Resolve before live.**
+
+## Go-Live Safety Checklist (disarmed brakes — fix BEFORE any live capital)
+
+1. **DAILY_MAX_LOSS is OFF in SIM** (=$1e9). Restore **$2,000** AND harden to a **real-time intraday clamp** (today it's scan-time only for ORB; H5 never used it).
+2. **ACCOUNT_DD_KILL measures against the wrong base.** It computes 5% off the account-equity HWM (`hwm_account.json` ≈ $1,000,651, the SIM balance) → trips at **~$50k**, ~10× looser than the intended ~$5k (5% of the $100k real base). **Re-base to the $100k real-capital base before live.** (Same question applies to STRATEGY_DD_KILL.)
+3. **MAX_LOSS_PER_TRADE $750 > STRATEGY_MAX_LOSS $500** (see §7) — reconcile + confirm enforcement.
+4. **Live code under version control (OPS-3)** — prerequisite before the first behavior change so fixes are reversible.
+
+## §8 Open ops items
+
+| # | Item | Impact |
 |---|---|---|
-| **OBS** | **Observation period** — watch the post-fix-sprint bot for 5+ clean trading days before any tuning or architectural work. | IN PROGRESS (started May 19) |
+| OPS-1 | `Volume Capture` task `LastResult=2`; `data/universe/volume_history.json` stale since 5/29 | Advisory ADV filter only; ORB unaffected (uses its own `orb_or_vol_state.json`, fresh 6/05). Fix the task. |
+| OPS-2 | CSHV `scheduled_task_last_run_recent` WARN is a false positive (checks disabled legacy `AlphaQuantBot`, not the active supervisor) | Noisy WARN can mask a real one. Repoint. |
+| **OPS-3** | **Live code not under git (`C:\AlphaQuant`)** | **ELEVATED: prerequisite before the first trading-behavior change — the reject fix must be reversible.** |
+| OPS-4 | V1 `src/main.py` dashboards stale since 5/11 (pipeline dormant) | The operational `run_advisor.py` loop is the live one. |
 
-**OBSERVATION — what to watch, re-verify each trading day:**
-- **Journal noise** should drop hard — from ~30k rows/day to ~1–3k/day — confirming the RTH-silence gate works. Count rows in `trade_journal.csv` per day.
-- **Advisor reasoning** should come from clean data (memory wiped May 19, hardcoded baseline removed from the prompt). Watch `advisor_run_log.jsonl` and `advisor_memory.json` rebuild.
-- **RECOMMEND_HALT behavior** — when the advisor emits `BLOCK_ALL_NEW_ENTRIES`, the bot should log `RECOMMENDED_HALT_NOT_HONORED` and keep trading, not block. Check `advisor_filter_engine.log`.
-- **Reconciliation** — `python daily_reconciliation.py --date YYYY-MM-DD` should match broker truth.
-- **Watchdog** — no new "Heartbeat stale" events in `watchdog_supervisor.log`.
+## §9 Maintenance
 
----
-
-## §2 Recent decisions (most recent first; full detail in `CHANGELOG.md`)
-
-- **May 21, 2026, ~8:10 PM ET — Supervisor guardian added; "who watches the watchdog" gap closed.** Today's incident exposed it: the supervisor died and nothing restarted it. New `tradestation-bot/supervisor_guardian.py` + Windows Scheduled Task `AlphaQuant Supervisor Guardian` (every 2 min): if `watchdog_supervisor.py` is not running, the guardian kills any orphaned `run_bot` and relaunches the supervisor, firing a CRITICAL alert. If the process scan fails it does nothing (never acts on uncertainty). Task Scheduler — the OS — runs the guardian, so the watch chain now terminates at the OS and does not recurse infinitely. **Verified end-to-end:** killed the supervisor + run_bot; the guardian detected it and restored both within seconds. Watch chain: child scripts ← `run_bot` ← `watchdog_supervisor` ← `supervisor_guardian` ← OS Task Scheduler. Follow-up: fold the guardian task into `setup_autostart.py` so a future re-install keeps it.
-- **May 21, 2026, 7:47 PM ET — Freeze fix + remaining PROP-SAFETY-002 bits DEPLOYED.** The supervisor was found dead — `run_bot` had been orphaned/unsupervised since ~4:04 PM ET (killed externally; no crash log). Restarted via the `AlphaQuant Bot Supervisor` scheduled task with the market closed and the account flat: new supervisor PID 5088 → new `run_bot` PID 9852, heartbeat now writing to `%LOCALAPPDATA%\AlphaQuant\bot_heartbeat.json` (verified fresh). Now live: watchdog debounce (3 consecutive stale reads) + exception logging, atomic/local heartbeat write, supervisor EOD window 3:50–4:20 PM, `run_bot` startup stale-order sweep. The whole PROP-SAFETY-001/002 + freeze-fix stack is now fully deployed.
-- **May 21, 2026 — Recurring bot "freeze" root-caused as a FALSE POSITIVE; watchdog fixed.** The ~daily "Heartbeat stale — force restarting" events (May 16–21) were not real freezes. `bot_heartbeat.json` lived in the OneDrive-synced tree; OneDrive transiently locks synced files, so the watchdog's heartbeat read intermittently failed and it force-restarted a healthy bot — with no debounce (one failed read = instant kill). Proof: the "never written" signature means an *unreadable* file, not a stale-but-readable one (a real freeze leaves a readable file with an old timestamp). Today's noon event killed the bot mid-advisor-run, causing a duplicate midday advisor run (wasted Claude call). **Fix implemented + tested** (deploys on next supervisor restart): heartbeat moved out of OneDrive to `%LOCALAPPDATA%\AlphaQuant\bot_heartbeat.json` (`project_paths.HEARTBEAT_PATH`); `run_bot._write_heartbeat` writes atomically (temp + `os.replace`); `watchdog_supervisor` requires 3 consecutive stale reads before restart and now logs the real exception. Files: `project_paths.py`, `run_bot.py`, `watchdog_supervisor.py`, `bot_monitor.py`.
-- **May 21, 2026 — PROP-SAFETY-001/002 went live and worked on real positions.** First live day: the EOD flatten closed both open positions (IWM, MCD) in ~2 seconds each at 3:50 PM ET (marketable DAY limit, attempt 1); all 35 intraday exits filled; account confirmed flat. The May 20 GOOGL failure mode did not recur. The advisor→bot universe channel (PROP-UNIVERSE-001) fell back cleanly to CORE_UNIVERSE while `advisor_universe_latest.json` was absent, then went active. A supervisor restart is still pending to deploy the remaining PROP-SAFETY-002 bits (supervisor EOD window 3:50–4:20, `run_bot` startup stale-order sweep) — the same restart deploys the freeze fix above.
-- **May 21, 2026 — PROP-SAFETY-001/002 approved and implemented (dry-run tested).** Rhett approved both parts for implementation (recorded in `config/manual_approvals.yaml`). Implemented: new shared module `exit_orders.py` (`flatten_symbol` — marketable limit orders, DAY/GTC+ by clock, cancel-and-verify, poll-for-fill, adapt-on-reject, single-instance lock); `market_hours.py` (entry cutoff + forced flatten moved to 3:50 PM ET); `eod_watchdog.py` rewritten to use the helper + lock; `exit_bot_v2.py` exits routed through the helper, stuck-position skip blocks removed; `run_bot.py` startup sweep of stale prior-day orders; `watchdog_supervisor.py` EOD safety window widened to 3:50–4:20 PM. Tested: syntax, imports, unit tests, EOD dry-run self-test, simulated close-window run, and a live SIM order-format probe — all pass. The probe found the TradeStation API **rejects the literal `GTC+`** (`400 Invalid duration`); the correct submit code is **`GCP`** (Good-til-Cancelled Plus extended hours, which the order feed displays back as `GTC+` — matching Rhett's May 20 manual order). `exit_orders.py` corrected to emit `GCP`. **Still unverified:** the full submit→fill path with a real open position (account is flat) — covered by the proposal's controlled-SIM-rehearsal step. **Deployment note:** `run_bot.py` relaunches the child scripts each cycle from disk, so the exit/EOD changes go live at the next market open with no restart; the `run_bot.py`/`watchdog_supervisor.py` changes need a process restart to activate.
-- **May 21, 2026 — EOD flatten failed on May 20; safety-fix proposal written (observation day 1 finding).** A GOOGL long (63 sh) was never closed by any automated path on May 20. The EOD watchdog submitted 83 sell orders 3:56–4:18 PM ET; TradeStation rejected **all 83** — 66 for `No Day orders after 4:00PM Eastern` (the watchdog builds every order as `Duration: DAY`; a market order is DAY-bound and rejected after 4:00 PM), the rest `EC703` (stale working order, never cancelled). The journal logged each rejection as `HTTP 200` because the watchdog never checks order status. Position was closed only by Rhett's **manual `GTC+` limit order at 4:18 PM ET** — not held overnight, but the automated safety net failed 100%. Verified from the `historicalorders` API (BROKER_TRUTH). Fix proposal: `ai-trading-strategy-agent/outputs/proposals/PROP-SAFETY-eod-and-exit-fix.md` — see §3. This is a safety fix and supersedes the observation hold.
-- **May 20, 2026 — Advisor truncation bug found + fixed (observation day 1).** The May 20 08:05 advisor run hit *exactly* 2048 output tokens, truncating the response mid-JSON; `response_parser.py` rejected it (`parse_errors: 1`) and the advisor fell back to `NO_CONTROLS` / "Unable to parse advisor response" / `data_quality: POOR` — i.e. the advisor produced no real guidance that run. Bot unaffected (the `NO_CONTROLS` fail-safe = trade normally). Root cause: `MAX_TOKENS = 2048` in `claude_client.py:15`; the operational loop calls `call_claude()` with no explicit override. Fixed → `4096` (commit `1f19087`, `alpha-quant` repo). First parse failure in 45 logged runs. **Not a billing/funding issue** — the API call succeeded and returned a full 2048-token response; it was a config ceiling. This is exactly the kind of plumbing fault the observation period exists to catch.
-- **May 20, 2026 — GIT open item CLOSED.** Bot + advisor code now under git. One repo (rooted at `Trade station Main`, captures both project folders + root docs/launchers) — chosen over two repos because cross-cutting changes like the fix sprint touch both halves and the bot↔advisor relative-path coupling means they ship as a unit. Git directory lives at `C:\repos\trade-station-main-git\` **outside OneDrive**, with `core.worktree` pointed into the OneDrive tree, so OneDrive never syncs git internals and there is **zero `.git` artifact inside OneDrive**. Initial commit `98620d9` = post-fix-sprint baseline, 303 files. `.gitignore` excludes secrets (`.env`, `token_cache*.json`), logs, journals (`trade_journal*.csv`), per-machine state, and runtime outputs. No pre-sprint history is recoverable. Pushed to a **private** GitHub remote: `github.com/Rhettduleba/alpha-quant` (pairs with `alpha-quant-coordination`).
-- **May 19, 2026 — FIX SPRINT COMPLETE** (Rhett-approved, 7 steps): halted trading; added RTH-silence gate to `bot_loop.py` + `short_bot.py`; removed hardcoded wrong baseline from `prompt_builder.py:62-63`; archived + wiped `advisor_memory.json`; downgraded `BLOCK_ALL_NEW_ENTRIES` to a RECOMMEND_HALT semantic in `advisor_filter_engine.py`; implemented V5 `until=` pagination in `daily_reconciliation.py`; restarted trading. Full 7-step detail in `CHANGELOG.md`. **These bot/advisor code changes are NOT in git** — the GIT open item exists to fix that.
-- **May 19, 2026 — V5 authoritative baseline:** 22-day broker truth = 1,194 fills, 593 closed pairs, **$-2,282.41 net, $-3.85/pair**. Supersedes the disproven SOR v1.7 "$-37,614 / 540-trade" baseline (overstated by ~$35k). Per-day detail in `V5_BROKER_TRUTH_BASELINE.json`.
-- **May 19, 2026 — Profitability strategy drafted** — a five-wave plan (trade-quality filters → regime-aware promotion controls → richer advisor info → dynamic universe → re-fit scoring from clean data). Implementation deferred until the observation period confirms plumbing is stable. Doc currently held by Rhett; not yet in this repo.
-- **May 19, 2026 — Browser-Claude coordination flagged unreliable.** Browser Claude's fetch tool returned fictional file content (claimed STATE.md was "v1.4" with sections that do not exist) and then accused Claude Code of confabulation. Verified false three independent ways — `git ls-remote`, GitHub branches API, raw fetch — all confirm `main` at the correct commit and STATE at v2.6/v2.7. Recommendation: only use a *fresh* browser-Claude session with content *pasted in* (never ask it to fetch); use the second AI for judgment questions, not facts.
-- **May 19, 2026 — SYSTEM_REVIEW_PLAN v1.1** exists in this repo. Largely overtaken by the fix sprint, which shipped the high-priority fixes directly. Treat the formal R1–R8 investigation as optional — revisit only if the observation period surfaces a problem.
-- **May 19, 2026 — Architectural-tweaks queue** (8 items: one-way-valve advisor, criteria-based universe, etc.) parked in Claude Code memory. Do NOT action during the observation period.
-
----
-
-## §3 Active proposals
-
-| Proposal | File | Status |
-|---|---|---|
-| **PROP-SAFETY-001** — Exit strategy: exits use marketable limit orders + fill verification. | `ai-trading-strategy-agent/outputs/proposals/PROP-SAFETY-eod-and-exit-fix.md` | APPROVED — IMPLEMENTED, dry-run tested |
-| **PROP-SAFETY-002** — EOD flatten rebuilt: 3:50 PM start, marketable limits, `GTC+` after 4:00 PM, adapt-on-reject, cancel-and-verify, single-owner, honest confirmation. | (same file) | APPROVED — IMPLEMENTED, dry-run tested |
-| **PROP-SAFETY-003** — SSR (Reg SHO Rule 201) handling for short entries: detect short-sale-restricted symbols and skip them, falling through to the next-best candidate. | `ai-trading-strategy-agent/outputs/proposals/PROP-SAFETY-003-ssr-short-entry.md` | PENDING_HUMAN_REVIEW — parked until observation period closes |
-
-PROP-SAFETY-001/002 arise from the May 20 EOD flatten failure. Approved + implemented May 21 (§2). The after-4:00 PM extended-hours order code (`GCP`) was verified live on SIM May 21. Remaining: a controlled SIM rehearsal of the full submit→fill path with a real position, then a multi-day SIM observation of clean closes.
-
-PROP-SAFETY-003 is a *preventive* gap from the May 21 short-vs-long robustness review — the short bot prices `SELLSHORT` limits at `last − $0.10` (hits the bid) with no SSR awareness, so the order can't execute on Rule-201-restricted names. Code-verified gap; live impact unobserved (SIM likely does not enforce Rule 201). Not an emergency — does **not** supersede the observation hold; expected to sit `deferred` until observation closes and live-readiness work begins.
-
----
-
-## §4 Current bot / advisor state — SNAPSHOT, re-verify at next session start
-
-This is a snapshot from the May 19 fix sprint. **A new session MUST re-read the live files for current state — do not trust these numbers as current.**
-
-Last verified (May 19, ~1:14 PM ET):
-- Bot PID 2360, alive, trading. First post-fix-sprint broker fill landed 1:13:59 PM ET.
-- RTH-silence gate is live in code — bot goes silent outside ~9:30 AM–4:00 PM ET.
-- `BLOCK_ALL_NEW_ENTRIES` patched — advisor may still emit it; bot logs `RECOMMENDED_HALT_NOT_HONORED` and keeps trading.
-- `advisor_memory.json` wiped May 19 1:10 PM ET; rebuilding (1 clean run logged as of May 19 EOD).
-
-**To get current state, read:** `tradestation-bot/bot_heartbeat.json`, `tradestation-bot/advisor_filter_engine.log` (tail), `tradestation-bot/watchdog_supervisor.log` (tail), `ai-trading-strategy-agent/outputs/advisor_guidance/advisor_control_latest.json`.
-
----
-
-## §5 How to maintain this file
-
-- Edit on state change; append a dated line to `CHANGELOG.md`.
-- Roll §2 entries older than 7 days into `CHANGELOG.md`.
-- Bump the version on every edit.
-- Keep it slim. Architecture, risk floors, control vocabulary, SIM guards, working rules → `CLAUDE.md`, not here.
-- C1 (`AQ_EVALUATION_STANDARDS_C1.md`) is fetched only when evaluating a proposal.
+Edit on state change; append a dated line to `CHANGELOG.md`; roll >7-day entries into `CHANGELOG.md`; bump version every edit. Keep architecture/risk-floors/control-vocabulary in `CLAUDE.md`, not here.
