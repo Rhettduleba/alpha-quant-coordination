@@ -1,10 +1,10 @@
 # Alpha Quant — State of Record
 
-**Version:** 3.8
-**Last updated:** June 8, 2026
+**Version:** 3.9
+**Last updated:** June 11, 2026
 **Owner:** Rhett
 **Scope:** Current operational state, open items, recent decisions. Stable rules/architecture live in the `CLAUDE.md` files. Historical detail lives in `CHANGELOG.md`.
-**Supersedes:** v3.7 (May 21) — which predated the 5/26 megabuild, ORB v1.6, H5, the `C:\AlphaQuant` migration, and P0, and nearly misled a loop. Rebuilt from Claude-Code-verified live facts (2026-06-07/08).
+**Supersedes:** v3.8 (June 8) — predated the candle-close exit deploy, the mover scanner, `falsification_gauntlet`, the H5 quarantine, and ORB multi-scan. Updated from Claude-Code-verified live facts (Loops #16–24, 2026-06-10/11). See the `Current snapshot` section below.
 
 ---
 
@@ -15,12 +15,42 @@
 3. **Surface conflicts, don't silently resolve them.** Flag to Rhett.
 4. **No process actions without approval.** Restart bot, kill PID, deploy, edit risk config → propose first.
 5. **Push back honestly.** Don't soften objections; don't fake disagreement either. Stress-test external-AI input, don't process it as a to-do list.
-6. **End every report with "What I did NOT verify."**
+6. **HARDENED 2026-06-10 (Rhett, overrides the old rule): NEVER output a "What I did NOT verify" section.** Verify everything reachable — pull the real number, don't estimate. The only residual is a fact that physically cannot exist yet (a future live session); state it as a next action, not a hedge-list.
 7. **One question per turn to Rhett.**
 8. **User-facing times: 12-hour clock + AM/PM ET.**
 9. **Measure ≠ fix. Plumbing freeze:** zero trading-behavior change unless a task explicitly authorizes it (write-only logging is allowed; order logic is not).
 10. **Broker truth > internal logs.** Cite the highest evidence source; don't infer a cause from a pattern.
 11. **Copiable handoffs.** Replies destined for Planning Claude / other AIs are rendered as a full copy-paste markdown block.
+
+---
+
+## Current snapshot (verified 2026-06-11, pre-open)
+
+**Architecture — the 3-AI loop:** Rhett relays numbered handoffs between *Planning Claude* (the browser/app strategist) and *Claude Code* (this VPS node — empirical, executes + verifies + replies in markdown). Claude Code's verified findings outrank either AI's reasoning. Two apps: `tradestation-bot/` (the bot — narrow, reviewable, places SIM orders) and `ai-trading-strategy-agent/` (the advisor — research/analysis). Coordination repo: `C:\repos\alpha-quant-coordination` (this file = source of truth). Live root: `C:\AlphaQuant` (OneDrive = backup-only).
+
+**Accounts:**
+| Account | Type | Status |
+|---|---|---|
+| SIM1623888M | equities (Margin) | **ACTIVE** — ORB lives here |
+| SIM1623889F | futures | **DISABLED** — H5 quarantined via `h5_disabled.flag`; flat |
+| SIM1623890X | Forex | **CLOSED** |
+- Mover scanner has **no dedicated account** — the separate-account path is abandoned (no spare equities account exists; `mover_trader.py` stays INERT until one is created).
+
+**Strategies & status:**
+- **ORB** (`orb_runner.py`, 888M) — **LIVE**. 09:35 opening-range breakout, RelVol-ranked. Candle-close exit **deployed** (`d3f7e05`). Multi-scan (hourly re-arm) **built, flag OFF, deploy pending after close** (Loop #23).
+- **Mover scanner** (`mover_scanner.py`) — **SHADOW/LOG-ONLY**, hourly scheduled task. De-biased RelVol. Places no orders.
+- **H5** (`run_h5.py`, 889F) — **QUARANTINED** (flag present), flat. Known bug: EOD flatten sets `eod_flattened` on submit-not-fill (fix owed before re-enable).
+
+**Active flags (what ON vs OFF does):**
+| Flag | Value | Meaning |
+|---|---|---|
+| `ORB_EXIT_MODE` (risk_config) | `candle_close` | `candle_close` = 0.15×ATR Phase-1 → confirm → first-opposite-1min-candle close → 1.0×ATR catastrophe. `legacy` = old 0.10×ATR tick stop (instant rollback). |
+| `ORB_MULTISCAN` (risk_config) | `False` | `True` = re-arm at 10:35/11:35/12:35/13:35/14:35 (`ORB_SCAN_WINDOWS`), tagged by window. `False` = once-a-day 09:35 ORB only. |
+| `MOVER_LIVE` (mover_trader) | `False` | `True` = scanner places live-SIM orders (needs an account). `False` = dry-run/log. |
+| `MOVER_TRADE_ACCOUNT` | `""` (unset) | The SIM equities account for the scanner. Unset = mover_trader places nothing. |
+| `h5_disabled.flag` (file) | present | Present = H5 places no new entries. Delete to re-enable. |
+
+**Detail (bug log, key findings, open items, onboarding):** see `ONBOARDING_AND_FINDINGS.md` in this repo.
 
 ---
 
