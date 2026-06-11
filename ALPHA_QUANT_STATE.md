@@ -52,6 +52,15 @@
 
 **Detail (bug log, key findings, open items, onboarding):** see `ONBOARDING_AND_FINDINGS.md` in this repo.
 
+**Primary trade-truth dashboard build (started 2026-06-11).** New money-first surface on the existing server (`127.0.0.1:8765`); the advisor command-center is now a **sidecar** (not rebuilt). Broker-truth sourced (`broker_orders_unified.csv`). Slices:
+- **Slice 1 — Truth gate + Verdict header** — ✅ BUILT (`/truth`, commit `79787dc`). Layer 0 data-source/connection/degraded guard + Layer 1 money-first verdict (net/expectancy-R-$/win/PF/cost%/util, each with N; long-vs-short + pre-vs-post-6/10 splits; R = entry→0.15×ATR, catastrophe flagged). Gates: G0 closed (source path), G1 (phantom 6/10 = 0 trades vs broker 11/+$50 — journal misses trades entirely), G2 (`intended_price` from 6/08+, 94%; unified log 6/06→6/11; no R/slippage before 6/08).
+- **Slice 2 — Per-trade trade table** (Layer 3) — QUEUED.
+- **Slice 3 — Live open-positions panel** (Layer 2) — QUEUED.
+- **Slice 4 — TradingView per-trade charts** (Layer 4) — QUEUED (chart engine already built: `trade_charts.py`).
+- **Slice 5 — Historical / edge breakdowns** (Layer 5) — QUEUED.
+- **Slice 6 — Advisor cross-over** (regime tag, watchlist, action flags, collapsed daily narrative from the sidecar) — QUEUED.
+Existing daily-review build (broker-truth analytics + charts + LLM narrative) lives at `/daily-review-v2`; it feeds Slices 3–5.
+
 ---
 
 ## §0 Environment (verified 2026-06-08)
