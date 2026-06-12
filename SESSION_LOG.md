@@ -99,6 +99,13 @@ Two cooperating Python systems, SIM-only equity/futures trading on TradeStation:
 
 ### 2026-06-11 — Session: capital deploy + full dashboard scrub
 
+**Turn — make SESSION_LOG all-encompassing + off-machine backup.**
+- Rhett: is SESSION_LOG the single best file? merge in anything missing; create a repo Claude can read; back up the readme there; keep all three copies synced every turn.
+- Answer: it was the best *operational* log but not all-encompassing. Enriched it with: **Canonical Docs Map**, **Architecture in Brief**, and a **Standing Decisions** log (scope / strategy-risk / working-style — the complete decision history + a place to append every change going forward).
+- The "repo Claude can read" **already existed**: `github.com/Rhettduleba/alpha-quant-coordination`. Used it (no new repo). Copied SESSION_LOG.md in + pointed the repo README at it. Pushed (`337a540`).
+- **Security:** flagged the repo was PUBLIC (strategy params + SIM account IDs + P&L exposed). Rhett chose private → flipped it to **PRIVATE** via the GitHub API using the cached git credential; verified (unauth API now 404).
+- Sync rule updated in memory: 3 copies (canonical `C:\AlphaQuant\SESSION_LOG.md`, desktop link, repo mirror) kept current every turn.
+
 **Turn — per-trade chat box.**
 - Rhett: add a chat box under each trade's narrative so we can talk about that trade.
 - Built **`src/advisor/trade_chat.py`** — `answer_trade_question(trade, day, message, history)` calls Claude with the trade's full broker-truth analytics + ALPHA_QUANT_STATE.md context; analyses the past only, no trading calls.
