@@ -1,8 +1,11 @@
 # Alpha Quant — SESSION LOG & CRASH-RECOVERY HANDOFF
 
-> **LAST UPDATED BY:** Claude Code (VPS) · **2026-06-12 ~12:40 AM ET** · turn: repo made PUBLIC (Rhett's informed call) so the app Claude can read it by URL
+> **LAST UPDATED BY:** Claude Code (VPS) · **2026-06-12 ~12:50 AM ET** · turn: cache-busting URL + app handoff
 >
-> **APP CLAUDE: read this file at** `https://raw.githubusercontent.com/Rhettduleba/alpha-quant-coordination/main/SESSION_LOG.md` — the repo is PUBLIC, no connector needed. Fetch that URL at the start of every turn.
+> **APP CLAUDE — read this file every turn.** Repo is PUBLIC, no connector needed.
+> • Home URL (can be up to 5 min stale): `https://raw.githubusercontent.com/Rhettduleba/alpha-quant-coordination/main/SESSION_LOG.md`
+> • ALWAYS-FRESH: Rhett pastes a commit-pinned URL each turn that looks like `…/<40-char-commit-sha>/SESSION_LOG.md` — that one can never be stale. Prefer it.
+> • Confirm you have the latest by checking THIS stamp's timestamp before you answer.
 > *(Every editor updates this line first. To see who's fresh: read this stamp or run `git log` in the coordination repo.)*
 
 **This is the file that holds a running record of everything we do, turn by turn.**
