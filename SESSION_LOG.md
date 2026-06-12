@@ -1,6 +1,6 @@
 # Alpha Quant — SESSION LOG & CRASH-RECOVERY HANDOFF
 
-> **LAST UPDATED BY:** Claude Code (VPS) · **2026-06-12 ~12:05 AM ET** · turn: handoff to planning Claude + connector setup
+> **LAST UPDATED BY:** Claude Code (VPS) · **2026-06-12 ~12:30 AM ET** · turn: re-entry/exit handoff — 2 investigations resolved + 2 bug fixes
 > *(Every editor updates this line first. To see who's fresh: read this stamp or run `git log` in the coordination repo.)*
 
 **This is the file that holds a running record of everything we do, turn by turn.**
@@ -120,6 +120,13 @@ Two cooperating Python systems, SIM-only equity/futures trading on TradeStation:
 ## SESSION LOG  (newest first)
 
 ### 2026-06-11 — Session: capital deploy + full dashboard scrub
+
+**Turn — re-entry/exit handoff from Planning Claude (2 changes + 2 investigations).**
+- **Inv 1 (SMCI mechanism) RESOLVED:** SMCI = 9:35-armed breakout DAY stop (opened 9:36 ET, filled 12:48 ET, 663@30.14), rested ~3h. NOT multi-scan — `ORB_MULTISCAN` turned ON 5:26 PM 6/11 (after close), OFF all trading day. Narrative invented windows from fill hour; fixed `trade_analytics` to attribute 0935. New open Q: ORB entries are DAY orders with no intraday entry cutoff.
+- **Inv 2 (MFE bug) FIXED:** MFE from 1-min bar highs fell below realized when exit filled above max bar high (SMCI +391<+411). Floored excursion by exit fill → MFE≥realized. Re-reviewed SMCI: MFE 411.06=realized, left-in-trade 0; real leak was $795.60 AFTER exit. Commit (analytics fix) + dashboard restarted.
+- **Change 1 (re-entry):** no explicit "already-traded" exclusion existed; multi-scan re-arm already allows flat re-qualifying names (one-active-position-per-name guard only). Remaining = Nth-occurrence tagging (post-hoc from broker truth) + per-Nth post-cost expectancy. SIM.
+- **Change 2 (exit redesign):** QUEUED for A/B, not default. Real 0.15×ATR intra-bar stop already exists (SMCI 29.62 UROUT proof); new = +1R scale-out + profit-adaptive ATR trail + drop candle-close + keep hard stop through trail phase. A/B behind flag, segmented green/red/flat, then gauntlet.
+- Replied to Planning Claude (markdown). Updated ALPHA_QUANT_STATE.md §2. Named 5 follow-up build tasks.
 
 **Turn — handoff to planning Claude.**
 - Rhett: write a handoff to the app Claude explaining the setup, tell him to review this file before every turn (closes the gap), and have him walk Rhett through the GitHub connector.
