@@ -1,6 +1,6 @@
 # Alpha Quant — SESSION LOG & CRASH-RECOVERY HANDOFF
 
-> **LAST UPDATED BY:** Claude Code (VPS) · **2026-06-12 ~10:15 AM ET** · turn: home top row restructure (4 symmetric cards, real green, bot-config value)
+> **LAST UPDATED BY:** Claude Code (VPS) · **2026-06-12 ~10:35 AM ET** · turn: Market&activity card — stack 3 cards vertically, fill height
 >
 > **APP CLAUDE — read this file every turn.** Repo is PUBLIC, no connector needed.
 > • Home URL (can be up to 5 min stale): `https://raw.githubusercontent.com/Rhettduleba/alpha-quant-coordination/main/SESSION_LOG.md`
@@ -127,6 +127,9 @@ Two cooperating Python systems, SIM-only equity/futures trading on TradeStation:
 ## SESSION LOG  (newest first)
 
 ### 2026-06-12 — Session: dashboard UX + coordination + strategy handoff
+
+**Turn — Market&activity card layout fix.**
+- The 3 mini-cards were side-by-side with dead space (base .bn-cells repeat(4,1fr) overrode my rule). Used higher-specificity .status-group-card .bn-cells (flex column, flex:1 cells) to stack them vertically and split the card height evenly. Also fixed a format-string break ('1fr' in single braces in a CSS comment crashed server startup).
 
 **Turn — home top row restructure.**
 - Dropped the top status-strip BOT tile (home); folded MARKET/ADVISOR/TRADES into a grouped 'Market & activity' card as row slot 3; Review far right; 4 equal symmetric columns. Fixed .health-green (was light-blue #bdd4ea -> real green) + red/yellow. Bot Health card now shows a config value block (account/exit/re-arm+next window/deploy target) so no dead space. Other pages keep the full banner.
