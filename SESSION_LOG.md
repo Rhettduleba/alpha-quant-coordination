@@ -1,6 +1,6 @@
 # Alpha Quant — SESSION LOG & CRASH-RECOVERY HANDOFF
 
-> **LAST UPDATED BY:** Claude Code (VPS) · **2026-06-12 ~12:50 AM ET** · turn: cache-busting URL + app handoff
+> **LAST UPDATED BY:** Claude Code (VPS) · **2026-06-12 ~9:50 AM ET** · turn: home status row — Bot Health first + live/green
 >
 > **APP CLAUDE — read this file every turn.** Repo is PUBLIC, no connector needed.
 > • Home URL (can be up to 5 min stale): `https://raw.githubusercontent.com/Rhettduleba/alpha-quant-coordination/main/SESSION_LOG.md`
