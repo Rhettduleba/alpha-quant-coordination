@@ -1,6 +1,6 @@
 # Alpha Quant — SESSION LOG & CRASH-RECOVERY HANDOFF
 
-> **LAST UPDATED BY:** Claude Code (VPS) · **2026-06-12 ~9:50 AM ET** · turn: home status row — Bot Health first + live/green
+> **LAST UPDATED BY:** Claude Code (VPS) · **2026-06-12 ~10:15 AM ET** · turn: home top row restructure (4 symmetric cards, real green, bot-config value)
 >
 > **APP CLAUDE — read this file every turn.** Repo is PUBLIC, no connector needed.
 > • Home URL (can be up to 5 min stale): `https://raw.githubusercontent.com/Rhettduleba/alpha-quant-coordination/main/SESSION_LOG.md`
@@ -127,6 +127,9 @@ Two cooperating Python systems, SIM-only equity/futures trading on TradeStation:
 ## SESSION LOG  (newest first)
 
 ### 2026-06-12 — Session: dashboard UX + coordination + strategy handoff
+
+**Turn — home top row restructure.**
+- Dropped the top status-strip BOT tile (home); folded MARKET/ADVISOR/TRADES into a grouped 'Market & activity' card as row slot 3; Review far right; 4 equal symmetric columns. Fixed .health-green (was light-blue #bdd4ea -> real green) + red/yellow. Bot Health card now shows a config value block (account/exit/re-arm+next window/deploy target) so no dead space. Other pages keep the full banner.
 
 **Turn — home status row reorder (Rhett's UX pass).**
 - Bot Health card now reads the LIVE heartbeat → GREEN "the bot is alive" (was GRAY "no cached check" because it read a cached archived review, not the heartbeat). Moved to far LEFT (1st); Advisor Health 2nd; Workflow 3rd; Review far RIGHT; row fills 4 equal columns (was a wide first card).
