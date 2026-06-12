@@ -1,6 +1,8 @@
 # Alpha Quant — SESSION LOG & CRASH-RECOVERY HANDOFF
 
-> **LAST UPDATED BY:** Claude Code (VPS) · **2026-06-12 ~12:30 AM ET** · turn: re-entry/exit handoff — 2 investigations resolved + 2 bug fixes
+> **LAST UPDATED BY:** Claude Code (VPS) · **2026-06-12 ~12:40 AM ET** · turn: repo made PUBLIC (Rhett's informed call) so the app Claude can read it by URL
+>
+> **APP CLAUDE: read this file at** `https://raw.githubusercontent.com/Rhettduleba/alpha-quant-coordination/main/SESSION_LOG.md` — the repo is PUBLIC, no connector needed. Fetch that URL at the start of every turn.
 > *(Every editor updates this line first. To see who's fresh: read this stamp or run `git log` in the coordination repo.)*
 
 **This is the file that holds a running record of everything we do, turn by turn.**
@@ -13,9 +15,11 @@ pinged when the other writes. Coordination is *pull-based* — each side checks 
 
 - **Claude Code (VPS, does the work):** `git pull` the coordination repo at the **start** of every turn and
   read this file before acting; write the turn entry + update the LAST UPDATED stamp + `git push` at the **end**.
-- **Claude app (planning chat):** reads this repo via the **GitHub connector** (must be enabled in claude.ai
-  settings, since the repo is private) when Rhett says "read the repo / catch up." If it has write access it
-  appends a note under "FROM PLANNING CLAUDE" below and commits; otherwise it hands Rhett a short note to drop in.
+- **Claude app (planning chat):** the repo is **PUBLIC** (Rhett's informed call 2026-06-12 — the connector
+  path wasn't working), so the app reads this file directly by URL — no connector needed:
+  `https://raw.githubusercontent.com/Rhettduleba/alpha-quant-coordination/main/SESSION_LOG.md`. Fetch it at the
+  start of every turn. To send Code something, the app gives Rhett a short note for the "FROM PLANNING CLAUDE"
+  inbox (a public repo is read-only to the app without auth; Code commits the inbox note on Rhett's relay).
 - **Who updated it & when:** the LAST UPDATED stamp at the top + `git log` (author, time, message) are the record.
 - **Rhett's role:** still the conductor — he tells each side "your turn, go read it." He no longer copies/pastes
   the content between them; the file carries it. (Two sides editing between pulls can git-conflict — keep edits in
