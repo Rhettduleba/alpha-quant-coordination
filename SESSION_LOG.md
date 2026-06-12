@@ -1,6 +1,6 @@
 # Alpha Quant — SESSION LOG & CRASH-RECOVERY HANDOFF
 
-> **LAST UPDATED BY:** Claude Code (VPS) · **2026-06-11 ~11:55 PM ET** · turn: two-Claude coordination protocol
+> **LAST UPDATED BY:** Claude Code (VPS) · **2026-06-12 ~12:05 AM ET** · turn: handoff to planning Claude + connector setup
 > *(Every editor updates this line first. To see who's fresh: read this stamp or run `git log` in the coordination repo.)*
 
 **This is the file that holds a running record of everything we do, turn by turn.**
@@ -120,6 +120,10 @@ Two cooperating Python systems, SIM-only equity/futures trading on TradeStation:
 ## SESSION LOG  (newest first)
 
 ### 2026-06-11 — Session: capital deploy + full dashboard scrub
+
+**Turn — handoff to planning Claude.**
+- Rhett: write a handoff to the app Claude explaining the setup, tell him to review this file before every turn (closes the gap), and have him walk Rhett through the GitHub connector.
+- Delivered a copy-paste handoff block: app Claude reads SESSION_LOG.md from the repo each turn (LAST UPDATED stamp + FROM PLANNING CLAUDE inbox + latest entries), writes back via the inbox, and walks Rhett one-step-at-a-time through enabling the GitHub connector + granting access to the private repo, confirming by reading the stamp. Standing instruction also lives in the "HOW THE TWO CLAUDES COORDINATE" section above.
 
 **Turn — two-Claude coordination protocol.**
 - Rhett: the point of the repo is so the app Claude can read the file each turn without him pasting — how will each Claude know the other updated it?
