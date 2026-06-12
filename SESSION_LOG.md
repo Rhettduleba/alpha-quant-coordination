@@ -126,6 +126,14 @@ Two cooperating Python systems, SIM-only equity/futures trading on TradeStation:
 
 ## SESSION LOG  (newest first)
 
+### 2026-06-12 — Session: dashboard UX + coordination + strategy handoff
+
+**Turn — home status row reorder (Rhett's UX pass).**
+- Bot Health card now reads the LIVE heartbeat → GREEN "the bot is alive" (was GRAY "no cached check" because it read a cached archived review, not the heartbeat). Moved to far LEFT (1st); Advisor Health 2nd; Workflow 3rd; Review far RIGHT; row fills 4 equal columns (was a wide first card).
+- Explained colors: Advisor YELLOW = benign POSSIBLY_STALE sync-marker drift (file metadata vs marker); not a real fault. Bot GRAY = stale-cache dependency, now fixed to live.
+- Redundant "bot is alive" indicators (top status-strip BOT tile + full bot-health section): Rhett chose to LEAVE BOTH.
+- Earlier this turn-block: made the coordination repo PUBLIC (Rhett's informed call) so the app Claude can read it by URL; cache-buster = commit-pinned raw URL; handoff block delivered to the app.
+
 ### 2026-06-11 — Session: capital deploy + full dashboard scrub
 
 **Turn — re-entry/exit handoff from Planning Claude (2 changes + 2 investigations).**
