@@ -1,7 +1,29 @@
 # Alpha Quant — SESSION LOG & CRASH-RECOVERY HANDOFF
 
+> **LAST UPDATED BY:** Claude Code (VPS) · **2026-06-11 ~11:55 PM ET** · turn: two-Claude coordination protocol
+> *(Every editor updates this line first. To see who's fresh: read this stamp or run `git log` in the coordination repo.)*
+
 **This is the file that holds a running record of everything we do, turn by turn.**
 If Claude crashes, hand a fresh instance this file (plus `CLAUDE.md`) and it can ramp up cold.
+
+## HOW THE TWO CLAUDES COORDINATE THROUGH THIS FILE
+
+This file is a **shared notebook**, not a live message bus. Neither Claude runs continuously or gets
+pinged when the other writes. Coordination is *pull-based* — each side checks the file when it's active:
+
+- **Claude Code (VPS, does the work):** `git pull` the coordination repo at the **start** of every turn and
+  read this file before acting; write the turn entry + update the LAST UPDATED stamp + `git push` at the **end**.
+- **Claude app (planning chat):** reads this repo via the **GitHub connector** (must be enabled in claude.ai
+  settings, since the repo is private) when Rhett says "read the repo / catch up." If it has write access it
+  appends a note under "FROM PLANNING CLAUDE" below and commits; otherwise it hands Rhett a short note to drop in.
+- **Who updated it & when:** the LAST UPDATED stamp at the top + `git log` (author, time, message) are the record.
+- **Rhett's role:** still the conductor — he tells each side "your turn, go read it." He no longer copies/pastes
+  the content between them; the file carries it. (Two sides editing between pulls can git-conflict — keep edits in
+  separate sections / take turns, which happens naturally since one Claude is active at a time.)
+
+### FROM PLANNING CLAUDE (app → Code inbox)
+*(The planning-chat Claude leaves notes for Claude Code here; Code reads them on its next pull. Empty = nothing pending.)*
+- _(none yet)_
 
 - **Location:** `C:\AlphaQuant\SESSION_LOG.md`
 - **Desktop shortcut:** `SESSION_LOG` on the desktop points here.
@@ -98,6 +120,10 @@ Two cooperating Python systems, SIM-only equity/futures trading on TradeStation:
 ## SESSION LOG  (newest first)
 
 ### 2026-06-11 — Session: capital deploy + full dashboard scrub
+
+**Turn — two-Claude coordination protocol.**
+- Rhett: the point of the repo is so the app Claude can read the file each turn without him pasting — how will each Claude know the other updated it?
+- Honest answer: a repo is a shared notebook, not a notification bus; coordination is pull-based (neither AI is pinged). Added a **LAST UPDATED stamp** at the top + a **"HOW THE TWO CLAUDES COORDINATE"** section + a **"FROM PLANNING CLAUDE"** inbox. Code pulls at turn start / pushes at turn end; the app reads via the GitHub connector (required since the repo is private). `git log` + the stamp = who-touched-it-last.
 
 **Turn — make SESSION_LOG all-encompassing + off-machine backup.**
 - Rhett: is SESSION_LOG the single best file? merge in anything missing; create a repo Claude can read; back up the readme there; keep all three copies synced every turn.
