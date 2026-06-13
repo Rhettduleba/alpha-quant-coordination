@@ -1,6 +1,6 @@
 # Alpha Quant — SESSION LOG & CRASH-RECOVERY HANDOFF
 
-> **LAST UPDATED BY:** Claude Code (VPS) - 2026-06-12 ~11:05 AM ET - turn: health-card buttons green (aesthetic)
+> **LAST UPDATED BY:** Claude Code (VPS) - 2026-06-12 ~11:15 AM ET - turn: green status pill (was blue)
 >
 > **APP CLAUDE — read this file every turn.** Repo is PUBLIC, no connector needed.
 > • Home URL (can be up to 5 min stale): `https://raw.githubusercontent.com/Rhettduleba/alpha-quant-coordination/main/SESSION_LOG.md`
@@ -127,6 +127,9 @@ Two cooperating Python systems, SIM-only equity/futures trading on TradeStation:
 ## SESSION LOG  (newest first)
 
 ### 2026-06-12 — Session: dashboard UX + coordination + strategy handoff
+
+**Turn — green status pill.**
+- The health-indicator GREEN badge (dot+text+bg) was styled blue (#1f5d91); fixed tone-positive to real green (#1e7a43). Yellow/red/gray tones already correct, so the pill tracks status.
 
 **Turn — health-card button color (aesthetic).**
 - Buttons in Bot Health + Advisor Health cards now match the card status color (green) instead of the default blue accent: `.health-green/.health-yellow/.health-red .link-button`. Commit `1480031`.
