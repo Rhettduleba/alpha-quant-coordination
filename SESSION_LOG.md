@@ -128,6 +128,9 @@ Two cooperating Python systems, SIM-only equity/futures trading on TradeStation:
 
 ### 2026-06-12 — Session: dashboard UX + coordination + strategy handoff
 
+**Turn — health-card button color (aesthetic).**
+- Buttons in Bot Health + Advisor Health cards now match the card status color (green) instead of the default blue accent: `.health-green/.health-yellow/.health-red .link-button`. Commit `1480031`.
+
 **Turn — advisor health always-YELLOW root-caused -> GREEN.**
 - 3 stacked false-positives: (1) sync verdict POSSIBLY_STALE on every local edit (benign on single VPS -> ALIGNED on canonical root); (2) 'expired access token' (auto-refreshes -> only missing/unreadable cache warns); (3) 'git unavailable' was a real bug — collect_git_metadata checked for .git in the advisor SUBFOLDER but the repo root is parent C:\AlphaQuant; let git walk up. Now GREEN, 0 warnings. Files: session_sync.py, advisor_health.py.
 
