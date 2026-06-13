@@ -1,6 +1,6 @@
 # Alpha Quant — SESSION LOG & CRASH-RECOVERY HANDOFF
 
-> **LAST UPDATED BY:** Claude Code (VPS) · **2026-06-12 ~10:35 AM ET** · turn: Market&activity card — stack 3 cards vertically, fill height
+> **LAST UPDATED BY:** Claude Code (VPS) · **2026-06-12 ~10:55 AM ET** · turn: advisor health YELLOW->GREEN (3 false-positives fixed)
 >
 > **APP CLAUDE — read this file every turn.** Repo is PUBLIC, no connector needed.
 > • Home URL (can be up to 5 min stale): `https://raw.githubusercontent.com/Rhettduleba/alpha-quant-coordination/main/SESSION_LOG.md`
@@ -127,6 +127,9 @@ Two cooperating Python systems, SIM-only equity/futures trading on TradeStation:
 ## SESSION LOG  (newest first)
 
 ### 2026-06-12 — Session: dashboard UX + coordination + strategy handoff
+
+**Turn — advisor health always-YELLOW root-caused -> GREEN.**
+- 3 stacked false-positives: (1) sync verdict POSSIBLY_STALE on every local edit (benign on single VPS -> ALIGNED on canonical root); (2) 'expired access token' (auto-refreshes -> only missing/unreadable cache warns); (3) 'git unavailable' was a real bug — collect_git_metadata checked for .git in the advisor SUBFOLDER but the repo root is parent C:\AlphaQuant; let git walk up. Now GREEN, 0 warnings. Files: session_sync.py, advisor_health.py.
 
 **Turn — Market&activity card layout fix.**
 - The 3 mini-cards were side-by-side with dead space (base .bn-cells repeat(4,1fr) overrode my rule). Used higher-specificity .status-group-card .bn-cells (flex column, flex:1 cells) to stack them vertically and split the card height evenly. Also fixed a format-string break ('1fr' in single braces in a CSS comment crashed server startup).
