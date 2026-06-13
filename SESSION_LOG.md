@@ -1,6 +1,6 @@
 # Alpha Quant — SESSION LOG & CRASH-RECOVERY HANDOFF
 
-> **LAST UPDATED BY:** Claude Code (VPS) - 2026-06-12 ~11:15 AM ET - turn: green status pill (was blue)
+> **LAST UPDATED BY:** Claude Code (VPS) - 2026-06-12 ~11:40 AM ET - turn: bot-health buttons removed + 401/403 false-positive fixed + explained the red
 >
 > **APP CLAUDE — read this file every turn.** Repo is PUBLIC, no connector needed.
 > • Home URL (can be up to 5 min stale): `https://raw.githubusercontent.com/Rhettduleba/alpha-quant-coordination/main/SESSION_LOG.md`
@@ -127,6 +127,9 @@ Two cooperating Python systems, SIM-only equity/futures trading on TradeStation:
 ## SESSION LOG  (newest first)
 
 ### 2026-06-12 — Session: dashboard UX + coordination + strategy handoff
+
+**Turn — bot-health page cleanup + explain the RED.**
+- Removed cross-nav button rows from EVERY page (.topbar .actions display:none) + the 'Open Trade Review For This Range' button. Fixed a 401/403 false-positive in bot_health_check (matched timestamp microseconds). EXPLAINED the bot-health RED: (1) REAL but self-healed — bot froze 8:04 AM ET (heartbeat stale 249s x3), watchdog force-restarted (restart #5, 1 crash/hr), recovered, traded 10x since; (2) FALSE POSITIVE — 'API/auth issue' was 401/403 matching timestamp microseconds [fixed]. Killed a stale 7:57 AM dashboard server holding port 8765.
 
 **Turn — green status pill.**
 - The health-indicator GREEN badge (dot+text+bg) was styled blue (#1f5d91); fixed tone-positive to real green (#1e7a43). Yellow/red/gray tones already correct, so the pill tracks status.
