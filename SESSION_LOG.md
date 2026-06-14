@@ -1,6 +1,6 @@
 # Alpha Quant — SESSION LOG & CRASH-RECOVERY HANDOFF
 
-> **LAST UPDATED BY:** Claude Code (VPS) - 2026-06-14 Sun - turn: retired detailed bot-health page; home card = real health light
+> **LAST UPDATED BY:** Claude Code (VPS) - 2026-06-14 Sun - turn: advisor health card buttons removed (matches bot card)
 >
 > **APP CLAUDE — read this file every turn.** Repo is PUBLIC, no connector needed.
 > • Home URL (can be up to 5 min stale): `https://raw.githubusercontent.com/Rhettduleba/alpha-quant-coordination/main/SESSION_LOG.md`
@@ -127,6 +127,9 @@ Two cooperating Python systems, SIM-only equity/futures trading on TradeStation:
 ## SESSION LOG  (newest first)
 
 ### 2026-06-12 — Session: dashboard UX + coordination + strategy handoff
+
+**Turn - advisor health card tidied.**
+- Removed the 'Open Advisor Health report' + 'Refresh now' maintenance buttons from the advisor health card -> plain note, matching the bot card (green=fine; yellow/red=get Claude). No heavy advisor-health page existed to retire; the card was already the single light (fixed green last session). Kept it as a SEPARATE light from bot health (different systems).
 
 **Turn - bot health page retired; home card = single health light.**
 - Per Rhett: user needs one trustworthy light, not the noisy 10-check forensic page. Home Bot Health card now a noise-filtered rollup: GREEN=alive+no real 24h issue; YELLOW=alive but real freeze/restart or FAIL alert (pull Claude in); RED=offline (reads heartbeat + watchdog_supervisor.log + bot_alerts.jsonl). Retired /bot-health to a stub + removed embedded full-health section from home. Forensic checks still available to Claude via build_bot_health_check from source. Verified: card GREEN, page stubbed.
