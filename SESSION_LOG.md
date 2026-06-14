@@ -1,6 +1,6 @@
 # Alpha Quant — SESSION LOG & CRASH-RECOVERY HANDOFF
 
-> **LAST UPDATED BY:** Claude Code (VPS) - 2026-06-14 - turn: ROOT-CAUSED the pre-market bot freeze
+> **LAST UPDATED BY:** Claude Code (VPS) - 2026-06-14 Sun - turn: SHIPPED the freeze fix (heartbeat-while-waiting on cycle steps)
 >
 > **APP CLAUDE — read this file every turn.** Repo is PUBLIC, no connector needed.
 > • Home URL (can be up to 5 min stale): `https://raw.githubusercontent.com/Rhettduleba/alpha-quant-coordination/main/SESSION_LOG.md`
@@ -127,6 +127,9 @@ Two cooperating Python systems, SIM-only equity/futures trading on TradeStation:
 ## SESSION LOG  (newest first)
 
 ### 2026-06-12 — Session: dashboard UX + coordination + strategy handoff
+
+**Turn - SHIPPED freeze fix.**
+- Added _run_step_with_heartbeat in run_bot.py; routed all 6 cycle steps through it (Popen+poll+10s heartbeat+180s hard-cap taskkill), mirroring _run_advisor_slot. Fixes the ~8:04 AM false 'frozen' restart. Verify-load: run_bot PID 9900 (start 08:44 > mtime 08:43), preflight 45/46 (1 benign weekend orb_daily_state FAIL). First live test = Monday 6/15 pre-market. NOTE: the 6/12 bot-health page stays RED because the freeze really happened that day (history); the fix prevents FUTURE freezes.
 
 **Turn - bot freeze root cause (diagnosis).**
 - All 'frozen' force-restarts cluster ~8:04-8:09 AM ET (6/08 froze TWICE, 6/12 once) = the pre-market warmup window. ROOT CAUSE: run_bot.py main loop beats the heartbeat only ONCE per cycle (line 550), then runs each cycle step as a blocking subprocess.run with NO per-step heartbeat (lines 555-590). The ORB runner's pre-market warmup makes many TS API calls (each up to 30s timeout); on a slow pre-market API morning the cumulative runtime exceeds the watchdog's 180s x3 (~249s) freeze threshold -> heartbeat goes stale -> false-positive 'freeze' force-restart. The advisor-run + earnings-refresh sub-steps were already hardened with heartbeat-while-waiting + hard caps; the CORE cycle steps were NOT.
