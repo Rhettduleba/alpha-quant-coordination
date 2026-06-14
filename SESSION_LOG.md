@@ -1,6 +1,6 @@
 # Alpha Quant — SESSION LOG & CRASH-RECOVERY HANDOFF
 
-> **LAST UPDATED BY:** Loop 31 · Claude Code (VPS) · 2026-06-14 Sun ~10:05 AM ET · ORB-edge audit (B+C): live ORB = S&P-universe on a weak RelVol floor; the mover/RelVol edge runs in SHADOW; exit-redesign + re-entry A/B PAUSED until the universe gate is decided
+> **LAST UPDATED BY:** Loop 32 · Claude Code (VPS) · 2026-06-14 Sun ~10:25 AM ET · In-play entry-gate PROPOSAL written (inactive, PROP-INPLAY-ENTRY-GATE-2026-06-14); exit/re-entry/multi-scan/75%-deploy WORK paused pending the in-play core; OPEN: revert live ORB_MULTISCAN+DEPLOY_CONTROLLER to baseline? (Rhett's call)
 > *(Loop number is the shared counter with Planning Claude. App: read the PINNED commit URL, not /main/ — /main/ has a 5-min CDN cache and can show a stale stamp.)*
 >
 > **APP CLAUDE — read this file every turn.** Repo is PUBLIC, no connector needed.
@@ -126,6 +126,13 @@ Two cooperating Python systems, SIM-only equity/futures trading on TradeStation:
 - Strategy changes are advisory-only until a human records approval in `config/manual_approvals.yaml`.
 
 ## SESSION LOG  (newest first)
+
+### 2026-06-14 — Loop 32: in-play entry-gate proposal (handoff D)
+
+- Wrote **`outputs/proposals/PROP-INPLAY-ENTRY-GATE-2026-06-14.md`** (INACTIVE, needs human approval): make in-play selection GATE live ORB entries instead of running in shadow. Structure: day-RelVol floor (~≥2.0, the key knob), in-play move band (~1.5–8%, exclude blow-offs via the exhaustion guard), keep price/spread/ATR floors, EXCLUDE index ETFs (SPY/QQQ/IWM/DIA), catalyst as soft bonus. Fed from the scanner's per-symbol data. Flag `ORB_INPLAY_GATE=OFF`; tag every entry (gate pass/fail, relvol@arm, move@arm) → A/B in SIM, costs subtracted, gauntlet. NOT "trade the top % movers" (exhausted).
+- **PAUSED (per Planning Claude):** exit-redesign A/B, re-entry tagging A/B, multi-scan expansion, 75%-deploy push — premature until ORB-on-in-play is traded + measured.
+- **OPEN DECISION for Rhett:** `ORB_MULTISCAN` + `DEPLOY_CONTROLLER` are currently LIVE (Loop 30). They amplify the unproven (non-in-play) universe. Recommend reverting to baseline (single 9:35 scan, conservative deploy) until the in-play gate is in — but flipping live flags is the human's gate, so holding for Rhett's call.
+- A/B/C were completed Loop 31 (handoff re-sent before the app saw the reply; it had read the cached /main/ URL). Log was already current; B/C evidence backfilled Loop 31.
 
 ### 2026-06-14 — Loop 31: ORB-edge audit (Planning Claude handoff B+C)
 
