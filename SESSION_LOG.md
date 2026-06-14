@@ -1,6 +1,6 @@
 # Alpha Quant — SESSION LOG & CRASH-RECOVERY HANDOFF
 
-> **LAST UPDATED BY:** Loop 39 · Claude Code (VPS) · 2026-06-14 Sun ~1:25 PM ET · FINISHED the Loop-37 build: cost model + recompute (commission halves the edge), deploy-controller now governs the 9:35 main book, wiring-audit wired into preflight (47 checks), p0 closed item (d), ledger added. Preflight 46/47 (1 benign weekend FAIL). Dashboard redundancy review = NEXT.
+> **LAST UPDATED BY:** Loop 40 · Claude Code (VPS) · 2026-06-14 Sun ~2:00 PM ET · dashboard redundancy pass: removed Trade Review (redundant w/ Daily Review), the duplicate Pre-Market card, + stale/low-value research-artifact cards (some linked dead OneDrive paths); added a DATE-RANGE selector to /truth. Home 81KB→68KB, working surfaces only.
 
 ## VERIFIED / ASSUMED / BROKEN LEDGER  (seeded Loop 36–39; update every turn)
 
@@ -150,6 +150,13 @@ Two cooperating Python systems, SIM-only equity/futures trading on TradeStation:
 - Strategy changes are advisory-only until a human records approval in `config/manual_approvals.yaml`.
 
 ## SESSION LOG  (newest first)
+
+### 2026-06-14 — Loop 40: dashboard redundancy pass
+
+- Removed the redundant **Trade Review** card (Rhett was right — duplicates Daily Review) + the duplicate **Pre-Market Evaluation** card (the hero already links it).
+- Removed stale/low-value research-artifact cards (Advisor Guidance, Opening Window, Opening 09:45, Advisor Readiness, Level2 Planning, Advisor Feedback, Time-of-Day) — several linked **dead `C:\Users\rdule\OneDrive` paths** that 404 post-migration — and the Artifacts section (Operator Dashboard / Weekly Review / Daily Trade Analysis). `%s` tuple kept aligned. Home 81KB→68KB.
+- **/truth: added a DATE-RANGE selector** (?start&end) → "Selected range" net / exp$ / win / PF. Verified.
+- Remaining home cards judged working & kept: Morning Data Prep, Morning Decision Board, Manager Review Packet, Alerts/Watchlist, Source Registry, Bot Change Candidates. Borderline (open next to confirm value vs overlap): Morning Decision Board (vs pre-market stocks-in-sight), Manager Review Packet (vs Daily Review).
 
 ### 2026-06-14 — Loop 39: FINISHED Loop-37 build order
 
