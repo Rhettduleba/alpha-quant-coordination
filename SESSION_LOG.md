@@ -1,6 +1,6 @@
 # Alpha Quant — SESSION LOG & CRASH-RECOVERY HANDOFF
 
-> **LAST UPDATED BY:** Claude Code (VPS) - 2026-06-14 Sun - turn: SHIPPED the freeze fix (heartbeat-while-waiting on cycle steps)
+> **LAST UPDATED BY:** Claude Code (VPS) - 2026-06-14 Sun - turn: retired detailed bot-health page; home card = real health light
 >
 > **APP CLAUDE — read this file every turn.** Repo is PUBLIC, no connector needed.
 > • Home URL (can be up to 5 min stale): `https://raw.githubusercontent.com/Rhettduleba/alpha-quant-coordination/main/SESSION_LOG.md`
@@ -127,6 +127,9 @@ Two cooperating Python systems, SIM-only equity/futures trading on TradeStation:
 ## SESSION LOG  (newest first)
 
 ### 2026-06-12 — Session: dashboard UX + coordination + strategy handoff
+
+**Turn - bot health page retired; home card = single health light.**
+- Per Rhett: user needs one trustworthy light, not the noisy 10-check forensic page. Home Bot Health card now a noise-filtered rollup: GREEN=alive+no real 24h issue; YELLOW=alive but real freeze/restart or FAIL alert (pull Claude in); RED=offline (reads heartbeat + watchdog_supervisor.log + bot_alerts.jsonl). Retired /bot-health to a stub + removed embedded full-health section from home. Forensic checks still available to Claude via build_bot_health_check from source. Verified: card GREEN, page stubbed.
 
 **Turn - SHIPPED freeze fix.**
 - Added _run_step_with_heartbeat in run_bot.py; routed all 6 cycle steps through it (Popen+poll+10s heartbeat+180s hard-cap taskkill), mirroring _run_advisor_slot. Fixes the ~8:04 AM false 'frozen' restart. Verify-load: run_bot PID 9900 (start 08:44 > mtime 08:43), preflight 45/46 (1 benign weekend orb_daily_state FAIL). First live test = Monday 6/15 pre-market. NOTE: the 6/12 bot-health page stays RED because the freeze really happened that day (history); the fix prevents FUTURE freezes.
