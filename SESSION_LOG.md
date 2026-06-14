@@ -1,6 +1,6 @@
 # Alpha Quant — SESSION LOG & CRASH-RECOVERY HANDOFF
 
-> **LAST UPDATED BY:** Claude Code (VPS) - 2026-06-14 Sun - turn: pre-market page light theme + big date + full width
+> **LAST UPDATED BY:** Claude Code (VPS) - 2026-06-14 Sun - turn: Home button on every page + all dark backgrounds -> light gray
 >
 > **APP CLAUDE — read this file every turn.** Repo is PUBLIC, no connector needed.
 > • Home URL (can be up to 5 min stale): `https://raw.githubusercontent.com/Rhettduleba/alpha-quant-coordination/main/SESSION_LOG.md`
@@ -127,6 +127,9 @@ Two cooperating Python systems, SIM-only equity/futures trading on TradeStation:
 ## SESSION LOG  (newest first)
 
 ### 2026-06-12 — Session: dashboard UX + coordination + strategy handoff
+
+**Turn - Home button everywhere + kill all dark backgrounds.**
+- Floating Home button added in _page (all _page pages; suppressed on home via is_home). Inline Home button on /truth, /daily-review-v2, /pre-market. Converted remaining dark pages to light theme: truth_dashboard, daily_review_page (+chat), retired-stub, trade-chart-wrap, and the TradingView chart (trade_charts) -> white/light. No #0b0e14/#0d1017/#161a25 left.
 
 **Turn - pre-market page restyle.**
 - premarket_page.py: dark->light gray (#eef3fb)+blue text; big date banner ('Data for <weekday, date> ...'); h1 36px; full width (max 1700) with long|short candidate tables side-by-side + broad full-width; bigger fonts. Kills right-side dead space.
