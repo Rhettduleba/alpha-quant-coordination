@@ -1,6 +1,6 @@
 # Alpha Quant — SESSION LOG & CRASH-RECOVERY HANDOFF
 
-> **LAST UPDATED BY:** Loop 40 · Claude Code (VPS) · 2026-06-14 Sun ~2:00 PM ET · dashboard redundancy pass: removed Trade Review (redundant w/ Daily Review), the duplicate Pre-Market card, + stale/low-value research-artifact cards (some linked dead OneDrive paths); added a DATE-RANGE selector to /truth. Home 81KB→68KB, working surfaces only.
+> **LAST UPDATED BY:** Loop 41 · Claude Code (VPS) · 2026-06-14 Sun ~2:20 PM ET · opened the 2 borderline cards & CUT both: Morning Decision Board (cached/thin, overlaps pre-market) + Manager Review Packet (stale 6/11 link-packet, superseded by Daily Review). Home 81KB→67.5KB.
 
 ## VERIFIED / ASSUMED / BROKEN LEDGER  (seeded Loop 36–39; update every turn)
 
@@ -150,6 +150,12 @@ Two cooperating Python systems, SIM-only equity/futures trading on TradeStation:
 - Strategy changes are advisory-only until a human records approval in `config/manual_approvals.yaml`.
 
 ## SESSION LOG  (newest first)
+
+### 2026-06-14 — Loop 41: cut the 2 borderline cards
+
+- Opened both and judged: **Morning Decision Board** = cached/thin advisor opinion board ("leans long, 1 name, from cache"), overlaps the live pre-market "stocks in our sight," doesn't drive the bot → CUT. **Manager Review Packet** = "fast saved packet view" of links dated 2026-06-11 (stale), phantom-sourced, superseded by Daily Review (broker truth) → CUT. Both home cards removed; routes left (unlinked, harmless).
+- Home now 67.5KB. Remaining secondary cards: Morning Data Prep, Alerts/Watchlist, Source Registry, Bot Change Candidates.
+- FLAG (not yet acted): Morning Data Prep monitors the V1 pre-open data freshness, which we no longer use (pre-market page uses the live scanner) — borderline-low-value; the Morning section is now down to that 1 card. Candidate to cut/consolidate next.
 
 ### 2026-06-14 — Loop 40: dashboard redundancy pass
 
