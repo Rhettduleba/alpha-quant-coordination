@@ -1,6 +1,6 @@
 # Alpha Quant — SESSION LOG & CRASH-RECOVERY HANDOFF
 
-> **LAST UPDATED BY:** Loop 43 · Claude Code (VPS) · 2026-06-14 Sun ~2:50 PM ET · fresh dashboard read (all pages 200/clean) + daily-review charts restyled to the TradeStation look (black bg, bright green/red candles, symbol watermark, 380px). Home 81KB→66KB.
+> **LAST UPDATED BY:** Loop 44 · Claude Code (VPS) · 2026-06-14 Sun ~3:05 PM ET · added TS-style OHLCV header strip above each per-trade chart (SYMBOL · 1 min  O= Hi= Lo= C= V=, C color-coded green/red by direction; header+chart merge into one dark panel). Verified 12/12 charts render real values on /daily-review-v2?date=2026-06-12, no errors. Commit 98c2c3d.
 
 ## VERIFIED / ASSUMED / BROKEN LEDGER  (seeded Loop 36–39; update every turn)
 
