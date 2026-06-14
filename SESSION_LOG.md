@@ -1,6 +1,6 @@
 # Alpha Quant — SESSION LOG & CRASH-RECOVERY HANDOFF
 
-> **LAST UPDATED BY:** Loop 44 · Claude Code (VPS) · 2026-06-14 Sun ~3:05 PM ET · added TS-style OHLCV header strip above each per-trade chart (SYMBOL · 1 min  O= Hi= Lo= C= V=, C color-coded green/red by direction; header+chart merge into one dark panel). Verified 12/12 charts render real values on /daily-review-v2?date=2026-06-12, no errors. Commit 98c2c3d.
+> **LAST UPDATED BY:** Loop 45 · Claude Code (VPS) · 2026-06-14 Sun ~3:40 PM ET · FINISH-TO-GREEN-LIGHT rev.B audit (market CLOSED, no live trace possible today). Part-1 shadow sweep done (code-grounded). A2 CLOSED (no $25k breach, no extreme skew 6/08–6/12). A4 CLOSED (p0 --live: 6/08 6/09 6/10 all unified==independent, 0 mismatches → 5/5 days verified). **Part-3 BLOCKER found:** in-play gate data layer does not exist (no scans.jsonl; mover_scanner/mover_trader NOT in run_bot loop; warmup caches only OR-vol+ATR). Verdict: NOT-GREEN.
 
 ## VERIFIED / ASSUMED / BROKEN LEDGER  (seeded Loop 36–39; update every turn)
 
@@ -12,6 +12,9 @@
 - Index-ETF P&L immaterial (1 SPY RT −$11 vs 52 single-name +$709).
 - Deploy-controller NOW governs the 9:35 main book (Loop 37) — wiring audit 6/6 OK, in preflight.
 - Slippage + left-on-table calcs OK (guarded).
+- A2 (Loop 45): pre-fix main-book 6/08–6/12 — NO $25k/name breach (max $20,000), NO extreme skew (worst 65% long 6/10); max single-side daily gross $159k < $200k (50%) cap. Deploy-controller main-book fix is confirming, not corrective, for this window.
+- A4 (Loop 45): p0 --live cross-check 6/08 (14==14), 6/09 (14==14), 6/10 (24==24), 0 status mismatches → full 6/08–6/12 window independently verified (5/5 days; 6/11–6/12 prior).
+- ORB live gate has NO %-move / spread / min-volume / MAX_TRADES_PER_DAY / cooldown enforcement (those constants are composite-path only, DEAD for ORB). Confirmed by grep of orb_runner/orb_multiscan/exit_bot_v2 (Loop 45 Part-1 sweep).
 
 **ASSUMED (not independently verified — treat with caution):**
 - Broker-truth completeness for days OTHER than 6/11–6/12 (only those two cross-checked).
@@ -22,6 +25,8 @@
 - R-multiple denominator 0.10→0.15 (matched live stop + /truth). MFE floored by exit fill. Deploy-controller scope (re-arm-only → main book). 11 home cards → retired stubs (removed). Hero alignment/size.
 
 **BROKEN / OPEN:**
+- **Part-3 in-play gate CANNOT "go live in this build" as written — its data inputs do not exist (Loop 45).** (a) `mover_scanner.py`/`mover_trader.py` are NOT referenced in `run_bot.py` → not in the live loop → `outputs/mover_scanner/scans.jsonl` is never produced (file absent). (b) ORB warmup caches only OR-vol history + ATR — no prior-close (→ "move from prior close"), no cumulative-day-RelVol (proposal's "day-RelVol≥2.0" ≠ the OR-RelVol the bot computes), no 20d avg $-vol. (c) `ORB_INPLAY_GATE` flag does not exist. (d) Fill-time validity gate does not exist (the reject-fix is SUBMIT-time only). Build path: compute the gate inputs in orb_runner at arm time (recommended) OR wire mover_scanner into the loop; ship behind OFF flag + tagging first; flip ON + live-trace Monday.
+- A1 (exit behavioral proof) and A3 (R single-source fn) NOT yet done.
 - The in-play/RelVol EDGE runs in SHADOW — live ORB = ORB-on-S&P, not ORB-on-movers (in-play gate proposed, parked, PROP-INPLAY-ENTRY-GATE).
 - Cost is modeled (commission_model.py + recompute) but not yet shown on the live /truth page (recompute is a script). After-cost: per-share commission HALVES the edge ($479 gross → $238 net; stress → +$20).
 
