@@ -1,6 +1,6 @@
 # Alpha Quant — SESSION LOG & CRASH-RECOVERY HANDOFF
 
-> **LAST UPDATED BY:** Loop 33 · Claude Code (VPS) · 2026-06-14 Sun ~10:35 AM ET · DECISION: leave ORB_MULTISCAN + DEPLOY_CONTROLLER ON (SIM data collection) despite the in-play-gate finding; in-play entry-gate proposal stays parked (inactive); exit/re-entry tuning WORK still paused
+> **LAST UPDATED BY:** Loop 34 · Claude Code (VPS) · 2026-06-14 Sun ~10:45 AM ET · loop-back handoff to Planning Claude (session recap: ORB-edge audit, in-play gate proposal parked, multi-scan kept ON, dashboard overhaul)
 > *(Loop number is the shared counter with Planning Claude. App: read the PINNED commit URL, not /main/ — /main/ has a 5-min CDN cache and can show a stale stamp.)*
 >
 > **APP CLAUDE — read this file every turn.** Repo is PUBLIC, no connector needed.
@@ -126,6 +126,9 @@ Two cooperating Python systems, SIM-only equity/futures trading on TradeStation:
 - Strategy changes are advisory-only until a human records approval in `config/manual_approvals.yaml`.
 
 ## SESSION LOG  (newest first)
+
+### 2026-06-14 — Loop 34: loop-back handoff to Planning Claude
+- Wrote a Code→app recap handoff (strategy: ORB-edge audit + in-play gate proposal parked + multi-scan kept ON + exit/re-entry paused; dashboard: 3-question home, single health lights, legacy pages retired, light theme + Home button everywhere, broker-truth sourced). Delivered as a copiable block for Rhett to paste to the app.
 
 ### 2026-06-14 — Loop 33: decision — keep multi-scan + deploy ON
 
