@@ -1,6 +1,6 @@
 # Alpha Quant — SESSION LOG & CRASH-RECOVERY HANDOFF
 
-> **LAST UPDATED BY:** Loop 34 · Claude Code (VPS) · 2026-06-14 Sun ~10:45 AM ET · loop-back handoff to Planning Claude (session recap: ORB-edge audit, in-play gate proposal parked, multi-scan kept ON, dashboard overhaul)
+> **LAST UPDATED BY:** Loop 35 · Claude Code (VPS) · 2026-06-14 Sun ~11:05 AM ET · PROACTIVE WIRING AUDIT — found deploy controller is wired only into re-arm, NOT the 9:35 main scan (state claim corrected); cleared exit/kill/advisor (verified wired); built `_wiring_audit.py` so this bug class is machine-caught
 > *(Loop number is the shared counter with Planning Claude. App: read the PINNED commit URL, not /main/ — /main/ has a 5-min CDN cache and can show a stale stamp.)*
 >
 > **APP CLAUDE — read this file every turn.** Repo is PUBLIC, no connector needed.
@@ -61,7 +61,7 @@ pinged when the other writes. Coordination is *pull-based* — each side checks 
 
 ### What is DEPLOYED right now (bot behavior)
 - **ORB_MULTISCAN = ON** (deployed 6/11 5:26 PM). Hourly re-arm windows: **10:35, 11:35, 12:35, 13:35, 14:35** on top of the 9:35 opening scan. Goal: lift capital utilization toward the 75% target (6/11 peak was only 34.8% of $400k).
-- **DEPLOY_CONTROLLER = ON** (target 75% of $400k base; per-position cap $25k; per-side cap 50%).
+- **DEPLOY_CONTROLLER = ON — but only governs the MULTI-SCAN RE-ARM path, NOT the primary 9:35 scan** (corrected 2026-06-14 Loop 35 by the wiring audit). `orb_runner.py` (the 9:35 main book) never calls it; it sizes by its own constants (TARGET_DAY_TRADE_GROSS/TOP_N ≈ $15k/name, MAX_DAY_TRADE_GROSS $400k gross). So the controller's per-position $25k / per-side 50% / 75% target apply to re-arm fills only. OPEN DESIGN Q: should it govern the 9:35 book too, or is re-arm-only intended?
 - **CONVICTION_SIZING = OFF** (flat sizing until data earns the tilt).
 - **ORB_EXIT_MODE = candle_close** (0.15×ATR Phase-1 stop → confirm +0.15×ATR → first opposite-color 1-min candle close → 1.0×ATR catastrophe).
 - All of the above are flag-gated in `tradestation-bot\risk_config.py` — flip back to revert. **Tomorrow (6/12) is the FIRST live multi-scan session — watch it.**
@@ -126,6 +126,14 @@ Two cooperating Python systems, SIM-only equity/futures trading on TradeStation:
 - Strategy changes are advisory-only until a human records approval in `config/manual_approvals.yaml`.
 
 ## SESSION LOG  (newest first)
+
+### 2026-06-14 — Loop 35: proactive wiring audit (Rhett: "what else is broken?")
+
+- Rhett (fair) ownership critique: he caught the shadow-edge bug; Code should have. Ran a proactive audit of the SAME class — "deployed/claimed but not actually wired into the live path."
+- **FOUND (1):** `DEPLOY_CONTROLLER` (per-position $25k, per-side 50%, 75% target, conviction) is wired ONLY into `orb_multiscan.py` (re-arm), NOT `orb_runner.py` (the primary 9:35 scan). The 9:35 book sizes by its own constants and does NOT apply those caps. My "CURRENT SYSTEM STATE" claim implied global governance — corrected. Open design Q for Rhett/Planning: should the controller govern the 9:35 book too?
+- **CLEARED (3, verified wired, not assumed):** candle-close exit (`exit_bot_v2` reads ORB_EXIT_MODE + calls candle_close_decision), daily-guard/kill switch (halts the scan in `orb_runner`), advisor controls (`should_block_entry` in `orb_runner`). RelVol floor also confirmed wired (but weak — see Loop 31).
+- **BUILT:** `tradestation-bot/_wiring_audit.py` — asserts each governance flag is referenced in the live path it CLAIMS to govern; FAILs otherwise. Current: 5 OK / 1 FAIL (the deploy controller). This makes the shadow/unwired class machine-catchable. TODO: call it from `_preflight_diagnostic.py` so it runs every check.
+- Honest scope: this audited the flag-WIRING class only. Other classes still to sweep (data integrity, risk-guard enforcement values, dashboard accuracy). Standing discipline added to memory: proactively audit; don't wait for Rhett to find it.
 
 ### 2026-06-14 — Loop 34: loop-back handoff to Planning Claude
 - Wrote a Code→app recap handoff (strategy: ORB-edge audit + in-play gate proposal parked + multi-scan kept ON + exit/re-entry paused; dashboard: 3-question home, single health lights, legacy pages retired, light theme + Home button everywhere, broker-truth sourced). Delivered as a copiable block for Rhett to paste to the app.
