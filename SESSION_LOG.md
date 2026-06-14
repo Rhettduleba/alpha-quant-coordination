@@ -1,6 +1,30 @@
 # Alpha Quant — SESSION LOG & CRASH-RECOVERY HANDOFF
 
-> **LAST UPDATED BY:** Loop 38 · Claude Code (VPS) · 2026-06-14 Sun ~12:10 PM ET · fixed hero alignment+size; removed 11 home cards pointing at retired stubs. NOTE: Loop-37 build order (cost model, deploy-scope, wiring-audit->preflight, p0 harness, VERIFIED/ASSUMED/BROKEN ledger) is STILL QUEUED — pivoted to the visual fixes this turn
+> **LAST UPDATED BY:** Loop 39 · Claude Code (VPS) · 2026-06-14 Sun ~1:25 PM ET · FINISHED the Loop-37 build: cost model + recompute (commission halves the edge), deploy-controller now governs the 9:35 main book, wiring-audit wired into preflight (47 checks), p0 closed item (d), ledger added. Preflight 46/47 (1 benign weekend FAIL). Dashboard redundancy review = NEXT.
+
+## VERIFIED / ASSUMED / BROKEN LEDGER  (seeded Loop 36–39; update every turn)
+
+**VERIFIED (checked against code/data):**
+- Candle-close exit deployed 6/10 5:22 PM; `candle_close_exit.py` matches spec (0.15 stop→0.15 confirm→first-opposite-candle→1.0 cat).
+- Multi-scan builds a fresh 5-min range per window (10:35–14:35); tagged ORBMS<window>.
+- Broker-truth COMPLETE for 6/11 + 6/12 — unified log == independent TS historicalorders API (30==30, 24==24), 0 status mismatches (p0 harness).
+- Freeze 6/12 caused no missed/stuck/duplicate orders (0 dup fills; 6/12 set complete; recovered pre-open).
+- Index-ETF P&L immaterial (1 SPY RT −$11 vs 52 single-name +$709).
+- Deploy-controller NOW governs the 9:35 main book (Loop 37) — wiring audit 6/6 OK, in preflight.
+- Slippage + left-on-table calcs OK (guarded).
+
+**ASSUMED (not independently verified — treat with caution):**
+- Broker-truth completeness for days OTHER than 6/11–6/12 (only those two cross-checked).
+- Cost-model reg-fee rates current as of 2026-06-14 (SEC $20.60/$1M; FINRA TAF $0.000195/sh) — refresh periodically.
+- Which LIVE commission plan applies (TS Select vs per-share) — **Rhett confirming**; default per_share_standard.
+
+**BROKEN → FIXED:**
+- R-multiple denominator 0.10→0.15 (matched live stop + /truth). MFE floored by exit fill. Deploy-controller scope (re-arm-only → main book). 11 home cards → retired stubs (removed). Hero alignment/size.
+
+**BROKEN / OPEN:**
+- The in-play/RelVol EDGE runs in SHADOW — live ORB = ORB-on-S&P, not ORB-on-movers (in-play gate proposed, parked, PROP-INPLAY-ENTRY-GATE).
+- Cost is modeled (commission_model.py + recompute) but not yet shown on the live /truth page (recompute is a script). After-cost: per-share commission HALVES the edge ($479 gross → $238 net; stress → +$20).
+
 > *(Loop number is the shared counter with Planning Claude. App: read the PINNED commit URL, not /main/ — /main/ has a 5-min CDN cache and can show a stale stamp.)*
 >
 > **APP CLAUDE — read this file every turn.** Repo is PUBLIC, no connector needed.
@@ -126,6 +150,15 @@ Two cooperating Python systems, SIM-only equity/futures trading on TradeStation:
 - Strategy changes are advisory-only until a human records approval in `config/manual_approvals.yaml`.
 
 ## SESSION LOG  (newest first)
+
+### 2026-06-14 — Loop 39: FINISHED Loop-37 build order
+
+- **Cost model:** `commission_model.py` (knob: zero | ts_select | per_share_standard | stress; reg fees on sells — SEC $20.60/$1M, FINRA TAF $0.000195/sh, both pulled live 6/14). Recompute 6/08+ (53 RT, gross +$479): zero net +$479 (exp +9.04) · ts_select +$457 (+8.62) · **per_share_standard +$238 (+4.50)** · stress +$20 (+0.38). **Commission halves the edge; the live plan matters a lot.** (Recompute is a script; wiring it into /truth display = follow-up.)
+- **Deploy-controller scope (APPROVED, gated):** extended `orb_runner` (9:35 main book) to call `deploy_controller.admit()` — per-position $25k / per-side 50% / 75% target now govern the main book, not just re-arm. Mirrors orb_multiscan. Verify-load: run_bot restarted PID 10184, preflight 46/47.
+- **Wiring-audit → preflight (APPROVED, high-pri):** `_preflight_diagnostic.py` now runs `_wiring_audit` every check (now 47 checks). Shadow/unwired governance flags are caught automatically. 6/6 OK.
+- **p0 harness (close item d):** ran `--live` for 6/11 + 6/12 → unified log == independent TS historicalorders API; broker truth VERIFIED complete.
+- **Ledger:** added the permanent VERIFIED/ASSUMED/BROKEN section at the top.
+- NEXT (Rhett's sequence): loop-back to Planning Claude, THEN the dashboard redundancy review (incl. the legacy Trade Review card likely redundant with Daily Review; add a date-range selector to /truth; card-by-card value/redundancy audit Morning Hub → bottom).
 
 ### 2026-06-14 — Loop 38: home visual fixes (Rhett caught them)
 - Hero (3-question) cards weren't in the shared content-width rule -> didn't align with the status row; added `.cmd3` to it + shrank (compact padding/fonts).
