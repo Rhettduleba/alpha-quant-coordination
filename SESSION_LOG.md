@@ -1,6 +1,6 @@
 # Alpha Quant — SESSION LOG & CRASH-RECOVERY HANDOFF
 
-> **LAST UPDATED BY:** Claude Code (VPS) - 2026-06-12 ~11:40 AM ET - turn: bot-health buttons removed + 401/403 false-positive fixed + explained the red
+> **LAST UPDATED BY:** Claude Code (VPS) - 2026-06-14 - turn: ROOT-CAUSED the pre-market bot freeze
 >
 > **APP CLAUDE — read this file every turn.** Repo is PUBLIC, no connector needed.
 > • Home URL (can be up to 5 min stale): `https://raw.githubusercontent.com/Rhettduleba/alpha-quant-coordination/main/SESSION_LOG.md`
@@ -127,6 +127,11 @@ Two cooperating Python systems, SIM-only equity/futures trading on TradeStation:
 ## SESSION LOG  (newest first)
 
 ### 2026-06-12 — Session: dashboard UX + coordination + strategy handoff
+
+**Turn - bot freeze root cause (diagnosis).**
+- All 'frozen' force-restarts cluster ~8:04-8:09 AM ET (6/08 froze TWICE, 6/12 once) = the pre-market warmup window. ROOT CAUSE: run_bot.py main loop beats the heartbeat only ONCE per cycle (line 550), then runs each cycle step as a blocking subprocess.run with NO per-step heartbeat (lines 555-590). The ORB runner's pre-market warmup makes many TS API calls (each up to 30s timeout); on a slow pre-market API morning the cumulative runtime exceeds the watchdog's 180s x3 (~249s) freeze threshold -> heartbeat goes stale -> false-positive 'freeze' force-restart. The advisor-run + earnings-refresh sub-steps were already hardened with heartbeat-while-waiting + hard caps; the CORE cycle steps were NOT.
+- Impact: so far pre-market only (self-heals before the 9:30 open; no missed trades). BUT multiscan is now ON -> intraday re-arm/warmup steps could trip the SAME freeze DURING market hours. Escalates priority.
+- Proposed fix (NOT yet applied; live core loop = gated): route cycle steps (>= orb_runner) through a _run_step_with_heartbeat wrapper mirroring _run_advisor_slot (Popen + poll + 10s heartbeat + hard-cap taskkill). Keeps heartbeat alive during slow-but-working warmup; kills a truly-hung step so the cycle continues.
 
 **Turn — bot-health page cleanup + explain the RED.**
 - Removed cross-nav button rows from EVERY page (.topbar .actions display:none) + the 'Open Trade Review For This Range' button. Fixed a 401/403 false-positive in bot_health_check (matched timestamp microseconds). EXPLAINED the bot-health RED: (1) REAL but self-healed — bot froze 8:04 AM ET (heartbeat stale 249s x3), watchdog force-restarted (restart #5, 1 crash/hr), recovered, traded 10x since; (2) FALSE POSITIVE — 'API/auth issue' was 401/403 matching timestamp microseconds [fixed]. Killed a stale 7:57 AM dashboard server holding port 8765.
