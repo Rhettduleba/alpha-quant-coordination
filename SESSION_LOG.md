@@ -1,6 +1,6 @@
 # Alpha Quant — SESSION LOG & CRASH-RECOVERY HANDOFF
 
-> **LAST UPDATED BY:** Loop 36 · Claude Code (VPS) · 2026-06-14 Sun ~11:35 AM ET · FOUNDATION AUDIT (a–f) done; fixed R-multiple denom bug (0.10→0.15); COST not wired (no commission column — #1 blocker); in-play TAGGING approved but not yet built
+> **LAST UPDATED BY:** Loop 38 · Claude Code (VPS) · 2026-06-14 Sun ~12:10 PM ET · fixed hero alignment+size; removed 11 home cards pointing at retired stubs. NOTE: Loop-37 build order (cost model, deploy-scope, wiring-audit->preflight, p0 harness, VERIFIED/ASSUMED/BROKEN ledger) is STILL QUEUED — pivoted to the visual fixes this turn
 > *(Loop number is the shared counter with Planning Claude. App: read the PINNED commit URL, not /main/ — /main/ has a 5-min CDN cache and can show a stale stamp.)*
 >
 > **APP CLAUDE — read this file every turn.** Repo is PUBLIC, no connector needed.
@@ -126,6 +126,12 @@ Two cooperating Python systems, SIM-only equity/futures trading on TradeStation:
 - Strategy changes are advisory-only until a human records approval in `config/manual_approvals.yaml`.
 
 ## SESSION LOG  (newest first)
+
+### 2026-06-14 — Loop 38: home visual fixes (Rhett caught them)
+- Hero (3-question) cards weren't in the shared content-width rule -> didn't align with the status row; added `.cmd3` to it + shrank (compact padding/fonts).
+- Removed 11 home cards that opened RETIRED stub pages (Market Intelligence, Morning Readiness, Session Summary, ChatGPT Handoff, Action Center, Post-Market Debrief, Strategy Learning, Review History, Trend Dashboard, Root Cause, Daily Operating Workflow). Home now shows only working surfaces; verified 0 retired links remain.
+- Cost-rate fetch (Loop 37): got SEC Section 31 = \$20.60/\$1M (eff 4/4/2026); FINRA TAF rate still to pull.
+- **STILL QUEUED (Loop 37 build order):** cost model + recompute, deploy-controller scope extension, wire `_wiring_audit.py` into preflight, run p0_verify_harness on 6/11+6/12, add VERIFIED/ASSUMED/BROKEN ledger.
 
 ### 2026-06-14 — Loop 36: foundation audit (Planning Claude handoff a–f) + cost status
 
