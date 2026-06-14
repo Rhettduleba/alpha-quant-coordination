@@ -1,6 +1,6 @@
 # Alpha Quant — SESSION LOG & CRASH-RECOVERY HANDOFF
 
-> **LAST UPDATED BY:** Claude Code (VPS) - 2026-06-14 Sun - turn: hero recolor + health-card dead space filled
+> **LAST UPDATED BY:** Claude Code (VPS) - 2026-06-14 Sun - turn: pre-market page light theme + big date + full width
 >
 > **APP CLAUDE — read this file every turn.** Repo is PUBLIC, no connector needed.
 > • Home URL (can be up to 5 min stale): `https://raw.githubusercontent.com/Rhettduleba/alpha-quant-coordination/main/SESSION_LOG.md`
@@ -127,6 +127,9 @@ Two cooperating Python systems, SIM-only equity/futures trading on TradeStation:
 ## SESSION LOG  (newest first)
 
 ### 2026-06-12 — Session: dashboard UX + coordination + strategy handoff
+
+**Turn - pre-market page restyle.**
+- premarket_page.py: dark->light gray (#eef3fb)+blue text; big date banner ('Data for <weekday, date> ...'); h1 36px; full width (max 1700) with long|short candidate tables side-by-side + broad full-width; bigger fonts. Kills right-side dead space.
 
 **Turn - hero recolor + fill health-card dead space.**
 - 3-question hero cards: dark -> very light gray (#f4f7fc) + blue text. Bot Health card: added 'Traded today' (broker-truth count+P&L). Advisor Health card: added live advisor output (last control run, regime read, active controls, next run) filling the dead space.
