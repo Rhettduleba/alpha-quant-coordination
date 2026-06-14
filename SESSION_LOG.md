@@ -1,6 +1,6 @@
 # Alpha Quant — SESSION LOG & CRASH-RECOVERY HANDOFF
 
-> **LAST UPDATED BY:** Loop 42 · Claude Code (VPS) · 2026-06-14 Sun ~2:35 PM ET · cut Morning Data Prep (monitored unused V1 preopen data) + consolidated 3 thin sections into one "Supporting tools" (Alerts/Watchlist · Source Registry · Bot Change Candidates). Home 81KB→66KB. Dashboard cleanup complete.
+> **LAST UPDATED BY:** Loop 43 · Claude Code (VPS) · 2026-06-14 Sun ~2:50 PM ET · fresh dashboard read (all pages 200/clean) + daily-review charts restyled to the TradeStation look (black bg, bright green/red candles, symbol watermark, 380px). Home 81KB→66KB.
 
 ## VERIFIED / ASSUMED / BROKEN LEDGER  (seeded Loop 36–39; update every turn)
 
@@ -150,6 +150,12 @@ Two cooperating Python systems, SIM-only equity/futures trading on TradeStation:
 - Strategy changes are advisory-only until a human records approval in `config/manual_approvals.yaml`.
 
 ## SESSION LOG  (newest first)
+
+### 2026-06-14 — Loop 43: fresh dashboard read + TS-style charts
+
+- **Fresh full read:** all live pages 200 & clean (light theme, home button everywhere, no broken/stale-path links, no render errors). Minor: source-registry + bot-change-candidates show old dates in CONTENT (metadata/research, acceptable); /daily-review-v2 small today (weekend, no trades).
+- **Charts → TradeStation look** (`trade_charts.py`): black bg, bright green (#00c805) / red (#fb3b3b) candles, faint centered symbol watermark, right price axis + bottom time axis, 380px panel. Page stays light; chart is a TS-style dark panel. Entry/exit markers + stop/OR lines kept (our overlay). Verified 6/12: 12 charts render dark.
+- NOT replicated: TS's live OHLC header bar (needs live OHLC values + is TS-UI-specific) — offer to add.
 
 ### 2026-06-14 — Loop 42: cut Morning Data Prep + consolidate sections
 
