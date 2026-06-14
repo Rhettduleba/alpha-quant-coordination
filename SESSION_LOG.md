@@ -1,6 +1,6 @@
 # Alpha Quant — SESSION LOG & CRASH-RECOVERY HANDOFF
 
-> **LAST UPDATED BY:** Loop 35 · Claude Code (VPS) · 2026-06-14 Sun ~11:05 AM ET · PROACTIVE WIRING AUDIT — found deploy controller is wired only into re-arm, NOT the 9:35 main scan (state claim corrected); cleared exit/kill/advisor (verified wired); built `_wiring_audit.py` so this bug class is machine-caught
+> **LAST UPDATED BY:** Loop 36 · Claude Code (VPS) · 2026-06-14 Sun ~11:35 AM ET · FOUNDATION AUDIT (a–f) done; fixed R-multiple denom bug (0.10→0.15); COST not wired (no commission column — #1 blocker); in-play TAGGING approved but not yet built
 > *(Loop number is the shared counter with Planning Claude. App: read the PINNED commit URL, not /main/ — /main/ has a 5-min CDN cache and can show a stale stamp.)*
 >
 > **APP CLAUDE — read this file every turn.** Repo is PUBLIC, no connector needed.
@@ -126,6 +126,20 @@ Two cooperating Python systems, SIM-only equity/futures trading on TradeStation:
 - Strategy changes are advisory-only until a human records approval in `config/manual_approvals.yaml`.
 
 ## SESSION LOG  (newest first)
+
+### 2026-06-14 — Loop 36: foundation audit (Planning Claude handoff a–f) + cost status
+
+**FOUNDATION AUDIT (verified against code/data):**
+- **(a) candle-close exit — VERIFIED.** Deployed 6/10 5:22 PM (commit d3f7e05, behind ORB_EXIT_MODE). `candle_close_exit.py` matches spec exactly: PHASE1_ATR 0.15 hard stop → CONFIRM_ATR 0.15 → phase-2 first opposite-color 1-min candle close → CATASTROPHE_ATR 1.0. 6/11+6/12 ran on it.
+- **(b) multi-scan — VERIFIED; deploy-controller — BROKEN (scope).** orb_multiscan builds a FRESH 5-min range per window (10:35–14:35), tags ORBMS<window>, capped by MAX_DAY_TRADE_GROSS. deploy_controller.admit() DOES enforce 75% target / per-side 50% / per-position $25k — but is only called from orb_multiscan (re-arm), NOT orb_runner (9:35 main book). So the caps don't govern the bulk of entries (Loop 35).
+- **(c) freeze blast radius — VERIFIED clean.** 6/12 froze 8:04 AM pre-market, recovered before the 9:30 open; 6/12 = 24 fills / 12 round-trips (complete), 0 duplicate fills, no stuck orders tied to the freeze. 6/11 had no pre-market freeze.
+- **(d) broker-truth completeness — UNVERIFIED (partial).** Internally consistent: sane per-day counts (6/08 14F, 6/09 14F/10U, 6/10 24F, 6/11 30F, 6/12 24F), 0 duplicate fills. But NOT independently cross-checked (p0_verify_harness / TS historicalorders not run for 6/11–6/12). Assumed-complete, not proven.
+- **(e) analytics audit — 1 BROKEN, 2 OK.** R-multiple: BROKEN — daily-review used 0.10×ATR denom for ORB while the live stop + /truth use 0.15 → overstated R ~1.5× and disagreed with /truth. **FIXED (0.10→0.15).** slippage: OK (guarded; null pre-6/08 when intended_price absent). left-on-table: OK (MFE fixed Loop ~31; after-exit = eod_hold − realized).
+- **(f) index-ETF isolation — VERIFIED immaterial.** Only 1 index-ETF round-trip total (SPY, −$11) vs 52 single-name (+$709). SPY barely traded; index drag is not a real factor in the data.
+
+**(#1 COST) — NOT WIRED.** broker_orders_unified.csv has NO commission/fee/cost column at all (not "null" — absent). After-cost expectancy is currently impossible. Fix needs a per-trade commission field (per-share model OR broker-export join). DECISION NEEDED: the commission model/rate (intended live schedule). This is the #1 blocker per Planning Claude.
+
+**(Q1) IN-PLAY TAGGING — approved, NOT yet built this turn** (audit consumed the turn). Next build: tag every arm with day-RelVol, OR-RelVol@arm, intraday move%, above/below-VWAP, catalyst, index-ETF Y/N; ORB_INPLAY_GATE stays OFF.
 
 ### 2026-06-14 — Loop 35: proactive wiring audit (Rhett: "what else is broken?")
 
