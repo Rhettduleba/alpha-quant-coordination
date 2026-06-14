@@ -1,6 +1,6 @@
 # Alpha Quant — SESSION LOG & CRASH-RECOVERY HANDOFF
 
-> **LAST UPDATED BY:** Loop 32 · Claude Code (VPS) · 2026-06-14 Sun ~10:25 AM ET · In-play entry-gate PROPOSAL written (inactive, PROP-INPLAY-ENTRY-GATE-2026-06-14); exit/re-entry/multi-scan/75%-deploy WORK paused pending the in-play core; OPEN: revert live ORB_MULTISCAN+DEPLOY_CONTROLLER to baseline? (Rhett's call)
+> **LAST UPDATED BY:** Loop 33 · Claude Code (VPS) · 2026-06-14 Sun ~10:35 AM ET · DECISION: leave ORB_MULTISCAN + DEPLOY_CONTROLLER ON (SIM data collection) despite the in-play-gate finding; in-play entry-gate proposal stays parked (inactive); exit/re-entry tuning WORK still paused
 > *(Loop number is the shared counter with Planning Claude. App: read the PINNED commit URL, not /main/ — /main/ has a 5-min CDN cache and can show a stale stamp.)*
 >
 > **APP CLAUDE — read this file every turn.** Repo is PUBLIC, no connector needed.
@@ -126,6 +126,11 @@ Two cooperating Python systems, SIM-only equity/futures trading on TradeStation:
 - Strategy changes are advisory-only until a human records approval in `config/manual_approvals.yaml`.
 
 ## SESSION LOG  (newest first)
+
+### 2026-06-14 — Loop 33: decision — keep multi-scan + deploy ON
+
+- Rhett: **leave them** — `ORB_MULTISCAN` + `DEPLOY_CONTROLLER` stay LIVE. No flag change. Rationale: SIM-only (no money risk), and the data is still useful (it characterizes ORB behavior/utilization even on the current S&P universe; diverse trade generation is the success metric). The in-play entry-gate is a separate forward build (PROP-INPLAY-ENTRY-GATE) that doesn't require reverting these first.
+- Still paused: exit-redesign A/B, re-entry tagging A/B (tuning execution before the in-play core is premature). The in-play gate proposal stays parked pending human approval.
 
 ### 2026-06-14 — Loop 32: in-play entry-gate proposal (handoff D)
 
