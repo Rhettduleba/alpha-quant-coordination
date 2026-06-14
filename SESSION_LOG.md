@@ -1,6 +1,6 @@
 # Alpha Quant — SESSION LOG & CRASH-RECOVERY HANDOFF
 
-> **LAST UPDATED BY:** Loop 41 · Claude Code (VPS) · 2026-06-14 Sun ~2:20 PM ET · opened the 2 borderline cards & CUT both: Morning Decision Board (cached/thin, overlaps pre-market) + Manager Review Packet (stale 6/11 link-packet, superseded by Daily Review). Home 81KB→67.5KB.
+> **LAST UPDATED BY:** Loop 42 · Claude Code (VPS) · 2026-06-14 Sun ~2:35 PM ET · cut Morning Data Prep (monitored unused V1 preopen data) + consolidated 3 thin sections into one "Supporting tools" (Alerts/Watchlist · Source Registry · Bot Change Candidates). Home 81KB→66KB. Dashboard cleanup complete.
 
 ## VERIFIED / ASSUMED / BROKEN LEDGER  (seeded Loop 36–39; update every turn)
 
@@ -150,6 +150,12 @@ Two cooperating Python systems, SIM-only equity/futures trading on TradeStation:
 - Strategy changes are advisory-only until a human records approval in `config/manual_approvals.yaml`.
 
 ## SESSION LOG  (newest first)
+
+### 2026-06-14 — Loop 42: cut Morning Data Prep + consolidate sections
+
+- Cut **Morning Data Prep** (monitored the V1 pre-open data pipeline we no longer use; pre-market runs off the live scanner).
+- Collapsed the 3 thin sections (Morning / Decision Support / Review & Learning) into ONE **"Supporting tools"** section: Alerts/Watchlist, Source Registry, Bot Change Candidates (+ the 12 blank `%s`, invisible). `%s` tuple unchanged.
+- **Home 81KB → 66KB.** Final structure: hero (Pre-Market / Daily Review / Trade Truth) · status row (Bot Health / Advisor Health / Market&Activity / Review) · Supporting tools. Dashboard redundancy cleanup COMPLETE.
 
 ### 2026-06-14 — Loop 41: cut the 2 borderline cards
 
