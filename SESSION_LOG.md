@@ -1,6 +1,7 @@
 # Alpha Quant — SESSION LOG & CRASH-RECOVERY HANDOFF
 
-> **LAST UPDATED BY:** Claude Code (VPS) - 2026-06-14 Sun - turn: Home button on every page + all dark backgrounds -> light gray
+> **LAST UPDATED BY:** Loop 31 · Claude Code (VPS) · 2026-06-14 Sun ~10:05 AM ET · ORB-edge audit (B+C): live ORB = S&P-universe on a weak RelVol floor; the mover/RelVol edge runs in SHADOW; exit-redesign + re-entry A/B PAUSED until the universe gate is decided
+> *(Loop number is the shared counter with Planning Claude. App: read the PINNED commit URL, not /main/ — /main/ has a 5-min CDN cache and can show a stale stamp.)*
 >
 > **APP CLAUDE — read this file every turn.** Repo is PUBLIC, no connector needed.
 > • Home URL (can be up to 5 min stale): `https://raw.githubusercontent.com/Rhettduleba/alpha-quant-coordination/main/SESSION_LOG.md`
@@ -125,6 +126,22 @@ Two cooperating Python systems, SIM-only equity/futures trading on TradeStation:
 - Strategy changes are advisory-only until a human records approval in `config/manual_approvals.yaml`.
 
 ## SESSION LOG  (newest first)
+
+### 2026-06-14 — Loop 31: ORB-edge audit (Planning Claude handoff B+C)
+
+**CRITICAL FINDING — the live ORB is NOT trading the mover/RelVol edge.** Confirmed from the bot code (not the scanner):
+- **Entry gate (quoted, `orb_runner.py`):** `MIN_REL_VOL = 1.0` (line 68); per symbol `rel_vol = compute_rel_vol(sym, or_vol); if rel_vol is None or rel_vol < MIN_REL_VOL: skip` (line 378-380). `compute_rel_vol` (`orb_data_collector.py:414`) = **today's opening-range volume ÷ the symbol's own 14-day avg OR volume.** Then candidates are sorted by rel_vol desc and the **top 20** (`TOP_N_BY_RELVOL`) that broke their opening range are armed. Other gates: ATR floor, doji/OR-quality, earnings veto, advisor block. **There is NO %-move / catalyst / market-mover / day-RelVol gate at entry.** A floor of 1.0 only means "opened at or above its own average volume" — a very weak in-play proxy that ~half the universe clears, favoring reliably-liquid large-caps.
+- **Real tradable universe (`orb_universe.build_universe()`): 530 symbols** = S&P 500 + SUPPLEMENT ETFs (SPY, QQQ, IWM, DIA, ARKK), minus leveraged ETFs. NOT the 34-name core, NOT the 2296 broad tier. The 2296 broad tier is **scanner-shadow only** — never armed by ORB.
+- **Why SPY trades:** SPY/QQQ/IWM/DIA are *intentionally* in SUPPLEMENT ("ETFs with ORB-like patterns"). The structural block is **leveraged-ETF-only** (`is_leveraged_etf('SPY')` = False), so plain index ETFs pass by design. Not a missing exclusion — a deliberate inclusion to revisit.
+- **Headline:** the mover scanner's edge (%-move + day-RelVol + catalyst, incl. the broad tier) has been running in **SHADOW**; live entries are **ORB breakouts on the S&P-530 filtered by a weak OR-volume RelVol≥1.0, top-20** — i.e. we've been measuring **ORB-on-S&P-(mostly large-caps + index ETFs)**, not ORB-on-movers.
+- **PAUSED:** exit-redesign + re-entry A/B until the universe/entry-gate decision (tuning execution on a possibly-wrong selection is premature).
+
+**(B) Scanner candidates vs ACTUAL traded (broker truth), per real trading day — Y = was a scanner sp-pool candidate that day:**
+- **6/11 (Thu): 35 candidates · 15 traded · 3 overlap.** EQT(Y) · SMCI(Y) · WY(Y) · CNP(N) · DKNG(N) · DPZ(N) · ED(N) · GD(N) · HSIC(N) · NEM(N) · PRU(N) · SNA(N) · SPY(N) · TYL(N) · VZ(N).
+- **6/12 (Fri): 42 candidates · 12 traded · 2 overlap.** ADSK(Y) · NWSA(Y) · LVS(N) · NDAQ(N) · OKE(N) · RJF(N) · ROP(N) · STLD(N) · SW(N) · TRV(N) · WSM(N) · WTW(N).
+- 6/09–6/10: scanner wasn't logging sp-pool candidates yet (added Loop #28), so no overlap test; trades were 7 and 12.
+
+**Backfill (was missing from the log):** 6/12 was the FIRST live multi-scan session (ORB_MULTISCAN ON from 6/11 5:26 PM). Result: 12 closed trades, −$48 (broker truth). The bot froze pre-market 8:04 AM (watchdog restart) — root-caused + fixed (heartbeat-while-waiting on cycle steps, Loop 30). Multi-scan + deploy-controller live; capital still well under the 75% target.
 
 ### 2026-06-12 — Session: dashboard UX + coordination + strategy handoff
 
