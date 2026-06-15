@@ -36,7 +36,7 @@ the case for this matrix.
 | 14 | Fill-time gate | Kill stale DAY entries (SMCI-class) | stale unfilled entry cancelled | inject_stale_entry.py | ❌ OFF (=today's 4h-late fills) | ❌ |
 | 15 | Multi-scan re-arm | Add movers at 10:35–14:35 | arms movers within caps | per-window armed + broker status | ❌ slot-starved (MAX_OPEN_POSITIONS=4) | ✅ timeline (per-scan) |
 | 16 | EOD flatten | Cancel + flatten by 15:55 | flat at close | eod_flatten_done + 0 positions 16:00 | ❔ (runs 3:55) | ✅ timeline |
-| 17 | Risk floors | daily_guard + 5% DD kill | halts when tripped | simulate loss → halt | ✅ DD; daily $ OFF (SIM) | ⚠️ |
+| 17 | Risk floors | daily_guard + 5% DD kill | halts when tripped | simulate loss → halt | ✅ 5% DD active; daily-$ clamp ◆ INTENTIONALLY OFF (SIM data-gathering, Loop 74) — must-set-before-live gate, NOT broken | ✅ (◆ SIM-intentional + 5% DD rows) |
 | 18 | Advisor filter | Obey typed control file | reject→ALLOW; types honored | feed control file → behavior | ✅ | ⚠️ |
 | 19 | Earnings veto | Block earnings-blackout names | stale-cal warns; blocks correctly | staleness_warning + sample | ⚠️ calendar ~12d stale | ❌ |
 | 20 | Mover scanner | Bulk in-play movers (scans.jsonl) | RTH writes; pre-mkt gated | mtime + qualified count | ⚠️ RTH-only (no pre-mkt) | ✅ pre-market page |
@@ -57,8 +57,19 @@ the case for this matrix.
 
 ## Open fixes feeding red rows (tracked, NOT silently "fixed")
 - #14 Fill-time gate OFF → 4h-late stale fills. Turn ON (ORB_ENTRY_MAX_AGE_MIN=20) — pre-open only.
-- #15 Re-arm slot cap MAX_OPEN_POSITIONS=4 vs 20-name book → use deploy-controller $-caps. (approval)
-- #11 multiscan missing reject-fix → movers rejected on crossed levels.
-- #9 deploy_controller never counts real exposure (normalize broker dicts).
+- #15 Re-arm slot cap MAX_OPEN_POSITIONS=4 → **APPROVED + STAGED** (Loop 72): raise to 16 (=$400k/$25k)
+  via time-guarded apply_slot_cap.py, scheduled 16:10 ET 2026-06-15. Flips the row OK after apply.
+- #11 multiscan missing reject-fix → movers rejected on crossed levels. (still open)
+- #9 deploy_controller → **DONE** (Loop 72-73): book_from normalizes raw broker dicts; prove_deploy_governs.py
+  proves all 3 caps bind on a non-empty book + LIVE on the real $580k book. Row = GOVERNS.
 - #4 OR-fetch clean coverage unmeasured (don't hammer API; read from the real scan).
 - #19 earnings_calendar.csv ~12d stale → refresh.
+- HTB systematic exclusion (BDX got armed) — after-close, approval-gated.
+
+## Intentional-by-design (NOT failures — do not "fix")
+- **Daily-loss clamp OFF** (DAILY_MAX_LOSS=1e9): deliberate SIM data-gathering (Planning Loop 74, Rhett) —
+  collect the full good+bad distribution un-truncated. Account-level clamp only; per-trade STRATEGY exits
+  (0.15ATR/candle-close/1.0ATR) stay active. Gated by DAILY_MAX_LOSS_MUST_SET_BEFORE_LIVE — live launch
+  checklist MUST set a real $ value + harden to a real-time intraday clamp. Board shows ◆ SIM-intentional.
+- **5% account DD kill** active (~$50k) — the only account-level backstop in SIM. HOLD pending Rhett's
+  scope confirmation (Loop 74 #4; may also go off in SIM). Do not change until go/no-go.
