@@ -140,6 +140,8 @@ Two cooperating Python systems, SIM-only equity/futures trading on TradeStation:
 
 ## STANDING DECISIONS  (the running decision log — append every change here)
 
+**STANDING RULE #0 — VERIFY BEFORE YOU STATE (permanent, both seats; Loop 87, 2026-06-15).** NEVER present a guess or an unverified claim as fact. Verify every load-bearing claim against the real source (live data / actual code / broker truth) BEFORE stating it. If it can't be verified yet, say so explicitly ("unverified" / "needs live capture" / "pending") — never fill the gap with a plausible guess. Check BEFORE acting, not after. **Nothing untested reaches Rhett.** Also written into CLAUDE.md working rules. Applies to Planning Claude AND Claude Code.
+
 **Scope / infrastructure**
 - 2026-05-21 — VPS-only; OneDrive is backup. 2026-06-07 — live root migrated to `C:\AlphaQuant` (OneDrive backup-only).
 - 2026-06-11 — SESSION_LOG.md is the master handoff, updated every turn, backed up to the GitHub coordination repo.
