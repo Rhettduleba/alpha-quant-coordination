@@ -11,10 +11,17 @@ Owner of the build: Claude Code. Last updated 2026-06-15 (post-mortem of today's
 ## Today's failure chain (why ~0 useful trades 2026-06-15)
 1. 9:35 scan crash-looped (deploy_controller KeyError) → completed late on a degraded OR fetch
    (~34/530) → armed sleepy alphabetical large-caps → `scan_completed` LOCKED the book.
-2. Fill-time gate OFF → those stale 9:35 stop-entries sat all day and filled ~13:45 (4h late).
+2. ~~Fill-time gate OFF → stale 9:35 stop-entries filled ~13:45 (4h late).~~ **CORRECTED 2026-06-15
+   (Loop 79): this was a TIMEZONE MISREAD, not a real delay.** `submit_time` is logged in ET (-04:00),
+   the broker's `opened_time` in UTC (Z); read naively that's a phantom +4h. Raw proof: ACN
+   `submit 2026-06-15T09:45:57-04:00` → `opened 2026-06-15T13:45:57Z` = the SAME instant. Across all
+   58 fills in the log, max submit→fill (tz-aware) = 0.0 min. Fills were IMMEDIATE. The fill-time gate
+   was solving a phantom; it stays OFF and that is not a bug. (chain_audit.py L6b + regression REG-11.)
 3. Re-arm (movers) slot-starved: `slots = max(0, MAX_OPEN_POSITIONS(4) − 19 working) = 0` → 0 movers.
-Three independent breaks, each individually "fixed-or-flagged," none caught before the open. That is
-the case for this matrix.
+   (Real; the BP-backstop raise to 16 applies tonight 4:10.)
+4. Re-arm StopMarket rejections (4 today, 09:45:58: TTD/STX/ADBE/SATS "markets closed"). Stop-limit is
+   broker-accepted (15 fills today prove it); fix in code (REG-05) but OPEN thread: why StopMarket was
+   emitted at all. THE one real chain break on 2026-06-15 (chain_audit L5).
 
 ## Validation matrix
 
