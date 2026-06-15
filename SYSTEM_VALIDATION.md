@@ -66,10 +66,17 @@ the case for this matrix.
 - #19 earnings_calendar.csv ~12d stale → refresh.
 - HTB systematic exclusion (BDX got armed) — after-close, approval-gated.
 
-## Intentional-by-design (NOT failures — do not "fix")
-- **Daily-loss clamp OFF** (DAILY_MAX_LOSS=1e9): deliberate SIM data-gathering (Planning Loop 74, Rhett) —
-  collect the full good+bad distribution un-truncated. Account-level clamp only; per-trade STRATEGY exits
-  (0.15ATR/candle-close/1.0ATR) stay active. Gated by DAILY_MAX_LOSS_MUST_SET_BEFORE_LIVE — live launch
-  checklist MUST set a real $ value + harden to a real-time intraday clamp. Board shows ◆ SIM-intentional.
-- **5% account DD kill** active (~$50k) — the only account-level backstop in SIM. HOLD pending Rhett's
-  scope confirmation (Loop 74 #4; may also go off in SIM). Do not change until go/no-go.
+## Intentional-by-design (NOT failures — do not "fix") + REQUIRED-BEFORE-LIVE gates
+Rhett's final SIM decision (Planning Loop 76): **NO account-level halts in SIM** — collect complete
+sessions, good AND bad. The ONLY things that close a trade are the per-trade STRATEGY exits
+(0.15ATR / candle-close / 1.0ATR), which are UNTOUCHED. All three items below are ◆ SIM-intentional on
+the board and carry a REQUIRED-BEFORE-LIVE flag; the `/system-validation` blocking banner lists any that
+are unmet and turns into a hard ⛔ if `live_allowed` is ever true while they're off.
+- **Daily-loss clamp OFF** (DAILY_MAX_LOSS=1e9, Loop 74). Before live: set a real $ value + harden to a
+  real-time intraday clamp. Flag: DAILY_MAX_LOSS_MUST_SET_BEFORE_LIVE.
+- **5% account-DD kill OFF** (ACCOUNT_DD_KILL_ENABLED→False, Loop 76) — applied in tonight's after-close
+  batch (apply_slot_cap.py, time-guarded). risk_kill_switch.evaluate_account returns OK when disabled;
+  HWM keeps tracking so it's accurate when re-enabled. Before live: re-enable + verify it halts. Flag:
+  ACCOUNT_DD_KILL_MUST_SET_BEFORE_LIVE.
+- **Malfunction breaker NOT built** (Loop 76 — explicitly skipped). MALFUNCTION_BREAKER_BUILT=False.
+  Before live: build + wire it. Flag: MALFUNCTION_BREAKER_MUST_BUILD_BEFORE_LIVE.
