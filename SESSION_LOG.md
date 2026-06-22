@@ -1225,3 +1225,5 @@ _N=25 candidates today (deduped by symbol) -> fade_breakout_log.jsonl (append-on
 - @EOD: mean breakout_R = -0.136; breakout won (R>0) 10/25 (if breakout_R<0 the FADE would have paid).
 - by cap bucket (mean breakout_R @EOD): large=-0.06 (n15), mega=0.02 (n6), mid=-0.64 (n4)
 ---
+
+----- alphaquant-alert-triage (scheduled) - 2026-06-22 Mon ~4:44 PM ET - **Triage: inbox CLEAN (code_alert_inbox.py --json: n_total=0, n_actionable=0, 0 critical groups). No new actionable CRITICAL alerts since last ack. State verified healthy: CSHV 16:40 run OK=44/WARN=0/FAIL=0 (all checks passing, scheduled_tasks_present back to all-8-OK post the ~4:06 PM reboot, bot heartbeat 17s fresh, book context market-closed). Nothing to escalate -- silence = handled. --ack'd.**
