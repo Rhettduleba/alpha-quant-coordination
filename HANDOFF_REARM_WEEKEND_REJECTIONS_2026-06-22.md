@@ -22,7 +22,7 @@ The 140 rejections are **weekend phantom orders**, not a failure of today's live
 
 ## Impact
 - **P&L / positions: NONE** — every order rejected; no fills; SIM account.
-- **API hygiene (the real concern):** ~140 order placements + the associated weekend quote scans hammer the TS API off-hours. Per CLAUDE.md rule 4, excessive API use risks key throttling/disablement; this is also a plausible contributor to Sunday's transient `TS_AUTH_FAIL` 500.
+- **API hygiene (the real concern):** ~140 order placements + the associated weekend quote scans hammer the TS API off-hours. Per CLAUDE.md rule 4, excessive API use risks key throttling/disablement. (V6 checked: NOT linked to Sunday's TS_AUTH_FAIL 500 — that 500 was at 09:00:02, the earliest re-arm order was 10:35, 95 min later; the 500 preceded the spam and was an independent transient TS server error.)
 - **Noise:** 140 rejected orders clutter the blotter and alarmed Rhett on day 1.
 
 ## Secondary finding
