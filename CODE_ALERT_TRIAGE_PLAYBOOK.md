@@ -18,15 +18,15 @@ Already-understood benign/expected states (the reader pre-tags many via KNOWN_NO
   deadman states already armed; any check we have already confirmed benign in SESSION_LOG.
 Action: nothing. They are informational. (If one recurs noisily, consider Bucket B.)
 
-## BUCKET B — AUTO-FIXABLE (non-watched, observability only)  → fix with full discipline, then ack
-ONLY this narrow class may be auto-fixed without Rhett:
-- A CSHV/preflight/regression CHECK firing on a benign/expected state (a false-WARN/FAIL in a NON-watched
-  check file) — refine the check to be context-aware (the Loop 131/136 pattern).
-- A stale DISPLAY/dashboard artifact, a read-only report, or a logging gap (non-trading).
-- A dead NON-TRADING helper process that is clearly safe to (re)start (e.g., the dashboard, a scheduled
-  reporting task) — restart it the same supervised way and verify.
-Discipline for any fix: verify the root cause against real data → make the minimal change → test/compile →
-`git add` + commit + sync → log to SESSION_LOG. NEVER skip verification.
+## BUCKET B — SAFE-FIXABLE (non-watched, observability)  → ESCALATE WITH A PROPOSED FIX (do NOT auto-edit)
+**During the OOS forward test, autonomous code-fixing is DEFERRED (Planning Track B, 2026-06-22).** Even a
+"safe" auto-edit carries a real failure mode — e.g. an unattended agent loosening a check to suppress what
+it THINKS is noise can BLIND the monitor to a real signal. So a human stays in the loop on every fix.
+Class (for recognition): a CSHV/preflight/regression CHECK firing on a benign/expected state (Loop 131/136
+false-WARN pattern); a stale display/report; a logging gap; a dead NON-trading helper that is safe to restart.
+ACTION NOW: do NOT edit code. ESCALATE it to Rhett (Bucket C format) WITH the specific proposed fix, so a
+human applies it (the noise then gets killed at SOURCE, human-in-loop, per A4). Auto-fix re-enables only
+AFTER the forward test resolves, via a reviewed whitelist of safe, idempotent, non-trading actions.
 
 ## BUCKET C — ESCALATE TO RHETT (do NOT touch)  → notify + log + ack
 Escalate (notifier.send_notification level CRITICAL, subject "CODE TRIAGE — needs you", body = plain-English
@@ -40,6 +40,8 @@ diagnosis + the specific proposed fix) for ANY of:
 - ANYTHING novel, ambiguous, or that you are not highly confident is benign. **When in doubt, ESCALATE.**
 
 ## HARD RULES (never, under any circumstance, autonomously)
+- DURING THE FORWARD TEST: do NOT autonomously edit/commit ANY code (even non-watched). Escalate fixes
+  with a proposal instead (Bucket B). Autonomous auto-fix is deferred (Planning Track B).
 - NEVER edit a WATCHED strategy file; NEVER change risk/sizing/universe/stops/time-windows.
 - NEVER place, cancel, or modify any order; NEVER touch positions.
 - NEVER deploy a strategy change (those need a proposal + manual_approvals + Rhett).
