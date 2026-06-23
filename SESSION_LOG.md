@@ -1,6 +1,6 @@
 # Alpha Quant — SESSION LOG & CRASH-RECOVERY HANDOFF
 
-> **LAST UPDATED BY:** Alert-Triage (autonomous) - 2026-06-23 Tue ~1:05 PM ET - **Code-inbox CLEAN: 0 actionable CRIT since last ack. CSHV 43/43 OK, WARN=0, FAIL=0, INFO=1 (clean_day_certified rebuilding intraday). Bot cycling (loop 3035, heartbeat ~9s fresh), 5 positions monitored by exit_bot_v2 + reconciled both ways, gate enforced (16 selected / 118 candidates), SAFE_MODE off, book==exposure $281,542. No escalation (silence = handled).**
+> **LAST UPDATED BY:** Alert-Triage (autonomous) - 2026-06-23 Tue ~2:05 PM ET - **1 actionable CRIT triaged, NO escalation. CSHV `rel_position_recon` FAILed 1:45 PM (broker had FCX, bot not yet tracking) — verified TRANSIENT fresh-fill recon lag: FCX entered via legit ORB SELLSHORT 1:35:10 PM (order 958720294, qty 307, ORBMS1335_short); latest CSHV (2:00 PM) shows rel_position_recon OK (5 reconciled both ways) + rel_exit_side all 5 monitored by exit_bot_v2 (FCX now protected) + book==exposure $281,150. Self-resolved within ~2 cycles, did NOT persist. Bucket A, silence=handled, --ack'd. CSHV otherwise 43/43 OK, WARN=0, FAIL=0, SAFE_MODE off, gate enforced (17 sel/119 cand).**
 
 ## >>> POST-REBOOT CHECKLIST (Loop 140, 2026-06-22) -- DO THIS FIRST after the VPS reboot <<<
 The VPS was rebooted ~4:06 PM ET 6/22 to clear a memory-pressure incident. AutoAdminLogon=1, so on boot it auto-logs-in as Administrator and the 'AlphaQuant Bot Supervisor' logon task should restart watchdog_supervisor -> run_bot. VERIFY within ~5 min of boot:
