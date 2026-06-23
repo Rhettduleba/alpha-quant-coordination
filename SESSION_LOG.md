@@ -1,6 +1,6 @@
 # Alpha Quant — SESSION LOG & CRASH-RECOVERY HANDOFF
 
-> **LAST UPDATED BY:** Alert-Triage (autonomous) - 2026-06-23 Tue ~7:04 PM ET - **Inbox CLEAN — 0 actionable alerts, NO escalation (silence=handled). code_alert_inbox.py --json returned n_total=0/n_actionable=0. CSHV (3:00 PM run) 43/43 OK, WARN=0, FAIL=0, INFO=1, SKIP=2; SAFE_MODE off, gate enforced (19 selected / 121 candidates), book==exposure $258,133, all 4 positions monitored by exit_bot_v2, heartbeat 9s fresh, 4 advisor runs today. Earlier 2:05 PM FCX recon lag confirmed self-resolved. --ack'd, cursor advanced.**
+> **LAST UPDATED BY:** Alert-Triage (autonomous) - 2026-06-23 Tue ~4:04 PM ET - **Inbox CLEAN — 0 actionable alerts, NO escalation (silence=handled). code_alert_inbox.py --json returned n_total=0/n_actionable=0/n_noise=0. CSHV (4:00 PM run) 42 OK, WARN=0, FAIL=0, INFO=1, SKIP=3; all operational checks passing — SAFE_MODE off, gate enforced, all positions monitored, heartbeat 12s fresh, 4 advisor runs today (4 real), control file 3.5h old w/ real tokens. Forward-test freeze in effect (no code edits). --ack'd, cursor advanced.**
 
 ## >>> POST-REBOOT CHECKLIST (Loop 140, 2026-06-22) -- DO THIS FIRST after the VPS reboot <<<
 The VPS was rebooted ~4:06 PM ET 6/22 to clear a memory-pressure incident. AutoAdminLogon=1, so on boot it auto-logs-in as Administrator and the 'AlphaQuant Bot Supervisor' logon task should restart watchdog_supervisor -> run_bot. VERIFY within ~5 min of boot:
@@ -1404,3 +1404,13 @@ _N=25 candidates today (deduped by symbol) -> fade_breakout_log.jsonl (append-on
 - code_alert_inbox.py --json: **0 actionable CRIT, 0 noise** since last ack (~10:04 AM run).
 - CSHV 43 OK / 0 WARN / 0 FAIL / 1 INFO (clean_day_certified intraday rebuild). Bot loop 2714, heartbeat 17s, 6 positions reconciled both ways + monitored by exit_bot_v2, gate enforced, SAFE_MODE off, book==exposure $287,238.
 - **Inbox clean -> no Rhett escalation (silence = handled).** Advanced cursor with --ack.
+
+---
+### Turn — 2026-06-23 ~11:00 AM ET — Strategy-rule + in-play compliance on EOD debrief AND dashboard
+- **Ask (Rhett):** add to EOD summary + dashboard: (1) Did the bot trade exactly to the strategy rules on every trade? yes/no + why not. (2) Did the bot trade the in-play-identified symbols? yes/no + why.
+- **Verified sources first (RULE #0; Explore agent's guessed exit-reason strings were WRONG):** in-play list = `orb_candidate_log.jsonl` (selected/inplay_pass/day_relvol/move/path/window); gate live (ORB_INPLAY_GATE=True); real 6/22 exit reasons = CANDLE_CLOSE_REVERSAL ×11 + "Forced EOD flatten" ×5 (classify to EXIT_CANDLE_CLOSE_TRAIL / EXIT_EOD_FLATTEN); canonical classifier `exit_reason_codes` + live gate `inplay_gate.evaluate` both reusable.
+- **Built `tradestation-bot/strategy_compliance.py` (single source, no duplicated logic):** per round-trip — in-play = symbol was `selected` in the day's list; rule_ok = re-passes `inplay_gate.evaluate()` on logged inputs + occ<=ORB_MAX_ENTRIES_PER_NAME + exit classifies to a deployed code (CANDLE_CLOSE_TRAIL/EOD_FLATTEN). Re-arm-window entries flagged "ungated by design" (N/A, not failed). day_compliance() returns the two yes/no answers + exceptions. Reuses eod_debrief (round_trips + exit reasons) + inplay_gate + exit_reason_codes — imports nothing from the trading loop. Self-test 5/5.
+- **Wired into BOTH surfaces (same module → answers always agree):** EOD debrief new "## A2 · STRATEGY-RULE & IN-PLAY COMPLIANCE" section (Q1/Q2 + exceptions + re-arm context + exit breakdown); dashboard daily-review compliance panel (two big YES/NO boxes + why-not list + context), computed in build_review→rollup['compliance'].
+- **6/22 result:** Q1 YES (16/16), Q2 YES (16/16). Honest finding surfaced: 11/16 entries were RE-ARM entries (ungated by the in-play gate by design), several with RelVol < the 1.5 9:35 threshold — visible per-trade + in the context line.
+- **Verify:** 3 files compile; self-test 5/5; EOD A2 renders YES/YES + context; dashboard restarted PID 5000, /daily-review-v2?date=2026-06-22 = 200, 485,872 bytes, panel PRESENT (YES present, no false NO). EOD picks up tonight via scheduled task (fresh process).
+- **No watched strategy file touched. No trading-path change.** Read-only analytics over broker truth + logged decisions.
