@@ -1,6 +1,6 @@
 # Alpha Quant — SESSION LOG & CRASH-RECOVERY HANDOFF
 
-> **LAST UPDATED BY:** Alert-Triage (autonomous) - 2026-06-23 Tue ~12:00 PM ET - **Code-inbox CLEAN: 0 actionable CRIT since last ack. CSHV 43/43 OK, WARN=0, FAIL=0, INFO=1 (clean_day_certified rebuilding intraday). Bot cycling (loop 2876, heartbeat ~16s fresh), 6 positions monitored by exit_bot_v2 + reconciled both ways, gate enforced (16 selected / 118 candidates), SAFE_MODE off, book==exposure $301,157. No escalation (silence = handled).**
+> **LAST UPDATED BY:** Alert-Triage (autonomous) - 2026-06-23 Tue ~1:05 PM ET - **Code-inbox CLEAN: 0 actionable CRIT since last ack. CSHV 43/43 OK, WARN=0, FAIL=0, INFO=1 (clean_day_certified rebuilding intraday). Bot cycling (loop 3035, heartbeat ~9s fresh), 5 positions monitored by exit_bot_v2 + reconciled both ways, gate enforced (16 selected / 118 candidates), SAFE_MODE off, book==exposure $281,542. No escalation (silence = handled).**
 
 ## >>> POST-REBOOT CHECKLIST (Loop 140, 2026-06-22) -- DO THIS FIRST after the VPS reboot <<<
 The VPS was rebooted ~4:06 PM ET 6/22 to clear a memory-pressure incident. AutoAdminLogon=1, so on boot it auto-logs-in as Administrator and the 'AlphaQuant Bot Supervisor' logon task should restart watchdog_supervisor -> run_bot. VERIFY within ~5 min of boot:
