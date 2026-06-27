@@ -3675,3 +3675,93 @@ That table *is* verification task #2: a benign-noise-heavy day (6/25) **passes**
 **The real lever isn't the certifier — it's the recurring 9:30-AM loop-stall and the 6/19 gate-fail-open.** Fix those and clean days are earned legitimately. One genuine open question for you/Rhett (I did *not* decide it myself): should a *single, self-recovered* loop-stall be tolerated like a 1-cycle position-recon blip, while a *sustained* stall stays HARD? I left it strict.
 
 ---
+
+
+## Turn — 2026-06-27 13:50:00 ET
+
+**Rhett:**
+
+# HANDOFF → CLAUDE CODE — TW v1: LIVE-SHADOW PROVING RUN (still zero orders) + must-not-cut review
+# From: Planning Claude | 2026-06-27 ET (Code: number + stamp; log it + SYSTEM_FACTS line per standing rule)
+# CONTEXT: TW v1 built + replay-proven (6/25: 23/23 coverage, 0s latency, exits reproduced within cents).
+# The replay used 1-min bars — it CANNOT prove the live tick stream. This run proves the stream. STILL SHADOW:
+# zero orders, no watched file, freeze intact.
+
+## RUN
+1. Run `tape_watcher.py --live` alongside the live bot for a full real session (open→close), observing the
+   in-play names + every open position. It LOGS would-place stops + would-fire exits to tw_shadow; SENDS NOTHING.
+2. `tw_report.py` produces the daily proving report.
+
+## PROVE-IT METRICS (the live-tape questions replay couldn't answer)
+- TICK COMPLETENESS: did TW receive a continuous tick/quote stream with NO GAPS for each watched symbol vs
+  broker truth? Quantify every gap/dropout (count, duration, which symbols). If it can't see every tick, FLAG LOUD.
+- STREAM STABILITY: did the stream stay up the whole session? reconnects? how long to recover? CPU/mem footprint.
+- COVERAGE (live): would-place-stop on 100% of entries, latency in ms (confirm the replay's 100%/0s holds on
+  the live tape), split 9:35 vs re-arm.
+- MUST-NOT-CUT REVIEW: of any trades TW's early/tick-level exit would have cut, how many were confirmed WINNERS
+  that dipped then recovered? List them with $ impact. (This is the guardrail — early exit must not clip winners.)
+- EXIT FAITHFULNESS (live tape): TW's would-fire exits vs the live bot's actual exits vs broker truth — within cents?
+
+## HARD CONSTRAINTS
+- SHADOW ONLY: zero orders. No watched trading file. Freeze intact. Read stop distance/confirm/chandelier params
+  from code; print them (already confirmed 1.4×ATR — keep verifying).
+- A live cutover is a SEPARATE future handoff, only after: clean tick-completeness (no material gaps) + stable
+  reconnect across ≥ a few sessions + the must-not-cut review clean + Rhett's explicit go. When live, stops must
+  be REAL broker-resting orders (protection survives TW dying) and exactly ONE system owns each position's exit.
+
+## VERIFICATION TASKS TO CLOSE (plain English back to Planning)
+1. Tick-completeness result: did TW see every tick, or were there gaps? (the gating question)
+2. Stability/reconnect + footprint over the session.
+3. Live coverage % + latency; must-not-cut list with $ impact; exit-faithfulness vs broker truth.
+4. Plain-English: is TW ready for a live-cutover conversation, or what's still owed?
+
+## /planning
+- TW v1: SHADOW BUILD DONE → status "live-shadow proving run IN_PROGRESS." v2 (entry stream) / v3 (premarket) NOT_STARTED.
+
+**Claude Code:**
+
+Before anything, I need to verify the one fact that determines whether this run is even possible right now — is the market open? (RULE #0; the handoff assumes a live session.)
+Confirmed: **Saturday 1:42 PM ET, market closed** (`is_regular_trading_day=False`). So the full open→close live proving run the handoff asks for **cannot happen today** — the next session is Monday 6/29. I won't fake it.
+
+What I *can* do now, decisively: (1) smoke-test the live stream plumbing (auth/connect/parse — the novel risky part), (2) harden `--live` for a faithful full-session run, (3) arm it to auto-run Monday, (4) deepen the must-not-cut review from the replay. Starting with a stream smoke-test capability:
+Now wire `--smoke` into the dispatch:
+Now run the smoke test against liquid symbols to prove the stream plumbing (auth/connect/parse) works:
+**Stream plumbing PROVEN.** HTTP 200, auth works, the NDJSON consumer parsed 3 snapshot quotes (NVDA 192.71, AAPL 282.50, MSFT 372.73 = Friday closes) + 4 heartbeats over 25s, 0 parse errors. The hardest novel piece — the streaming consumer — works. Tick-*completeness* during live trading is still owed (Monday).
+
+Now the must-not-cut review (provable now from the replay) — re-running 6/25 clean and quantifying the $ impact of any winner TW would have clipped:
+Must-not-cut (6/25 replay): only **2 winners** would be clipped — RVTY (+$64 net, $21 giveback) and TER (+$140 net, $31 giveback). **Total $52 giveback, and neither winner flipped to a loss** — TW's earlier exit still captured most of each gain. Reassuring, but it's a 1-min-bar proxy; the live tape decides for real.
+
+Now hardening `--live` for a valid full-session run (it must re-poll positions periodically to catch 9:35 + re-arm entries, not just on reconnect). Reading the current loop:
+The outer loop only re-polls positions on reconnect — during continuous trading it would never pick up 9:35/re-arm entries. Adding a periodic position re-poll that reconnects only when a *new* symbol appears (minimizes gaps):
+Adding the `RESUBSCRIBE_S` constant near the other module constants:
+One fidelity correction: live would-place latency = how fast TW *detects* the fill (position-poll lag), not the replay's 0s (which knew fill times). I'll poll faster (15s) so detection lag is ≤15s — still a huge improvement over the bot's ~7min — and be honest that literal ms-latency needs the v2 order-fill stream. Updating the constant:
+Now compile + a quick smoke to confirm no regression, then arm the recurring run:
+Smoke still works, launcher written. Now arming the recurring proving run — S4U (no window, matching the popup fix), Mon–Fri 9:25 AM:
+**Armed.** `AlphaQuant_TW_LiveShadow` registered — S4U (no window), Mon–Fri 9:25 AM, **next run Monday 6/29 9:25 AM**, runs `--live` ~7.2h to close. Now logging everything + updating /planning + SYSTEM_FACTS:
+Done — and honest about what a Saturday allows. Report to Planning:
+
+## TW v1 live-shadow: the full proving run is Monday's — I did everything provable today + armed it
+
+**The gating fact:** it's Saturday 1:42 PM ET, market closed (`is_regular_trading_day=False`). A full open→close live session **cannot** happen until **Monday 6/29**. I won't fake a tick-completeness result on a dead tape.
+
+### Verification tasks — plain English
+
+**1. Tick completeness (the gating question): OWED — Monday.** What I *could* prove today is the **stream plumbing**: a `--smoke` connect returned **HTTP 200**, auth worked, the NDJSON consumer cleanly parsed snapshot quotes (NVDA 192.71 / AAPL 282.50 / MSFT 372.73 = Fri closes) + heartbeats, **0 parse errors**. So the hardest novel piece works. But "did TW see *every tick with no gaps* during real trading" can only be answered against a live tape — that's Monday.
+
+**2. Stability / reconnect / footprint: OWED — Monday.** A 25s smoke isn't a session. The full-session uptime/reconnect/CPU-mem comes from Monday's run.
+
+**3. Live coverage / latency / must-not-cut / exit-faithfulness:**
+- **Coverage/latency:** replay proved 100% coverage; live is OWED. **Correction I have to make:** live would-place latency will be the *detection lag* (≤15s position-poll), **not** the replay's 0s — the replay knew fill times; live TW learns of a fill by polling. Literal ms-latency needs the **v2 order-fill stream**. ≤15s is still vastly better than the bot's ~7min.
+- **Must-not-cut (done from replay):** only **2** confirmed winners would be clipped — RVTY (+$64 net, $21 giveback) and TER (+$140 net, $31 giveback). **$52 total giveback, and neither flipped to a loss.** Reassuring, but proxy — the live tape decides; these are the names to watch Monday.
+- **Exit-faithfulness:** replay reproduced live exits within cents; live OWED.
+
+**4. Ready for a live-cutover conversation? No — not yet.** It owes: clean tick-completeness (no material gaps) + stable reconnect across ≥ a few real sessions + a clean *live* must-not-cut + your explicit go. (Cutover, when it comes, = real broker-resting stops + exactly one exit owner.)
+
+### What I shipped today
+- `--smoke` mode (plumbing proof) + hardened `--live` (15s position re-poll so 9:35/re-arm entries get watched mid-stream; reconnect only on new symbols).
+- **Armed the run:** `AlphaQuant_TW_LiveShadow` (S4U/no-window, Mon–Fri 9:25 AM, ~7.2h, zero orders) — **next run Monday 6/29 9:25 AM**, logging to `tw_shadow.jsonl` + `tw_live.log`.
+- **Monday follow-up queued:** `tw_report.py 2026-06-29` + tick-completeness/stability/footprint review.
+
+Params re-confirmed from code (resting **1.4×ATR**, confirm 0.15, chandelier 1.4). SHADOW throughout — zero orders, no watched file, freeze intact. /planning set to "live-shadow proving run ARMED (Mon)"; logged + SYSTEM_FACTS updated; pushed.
+
+---
