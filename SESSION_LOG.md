@@ -1,11 +1,23 @@
 # Alpha Quant — SESSION LOG & CRASH-RECOVERY HANDOFF
 
-> # ⭐ CURRENT STATE — 2026-06-26 ~9:10 AM ET (READ FIRST — full cold-start brief: `HANDOFF_2026-06-26_RAMP-UP.md`)
+> # ⭐ CURRENT STATE — 2026-06-27 ~7:25 AM ET (READ FIRST — full cold-start brief: `HANDOFF_2026-06-26_RAMP-UP.md`)
 >
 > **POSTURE:** Forward test of the Loop-123 exit KILLED 6/25 (day −$2,016.93 < −$2,000 AND MU −$1,670.30 < −$800).
 > Rhett's FINAL call: do NOT revert — KEEP the live chandelier exit (`candle_1.4atr_chandelier`), improve in SHADOW.
-> Between experiments. **Live bot UNCHANGED, same entries. Freeze on live strategy holds. No watched strategy file
-> modified this session.** SIM-only (`SIM1623888M`); live root **C:\AlphaQuant**.
+> Between experiments. **Live bot UNCHANGED, same entries.** SIM-only (`SIM1623888M`); live root **C:\AlphaQuant**.
+>
+> **⚙️ 2026-06-27 CHANGE (Rhett directive, APPROVED + RECORDED + LOADED):** deploy-controller capital-deployment
+> TARGET raised **75% ($300k) → 95% ($380k)** of the $400k DEPLOY_BASE. ONE constant: `risk_config.DEPLOY_TARGET_PCT`
+> 0.75→0.95. Per-position $25k and per-side $200k caps UNCHANGED; 9:35 ORB path is NOT deploy-controller-constrained;
+> this only lifts the re-arm/multiscan admit ceiling (the WINNING path). Swept EVERYWHERE (dashboard daily-review now
+> renders "$380k target", capture_utilization, sidelined_capital, _sizing_base_audit, prove_deploy_governs,
+> report_first_admit, sim_day_replay — all readers dynamic = single source of truth). Approval =
+> `PROP-DEPLOY-TARGET-095-2026-06-26` in manual_approvals.yaml; change-log = `AQ-20260626-ORBV1-DEPLOY-TARGET-095-001`.
+> Verify-load DONE: run_bot restarted PID 10904 (StartTime 7:18 > risk_config mtime 7:06), heartbeat alive, preflight
+> 0 FAIL, `deploy_target()`==$380,000; prove_deploy_governs all-PASS at $380k. Effective Mon 6/29 open. Reversible
+> (set back to 0.75). **LIVE prereqs (PROP-DEPLOY-TARGET-400K: real-time available-BP gate + sector/correlation cap)
+> NOT shipped — required before any LIVE use; SIM has ample BP so no broker rejects.** Also this turn: REVERTED the 12
+> scheduled-task SYSTEM-account conversions back to Administrator (restored from XML backups, all RunAs=Administrator).
 >
 > **CENTRAL FINDINGS:** the 9:35 morning entries are the loss engine every day; the re-arm path made money all 3 days
 > (DO NOT touch re-arm). Dollar-split (real fields, 6/23–6/25): preventable-at-ENTRY −$4,521.52 (60%) vs
@@ -29,6 +41,24 @@
 >
 > *(Older alert-triage stamps + reboot checklist + ledgers below are HISTORICAL — superseded by the brief above.)*
 > ---
+
+---
+# 📋 FINDINGS & TEST RESULTS LEDGER  (READ THIS for "what did the latest tests find" — newest first)
+> Every audit / study / test result Claude Code runs gets a dated entry HERE, so Planning can read the
+> session log instead of a separate handoff. Each entry: date · what · verdict · numbers · source files.
+
+### 2026-06-27 — STOP-COVERAGE AUDIT (is a protective broker stop on EVERY entry, and how fast?)
+- **VERDICT: the claim "every entry gets a resting broker StopMarket at entry" is FALSE as stated.** READ-ONLY, broker-truth, reconciled 285==285 to `round_trips_net_all()`; cross-confirmed by an independent 2nd source (`bot_alerts.jsonl` `ORB_SL_OK` count == broker-CSV StopMarket count day-by-day) → NOT a logging artifact.
+- **Coverage 37.9%** (107/282 ORB entries, 6/08–6/26), splitting perfectly by path: **9:35 open cohort 96%** (107/111) vs **re-arm / late cohort 0%** (0/171). Mechanism: `orb_runner.py:969` places the resting stop in a post-fill pass keyed only on the 9:35 `entries_submitted`; `orb_multiscan` re-arm never calls `submit_stop_loss_exit`. Break dated to 6/16 (slot-cap 4→16 + re-arm un-starved).
+- **Not "at entry":** median latency **~7–8 min** after fill even on the covered cohort; only ~4% within 30s; >5 min in 57%.
+- **Distance is 1.4×ATR (chandelier floor), NOT 0.15×ATR** — the "0.15×ATR" label is pre-6/19; K=1.40 exact on every sample.
+- **No position was exit-naked:** 282/282 reached flat; PRIMARY protection is the software poll exit (`exit_bot_v2`+chandelier: 209 candle/chandelier + 44 EOD vs only 29 resting-stop fills). The 175 "naked" are broker-resting-stop-naked, not unmanaged.
+- **Real BEFORE-LIVE safety gap:** benign in SIM, but if the bot/exit process dies or loses the broker session, ~61% of positions (re-arm cohort) have ZERO broker-side protection + the 9:35 cohort is exposed ~7 min/fill. Downside protection currently depends on the process staying alive. NOT fixed (watched-file live change → Planning gate). Fix candidates: re-arm resting stops + tighten 9:35 placement toward atomic-with-entry.
+- **Sources:** `HANDOFF_2026-06-27_STOP-COVERAGE-AUDIT.md` · tool `strategy-research/stop_coverage_audit.py` (read-only).
+
+### 2026-06-27 — DEPLOY-TARGET RAISE 0.75→0.95 ($300k→$380k) [config change, not a test]
+- Approved+recorded+loaded (Rhett directive). `risk_config.DEPLOY_TARGET_PCT` 0.75→0.95; per-position $25k + per-side $200k caps UNCHANGED; only lifts the re-arm/multiscan admit ceiling. Swept everywhere incl. dashboard ("$380k target"). Approval `PROP-DEPLOY-TARGET-095-2026-06-26`; change-log `AQ-20260626-ORBV1-DEPLOY-TARGET-095-001`. Verify-loaded (run_bot PID 10904, preflight 0 FAIL, `deploy_target()`==$380,000). LIVE prereqs (available-BP gate + sector/correlation cap) still required before live. Effective Mon 6/29.
+---
 
 > **LAST UPDATED BY:** Alert-Triage (autonomous) - 2026-06-26 Fri ~4:04 PM ET (post-close run) - **Inbox CLEAN — 0 actionable alerts, NO escalation (silence=handled). code_alert_inbox.py --json returned n_total=0/n_actionable=0/n_noise=0 (severity-gated feed itself empty). CSHV (4:00:08 PM run, market hours NO) 45 OK / 1 WARN / 0 FAIL / 0 INFO / 3 SKIP. The lone WARN = `clean_day_certified` intraday `['no_critical_incident']`, explicitly "already alerted today; WARN to avoid intraday re-ping spam" = the SAME known knock-on pattern triaged repeatedly 6/25–6/26 (Bucket A: already-confirmed-benign in SESSION_LOG -> ack, no action). NOT new/actionable: `scheduled_tasks_present` **OK** ("All 8 scheduled tasks present"), `rel_position_recon` **OK** (0 positions, agree both ways), no real trading incident — clean_day is only knocked-on. Day closing clean: bot FLAT post-EOD (0 open positions, book $0 == real exposure $0, rel_phantom_deploy_book OK), heartbeat 16s fresh, trade_journal touched 10s ago, SAFE_MODE off, recent_exits.json valid (11 tracked today). daily_review reconciles broker truth (26 RT, NET $524.02 = gross $628.72 − broker-actual cost). report_integrity OK (26 RT, all labels consistent). shadow V9 reconciles broker truth (6/25 23/23) + kill-window sealed (5 days hash-intact). 10 advisor runs today (10 real), control file 3.5h old w/ real tokens, brain universe built today (8.5h ago, 145 published / 530 rel), manager alerts clear (triaged 0.9h ago), token cache 2/2 valid, 0 broker rejections, no OneDrive sync conflicts, deadman beacon armed/healthy, daily_max_loss intentionally disabled for SIM. pre_open_gate ran (GO-WITH-WARNINGS 9:01 AM). SKIPs = eod_flat_at_close (before 4:05 PM window — flatten confirmation pending) + no_overnight_positions_morning (not pre-open) + scan_failure_rate (off-hours). The 9:30 AM rel_trading_is_thinking single-detection freeze (escalated earlier today) remains SELF-RECOVERED, no recurrence (rel_trading_is_thinking OK, outside RTH); re-escalation trigger stays armed. Forward-test freeze in effect (no code edits). --ack'd, cursor advanced.**
 
@@ -2683,3 +2713,20 @@ _N=28 candidates today (deduped by symbol) -> fade_breakout_log.jsonl (append-on
 | PYPL | long | no | candle-close | 42 | $77.52 |
 
 ---
+
+---
+## 6/26 post-close — STANDING TRADE AUTOPSY built (Part 1 run + Part 2 wired into EOD + dashboard)
+NEW non-watched files: strategy-research/trade_autopsy.py (engine) + advisor/autopsy_page.py (dashboard). EDITED non-watched: eod_debrief.py (+_section_autopsy = section J, wrapped so it NEVER breaks the debrief) + local_dashboard.py (+/autopsy route+handler+nav card). NO watched strategy file.
+PART 1 (6/26 autopsy, reconciles +$524.02, verified independently): confirmed 15 = +$2,098.15 (100% win, booked by ~3PM via fast candle-close) vs unconfirmed 11 = -$1,574.13 (9.1% win). THE GIVEBACK: peak +$2,098 @15RT(3PM) -> +$524 @close; the 11 late-closers (all the unconfirmed book) rode to the EOD flatten = the -$1,574 giveback (10 bleeders -$1,729.78 + 1 winner MPWR +$155.65). Structural: confirmed exit fast, unconfirmed drag to EOD.
+  Lens A: only DELL was a true early reversal (10.9% of loss); the other 9 ground down slowly (not sharp reversals). Lens B (K=0.75 must-not-cut, ideal-early-poll): saved only $13.02 (2 cut), 0 winners clipped -> on a slow-grind day the leash barely helps. Lens C: CLUSTER not MU-class (top loser NFLX -$481=27.8%, 0 gap-tops). Cumulative early-exit-0.75 net +$458.54 but -$351.55 WITHOUT MU 6/25 -> L1 edge STILL MU-dominated.
+PART 2: standing TRADE AUTOPSY now in every EOD debrief (section J) + dashboard /autopsy (live, reconciles, tables render, nav card), with cumulative tally + fixed in-sample footer (accumulating N != promotion).
+DASHBOARD HYGIENE: found + cleaned ANOTHER pre-existing duplicate trade-review-ui instance (recurring; 11164 old-code orphan); now exactly ONE instance (PID 8808). Recurring dup spawner worth a look (Start_Dashboard.bat re-run?). No watched file, no live API, freeze intact.
+
+---
+## 6/26 evening — FIXED the recurring command-window popups (Rhett: very annoying)
+DIAGNOSIS: NOT from this session's new work (audited: my new .py use CREATE_NO_WINDOW; my new tasks already run as SYSTEM). Source = 12 PRE-EXISTING scheduled tasks running as Administrator (interactive session) via cmd/.bat -> each flashes a console window on the desktop when it fires. Frequent culprits = AlphaQuant_Utilization (every 30min), Mover Scanner + CheckAlerts (hourly).
+FIX (Rhett approved 'convert all if confident, don't jeopardize the system'): converted all 12 recurring read-log Admin cmd/.bat tasks to run as SYSTEM (session 0 = no desktop window). Backed up each task's XML first (outputs/reports/task_backups/) for a no-password revert path. VERIFIED: triggered each + all 12 returned Last Result=0 (ran clean under SYSTEM) -> 0 reverts needed.
+  Converted: Utilization, Mover Scanner, CheckAlerts, Nightly Backup, ArchiveDailyState, CostReconcile, PreopenReadiness, PreopenReadiness_AM, RegressionRecord, Daily Review, Morning Book Outcome, Morning Book Snapshot.
+  SKIPPED (safety): Advisor ONE-TIME-9-35 (writes the bot control file) + Flatten Stuck (trading action) + SlotCap (one-time) -- all one-time/dormant, no popup, never triggered.
+TRADING UNTOUCHED: none of these are the trading bot (runs via watchdog_supervisor chain); all are auxiliary analytics/snapshot/backup/triage tasks. No watched file changed.
+REMAINING (optional, gated): run_bot.py (WATCHED) has 2 subprocess calls my scan flagged without CREATE_NO_WINDOW -- mostly it already uses _NO_WINDOW; needs a closer look + Rhett's go since it's watched. Not done.
