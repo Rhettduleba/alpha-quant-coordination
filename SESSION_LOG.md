@@ -28,13 +28,15 @@
 > `outputs/reports/SHADOW_BUILD_SYNTHESIS_2026-06-25.md`). Combined L1+L2 shadow: 3-day red −$2,656 → −$495 (−81%),
 > 0 winners cut, NOT green, N<30 → DIRECTIONAL only. Infra: 6 AM PRE-OPEN GO/NO-GO GATE (`pre_open_gate.py`, shadow +
 > Telegram/Discord alerts + no-auto-fix escalation; teeth gated on `SAFE_MODE_ENFORCE` flip); **/planning** dashboard
-> (living roadmap = `planning_roadmap.json`); clean-day false-FAIL FIXED (streak healed, consecutive_clean=4).
+> (living roadmap = `planning_roadmap.json`). NOTE: live `consecutive_clean=0` (SYSTEM_FACTS, 6/27) — the earlier "=4" is STALE; benign CIM-noise is re-tripping the certifier's no_critical_incident, see OPEN DECISION (5).
 > Entry-context "deploy" 6/26: gate PASSED with ZERO entry-path change (fields already logged in orb_candidate_log.jsonl;
 > sidecar is a read-only reader → byte-identical).
 >
 > **OPEN DECISIONS AWAITING RHETT:** (1) arm the pre-open gate (flip SAFE_MODE_ENFORCE, ~3-5 shadow mornings first);
 > (2) precise OR-distance entry-path add vs proxy (recommend skip); (3) earnings feed refresh (Phase 1.2, veto stale ~21d);
 > (4) post-test gauntlet → promote one lever → fresh 5-clean-day test, then Phase 4 scale.
+> (5) **NEW (Claude Code 6/27, from SYSTEM_FACTS build):** benign CIM-timeout noise (`scheduled_tasks_present` false-FAILs) is counting as `no_critical_incident` and driving `consecutive_clean` to **0** — it CONTAMINATES the forward-test 5-clean-day bar. Live truth = 0, not 4. Fix candidate: swap `Get-ScheduledTask`→`schtasks.exe` in `system_health_verifier.py` (non-watched) so the noise stops; pending Rhett go-ahead (freeze-blocked). Decision needed: does a benign-noise day count against the clean-day bar?
+> (6) **NEW (stop-coverage audit 6/27):** broker resting-stop coverage is 37.9% (9:35 cohort 96% / re-arm 0%) + ~7 min lag — a real BEFORE-LIVE gap (process-death exposure on the re-arm cohort). Fix = re-arm resting stops + tighter placement; watched-file change → proposal under the gate before live.
 >
 > **HEALTH NOW:** CSHV 43/0/0; gates green (preflight 51/1W/0F, regression 20/0F, reliability 9/9); pre-open gate
 > GO-WITH-WARNINGS; bot alive, no config drift. Canonical living plan = the **/planning** page.
