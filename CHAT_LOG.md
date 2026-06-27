@@ -4816,3 +4816,96 @@ The flat average is a **profitable re-arm slice almost exactly canceled by a los
 Everything was already persisted last turn (SESSION_LOG ledger + `reports/gross_signal_quality.md` + /planning + SYSTEM_FACTS, all pushed). If you intended a *different* analysis with this re-send — a different window, a finer cut, OOS split, or removing the 6/25 kill day — tell me and I'll run that variant.
 
 ---
+
+
+## Turn — 2026-06-27 19:13:32 ET
+
+**Rhett:**
+
+# HANDOFF → CLAUDE CODE — ANALYZE: Is the in-play GATE helping or hurting? Untangle gate-vs-timing (read-only, GROSS)
+# From: Planning Claude | 2026-06-27 ET (Code: number + stamp; log it + SYSTEM_FACTS line per standing rule)
+# WHY: the gross breakdown found the GATED 9:35 path LOSES (−$3,233) and the UNGATED re-arm path WINS (+$3,420).
+# That comparison is CONFOUNDED — 9:35 vs re-arm differ in time-of-day AND the gate AND the surviving universe.
+# Rhett's catch: maybe the gate is ANTI-SELECTING (rejecting winners / favoring fade-prone large-caps), not the
+# timing. This analysis separates the gate's effect from the timing effect. READ-ONLY, GROSS only, no fees, no live
+# touch, freeze intact.
+
+## THE QUESTION
+Is the 9:35 path losing BECAUSE of the gate (it rejects winners / selects fade-prone names) or DESPITE it (open is
+just hard)? And is the re-arm edge really "no gate" or really "mid-morning timing"?
+
+## BUILD (read-only, on stored data: orb_candidate_log.jsonl gate pass/reject tags + broker-truth fills)
+1. GATE-PASSED vs GATE-REJECTED, 9:35 path: for every 9:35 candidate, use the logged gate decision. The PASSED
+   names were traded (we have their gross). The REJECTED names were NOT traded — compute their COUNTERFACTUAL gross
+   (what an ORB entry on them would have done, same exit logic) from stored bars. Compare: did the gate reject names
+   that would have WON? If gate-rejected gross > gate-passed gross, the gate is anti-selecting — a big finding.
+   (Label counterfactual gross as DERIVED/lower-fidelity, not broker-truth.)
+2. WOULD THE RE-ARM WINNERS SURVIVE THE GATE? Apply the 9:35 gate's criteria to the re-arm names that won. If the
+   winning re-arm names would have been REJECTED by the gate, that's strong evidence the gate (not the timing) is
+   the problem — the same kind of name wins ungated and gets blocked gated.
+3. DISENTANGLE: within the 9:35 path, bucket by whether a name is gate-pass vs gate-reject AND by name-type
+   (large-cap/index-like vs high-RelVol mover). Is the loss concentrated in gate-passed large-caps that fade?
+4. HONEST CONTROL: also report the straight time-of-day gross (9:35 vs each re-arm hour) WITHOUT the gate lens, so
+   we can see how much is timing alone vs gate alone.
+
+## HARD CONSTRAINTS
+- READ-ONLY: no orders, no watched file, no behavior change, no gate change. Freeze intact.
+- GROSS only, no fee model. Counterfactual gross on never-traded names = DERIVED fidelity, labeled, NOT broker-truth.
+- Pre-declared comparisons; flag small-N buckets; this is a HYPOTHESIS test, not a promotion.
+
+## VERIFICATION TASKS TO CLOSE (plain English back to Planning)
+1. Gate-passed vs gate-rejected gross on the 9:35 path — is the gate rejecting winners? (with fidelity labels)
+2. Would the winning re-arm names survive the 9:35 gate? (yes/no + their gross)
+3. Is the 9:35 loss concentrated in gate-passed fade-prone large-caps?
+4. The clean time-of-day-only gross (gate lens removed) — how much is timing vs gate.
+5. Honest caveats: counterfactual fidelity, N per bucket, in-sample.
+
+## /planning
+- Add "Gate-effect analysis: is the in-play gate helping or hurting (gate vs timing confound)" = IN_PROGRESS,
+  read-only. Update stamp.
+
+**Claude Code:**
+
+Substantial read-only analysis. The crux is the **counterfactual gross on gate-rejected names** (never traded → must simulate). Let me first inspect what the candidate log actually logs for rejected 9:35 names — gate decision, and whether OR levels/ATR/side are there to simulate an entry:
+Two important data realities: rejected rows have **no OR levels/ATR logged** (or_high/or_low/atr = None) so counterfactuals need bar reconstruction, and many rejections are **`INPUT_MISSING`** (data-failure, not quality). The gate window is also 6/15→ (gate turned on 6/16), not 6/08. Let me quantify the rejection reasons to scope the counterfactual properly:
+The landscape is clear: of 1749 9:35 rejections, **781 are `INPUT_MISSING` (data-fail, not quality)** and the rest are real gate criteria (RelVol-low 511, move-too-small 312, exhausted 38, dir-mismatch 92). **968 are counterfactual-feasible.** For task 2 I need the gate's actual thresholds — let me find them, then build:
+I have the gate thresholds (RelVol≥2.0, $-vol≥$20M, move 2–9%, top-10, dir-match) and the reusable `inplay_gate.evaluate()`. The counterfactual sim I'll reuse from `tape_watcher` (bars + ATR + the live chandelier exit). Building the tool — I'll sim **both** passed and rejected names with the *same* engine (apples-to-apples DERIVED), and validate the sim against passed broker-truth:
+Let me compile and run (sampled + bar-cached to bound runtime):
+The sim is **faithful** — QCOM cf +$437 (broker +$433), MU cf −$1,582 (broker −$1,668), both within ~5%. That validates the counterfactual. Now the full run (sampled, ~460 sims — may take a few minutes):
+**First — a security note I have to flag:** my `export $(grep … | head -0)` was a bug (`head -0` → empty → bare `export` dumped the whole environment), which printed your **`OPENAI_API_KEY`** into the session. It's only in the **local** transcript (tool output isn't synced to the public CHAT_LOG, and I won't echo it) — but heads-up, and I'll never use that pattern again.
+
+Now the results — and I caught two things I must verify before trusting them (RULE #0). The **passed-sim got only 4/200** (API-throttled after the rejected batch — unreliable), and **task 2 shows ALL 89 re-arm winners "blocked,"** which smells like a missing-`dollar_vol` artifact. Let me check task 2:
+Confirmed — **task 2 was spurious**: `dollar_vol_20d` is logged **0/457** on re-arm rows, so all 89 winners failed the gate on `DOLLAR_VOL_LOW` (a data gap, not a real rejection). And the passed-sim was API-throttled (4/200). Both need fixing. Let me correct the tool: task 1 uses passed **broker-truth** (not the throttled sim, which also halves API load); task 2 evaluates the **quality** criteria (RelVol/move/direction), bypassing the un-logged liquidity floor:
+Now task 2 — bypass the un-logged liquidity floor (pass a high $-vol so the gate evaluates RelVol/move/direction only):
+Re-running (now only the rejected sim runs — no throttle):
+Now the analysis is clean and coherent — and it **supports Rhett's catch.** Let me persist + push:
+Done — pushed, secret-scan clean (no keys in any pushed file). Report to Planning:
+
+## Gate-effect analysis — is the in-play gate helping or hurting? **Rhett's catch is supported: the 9:35 gate appears to anti-select.**
+
+*(Two data artifacts I caught and fixed mid-analysis: the passed-name sim was API-throttled (4/200, discarded — used broker-truth instead), and task-2's first cut showed "all 89 blocked" purely because `dollar_vol_20d` is logged 0/457 on re-arm — fixed to evaluate the quality criteria only. The counterfactual sim itself is validated: QCOM +$437 vs broker +$433, MU −$1,582 vs −$1,668.)*
+
+**1. Gate-passed vs gate-rejected on the 9:35 path — is the gate rejecting winners? YES (directional).**
+- **Gate-REJECTED (counterfactual, DERIVED): +$48.2/trade, 81% win, PF 1.98** (140 of the sampled rejects that would have broken out).
+- **Gate-PASSED (broker-truth): −$29.1/trade, 53% win, PF 0.66** (the 111 names actually traded).
+- The gate rejected names that would have grossed **+$48** and kept names that grossed **−$29**. By reject-reason, the rejected winners were: RelVol-low **+$56**, move-too-small **+$33**, **exhausted +$139** — the gate's own criteria rejected winners. (Index-ETF reject was correct, −$173.) *Fidelity: rejected = DERIVED sim, passed = broker-truth — directional, not a clean apples-to-apples.*
+
+**2. Would the winning re-arm names survive the 9:35 gate? Mostly NO.**
+- Of 89 winning re-arm round-trips, **60 (67%) would be BLOCKED** by the 9:35 gate's quality criteria (RelVol-low 37, exhausted 19, move-small 4) — **$8,143 of winners blocked**; only 29 would survive. **The gate blocks the same kind of name that wins ungated** — strong evidence the *gate*, not just the timing, is the problem.
+
+**3. Is the 9:35 loss concentrated in fade-prone large-caps? YES.**
+| mcap | n | avg/trade | PF |
+|---|---|---|---|
+| **mega** | 11 | **−$229** | 0.18 |
+| large | 47 | −$24 | 0.73 |
+| smaller/unknown | 50 | **+$15** | 1.43 |
+
+The loss is concentrated in **mega/large-caps that fade**, exactly the names the gate's liquidity + top-RelVol criteria favor.
+
+**4. Clean time-of-day (gate removed) — timing vs gate.** 09:35 −$29/trade vs 10:35 **+$41**/trade (rest ~flat-positive). So **it's both** — the open is genuinely harder *and* the gate anti-selects — but the gate evidence is strong and specific.
+
+**5. Honest caveats.** The rejected gross is **DERIVED** (sim vs the broker-truth passed names — mixed fidelity, though the sim is validated to ~5%); **in-sample**, **small N** (mega n=11, exhausted-rejects n=6–19), **multiple comparisons**; the $-vol floor was bypassed for re-arm (not logged, assumed liquid); gate window is 6/15–6/26 only. → **This is a HYPOTHESIS, not a proven gate change.**
+
+**The disentangled answer:** the 9:35 path loses partly because the open is hard, but largely because **the gate is mis-calibrated — it rejects low-RelVol / small-move / *exhausted* names that win, and keeps liquid mega/large-caps that fade.** The candidate fix is to recalibrate or scope the gate (especially loosen the exhausted/low-RelVol rejects and de-weight mega-caps) — but that's a **watched-file change → separate handoff, gated, OOS-tested first.** Report mirrored to the coordination repo; logged + SYSTEM_FACTS updated; /planning IN_PROGRESS.
+
+---
