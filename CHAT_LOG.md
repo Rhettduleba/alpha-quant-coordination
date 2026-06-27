@@ -4490,3 +4490,83 @@ Done — pushed, secret-scan clean. Report to Planning (verify-first, 2 of 3 wir
 **Net:** the 9:15 Market View went from 3 data gaps to 1. Futures (the most valuable overnight read) and a foreign proxy are now real facts; the economic calendar is the one remaining gap and it's **paywalled on Finnhub** — flagging for your decision on whether to find a free source or pay. Key hygiene intact (env-only, gitignored, nothing pushed). /planning + SYSTEM_FACTS updated.
 
 ---
+
+
+## Turn — 2026-06-27 17:09:30 ET
+
+**Rhett:**
+
+# HANDOFF → CLAUDE CODE — DIAGNOSE the recurring 9:30-AM main-loop stall (read-only instrumentation first)
+# From: Planning Claude | 2026-06-27 ET (Code: number + stamp; log it + SYSTEM_FACTS line per standing rule)
+# WHY: consecutive_clean=0 is driven by REAL trading-path faults — the main loop froze >4 min at ~9:30 AM on 6/22
+# and 6/26 (rel_trading_is_thinking), heartbeat alive but loop_count frozen. This is the clean-day blocker AND it's
+# exactly the kind of open-bell freeze a real system can't have. Root cause UNVERIFIED — so INSTRUMENT, don't guess.
+
+## STEP 1 — READ-ONLY INSTRUMENTATION (do this; no behavior change)
+- Add per-stage timing around the main loop body (scan / data-fetch / arm / exit-poll / recon) so each cycle's
+  time-per-stage is logged. Goal: when the next stall happens, we see WHICH stage ate the >4 min.
+- Add a soft self-watchdog: if a single cycle exceeds ~90s, dump the current stack/thread state to a diag file
+  (no restart, no kill — just capture). So a recurrence is diagnosable instead of invisible.
+- These are observation only — no change to scan/entry/exit/order logic. Non-watched where possible; if any watched
+  file needs the timing hook, it's pure logging (no control-flow change) — call that out explicitly for review.
+
+## STEP 2 — MINE WHAT WE ALREADY HAVE (read-only)
+- Pull everything from the 6/22 and 6/26 ~9:25-9:35 windows: loop_count timeline, heartbeat, any slow API calls,
+  GC/memory, CIM/WMI activity (the 6/25 subsystem instability is a suspect), network/TS-latency at the open.
+- State a RANKED set of hypotheses for the stall cause with the evidence for each (e.g. data-heavy open + slow TS
+  call vs GC pause vs CIM/WMI hang vs disk/IO). Do NOT present one as fact — rank by evidence.
+
+## EXPLICIT CONSTRAINTS
+- READ-ONLY DIAGNOSIS THIS PASS. No fix yet — we fix the VERIFIED cause, not a guess. Freeze intact.
+- The fix itself is a SEPARATE handoff after we've caught a real stall (or have strong evidence). It will be a live-
+  path change, so it needs its own review + Rhett's go.
+- Don't touch the re-arm path (it wins). Don't change scan/entry/exit logic.
+
+## VERIFICATION TASKS TO CLOSE (plain English back to Planning)
+1. Per-stage timing + the 90s stack-dump watchdog are live (observation only) — show where the diag file lands.
+2. The ranked hypotheses for the 6/22 + 6/26 stall, with the evidence behind each (no single guess as fact).
+3. Confirm zero control-flow change — pure instrumentation; freeze intact.
+4. What we still need to CATCH the next stall live (and roughly when it'd next likely trigger).
+
+## /planning
+- Add "9:30-AM loop-stall diagnosis (clean-day blocker)" = IN_PROGRESS, read-only instrumentation. Update stamp.
+
+**Claude Code:**
+
+Read-only diagnosis. First I need to map the main loop's structure (where loop_count lives, what stages run per cycle) so I instrument the right place. The heartbeat showed `loop_count` in `run_bot.py` (non-watched), so that's likely the main loop:
+The main loop is at line 598: each cycle increments `loop_counter`, beats the heartbeat, then runs steps via `_run_step_with_heartbeat` (which beats the heartbeat every 10s while a subprocess step runs). **That already explains the signature** — heartbeat fresh (step's 10s beat) but `loop_count` frozen (only increments at loop top) = a *step* hung. Let me read the full loop body to see every stage and which have hard-caps vs bare `subprocess.run`:
+Every stage is `_run_step_with_heartbeat` (hard-cap 180s) — so the leading hypothesis is already visible: a single cycle that exceeds 4 min isn't necessarily one hang, it's likely **cumulative slow steps at the data-heavy open** (the code comment at line 553 even notes the ORB warmup makes "many 30s-timeout API calls"). But I'll instrument to confirm *which* stage(s), not assert. Let me read `_run_step_with_heartbeat` to add timing + the watchdog hook there (the one chokepoint all stages pass through):
+`_run_step_with_heartbeat` is the single chokepoint — every stage passes through it. Critical detail: the `taskkill` at 180s has `timeout=10`, and after it the step breaks regardless — so a *single* step caps at ~190s. A >4-min cycle freeze must therefore be **cumulative** slow steps. The instrumentation will confirm which. Let me check what capture tools are available (psutil for cpu/mem, py-spy for subprocess stack):
+I have `faulthandler` (stdlib) for the main-thread dump. Let me install `psutil` (guarded — degrades if absent) so the watchdog can capture the hung subprocess's CPU/memory/status — the discriminator between a GC/CPU pause and a network wait. Then I'll read run_bot's imports:
+psutil 7.2.2 installed; run_bot already imports `json/time/datetime/Path`. Now adding the instrumentation block (pure logging — `import` additions + helpers + the observe-only watchdog) after `_loop_counter`:
+Now wiring the chokepoint `_run_step_with_heartbeat` — mark the active stage for the watchdog + log per-stage timing in a `finally` (no change to the stepping/killing logic):
+Now the `finally` to log timing + clear the stage. Let me read the function's end to anchor:
+Now starting the watchdog thread before the main loop + a per-cycle total-time log:
+Compiling, then restarting `run_bot` to load the instrumentation (verify-load) and confirming the timing log populates + the loop keeps cycling:
+New run_bot PID 10548 (StartTime > mtime). Let me confirm it's cycling and the timing log is populating:
+**STEP 1 verified LIVE:** loop cycling (loop_count advancing, 3→…), per-stage timing populating `logs/loop_stage_timing.jsonl` (each stage's elapsed_s + the `_CYCLE_TOTAL`), watchdog daemon running (5 threads), zero control-flow change. 
+
+Now STEP 2 — mining the 6/22 + 6/26 stall windows. First, the exact stall facts (and I notice the handoff's "9:30 AM on 6/22" may be off — let me verify):
+Key finding (and a correction to flag): the 6/26 stall was detected **09:30:11** ("loop frozen at 2406 >4min") — *before* the 9:35 scan, which then ran fine. So the stall was in the **pre-open cycle (~09:26–09:30)**, exactly when `orb_runner` does its warmup ("many 30s-timeout API calls"). Let me check the 6/22 window (its stall was at **14:11**, not 9:30 — the handoff's "9:30 on 6/22" is off):
+Now I have the evidence to rank — and an important correction: **the 6/22 stall was at 14:11 (loop frozen at 7 = a freshly-restarted process), not 9:30.** Only 6/26 was the open bell. The common factor is "a slow cycle," not specifically 9:30. Let me log the diagnosis + push:
+Done — instrumentation live, hypotheses ranked, pushed. Report to Planning:
+
+## Loop-stall diagnosis — read-only instrumentation is LIVE; hypotheses ranked (no fix yet)
+
+**1. Instrumentation live (observation only) — where the diag lands:**
+- **Per-stage timing** → `C:\AlphaQuant\logs\loop_stage_timing.jsonl` — every cycle logs each stage's `elapsed_s` (LONG ENTRY BOT / SHORT ENTRY BOT / ORB RUNNER / ORB MULTI-SCAN / EXIT BOT / EOD WATCHDOG) plus a `_CYCLE_TOTAL`. Already populating (verified live).
+- **90s self-watchdog** → `C:\AlphaQuant\logs\loop_stall_dumps.jsonl` — if any single stage runs >90s it captures the hung subprocess's status/CPU/RSS/threads (psutil), host memory, and the main-process all-thread stacks (`faulthandler`). **No kill, no restart — pure capture.** Verified the watchdog daemon is running.
+
+**2. Ranked hypotheses (evidence-weighted, none stated as fact):**
+1. **LEADING — cumulative slow/timing-out TS API calls at data-heavy moments.** Strongest evidence: `run_bot.py`'s own comment that the ORB pre-market warmup "makes many 30s-timeout API calls" whose cumulative runtime has blown past the watchdog threshold before; the 6/26 stall sat in the ~09:26–09:30 pre-open warmup window and then **recovered and scanned fine at 09:35** (a transient slow cycle, not a hard hang).
+2. **taskkill / CIM-WMI hang** extending a step — 6/25 had documented CIM/WMI instability, but the kill path is bounded by a `break`, so this can only *compound* #1, not cause it alone.
+3. **GC pause / memory pressure** — a 6/22 OOM was noted historically; the new watchdog now records host memory at stall time to confirm or rule this out.
+4. **Single network-hung TS call** — bounded by the cap; low.
+
+**3. Zero control-flow change — confirmed.** I only added logging + an observe-only daemon thread in the non-watched `run_bot.py`. After restart, the loop still cycles (loop_count advancing), all steps still run, no scan/entry/exit/order/kill logic changed. No watched file touched. Freeze intact.
+
+**4. What we still need to catch it live + when:** the instrumentation is armed now. The weekend won't trigger it (steps are sub-second on a closed market) — **the next likely catch is Monday's open, ~09:25–09:35.** A live catch will show *which* stage ate the time and *why*: if the hung subprocess is network-waiting (low CPU) → confirms #1; CPU-busy → points to GC/#3; high host-mem → #3. Pinpointing the exact slow API call would need per-call timing *inside* `orb_runner` (a watched file) — I've **deferred** that unless the stage-level + cpu/mem capture proves insufficient.
+
+**One correction to the handoff premise (verified):** the two stalls weren't both 9:30 AM. **6/26 was 09:30** (open bell, loop frozen at 2406). **6/22 was 14:11** — a *freshly-restarted* process frozen at loop **7**, mid-afternoon, with no trading activity that window. So the pattern is "a single slow cycle," not specifically the open bell — which matters for scoping the eventual fix. The fix is a separate handoff after we catch a real stall (or have strong enough evidence). /planning set to IN_PROGRESS; logged + SYSTEM_FACTS updated.
+
+---
