@@ -3765,3 +3765,42 @@ Done — and honest about what a Saturday allows. Report to Planning:
 Params re-confirmed from code (resting **1.4×ATR**, confirm 0.15, chandelier 1.4). SHADOW throughout — zero orders, no watched file, freeze intact. /planning set to "live-shadow proving run ARMED (Mon)"; logged + SYSTEM_FACTS updated; pushed.
 
 ---
+
+
+## Turn — 2026-06-27 14:48:43 ET
+
+**Rhett:**
+
+why cant you use the trade station news feed to colect realy time news is that news feed avaible through the API key?
+
+**Claude Code:**
+
+Good question — and I shouldn't answer it from memory. Let me actually verify two things: what news source the system uses today, and whether TradeStation's API key exposes a news feed. Starting with the codebase + loading web tools:
+There's already a `news_collector.py` that tries TradeStation for news ("graceful fallback if unavailable"), plus dashboard text hinting it's "not direct TradeStation news-feed ingestion." Let me read what it actually does:
+The code already answers part of it — and it's verified, not assumed. `news_collector.py` documents that on **2026-05-28** the team probed every TradeStation v3 news endpoint variant and they all 404'd, so TS news was **deprecated** and the system switched to FMP. Let me read the exact note, re-probe the API now for current truth, and check whether it's a SIM-only limitation:
+The note says it kept the signature so "future production-API support is a one-flag change" — implying the team thought *live* TS might have news. That's the key thing to verify. Let me re-probe the API now + check the official docs:
+SIM API confirmed: no working news endpoint (one variant returns 200 but with empty data / "invalid symbol"; the rest 404). Now the decisive question — does TradeStation's v3 API offer news on *any* tier (live), or not at all? Let me check the official docs:
+The docs are a JS SPA (not fetchable). Let me get the actual OpenAPI spec from TradeStation's GitHub api-docs to definitively confirm whether *any* news endpoint exists (live or SIM):
+I have a clear, verified answer now — confirmed four independent ways, not from memory.
+
+## No — the TradeStation API key does **not** give you a news feed.
+
+**What I verified:**
+
+1. **The system already tried this (5/28).** `news_collector.py` documents that the team probed *every* TradeStation v3 news endpoint variant (`/marketdata/symbols/{sym}/news`, `/marketdata/news/...`, etc.) — **all returned 404 or empty** — so TS news was **deprecated** and the advisor switched to **FMP (Financial Modeling Prep)** as the news source.
+
+2. **I just re-probed the live API to confirm it's still true** (broker truth, not stale): every news path 404s, and the one that returns HTTP 200 (`/marketdata/symbols/AAPL/news`) gives `{"Symbols":[],"Errors":[{"invalid symbol"}]}` — i.e. no news data, "news" gets parsed as a bogus symbol.
+
+3. **The official API capability list has no news endpoint.** TradeStation's v3 API offers: quotes, bar charts, market depth, option chains, orders, positions. News is simply **not** one of the endpoints — and this is API-wide, not a SIM-vs-live quirk.
+
+4. **News in TradeStation is a *platform* feature, not an API one.** The desktop/web "News Window" lets you search news by symbol — but that's inside the TradeStation app, not exposed through the developer API our key uses.
+
+**So the practical answer:** we're *not* without real-time news — the system already collects it, just from **FMP**, because TradeStation's API doesn't serve it. The TS API key buys you market data + order execution + account data; news isn't part of the package.
+
+One honest caveat worth flagging: FMP itself has been the weak link (its free tier missed MU earlier this session, which is why we moved *earnings* to a free NASDAQ source). So if real-time news quality matters for the advisor's `BLOCK_SYMBOL_DUE_TO_NEWS` logic, the lever is **a better news provider** (e.g. Benzinga, a paid FMP tier, or a dedicated news API) — not TradeStation, which genuinely can't do it via the API.
+
+If you want, I can look at what a solid real-time news feed would cost/require and how it'd wire into the existing `news_collector.py` (it was deliberately built so swapping the source is a one-flag change).
+
+Sources: [TradeStation API docs](https://api.tradestation.com/docs/), [API spec](https://tradestation.github.io/api-docs/), [Trading API capabilities](https://www.tradestation.com/platforms-and-tools/trading-api/), [TradeStation News Window (platform feature)](https://help.tradestation.com/10_00/eng/tradestationhelp/nw/about_news.htm)
+
+---
