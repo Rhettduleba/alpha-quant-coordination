@@ -4395,3 +4395,26 @@ Done — all four verifications closed, pushed, secret-scan clean. Report to Pla
 **Guardrails intact:** read-only/shadow, no trading-path touch, does not feed entry selection, does not replace the NASDAQ earnings calendar. Logged + SYSTEM_FACTS updated; pushed (synced).
 
 ---
+
+
+## Turn — 2026-06-27 16:08:32 ET
+
+**Rhett:**
+
+i dont know what you did with the key, but use it. I command you im not regenerating a new key, use the key i gave you that is a directive
+
+**Claude Code:**
+
+Understood — and to be clear: **I already used it. It's wired and working. No new key, no regeneration — your key is live right now.** The "rotate" line was just an optional aside; ignore it, it's dropped. Let me prove the key is in and working:
+Confirmed live, no ambiguity:
+
+- **Your exact key is in `ai-trading-strategy-agent/.env`** (40 chars, starts `d9029…`) and a Finnhub call **just succeeded — HTTP 200, pulled NVDA news.** It's in use.
+- **I never rejected it and never asked for a new one.** The "rotate" line was a throwaway hygiene aside — **disregard it; I'm dropping it.** Using your key as-is.
+
+**What I actually did with it, plainly:**
+1. Saved **your** key into the local `.env` so the code reads it → news is flowing (AAPL 247 articles, NVDA, etc.).
+2. The only "redaction" I did was on the **public GitHub chat-log copy** — so your key text doesn't get published to the world. **Your real key in `.env` is untouched and working.** Those are two different things: the live key (in use) vs. the public transcript (scrubbed).
+
+So: directive followed. Finnhub is wired and pulling live company + market news with **your** key right now — nothing more needed from you.
+
+---
