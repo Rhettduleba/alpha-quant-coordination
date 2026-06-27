@@ -4570,3 +4570,90 @@ Done — instrumentation live, hypotheses ranked, pushed. Report to Planning:
 **One correction to the handoff premise (verified):** the two stalls weren't both 9:30 AM. **6/26 was 09:30** (open bell, loop frozen at 2406). **6/22 was 14:11** — a *freshly-restarted* process frozen at loop **7**, mid-afternoon, with no trading activity that window. So the pattern is "a single slow cycle," not specifically the open bell — which matters for scoping the eventual fix. The fix is a separate handoff after we catch a real stall (or have strong enough evidence). /planning set to IN_PROGRESS; logged + SYSTEM_FACTS updated.
 
 ---
+
+
+## Turn — 2026-06-27 18:16:58 ET
+
+**Rhett:**
+
+# HANDOFF → CLAUDE CODE — BUILD: Implementation-Shortfall / Execution-Cost Ledger (READ-ONLY, historical) 
+# From: Planning Claude | 2026-06-27 ET (Code: number + stamp; log it + SYSTEM_FACTS line per standing rule)
+# WHY: cost is the BINDING CONSTRAINT of the whole project — a real gross edge can turn negative net of cost, and
+# we've never properly measured OUR OWN execution cost. This is the most institutional thing we can do RIGHT NOW:
+# it runs entirely on stored broker-truth fills, needs NO live market, and answers "is our signal positive before
+# cost and negative after — and exactly where does the cost go?" READ-ONLY analysis; no live touch; freeze intact.
+
+## BUILD (read-only, on historical data already on disk)
+A new analysis tool (e.g. `strategy-research/execution_cost_ledger.py`) over the existing fills
+(`broker_orders_unified.csv` + trade journal + whatever decision/arm timestamps exist). For each trade:
+1. IMPLEMENTATION SHORTFALL: decision/arm reference price → submit price → actual fill price. Report the cost in
+   cents AND basis points per trade. Use the best price references we actually have logged; if a reference (e.g.
+   true mid-at-decision) isn't logged, say so and use the closest available, labeled.
+2. DECOMPOSE the cost where the data allows: spread cost, delay (decision→fill time) cost, entry-collar effect,
+   commission/fees. Anything we can't separate from logged data → mark UNATTRIBUTED, don't fabricate a split.
+3. AGGREGATE: total + average shortfall per trade; split by 9:35 vs re-arm path, by side (long/short), by
+   session-segment (open vs midday vs close), and by win/loss.
+4. THE HEADLINE NUMBER: gross edge per trade vs net edge per trade — i.e. how many basis points of cost we pay,
+   against whatever gross signal exists. This is the number that decides whether the strategy can ever work.
+
+## VERIFY-FIRST (never assume)
+- Reconcile total computed cost against `daily_review`'s existing gross-vs-net broker-actual cost — they should
+  tie out. If they DON'T, that discrepancy is itself a finding; report it, don't paper over it.
+- State plainly which price references are real-logged vs approximated, and the fidelity of each (broker-truth vs
+  derived) — same fidelity-label discipline as the reports.
+
+## HARD CONSTRAINTS
+- READ-ONLY: no orders, no watched trading file, no behavior change. Pure measurement on stored data. Freeze intact.
+- Net of cost is the only real number; gross is never the headline. Label everything.
+
+## VERIFICATION TASKS TO CLOSE (plain English back to Planning)
+1. The headline: average implementation shortfall per trade (cents + basis points), and gross-vs-net per trade.
+2. The cost decomposition (spread / delay / collar / commission / unattributed) — with what's real vs approximated.
+3. The splits (9:35 vs re-arm, long/short, session-segment, win/loss) — where is cost worst?
+4. Tie-out vs daily_review's net cost (match or discrepancy).
+
+## /planning
+- Add "Execution-cost / implementation-shortfall ledger (read-only, binding constraint)" = IN_PROGRESS. Update stamp.
+
+**Claude Code:**
+
+Substantial read-only cost analysis — the most important number in the project. Let me verify-first what price references are actually logged (coverage) before building, so I know real-vs-approximated:
+**High-fidelity data confirmed** — the decision (`signal_trigger_px` 99%), arrival (`market_price_ref_at_submit` 99%), submit (`intended_price` 99%), fill (100%), timing (99%), and commission (100%) are all logged. So I can do the **full** implementation-shortfall decomposition (delay + execution), not approximations. Building the ledger:
+The ledger works and the headline is the sobering, important finding. But two fixes before I report: the **tie-out label is inverted/confusing** (my ledger sums *entry-leg* commission = $669.85, exactly half of round_trips' entry+exit $1,339.73 — that reconciles, but the message is unclear), and I should add a **full-CSV commission tie-out** + a total-$ view. Let me fix the tie-out:
+Adding a total-$ view to the headline, then re-running:
+Everything ties out and the picture is complete — and it's the most important finding in the project. Let me capture it and push:
+Done — pushed, tie-out matches, secret-scan clean. Report to Planning:
+
+## Execution-cost ledger — the binding-constraint number (read-only, 285 broker-truth fills, 6/08–6/26)
+
+**1. Headline — gross vs net per trade.**
+- **Entry implementation shortfall: avg 0.82 bps (0.03¢/share), median 0.86 bps** — small and well-controlled.
+- **Realized GROSS = +$187 total (essentially FLAT: +$0.66/trade, −1.06 bps) → NET = −$1,153** after ~$1,340 commission+fees. Per-trade net **−4.04 bps**.
+- **The verdict the handoff asked for: the signal is ~flat-to-slightly-negative *before* cost, and commission makes it clearly negative.** Execution slippage is *not* the problem — **commission is.**
+
+**2. Cost decomposition (real vs approximated).**
+| component | avg bps | fidelity |
+|---|---|---|
+| delay (decision→arrival) | **2.52** | REAL — the breakout's move past the armed trigger (inherent to breakout entry) |
+| execution (arrival→fill) | **−1.7** | REAL — the 5bps stop-limit collar fills us *at/better* than arrival (a small gain) |
+| = entry IS (decision→fill) | **0.82** | REAL |
+| commission | **~1.49/leg (~3 RT)** | REAL (broker) |
+| fees | 0.0 | REAL |
+| **spread (half-spread)** | — | **UNATTRIBUTED** (no quote-at-fill logged — sits inside execution) |
+
+Submit→fill time ≈ 0s (fills immediate). So the only meaningful entry cost is the 2.5 bps breakout-delay, mostly offset by good collar execution.
+
+**3. Splits — where cost/loss is worst.**
+- **Session segment: the OPEN is the loss engine — net −$40.92/trade** vs midday +$18.10, close +$32.45.
+- **Path: 9:35 net −$33.32/trade vs re-arm +$14.63/trade — the re-arm path is POSITIVE even *after* cost.** (Cost is similar across paths; the gap is the *signal*, not the cost.)
+- **Side:** shorts +$7.04 beat longs −$17.08.
+- **Win/loss:** losers slip *more* on entry (1.24 bps) than winners (0.50 bps) — bad fills cluster in bad trades.
+
+**4. Tie-out — MATCH.** Full broker-CSV commission+fees **$1,339.71** == eod_debrief/daily_review **$1,339.73** (within $1 rounding). My ledger's entry-leg-only $669.85 is ~half (the exit leg is the rest). No discrepancy.
+
+### The actionable punchline
+The realized gross is **flat (+$187)**, and **commission (~3 bps round-trip, ~$1,340) is what turns it into −$1,153.** The `commission_model` notes **TS Select = $0 commission** — on that plan the net would be ≈ realized gross (≈ breakeven) instead of a $1,153 loss. **So the live commission-plan choice (per-share vs TS Select $0) is the single highest-leverage cost lever** — the difference between a loss and breakeven — and confirms the long-standing "cost halves the edge" caveat. Separately, the durable *signal* levers remain: the open/9:35 cohort is the loss engine; the re-arm path already survives cost.
+
+**One honest caveat:** EXIT-side implementation shortfall isn't isolated (the exit "decision" price = the chandelier/candle trigger, which isn't cleanly logged) — it sits inside realized gross as an unmeasured residual. Everything else is real broker-truth. Read-only; no orders/watched file; freeze intact. Report mirrored to the coordination repo (`reports/execution_cost_ledger.md`); logged + SYSTEM_FACTS updated.
+
+---
