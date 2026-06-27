@@ -4139,3 +4139,90 @@ Everything ASCII-clean (no garbled glyphs), verified against the live config.
 **On the news-feed handoff:** it arrived **truncated** — it ends mid-list at "premarket mover explanation" with an unclosed code block, so I don't have the full ask (the free-API options, requirements, whether you want a prototype). Resend it complete and I'll take it straight on — and I already have the groundwork: `news_collector.py` was built so swapping in a new source is a one-flag change, and FMP is the current (weak) provider.
 
 ---
+
+
+## Turn — 2026-06-27 15:17:45 ET
+
+**Rhett:**
+
+# HANDOFF → CLAUDE CODE — PROTOTYPE: free news feed (Finnhub primary) — READ-ONLY / SHADOW
+# From: Planning Claude | 2026-06-27 ET (Code: number + stamp; log it + SYSTEM_FACTS line per standing rule)
+# Research/shadow infra only. NO live trading change. No watched file. Key in .env (NOT committed; secret-scan).
+# Goal: a free news layer for catalyst tagging + post-trade attribution + premarket explanation — NOT entries.
+
+## PRIMARY CHOICE: Finnhub (free, 60 calls/min) — most generous free tier, company-news-by-ticker + market news + basic sentiment
+## SECONDARY (optional): SEC EDGAR (free/official, 8-K = M&A / exec-change / material events) for filing-type catalysts
+##                       Marketaux (100/day) or Alpha Vantage News&Sentiment only if a second source is wanted (low caps)
+
+## BUILD (read-only prototype)
+1. `strategy-research/news_feed.py` (shadow): pull Finnhub company-news for the day's published universe (~145)
+   + general market news, on a schedule that respects 60/min. Write to a SEPARATE file (news_shadow.jsonl).
+   Fields per item: ticker(s), headline, source, published_ts, url, raw sentiment score, and a CATALYST-TYPE tag
+   kept as a SEPARATE field (earnings/analyst/FDA/M&A/exec-change/legal-reg/sector/macro/none) — NOT one blended score.
+2. Add a post-trade ATTRIBUTION join (read-only): for each trade, attach any same-day news for that ticker, so we
+   can ask "did the trade have a catalyst, and which kind" — purely for the EOD autopsy/explanation.
+3. (Optional) EDGAR 8-K poll for the universe → filing-type catalysts the news API tags poorly.
+
+## VERIFY (this is the point — never assume)
+- Free-tier reality: confirm the LIVE Finnhub free limits today (calls/min, any company-news caps, commercial-use
+  clause) — quote the response, don't trust the docs. Same for any secondary you wire.
+- TAGGING ACCURACY: on a sample of ~20 names, hand-check that articles are mapped to the right ticker (name-collision
+  risk). Report precision; tags are advisory until this is checked.
+- Confirm key is in .env, NOT committed, and the secret-scan passes (public repo).
+
+## GUARDRAILS
+- READ-ONLY/shadow: news_feed.py touches NO trading-path/watched file, sends no orders, changes no behavior. Freeze intact.
+- Do NOT build a catalyst composite score or feed this into entry selection. Tags are for attribution/explanation +
+  future individual testing only.
+- This does NOT replace the earnings calendar (already built) and is NOT claimed to filter unconfirmed trades.
+
+## VERIFICATION TASKS TO CLOSE (plain English back to Planning)
+1. Which provider(s) wired, the CONFIRMED live free limits, and commercial-use clause.
+2. Tagging-accuracy sample result (precision on ~20 names).
+3. Sample news_shadow.jsonl rows + one post-trade attribution example.
+4. Confirm read-only/shadow + key hygiene; nothing live touched.
+
+## /planning
+- Add "News feed (catalyst tags + attribution) — SHADOW PROTOTYPE" = IN_PROGRESS under the Premarket Funnel phase
+  (Stage 0 catalyst source). Note it's the "needs-a-feed" half; earnings stays the NASDAQ calendar. Update stamp.
+
+**Claude Code:**
+
+Substantial shadow build. First thing I must verify before anything else: do we even have a Finnhub key, and what's the `.env` pattern? (I can't sign up for an account myself — that's on you — but let me see what exists.)
+No Finnhub key in `.env` yet — but `mover_scanner.py` references "finnhub." Let me check that (maybe a key already exists under some name):
+Confirmed: **no Finnhub key exists** (mover_scanner literally notes "Finnhub keys absent"). I can't create the account myself — that's yours (free signup at finnhub.io). But I can build the full prototype now, fully verify the **keyless** parts (SEC EDGAR is free + no key), and confirm the Finnhub free-tier terms from the docs. Let me start with the free-limit/commercial-use verification:
+SPA again. Let me search for the confirmed terms:
+Documented terms confirmed (live-verify pending the key): **free tier = 60 calls/min, includes company news + market news + SEC filings, but commercial use is RESTRICTED to personal/non-commercial** — fine for SIM research, but a paid plan would be needed if this ever becomes a commercial product. Important caveat I'll flag.
+
+Now building the prototype. SEC EDGAR is keyless so I can fully verify it today. Writing `news_feed.py`:
+Now testing the parts that need no key — the catalyst tagger and the **live keyless EDGAR 8-K** source:
+Tagger: **8/8** on the sample (though real-article precision needs the live feed — pending key). EDGAR 403'd — SEC requires a User-Agent with a contact email. Fixing the UA and retrying:
+**EDGAR works live, keyless, and the catalyst tagging is accurate on real filings** — 10,433-ticker CIK map pulled live, 12 real 8-Ks correctly tagged, including **MU's 6/24 earnings 8-K (item 2.02 → earnings)** and several exec-changes/M&A. Now let me wire the attribution demo. First widening the window to catch overnight catalysts (the trade date + prior day), then demonstrating the post-trade join:
+The attribution works and surfaces a real insight: **both big 6/25 losers were earnings trades** — MU (−$1,670, earnings 8-K item 2.02) and BB (−$646, earnings) — exactly the "did the trade have a catalyst, which kind" question the handoff wanted, and it ties straight to the MU bleeder debate.
+
+Now the key-hygiene + read-only verification (handoff task #4):
+`.env` is gitignored (safe for the future key). Let me re-confirm the news_feed.py checks with the right path:
+All hygiene checks pass — no hardcoded secret, no watched file, no orders, writes only to the separate `news_shadow.jsonl`. Now logging + /planning + SYSTEM_FACTS + push:
+Done — pushed, secret-scan clean. Report to Planning:
+
+## Free news-feed shadow prototype — built, EDGAR verified live, Finnhub blocked on a key
+
+**1. Providers wired + confirmed limits + commercial clause**
+- **Finnhub (PRIMARY)** — code fully wired (company-news per ticker + general market news, rate-limited to ~54/min under the 60/min cap). **Free-tier terms (from docs; live quote pending a key):** 60 calls/min, includes company news + market news + SEC filings, **but commercial use is RESTRICTED to personal/non-commercial.** That's fine for SIM research, but a *paid* plan would be required if Alpha Quant ever becomes a commercial product — flagging that now.
+- **SEC EDGAR 8-K (SECONDARY)** — **keyless, and I verified it live today.** Pulled the real 10,433-ticker CIK map and real 8-Ks, correctly mapping filing item-codes to catalyst types.
+- **Blocker:** **no Finnhub key exists** (the codebase literally notes "Finnhub keys absent"). I can't create accounts — you'd sign up free at finnhub.io and drop `FINNHUB_API_KEY` into `ai-trading-strategy-agent/.env` (already gitignored, verified). Then I run the live Finnhub half.
+
+**2. Tagging accuracy**
+- The catalyst tagger scored **8/8** on a labeled sample, and tags real EDGAR item-codes correctly (MU 6/24 item 2.02 → *earnings*, JPM 5.02 → *exec_change*, DELL 1.01/2.01 → *m&a*). 
+- **Honest gap:** the handoff's "~20 real article→ticker precision" check needs live **Finnhub** articles (name-collision risk lives in the news API, not EDGAR) — so that specific number is **pending the key**. EDGAR's item-code tagging is deterministic and already verified.
+
+**3. Sample rows + attribution example**
+- `news_shadow.jsonl` rows (separate file) look like: `{"source_api":"edgar","ticker":"MU","headline":"8-K filed (2.02,9.01)","published_ts":"2026-06-24","catalyst_type":"earnings","edgar_items":["2.02","9.01"], ...}`.
+- **Post-trade attribution (6/25)** surfaced a real, relevant pattern: **both big losers were earnings trades** — **MU −$1,670 (earnings 8-K) and BB −$646 (earnings)** — plus SWK +$59 (m&a), QCOM +$431. That's exactly the "did this trade have a catalyst, which kind" lens, and it ties straight to the MU bleeder / earnings-veto debate.
+
+**4. Read-only / shadow + key hygiene — confirmed**
+- `news_feed.py` touches **no watched trading file, places no orders** (only reads `eod_debrief` for attribution), and writes only to the separate `news_shadow.jsonl` + an EDGAR cache. No hardcoded secret (key via `os.getenv`), `.env` gitignored, and the file stays local (not pushed to the public repo). Freeze intact. It does **not** replace the NASDAQ earnings calendar and does **not** feed entry selection.
+
+**Plain English:** the EDGAR half is live and working now; the Finnhub half is built and one `.env` line away from running. **The only thing I need from you is a free Finnhub API key** — add it and I'll close out the live limit-quote + the 20-name tagging-precision check. /planning set to "News feed — SHADOW PROTOTYPE IN_PROGRESS" under the Premarket Funnel; logged + SYSTEM_FACTS updated.
+
+---
