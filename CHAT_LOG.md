@@ -3568,3 +3568,110 @@ One honest note: it's Saturday, market closed, so I can't watch one of the frequ
 The exec-form fix landed: `planning_sync.log` shows an **automatic** `synced turn ... push=OK` (not a manual test), and **CHAT_LOG now has its first real auto-synced turn** on GitHub. This very turn will sync too. So the verbatim every-turn record is live, with `SESSION_LOG.md` still the curated ramp-up doc.
 
 ---
+
+
+## Turn — 2026-06-27 13:30:58 ET
+
+**Rhett:**
+
+# HANDOFF → CLAUDE CODE — FIX: clean-day false alarm (two parts: silence CIM noise + harden certifier)
+# From: Planning Claude | 2026-06-27 ET (Code: number + stamp; log it + SYSTEM_FACTS line per standing rule)
+# Rhett-approved fix. Both files are NON-WATCHED (system_health_verifier.py, clean_day_certifier.py) — off the
+# trading path. No watched strategy file, no live order behavior. Freeze-safe (instrumentation/governance only).
+
+## PROBLEM (verified in log + SYSTEM_FACTS)
+consecutive_clean = 0 live (should reflect real clean trading days). Cause = benign `scheduled_tasks_present`
+CIM-timeout FALSE-FAILs (Get-ScheduledTask hangs >30s; tasks ARE present, confirmed via schtasks.exe) storming
+the certifier's `no_critical_incident` (soft-incident count >=5) → days mis-marked non-clean. NO real trading
+incident on any of these days.
+
+## PART 1 — SILENCE THE NOISE (system_health_verifier.py)
+- Swap chk_scheduled_tasks_present() (and scheduled_task_last_run_recent) from `Get-ScheduledTask` (CIM, hangs)
+  to `schtasks.exe /query /fo csv /nh` (verified <1s, lists all tasks). Keep the same pass/fail semantics
+  (tasks actually missing still FAILs). This stops the false TIMEOUT FAILs at the source.
+
+## PART 2 — HARDEN THE CERTIFIER (clean_day_certifier.py) — the real fix
+- The clean-day predicate must judge a day on REAL TRADING-INTEGRITY conditions: report_integrity OK,
+  broker_flat_eod, position_recon agree, gate_enforced, no HARD fault / no real trading incident.
+- Verified-benign, self-clearing, NON-TRADING operational noise (CIM/WMI timeouts, transient task-enum hangs,
+  the already-handled transient broker 5xx per AQ-20260621-...-002) must be RECORDED-BUT-NOT-DISQUALIFYING —
+  same treatment already applied to the transient 5xx on 6/21. Do NOT let a storm of soft non-trading incidents
+  trip no_critical_incident.
+- KEEP STRICT: real system faults, 4xx auth, position-recon mismatches persisting >2 cycles, gate-fail-open,
+  report-integrity failures, not-flat-at-EOD = STILL disqualify. The line is "did a real trading-integrity
+  condition fail," not "was there any incident at all." Do NOT weaken real-fault detection.
+
+## BACKFILL (careful — verify, don't assume)
+- After the fix, RE-CERTIFY the recent days from broker truth and report the corrected consecutive_clean.
+- Show, per recent trading day, WHY it now passes/fails (the actual conditions), so Rhett + Planning see the
+  real count, not a number we want. If a day had a REAL incident, it must still fail — say so.
+
+## VERIFICATION TASKS TO CLOSE (plain English back to Planning)
+1. Confirm schtasks.exe swap landed + the CIM false-FAILs stop (show a clean CSHV run).
+2. Confirm the certifier now ignores verified-benign non-trading noise BUT still fails on real faults
+   (show one example of each: a benign-noise day now PASS, and prove a real-fault day would still FAIL).
+3. Report the corrected consecutive_clean with the per-day reasons (backfill).
+4. Update SYSTEM_FACTS (consecutive_clean now reflects real trading-clean days) + log it.
+
+## GUARDRAILS
+- Both files non-watched; no trading-path change; freeze intact. This protects the forward-test count, it does
+  not game it — be able to show a real-fault day STILL fails.
+
+**Claude Code:**
+
+Approved fix, both files non-watched, off the trading path. Let me read the current logic in both files before changing anything — especially the existing benign-5xx exemption pattern (AQ-20260621) that Part 2 says to mirror.
+Let me read the full classification logic in the certifier and the two scheduled-task checks:
+There's already an `_is_inconclusive_query` exemption for `scheduled_tasks_present` timeouts — yet `consecutive_clean` is still 0. So before assuming the handoff's mechanism, I need to see the **actual** incidents tripping each recent day (RULE #0). Let me dump the real hard/soft/exempt buckets per day:
+This contradicts the handoff's assumed cause — and I need to flag it rather than blindly "fix" it. The `scheduled_tasks_present` noise is **already exempted** (96–148 exempt/day). The days are actually failing on **HARD faults**: `rel_trading_is_thinking` (6/22, 6/26) and **64× `rel_gate_not_failing_open` on 6/19**. Exempting scheduled-tasks noise won't move `consecutive_clean` at all.
+
+Before I touch the certifier, I must verify whether those HARD faults are real or benign (RULE #0 — and I won't game the count). Let me pull the raw incidents:
+Now I have the truth, and it changes the picture — I need to flag this, not blindly "fix" it. The raw incidents show the disqualifiers are **real faults, not benign noise**:
+
+- **6/19**: `gate FAILING OPEN` — sustained **all day** (64×, 10:40→15:55, "gate flag ON but gate_enforced never True"). The handoff's own KEEP-STRICT list says gate-fail-open **must still fail**.
+- **6/22, 6/26**: `rel_trading_is_thinking` — the main bot loop frozen >4 min (real liveness events, not CIM noise).
+
+The `scheduled_tasks_present` CIM noise the handoff blames is **already exempted** (96–148/day in the exempt bucket). So exempting it again moves `consecutive_clean` by zero. I will not exempt the real faults — that would game the count, which the handoff explicitly forbids.
+
+Part 1 (schtasks swap) is still valid and worth doing — it stops the CSHV false-FAILs at the source. Let me read those two checks:
+`chk_scheduled_tasks_present()` was **already hardened** — on a Get-ScheduledTask timeout it returns **WARN** (not FAIL), explicitly "does not disqualify the clean day." So this confirms it: the scheduled-task noise is already non-disqualifying (WARN, plus the certifier exemption). It is **not** why `consecutive_clean=0`.
+
+Part 1 is still a worthwhile upgrade — swap to fast `schtasks.exe` so the query reliably returns **OK** instead of flaky WARN noise. Let me see the subprocess helper to match style + ensure `CREATE_NO_WINDOW`:
+Now I understand fully — and this confirms the certifier is working correctly. Let me implement Part 1 properly: a fast `schtasks.exe` helper (with `CREATE_NO_WINDOW`) replacing the hang-prone CIM query, keeping identical pass/fail semantics. Inserting the helpers:
+Now swap `chk_scheduled_tasks_present()` to use the fast helper:
+Now the second check — let me read the full `chk_scheduled_task_last_run_recent()` to swap it correctly:
+Now compile and test both swapped checks run fast and correct:
+**Part 1 works** — both checks now complete in <1s and return OK (was a >30s CIM hang). The false-TIMEOUT noise is eliminated at the source.
+
+Now Part 2 — and here's the key finding I need to report honestly. The handoff's criteria say to exempt *"NON-TRADING operational noise"* but KEEP STRICT on *gate-fail-open* and real faults. The certifier **already does exactly this** (benign CIM/5xx → exempt bucket; gate-fail-open → HARD). The real disqualifiers are genuine **trading-path** faults, not the noise the handoff blamed. So I will **not** reclassify them — that's the count-gaming the handoff forbids. Let me run the real backfill to show the truth:
+`consecutive_clean=0` because it stops at the first non-clean day (6/26, the loop-stall). For the honest backfill the handoff wants, I need per-day certification across all conditions. Let me find the certify function:
+`certify_day(date)` gives the full picture. Let me run it per recent trading day for the honest backfill:
+Now I have the complete, honest backfill — and it overturns the handoff's premise (and my own earlier note). Let me correct the record. First, reading my earlier — now-disproven — OPEN DECISION (5):
+Now the ledger entry for this fix:
+Now regenerate SYSTEM_FACTS (per the standing rule) and push:
+Done — but the important part is what verification turned up. Reporting back to Planning in plain English:
+
+## The handoff's premise was wrong — and I won't game the count to match it
+
+**Part 1 (schtasks swap) — DONE and valid.** Both `system_health_verifier.py` checks now use `schtasks.exe` instead of the hang-prone `Get-ScheduledTask` (CIM). Verified live: `chk_scheduled_tasks_present` returns **OK in 0.75s**, `chk_scheduled_task_last_run_recent` **OK in 0.04s** (was a >30s hang → false TIMEOUT). Missing-task still FAILs (semantics preserved), `CREATE_NO_WINDOW` on both. The CSHV false-TIMEOUT noise is killed at the source. ✅ (verification task #1)
+
+**Part 2 — the certifier already does exactly what the handoff asks, so I changed nothing.** I verified before assuming, and the data overturns the diagnosis:
+
+- The `scheduled_tasks_present` CIM noise the handoff blames is **already non-disqualifying** — the check returns WARN-not-FAIL on timeout, and the certifier's exempt bucket catches 96–148 such benign incidents per day. Exempting it again moves the count by **zero**.
+- The days are actually failing on **real trading-path faults**, not noise:
+
+| Day | Result | Why |
+|---|---|---|
+| 6/19 | NON-CLEAN | **gate failing open ALL DAY** (64×, 10:40→15:55) — your KEEP-STRICT list says this must fail |
+| 6/22 | NON-CLEAN | main loop **frozen >4 min** (+148 benign ignored) |
+| 6/23, 6/24, **6/25** | **CLEAN** ✓ | 3-day system-clean run — and 6/25 had **96 benign incidents correctly ignored** yet still PASSED |
+| 6/26 | NON-CLEAN | main loop **frozen >4 min** at 9:30 AM — broke the streak |
+
+That table *is* verification task #2: a benign-noise-heavy day (6/25) **passes**, real-fault days **fail**. Real-fault detection is intact — which is exactly why I didn't touch it.
+
+**Corrected `consecutive_clean` = 0 (verification task #3) — and it's honest, not noise.** It's 0 because 6/26 (the most recent day) had a genuine loop-stall. A loop-stall is *trading-path* liveness, not the "non-trading operational noise" your exempt rule covers, so it correctly stays HARD. Reclassifying it to make the number go up is the count-gaming you explicitly forbade.
+
+**I also corrected my own earlier mistake:** when I built SYSTEM_FACTS I wrote that the 0 was "benign CIM-noise re-tripping the certifier." That was an unverified guess and it was **wrong** — I've fixed that note and OPEN DECISION (5) in SESSION_LOG. SYSTEM_FACTS regenerated; all pushed (synced). ✅ (task #4)
+
+**The real lever isn't the certifier — it's the recurring 9:30-AM loop-stall and the 6/19 gate-fail-open.** Fix those and clean days are earned legitimately. One genuine open question for you/Rhett (I did *not* decide it myself): should a *single, self-recovered* loop-stall be tolerated like a 1-cycle position-recon blip, while a *sustained* stall stays HARD? I left it strict.
+
+---
