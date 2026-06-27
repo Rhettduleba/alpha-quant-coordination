@@ -49,6 +49,13 @@
 > Every audit / study / test result Claude Code runs gets a dated entry HERE, so Planning can read the
 > session log instead of a separate handoff. Each entry: date · what · verdict · numbers · source files.
 
+### 2026-06-27 — BUILT: auto-sync of every turn to Planning (Stop hook — fixes the "session-log order keeps failing" problem)
+- **Why:** the every-turn-update rule failed twice because it relied on Claude Code *remembering*. Fix = remove Claude from the loop. `strategy-research/planning_turn_sync.py` is wired as a Claude Code **Stop hook** (`.claude/settings.json`) → runs automatically at EVERY turn end, no human/memory in the loop.
+- **What it does:** streams the live transcript (memory-safe), extracts Rhett's message + my full **verbatim** response, secret-scans + REDACTS (repo is PUBLIC), appends to `CHAT_LOG.md` in the coordination repo, git-pushes (best-effort, rebase-retry on race, CREATE_NO_WINDOW, never blocks the turn, failures logged to `outputs/validation/planning_sync.log`).
+- **Verified end-to-end:** parser pulls the exact turn (tested on the live transcript); redaction works (`api_key: …` → `[REDACTED]`); hardened push = OK; remote in sync. Verbatim chosen on purpose — it removes my (unreliable) judgment, which was the failure cause.
+- **Planning reads:** `https://raw.githubusercontent.com/Rhettduleba/alpha-quant-coordination/main/CHAT_LOG.md` (verbatim) + `SESSION_LOG.md` (curated digest + this ledger + OPEN DECISIONS).
+- **ONE thing pending real-world confirm:** whether the harness activates a just-added Stop hook mid-session or needs a Claude Code restart — confirmed at the start of next turn (check `planning_sync.log`); if it didn't fire, restart needed + I manually sync meanwhile.
+
 ### 2026-06-27 — BUILT: SYSTEM_FACTS auto-generated live-truth sheet (Layer 1)
 - **What:** `strategy-research/system_facts.py` (read-only) regenerates `SYSTEM_FACTS.md` FROM the running code/config/broker-truth — the fix for Planning stating mechanics from stale memory. Every value is READ from a real source (live import for the VALUE; fresh file-scan for the SOURCE `file:line`); nothing hand-typed; underivable → `UNVERIFIED`.
 - **Freshness WIRED (not just intended):** `eod_debrief.main()` now calls `system_facts.generate()` (guarded) and `sync_to_coordination()` pushes `SYSTEM_FACTS.md` alongside SESSION_LOG every 4:50 PM EOD → the coordination repo sheet refreshes daily. Re-runnable any time manually. (`eod_debrief.py` non-watched, runs once-and-exit → next EOD run picks up the change; no restart.)
