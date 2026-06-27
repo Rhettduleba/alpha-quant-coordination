@@ -4743,3 +4743,76 @@ Done — pushed, secret-scan clean. Report to Planning:
 **Bottom line for the project:** there *is* a gross edge before cost, and it's **entry-observable: the re-arm path (esp. 10:35) and the short side.** That's the slice to isolate and test OOS. Combined with the execution-cost finding (the re-arm path also survives commission), this is the most promising thread. Report mirrored to the coordination repo; logged + SYSTEM_FACTS updated; /planning set to IN_PROGRESS.
 
 ---
+
+
+## Turn — 2026-06-27 18:48:10 ET
+
+**Rhett:**
+
+# HANDOFF → CLAUDE CODE — ANALYZE: Gross signal quality — is there an edge BEFORE cost, and WHERE? (read-only)
+# From: Planning Claude | 2026-06-27 ET (Code: number + stamp; log it + SYSTEM_FACTS line per standing rule)
+# WHY: validated finding from the execution-cost ledger = GROSS is ~FLAT (+$187 / 285 trades). Fees set aside for
+# now (the fee number was modeled/unvalidated). The question that decides everything: does the strategy have a
+# gross edge HIDDEN inside the flat average — a profitable slice dragged down by a losing slice? READ-ONLY analysis
+# on stored broker-truth trades. No live touch, no fee assumptions, freeze intact.
+
+## BUILD (read-only, on the same 285-trade broker-truth history)
+A gross-edge breakdown (e.g. `strategy-research/gross_signal_quality.py`). GROSS P&L ONLY — no commission/fee model
+anywhere (fees deferred). For the full set and each split below, report: total gross, avg gross/trade (dollars AND
+basis points), win rate, profit factor, median, and the largest-winner / largest-loser tails.
+
+Splits (pre-declared, so this isn't fishing):
+1. **9:35 path vs re-arm path** — the leading hypothesis (9:35 = loss engine, re-arm = the money). Quantify each.
+2. **Long vs short.**
+3. **Confirmed vs unconfirmed** (did it move favorably by the 0.15xATR confirm threshold) — the strongest known divider.
+4. **Session segment** (open / midday / close) and **by hour** for the re-arm windows (10:35..14:35) — which windows pay.
+5. **By extension at entry** (the L2 idea — do over-extended gap-tops lose gross?), if the field is logged.
+
+## THE QUESTION TO ANSWER
+Is the flat +$187 gross truly "no edge," OR is it a profitable slice (e.g. re-arm / confirmed / specific windows)
+net of a losing slice (e.g. 9:35 / unconfirmed)? If a clean positive-gross slice exists, name it + its gross
+expectancy. That's the candidate edge to isolate and test — BEFORE worrying about cost.
+
+## HARD CONSTRAINTS
+- READ-ONLY: no orders, no watched file, no behavior change. Freeze intact.
+- GROSS ONLY — no fee/commission numbers in this analysis (fees deferred, were unvalidated).
+- Pre-declared splits only; if a split looks strong, FLAG it as a hypothesis to test out-of-sample, NOT a proven edge
+  (N still small, in-sample, multiple-testing risk — label it).
+
+## VERIFICATION TASKS TO CLOSE (plain English back to Planning)
+1. The gross breakdown across all 5 splits (gross/trade in $ and bps, win rate, profit factor, tails).
+2. The answer: is there a clean positive-gross slice inside the flat average? Name it + its gross expectancy.
+3. Honest caveats: in-sample, N per slice, multiple-testing — which "edges" are real candidates vs noise.
+
+## /planning
+- Add "Gross signal-quality breakdown (is there an edge before cost?)" = IN_PROGRESS, read-only. Update stamp.
+
+**Claude Code:**
+
+This handoff is identical to the one I just completed — the tool `gross_signal_quality.py` already exists, was run, and pushed last turn. Rather than rebuild, let me re-run it fresh to confirm the current numbers, then give you the answer:
+This handoff is a duplicate of the one I completed earlier this session — the tool ran clean and the numbers are unchanged, so nothing to rebuild (it's already built, logged, and pushed to the coordination repo as `reports/gross_signal_quality.md`). Re-confirming the answer:
+
+## Is there a gross edge before cost? **Yes — hidden inside the flat +$187.**
+
+**The 5 splits (re-run, GROSS only, n=285):** all-trades +$187 / +$0.7/trade / PF 1.01 (flat). The slices:
+
+| Split | positive slice | losing slice |
+|---|---|---|
+| **Path** | **re-arm +$3,420 (+$19.7/trade, PF 1.30)** | 9:35 −$3,233 (PF 0.66) |
+| **Side** | **short +$1,719 (+$11.2, PF 1.18)** | long −$1,532 (PF 0.87) |
+| **Segment** | midday +$3,414 (PF 1.36), close +$930 | **open −$4,156 (−$36.8/trade, PF 0.60)** |
+| **Hour** | **10:35 window +$2,342 (+$41.1/trade, 70% win, PF 1.61)** | 09:35 −$3,233 |
+| **Confirm** | confirmed +$11,453 (98% win) | unconfirmed −$11,935 (6% win) |
+
+**2. The answer — name the candidate edge + expectancy:**
+The flat average is a **profitable re-arm slice almost exactly canceled by a losing 9:35/open slice.** The clean, **entry-observable** positive edge is the **re-arm path — specifically the 10:35 window (+$41/trade, PF 1.61, 70% win) — plus the short side (+$11.2/trade, PF 1.18).** That's the slice to isolate and test out-of-sample.
+
+**The one finding I must keep flagged:** the *biggest* divider — confirmed (+$135/trade, 98% win) vs unconfirmed (−$225/trade, 6% win) — is **look-ahead, NOT an entry edge.** Confirm is decided ~6 min *after* entry (QCOM confirmed 09:41 vs 09:35 fill), so it's tautological. It's the **exit lever** (cut unconfirmed bleeders = the gauntlet), not entry selection. Don't trade on it.
+
+**3. Caveats (real candidate vs noise):**
+- In-sample, **small N** (re-arm hours 23–57 trades each; the 10:35 standout is 57), **multiple pre-declared splits** (multiple-testing risk), **6/25 kill day included** (MU −$1,668 drags the 9:35/open slice). → **Hypotheses to test OOS, not proven edges.**
+- **Extension split (#5) inconclusive:** `prior_close`-based gap understates multi-day extension (MU's earnings gap reads +3.4%); ≥12% bucket is only n=12. Doesn't cleanly test the L2 gap-top idea — needs a multi-day-extension field.
+
+Everything was already persisted last turn (SESSION_LOG ledger + `reports/gross_signal_quality.md` + /planning + SYSTEM_FACTS, all pushed). If you intended a *different* analysis with this re-send — a different window, a finer cut, OOS split, or removing the 6/25 kill day — tell me and I'll run that variant.
+
+---
