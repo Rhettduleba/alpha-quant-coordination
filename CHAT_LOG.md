@@ -13,3 +13,16 @@ WIRING TEST — verifying the Stop hook pushes verbatim to Planning. (api_key: [
 WIRING TEST response — if Planning can read this line in CHAT_LOG.md on GitHub, the auto-sync works.
 
 ---
+
+
+## Turn — 2026-06-27 12:12:13 ET
+
+**Rhett:**
+
+WIRING TEST 2 — confirming hardened push (rebase-retry) succeeds.
+
+**Claude Code:**
+
+WIRING TEST 2 response — push path verified.
+
+---
