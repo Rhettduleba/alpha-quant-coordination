@@ -4418,3 +4418,75 @@ Confirmed live, no ambiguity:
 So: directive followed. Finnhub is wired and pulling live company + market news with **your** key right now — nothing more needed from you.
 
 ---
+
+
+## Turn — 2026-06-27 16:19:25 ET
+
+**Rhett:**
+
+# HANDOFF → CLAUDE CODE — Wire the available NOT_WIRED inputs into the LLM Market View (9:15) — SHADOW/observational
+# From: Planning Claude | 2026-06-27 ET (Code: number + stamp; log it + SYSTEM_FACTS line per standing rule)
+# Report layer is observational only — these inputs feed the 9:15 Market View report, NOT any trade/gate/sizing.
+# Wire what's available NOW; don't block on data hunts. Keep facts assembled IN CODE (LLM never invents them).
+
+## DO NOW — the cheap/available source
+1. ECONOMIC CALENDAR: wire Finnhub's economic-calendar endpoint (we have the key) → today's scheduled US events
+   (Fed, CPI, jobs, etc.) as a FACT block in Report A. Mark each event's time + importance. Verify against a real
+   response (don't trust docs). This replaces the econ NOT_WIRED gap.
+
+## DO NOW — but VERIFY-FIRST what we already have (don't sign up for anything new yet)
+2. FUTURES: check whether TradeStation's API already exposes overnight US index futures (ES/NQ) to our existing
+   auth — we already stream `/marketdata/stream/quotes` and run an MES futures account (SIM1623889F, sidelined).
+   IF futures quotes are reachable on our current TS access → wire ES/NQ overnight/pre-open level + % vs prior close
+   as a FACT block. IF NOT reachable without a new entitlement → leave futures as NOT_WIRED and say so plainly.
+3. FOREIGN MARKETS: check Finnhub (and TS) for major foreign index coverage on our current free access (e.g. a
+   Europe/Asia proxy). IF a free, reachable source exists → wire a small FACT block (major index + % move). IF it
+   needs a paid feed → leave foreign as NOT_WIRED.
+
+## HARD CONSTRAINTS
+- Observational only: feeds the 9:15 report's FACT section; touches NO trade/selection/sizing/config; no watched file.
+- FACTS assembled in code; anything still unavailable stays explicitly NOT_WIRED (the LLM must not fabricate it).
+- Verify every source against a real response; quote what it returns. Free/reachable-on-current-access only — do NOT
+  assume a paid upgrade; if a source needs payment, report that and leave it NOT_WIRED for Rhett's call.
+- Key hygiene: env only, gitignored, nothing pushed to the public repo.
+
+## VERIFICATION TASKS TO CLOSE (plain English back to Planning)
+1. Econ calendar wired + a sample of today's/next session's events from a real Finnhub response.
+2. Futures: reachable on our current TS access? If yes, wired (sample ES/NQ); if no, why, left NOT_WIRED.
+3. Foreign: free/reachable source found? If yes, wired (sample); if no, left NOT_WIRED.
+4. Confirm the 9:15 report now shows the newly-wired FACT blocks + still zero trading-path touch.
+
+## /planning
+- Update "LLM Daily Report Layer v1" note: econ calendar WIRED; futures/foreign = wired-if-reachable-else-NOT_WIRED.
+  Update stamp.
+
+**Claude Code:**
+
+Verify-first build. Let me probe all three sources with real calls before wiring anything — econ calendar (Finnhub), futures (TradeStation), and foreign indices:
+Clear verify-first results — 2 of 3 are wireable now:
+
+- **Econ calendar: Finnhub = PREMIUM** — `HTTP 403 "You don't have access to this resource."` → stays NOT_WIRED (I'll quote the 403).
+- **Futures: REACHABLE on our current TS auth ✓** — `@ES` Last 7397.25 vs PrevClose 7423.25 (−0.35%), `@NQ` 29283 vs 29724.75 (−1.49%). Real overnight read. Wiring it.
+- **Foreign: raw indices premium ("CFD subscription required"), but free country-ETF proxies work** — EWJ (Japan) −0.63%, EWG (Germany) −1.07%, FXI (China) reachable. Wiring as a *labeled, lagged* proxy.
+
+Let me wire the two available sources. Adding the helpers:
+Now updating `assemble_market_view_facts` to call them + replace the NOT_WIRED markers (econ stays NOT_WIRED with the verified 403):
+Compile + dry-run to verify the new FACT blocks assemble with real data:
+New FACT blocks assemble with **real** data (ES −0.35%, NQ −1.49%, country-ETF proxies, econ 403-quoted). Now a real LLM call to confirm Report A uses them, then I'll render + push:
+The LLM now uses the futures ("NQ down ~1.49% vs prior settle, weaker than ES"), reads it risk-off, treats the foreign ETF proxy cautiously (notes the lag), and **still flags econ as unavailable** — confidence stays LOW. Exactly the intended behavior. Let me confirm it renders on the dashboard (the page reads the JSON generically, no restart needed):
+All new blocks render (futures values, foreign proxy, econ 403 note) — zero trading-path touch (read-only quotes). Logging + /planning + push:
+Done — pushed, secret-scan clean. Report to Planning (verify-first, 2 of 3 wired):
+
+## 9:15 Market View inputs — wired what's reachable, left the paid one NOT_WIRED
+
+**1. Econ calendar — NOT_WIRED (it's PREMIUM, verified against a real response).** Finnhub `/calendar/economic` returned **`HTTP 403: "You don't have access to this resource."`** on our free key. So I couldn't wire it. The FACT block now quotes that 403 verbatim and says it needs a paid feed or a free alternative — **your call.** The LLM correctly reports it as unavailable rather than inventing events. (No sample events to show — the endpoint denies access.)
+
+**2. Futures — REACHABLE on our current TS auth → WIRED.** I verified `/marketdata/quotes/@ES` and `@NQ` return **HTTP 200 on our existing entitlement** (no new subscription). Sample (live): **ES 7397.25 vs prior settle 7423.25 = −0.35%**, **NQ 29283 vs 29724.75 = −1.49%**. Wired as a real overnight FACT block — and the LLM used it ("NQ down ~1.49%, weaker than ES → tech-led pressure," read risk-off).
+
+**3. Foreign — WIRED as a labeled, lagged proxy (free), because the raw indices are paid.** The actual foreign indices (`^GSPC/^GDAXI/^N225/^FTSE`) returned **"Market data subscription required for CFD indices"** (premium). But **free US-listed country ETFs work** via Finnhub `/quote`: **EWJ (Japan) −0.63%, EWG (Germany) −1.07%, FXI (China)**. I wired those with an explicit caveat — *pre-open they show the prior US-session print, not the live overnight Asia/Europe session* — and the LLM treated it cautiously (flagged the lag in its "unsure_about").
+
+**4. Report A now shows the new FACT blocks + zero trading-path touch.** `/daily-view` renders `overnight_futures` (ES/NQ), `foreign_markets_proxy` (the 3 ETFs + lag note), and the econ 403 note (HTTP 200 confirmed). The new helpers only **read** quotes — no orders, no watched file, no `advisor_control`, no selection/sizing. Facts stay assembled in code; the still-missing econ calendar stays explicitly NOT_WIRED so the LLM can't fabricate it.
+
+**Net:** the 9:15 Market View went from 3 data gaps to 1. Futures (the most valuable overnight read) and a foreign proxy are now real facts; the economic calendar is the one remaining gap and it's **paywalled on Finnhub** — flagging for your decision on whether to find a free source or pay. Key hygiene intact (env-only, gitignored, nothing pushed). /planning + SYSTEM_FACTS updated.
+
+---
