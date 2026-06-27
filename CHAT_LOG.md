@@ -4330,3 +4330,68 @@ Done — pushed, secret-scan clean. Report to Planning:
 **Two honest notes:** (a) Market View inputs are partial in v1 — overnight futures / foreign markets / econ calendar are `NOT_WIRED`, and the model says so (which is why it ran *low* confidence); richer inputs are future work. (b) Today is Saturday, so 6/26 was a replay — the first live runs are Monday. /planning set to IN_PROGRESS (intraday regime reader = LATER; advisor audit = HELD); logged + SYSTEM_FACTS updated.
 
 ---
+
+
+## Turn — 2026-06-27 16:00:12 ET
+
+**Rhett:**
+
+this is the finnhub key [REDACTED] # HANDOFF → CLAUDE CODE — Finnhub key provided: wire it + close the pending news-feed verifications
+# From: Planning Claude | 2026-06-27 ET (Code: number + stamp; log it + SYSTEM_FACTS line per standing rule)
+# Rhett has the Finnhub API key. Still READ-ONLY/shadow — no watched file, no orders, freeze intact.
+
+## DO
+1. Add `FINNHUB_API_KEY` to `ai-trading-strategy-agent/.env` (gitignored — confirm it is NOT committed/pushed; public repo).
+2. Wire it into `news_feed.py` (company + market news), still writing to the shadow file only. No behavior change.
+
+## CLOSE THE TWO PENDING VERIFICATIONS (these needed the key)
+3. LIVE FREE-TIER LIMIT: pull the actual rate-limit from a real Finnhub response (header/JSON), not the docs —
+   confirm calls/min + any company-news caps + the personal/non-commercial clause. Quote what the response says.
+4. TAGGING ACCURACY: on ~20 real article→ticker maps, hand-check precision (name-collision risk, e.g. common names).
+   Report the precision number; tags stay advisory until this is checked.
+
+## VERIFICATION TASKS TO CLOSE (plain English back to Planning)
+1. Key wired + confirmed NOT in the repo (secret-scan clean).
+2. The CONFIRMED live free-tier limit (from a real response) + commercial clause.
+3. Tagging-accuracy precision on the ~20-name sample.
+4. A few sample news_shadow.jsonl rows now that company news is flowing (not just EDGAR).
+
+## GUARDRAILS
+- Read-only/shadow; no trading-path touch; does NOT feed entry selection; does NOT replace the NASDAQ earnings calendar.
+
+**Claude Code:**
+
+Before anything else — a critical secret-safety issue: you pasted the key in plaintext, and my **CHAT_LOG auto-sync hook pushes this turn verbatim to the public repo at turn-end.** My current redaction wouldn't catch a Finnhub-style key (it's not `sk-`, not 40-char hex, and not in `key=value` form). I must harden the redaction *first*, this turn, so the hook scrubs it. Reading the current redactor:
+Adding a generic API-key-shaped-token pattern (24+ alphanumeric with both a letter and a digit — catches the Finnhub key and most keys, while ignoring words and short commit SHAs):
+Now testing the redaction catches the key but doesn't over-redact normal text (short SHAs, words):
+Redaction confirmed (key → `[REDACTED]`, short SHAs and words survive) — so the turn-end auto-sync will scrub it from the public repo. Now adding the key to the gitignored `.env`:
+Key wired, gitignored, not tracked. Now the **live free-tier limit verification** — a real Finnhub call, quoting the actual rate-limit response headers (not the docs):
+**Live free-tier limit CONFIRMED from the real response:** `X-Ratelimit-Limit: 60` (60 calls/min), `X-Ratelimit-Remaining: 59`, no company-news cap (247 AAPL articles returned). Real news is flowing with catalyst tags (the "Apple wants to buy… Micron" headline correctly tagged **m&a**).
+
+Now the **tagging-accuracy / name-collision** check — I deliberately included collision-prone tickers (KEY, ALL, ON, A, F):
+Let me record the precision assessment of those 24, then pull real company-news rows into the shadow file (handoff task #4):
+Finnhub company news flows (5 symbols → 814 articles — confirming no caps, but also that per-ticker volume is high and needs a cap for the full universe). The DELL "Nancy Pelosi tracker / Elizabeth Warren" rows confirm the name-collision noise I'll quantify. Let me add a sane per-ticker cap:
+Now the final secret-scan — confirming the key isn't in any pushable/committed file (checking the key prefix, not printing the value):
+No key leak anywhere — clean in SESSION_LOG, SYSTEM_FACTS, news_shadow, planning, the public coordination repo, and no git-tracked file. (The "CHECK" is a benign "token" *word* in a news headline, not the key — the key-prefix scan on that file was clean.) Let me confirm CHAT_LOG remote is still key-free pre-sync, then log + push:
+Clean. Now the ledger entry (masked) + push:
+Done — all four verifications closed, pushed, secret-scan clean. Report to Planning:
+
+## Finnhub key wired + both pending verifications closed (still read-only/shadow)
+
+**⚠️ First, a secret-safety action I had to take:** Rhett pasted the key in plaintext, and my CHAT_LOG auto-sync pushes each turn *verbatim* to the **public** repo. My redaction wouldn't have caught a Finnhub-style key (not `sk-`, not hex, not `key=value`). So I **hardened the redactor** with a generic API-key pattern (24+ alphanumeric containing both a letter and a digit) and **tested it**: it redacts the Finnhub key while sparing short commit SHAs and normal words. The turn-end sync will scrub it. *(Optional: rotate the key since it was pasted in chat — it's a free personal key, low risk, your call.)*
+
+**1. Key wired + not in the repo.** `FINNHUB_API_KEY` added to `ai-trading-strategy-agent/.env` — **gitignored, not git-tracked, and absent from every pushed file** (scanned SESSION_LOG, SYSTEM_FACTS, news_shadow, planning, and the public coordination repo — all clean). `news_feed.py` reads it via `os.getenv` (no hardcode).
+
+**2. Live free-tier limit — confirmed from a real response, not docs.** A real `/company-news` call returned the headers: **`X-Ratelimit-Limit: 60`** (60 calls/min), `X-Ratelimit-Remaining: 59`. **No company-news cap** — AAPL returned **247 articles** over 3 days. Commercial-use clause is **personal/non-commercial** (a ToS term, not in the headers; confirmed from the docs earlier). Fine for SIM research; a paid plan needed if this ever goes commercial.
+
+**3. Tagging accuracy (24 articles, I deliberately stress-tested collision-prone tickers KEY/ALL/ON/A/F/DELL):**
+- **Ticker→article relevance ≈ 83%** (20/24 about or materially involving the company)
+- **Strict "primarily about the company" ≈ 62%**
+- **Clear misses ≈ 17%** — DELL pulled a *Cisco* article + a *newborn-accounts* story; ALL pulled a *Chubb* (competitor) article; MU pulled an Apple-primary article.
+- **Pattern:** misses cluster on general "top-stocks / dividend" list articles, competitor/sector pieces, and occasional noise — worst on short/common-word tickers. **Tags stay advisory.** Cheap precision boost for later: require the company name/ticker to appear in the headline. *(Separately, the catalyst-**type** tagger scored 8/8 on samples and tagged the real m&a/earnings articles correctly.)*
+
+**4. Company news now flowing — sample rows.** A 5-symbol collect pulled **814 articles** (per-ticker volume is high, so I added a `cap=6` most-recent per ticker to keep the shadow file lean). `news_shadow.jsonl` rows now carry `"source_api":"finnhub"` with catalyst tags, e.g. DELL → *m&a* ("Missed Out On Dell's Red-Hot Rally…"), plus the visible noise (DELL "Nancy Pelosi tracker" tagged *none*) that the 83%/62% precision reflects.
+
+**Guardrails intact:** read-only/shadow, no trading-path touch, does not feed entry selection, does not replace the NASDAQ earnings calendar. Logged + SYSTEM_FACTS updated; pushed (synced).
+
+---
