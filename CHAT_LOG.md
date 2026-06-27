@@ -4657,3 +4657,89 @@ The realized gross is **flat (+$187)**, and **commission (~3 bps round-trip, ~$1
 **One honest caveat:** EXIT-side implementation shortfall isn't isolated (the exit "decision" price = the chandelier/candle trigger, which isn't cleanly logged) — it sits inside realized gross as an unmeasured residual. Everything else is real broker-truth. Read-only; no orders/watched file; freeze intact. Report mirrored to the coordination repo (`reports/execution_cost_ledger.md`); logged + SYSTEM_FACTS updated.
 
 ---
+
+
+## Turn — 2026-06-27 18:33:52 ET
+
+**Rhett:**
+
+# HANDOFF → CLAUDE CODE — ANALYZE: Gross signal quality — is there an edge BEFORE cost, and WHERE? (read-only)
+# From: Planning Claude | 2026-06-27 ET (Code: number + stamp; log it + SYSTEM_FACTS line per standing rule)
+# WHY: validated finding from the execution-cost ledger = GROSS is ~FLAT (+$187 / 285 trades). Fees set aside for
+# now (the fee number was modeled/unvalidated). The question that decides everything: does the strategy have a
+# gross edge HIDDEN inside the flat average — a profitable slice dragged down by a losing slice? READ-ONLY analysis
+# on stored broker-truth trades. No live touch, no fee assumptions, freeze intact.
+
+## BUILD (read-only, on the same 285-trade broker-truth history)
+A gross-edge breakdown (e.g. `strategy-research/gross_signal_quality.py`). GROSS P&L ONLY — no commission/fee model
+anywhere (fees deferred). For the full set and each split below, report: total gross, avg gross/trade (dollars AND
+basis points), win rate, profit factor, median, and the largest-winner / largest-loser tails.
+
+Splits (pre-declared, so this isn't fishing):
+1. **9:35 path vs re-arm path** — the leading hypothesis (9:35 = loss engine, re-arm = the money). Quantify each.
+2. **Long vs short.**
+3. **Confirmed vs unconfirmed** (did it move favorably by the 0.15xATR confirm threshold) — the strongest known divider.
+4. **Session segment** (open / midday / close) and **by hour** for the re-arm windows (10:35..14:35) — which windows pay.
+5. **By extension at entry** (the L2 idea — do over-extended gap-tops lose gross?), if the field is logged.
+
+## THE QUESTION TO ANSWER
+Is the flat +$187 gross truly "no edge," OR is it a profitable slice (e.g. re-arm / confirmed / specific windows)
+net of a losing slice (e.g. 9:35 / unconfirmed)? If a clean positive-gross slice exists, name it + its gross
+expectancy. That's the candidate edge to isolate and test — BEFORE worrying about cost.
+
+## HARD CONSTRAINTS
+- READ-ONLY: no orders, no watched file, no behavior change. Freeze intact.
+- GROSS ONLY — no fee/commission numbers in this analysis (fees deferred, were unvalidated).
+- Pre-declared splits only; if a split looks strong, FLAG it as a hypothesis to test out-of-sample, NOT a proven edge
+  (N still small, in-sample, multiple-testing risk — label it).
+
+## VERIFICATION TASKS TO CLOSE (plain English back to Planning)
+1. The gross breakdown across all 5 splits (gross/trade in $ and bps, win rate, profit factor, tails).
+2. The answer: is there a clean positive-gross slice inside the flat average? Name it + its gross expectancy.
+3. Honest caveats: in-sample, N per slice, multiple-testing — which "edges" are real candidates vs noise.
+
+## /planning
+- Add "Gross signal-quality breakdown (is there an edge before cost?)" = IN_PROGRESS, read-only. Update stamp.
+
+**Claude Code:**
+
+Read-only gross-edge breakdown. Most splits I can build from `round_trips_net` + the candidate log, but the **confirmed/unconfirmed** split (the strongest divider) needs a reliable per-trade confirm flag. Let me find what's actually logged for that:
+`exit_decisions.jsonl` is the gold source — it logs the bot's **actual `confirmed` flag** per decision (35,149 rows: date, symbol, side, entry_px, `confirmed`). Since confirm is monotonic, a trade confirmed if *any* of its decision rows had `confirmed=True`. That's the real 0.15×ATR divider. Building the breakdown:
+The breakdown is striking — and it demands a critical-honesty call before I report it (RULE #0). Let me verify the most important caveat: whether "confirmed" is a real entry edge or a look-ahead tautology. Let me check the extension-field issue too (no gap-top bucket appeared, which is suspicious):
+Both concerns are confirmed and critical:
+1. **"Confirmed" is POST-ENTRY** — QCOM confirmed at 09:41, ~6 min *after* its 09:35 entry. So the 98%-vs-6% split is **largely tautological** ("trades that moved up won") — it is **NOT an entry edge** you can filter on; it's an *exit* signal. I must lead with that.
+2. **The extension `move_pct` field is broken for this** — MU's 19% gap shows as `0.0344`, and my buckets compared percents to fractions. But I have `prior_close` logged, so I can compute the **real** gap. Fixing it:
+The extension split now shows the **opposite** of the L2 hypothesis (big gaps won, small gaps lost) — but I must verify the gap data is trustworthy, because **MU (the −$1,668 bleeder) landed in the `<5%` bucket** despite gapping ~18%. That smells like a bad `prior_close`. Checking:
+Verified — MU's candidate-log `prior_close=1211.38` makes its gap only **+3.4%** (the 6/24 close already absorbed the earnings move). So the extension split measures *gap-vs-prior-day*, which **understates multi-day extension** like MU's, and the ≥12% bucket is only 12 trades — **inconclusive** for the L2 exhaustion thesis. Let me bake both critical caveats into the report:
+Re-running to regenerate the report with both caveats, then persisting + pushing:
+Done — pushed, secret-scan clean. Report to Planning:
+
+## Gross signal-quality breakdown — is there an edge before cost? **Yes, hidden in the flat average.**
+
+(285 broker-truth round-trips, 6/08–6/26, **GROSS only — no fees anywhere**. All trades: +$187 total, +$0.7/trade, −0.11 bps, win 57%, PF 1.01 — the flat number we're dissecting.)
+
+**The dramatic divider is real but NOT tradeable as an entry edge — this is the key honesty point:**
+- **Confirmed: +$11,453 (+$134.7/trade, 98% win, PF 229) vs Unconfirmed: −$11,935 (−$225.2/trade, 6% win, PF 0.02).** A near-perfect split. **But I verified it's look-ahead:** "confirmed" is decided ~6 min *after* entry (QCOM 6/25 confirmed at 09:41 vs its ~09:35 fill). It's largely tautological — "trades that moved favorably won." **You can't filter on it at entry; it's the EXIT lever** (cut unconfirmed bleeders = the gauntlet thesis), not an entry edge. I won't let that 98%/PF-229 number masquerade as a tradeable edge.
+
+**2. The answer — the clean, ENTRY-OBSERVABLE positive slice (the actual candidate edge):**
+| Slice (entry-observable) | n | gross/trade | win% | PF |
+|---|---|---|---|---|
+| **RE-ARM path** | 174 | **+$19.7** (+9.7 bps) | 59% | **1.30** |
+| └ **10:35 window** (hr 10:00) | 57 | **+$41.1** (+21 bps) | **70%** | **1.61** |
+| **SHORT side** | 154 | +$11.2 (+6 bps) | 60% | 1.18 |
+| Midday segment | 147 | +$23.2 | 61% | 1.36 |
+| *9:35 path (loss engine)* | 111 | −$29.1 | 53% | 0.66 |
+| *OPEN segment (loss engine)* | 113 | −$36.8 | 52% | 0.60 |
+
+**So: the flat +$187 = a genuinely profitable re-arm slice (+$3,420) almost exactly canceled by a losing 9:35/open slice (−$3,233).** The candidate edge to isolate and test is the **re-arm path — specifically the 10:35 window — plus the short side**, all gross-positive *and* knowable at entry. Gross expectancy: **re-arm +$19.7/trade (PF 1.30); 10:35 window +$41/trade (PF 1.61)**.
+
+**3. Honest caveats — what's a real candidate vs noise:**
+- **In-sample, small N:** the re-arm hours have only 23–57 trades each; the 10:35 standout is 57 trades. These are **hypotheses to test out-of-sample**, not proven edges.
+- **Multiple pre-declared splits** = multiple-testing risk; the 10:35 window being the best of six hours could partly be luck.
+- **6/25 kill day is included** (MU −$1,668 is the single biggest loser, in the 9:35/open slice — it's dragging that slice, but the re-arm positivity holds without it).
+- **Confirmed/unconfirmed is look-ahead** (covered above) — exit lever, not entry.
+- **Extension split (#5) is INCONCLUSIVE:** I fixed the broken `move_pct` to a real gap (entry vs `prior_close`), but that measures the *prior-day* gap, which understates multi-day extension — MU's earnings move shows as only +3.4% because the 6/24 close already absorbed it, and the ≥12% bucket is just 12 trades. It does **not** cleanly test the L2 "over-extended gap-tops lose" idea; that needs a proper multi-day-extension field. Don't read the "≥12% won" row as refuting L2.
+
+**Bottom line for the project:** there *is* a gross edge before cost, and it's **entry-observable: the re-arm path (esp. 10:35) and the short side.** That's the slice to isolate and test OOS. Combined with the execution-cost finding (the re-arm path also survives commission), this is the most promising thread. Report mirrored to the coordination repo; logged + SYSTEM_FACTS updated; /planning set to IN_PROGRESS.
+
+---
