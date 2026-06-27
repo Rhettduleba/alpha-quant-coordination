@@ -4226,3 +4226,107 @@ Done — pushed, secret-scan clean. Report to Planning:
 **Plain English:** the EDGAR half is live and working now; the Finnhub half is built and one `.env` line away from running. **The only thing I need from you is a free Finnhub API key** — add it and I'll close out the live limit-quote + the 20-name tagging-precision check. /planning set to "News feed — SHADOW PROTOTYPE IN_PROGRESS" under the Premarket Funnel; logged + SYSTEM_FACTS updated.
 
 ---
+
+
+## Turn — 2026-06-27 15:51:49 ET
+
+**Rhett:**
+
+# HANDOFF → CLAUDE CODE — BUILD: LLM Daily Report Layer v1 (9:15 Market View + 9:40 In-Play Review) — SHADOW/ADVISORY
+# From: Planning Claude | 2026-06-27 ET (Code: number + stamp; log it + SYSTEM_FACTS line per standing rule)
+# OBSERVATIONAL ONLY — these are written REPORTS for Rhett + Planning. They change NO trades, NO selection,
+# NO sizing, NO config. Not a gate, not the advisor control file. Delivery = dashboard + logs ONLY (no Telegram/Discord).
+# Uses the existing Anthropic pipeline (Rhett has API credit). Freeze-safe: no watched trading file touched.
+
+## WHAT TO BUILD
+A scheduled LLM report generator (lives with the Advisor, `ai-trading-strategy-agent/`) producing TWO reports/day,
+each written to logs + rendered read-only on the dashboard (extend `/pre-market-evaluation` or a new `/daily-view`):
+
+### Report A — 9:15 AM ET "Market View"
+Inputs (assemble in code, then send to the LLM): prior US close, overnight index futures, major foreign markets
+(Europe + Asia), the day's economic calendar, and overnight market-news headlines (from the news_feed.py shadow feed).
+LLM output, structured, with a HARD fact-vs-opinion split:
+  - FACTS (assembled, not invented): what closed where, futures levels, foreign-market moves, scheduled events.
+  - OPINION (clearly labeled + a CONFIDENCE level low/med/high): expected regime (trending vs choppy, risk-on vs
+    risk-off), what to watch, and explicit "here's what I'm unsure about."
+
+### Report B — 9:40 AM ET "In-Play Review"
+Inputs: the day's in-play / armed names (from the scanner) + each name's catalyst tag (news_feed.py) + early move/
+gap/RelVol + premarket structure if available. LLM output per name, structured:
+  - why it's moving (catalyst), holding vs fading, does the move look real or EXTENDED/EXHAUSTED, and a TRAP flag for
+    the earnings/extended-gap pattern (the MU class). OPINION, labeled, with confidence. NOT a buy/sell call.
+
+## HARD CONSTRAINTS (the guardrails — keep these exactly)
+- ZERO trading impact: writes to logs + dashboard only; does NOT write advisor_control_latest.json, does NOT feed
+  selection/sizing/gates. Purely a report a human reads.
+- FACT vs OPINION must be visually separated in every report; every opinion carries a confidence level; the LLM is
+  instructed to flag uncertainty rather than sound certain (anti-overconfidence — confident storytelling is the failure mode).
+- SCORE-IT HOOK: log each report so it can later be checked against what the day actually did (was the 9:15 regime
+  call right? did the 9:40 trap-flags actually lose?). We are building the scorecard from day one, even though it
+  doesn't influence anything yet.
+- NEWS SANITIZATION: strip/escape raw headline text before it reaches the LLM (prompt-injection hygiene), since
+  news is untrusted external text.
+- Secrets: Anthropic key via env, gitignored; reports carry no secrets; not pushed to the public coordination repo.
+- Cost-scoped: 9:40 reviews ONLY the in-play/armed names, not all ~145/530. Two LLM calls/day region, not thousands.
+
+## VERIFICATION TASKS TO CLOSE (plain English back to Planning)
+1. Sample 9:15 Market View + 9:40 In-Play Review (real or replayed inputs), showing the fact/opinion split + confidence.
+2. Confirm ZERO trading-path touch (no advisor_control write, no gate/selection change) + where it renders on the dashboard.
+3. Confirm the score-it log exists (reports are persisted for later accuracy-checking) + news sanitization is in place.
+4. Confirm cost scope (in-play names only) + Anthropic key hygiene.
+
+## /planning
+- Add "LLM Daily Report Layer v1 (9:15 Market View + 9:40 In-Play Review) — SHADOW/ADVISORY" = IN_PROGRESS.
+  Note: intraday market-regime reader = LATER; advisor audit = HELD. Update stamp.
+
+**Claude Code:**
+
+Substantial build. Before writing anything, I need the real integration points — how the advisor already calls Claude (reuse it), where in-play names come from, and the dashboard structure. Let me map them:
+`claude_client.py` is the reusable Anthropic wrapper. Let me read its interface so I call it correctly:
+`call_claude(system, user)` is the clean reuse point (sonnet-4-6, returns text + token usage). Now let me check the key availability + the in-play data structure + what market inputs I can actually source (no fabrication):
+Everything's in place: **ANTHROPIC_API_KEY is present** (real sample call possible), the candidate log has rich per-name context, and I reuse `call_claude`. 
+
+Key design decision that nails the anti-fabrication constraint: **FACTS are assembled in code (the LLM never invents them); the LLM produces only OPINION + confidence + what-it's-unsure-about.** That structurally prevents fact fabrication. Building it:
+Now testing — first a dry-run (assemble facts + show the prompt, **no LLM call/cost**) to verify the fact assembly and the fact/opinion structure for a real trading day (6/26):
+Dry-run is clean — facts assembled (SPY −0.72% / QQQ −1.38% / 28 in-play short-tilted / catalysts), all guardrails in the prompt, and **sanitization works** ("IGNORE PREVIOUS INSTRUCTIONS" → "[redacted]", `<system>` stripped). Now a **real LLM call** for both sample reports (6/26):
+Report A is exactly the discipline the handoff wanted — **confidence "low"**, regime "unclear", and it explicitly flags every NOT_WIRED gap as something it's unsure about rather than inventing data. Cost: 602/361 tokens (~half a cent). Now Report B (In-Play Review, per-name with TRAP flags):
+The report generated and persisted fine — my error was just truncating stdout to 8000 chars mid-JSON. Reading the saved file:
+The output hit the token cap (out_tok=2400 = truncated → JSON incomplete). 20 names of detailed opinion needs more headroom. Raising the cap and sorting to the most in-play names first:
+Report B works — 20 names, complete JSON, per-name TRAP/extension/confidence, and it **flagged LITE as a TRAP** (MU-class extended-gap) with honest low confidence where data is thin. Both reports persist + score-log.
+
+Now the dashboard render. Let me see the route + handler pattern to add `/daily-view` read-only:
+The pattern is clean: a `render_body()` page module + a handler. Let me create the dashboard page with FACT/OPINION visually separated:
+Now wiring the route + handler into the dashboard:
+Compiling + verifying the page renders standalone before restarting the dashboard:
+Page renders (22KB: banner, FACTS, OPINION, TRAP, confidence badges). Now verifying zero trading-path touch, then restarting the dashboard to load the route:
+Confirmed: the only `advisor_control` reference is a *comment* ("they do NOT write..."), and the only write is the score-log append. Now fetching `/daily-view` to confirm it serves:
+`/daily-view` serves (HTTP 200, 80KB, with the banner, both reports, and TRAP badges). Now scheduling the two daily runs — first I need the env-loading pattern the advisor uses (so the scheduled task can reach `ANTHROPIC_API_KEY`):
+The advisor loads the bot `.env` via dotenv. Let me add the same to `daily_report` so the scheduled run reaches the key:
+Now the launchers + scheduling. Compiling, creating the `.bat`s, and registering the two S4U tasks (9:15 + 9:40, no window):
+Both tasks armed (S4U/no-window, Mon–Fri, next run Monday 9:15 + 9:40 AM). Now logging + /planning + SYSTEM_FACTS + push:
+Done — pushed, secret-scan clean. Report to Planning:
+
+## LLM Daily Report Layer v1 — built, verified with real calls, scheduled. Observational only.
+
+**1. Sample reports (real LLM calls, replayed 6/26) with the fact/opinion split + confidence**
+- **Report A — 9:15 Market View:** regime **unclear**, risk tone **risk-off**, **confidence LOW** — and it correctly flagged every unavailable input ("Overnight futures NOT_WIRED — cannot assess… Economic calendar NOT_WIRED…") as a thing it's *unsure about* rather than inventing it. (602 in / 361 out tokens.)
+- **Report B — 9:40 In-Play Review:** top-20 in-play names, each with hold/fade + extension (healthy/extended/exhausted) + a **TRAP flag** + confidence + what-it's-unsure-about. It **flagged LITE as a TRAP** (MU-class extended-gap) and stayed honestly **low-confidence** on names with thin data. (3,479 out tokens.)
+- **The split is structural:** FACTS are assembled **in code** (SPY/QQQ prior close, in-play breadth, EDGAR catalysts) and the LLM *only* produces OPINION — so it literally cannot fabricate a fact.
+
+**2. Zero trading-path touch + where it renders**
+- `daily_report.py` writes **only** the report JSON + the score-it log under `outputs/reports/daily_view/`. It does **not** write `advisor_control_latest.json`, touch any watched file, change selection/sizing/gates, or place orders (verified by grep — the only `advisor_control` mention is a comment saying it doesn't).
+- Renders read-only at **`/daily-view`** (HTTP 200, 80KB) — FACTS vs OPINION in visually separated cards, confidence badges, TRAP shown as a red badge. Dashboard restarted (PID 5760).
+
+**3. Score-it log + sanitization**
+- **Score-it:** every report appends to `outputs/reports/daily_view/score_log.jsonl` (`{date, kind, opinion, outcome:null, scored_at:null}`) — the scorecard exists from day one, ready for a later pass to check "was the 9:15 regime call right / did the 9:40 trap-flags actually lose."
+- **Sanitization verified:** "IGNORE PREVIOUS INSTRUCTIONS" → "[redacted]", `<system>` tags stripped, and the prompt tells the model any news is untrusted data, never instructions.
+
+**4. Cost scope + key hygiene**
+- **Cost-scoped:** Report B reviews **only the in-play names** (top-20 by RelVol), ~2 LLM calls/day, roughly **$0.01–0.13/day**. Not the 145/530 universe.
+- **Hygiene:** `ANTHROPIC_API_KEY` via env (gitignored), no hardcoded secret, reports carry no secrets, files stay local (not pushed to the public coordination repo).
+
+**Scheduled:** `AlphaQuant_LLM_MarketView` (9:15) + `AlphaQuant_LLM_InPlayReview` (9:40), S4U/no-window, Mon–Fri, **next run Monday 6/29**.
+
+**Two honest notes:** (a) Market View inputs are partial in v1 — overnight futures / foreign markets / econ calendar are `NOT_WIRED`, and the model says so (which is why it ran *low* confidence); richer inputs are future work. (b) Today is Saturday, so 6/26 was a replay — the first live runs are Monday. /planning set to IN_PROGRESS (intraday regime reader = LATER; advisor audit = HELD); logged + SYSTEM_FACTS updated.
+
+---
