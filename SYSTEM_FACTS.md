@@ -1,6 +1,6 @@
 # SYSTEM_FACTS — live mechanics, machine-generated from the running code/config/broker-truth
 
-> **Generated:** 2026-06-28 11:42:26 Eastern Daylight Time · **coordination-repo HEAD:** `83ba7cc` · by `strategy-research/system_facts.py` (read-only).
+> **Generated:** 2026-06-28 13:30:33 Eastern Daylight Time · **coordination-repo HEAD:** `d20c8de` · by `strategy-research/system_facts.py` (read-only).
 > Every value below is READ from a real source (the live import for the VALUE; a fresh file scan for the SOURCE file:line). Nothing is hand-typed. A field that can't be derived says `UNVERIFIED`.
 > If this contradicts memory, THIS wins — regenerate it (re-run the script) rather than trusting recall.
 
@@ -24,8 +24,8 @@
 | 9:35 open scan | the once-a-day Zarattini 5-min ORB (orb_runner owns it; NOT a re-arm window) | `tradestation-bot/orb_runner.py:4 (module docstring)` |
 | Strategy / breakout trigger | Zarattini 5-min Opening-Range Breakout: long on break of OR high, short on break of OR low | `tradestation-bot/orb_runner.py:459-460 (or_high/or_low) + :4 docstring` |
 | Opening-range window | first 5 min (09:30->09:35 ET); scan/arm at 09:35:30 | `tradestation-bot/orb_runner.py:9-12 (timeline)` |
-| In-play gate (RelVol/move/$-vol) | True  (ON) | `tradestation-bot/risk_config.py:259` |
-| HTB/halted exclusion | True  (ON) | `tradestation-bot/risk_config.py:289` |
+| In-play gate (RelVol/move/$-vol) | False  (OFF) | `tradestation-bot/risk_config.py:259` |
+| HTB/halted exclusion | True  (ON) | `tradestation-bot/risk_config.py:293` |
 | Earnings veto | live-invoked in 9:35 path; fails OPEN on stale/missing calendar | `tradestation-bot/orb_runner.py:441 (is_earnings_blackout call) + orb_earnings_veto.py` |
 | Deploy-controller scope | True -- governs the RE-ARM/multiscan admit ceiling only; 9:35 ORB sizes by its own constants | `tradestation-bot/risk_config.py:238` |
 | Deploy base | $400,000 | `tradestation-bot/risk_config.py:237` |
@@ -39,16 +39,19 @@
 | Fact | Live value | Source |
 |---|---|---|
 | Resting broker stop distance | 1.4 x ATR  (StopMarket) | `tradestation-bot/orb_runner.py:98` |
-| Resting stop -- WHEN placed | post-fill management pass keyed on the 9:35 entries_submitted list (NOT atomic with entry; re-arm fills get none) | `tradestation-bot/orb_runner.py:960-992 (submit_stop_loss_exit)` |
+| Resting stop -- WHEN placed | post-fill monitor on the shared entries_submitted list. 9:35 AND -- since Loop 155 (LIVE Mon 6/29) -- RE-ARM fills both register, so the proven monitor places ONE 1.4xATR resting stop per fill (re-arm coverage 0% -> ~100%). Not atomic with entry; cancel-on-flatten inherited. | `tradestation-bot/orb_runner.py:931-992 + orb_multiscan._register_rearm_resting_stops (Loop 155)` |
 | Confirmation threshold | 0.15 x ATR favorable | `tradestation-bot/candle_close_exit.py:24` |
 | Chandelier trail multiple | 1.4 x ATR (ratchet-favorable-only floor) | `tradestation-bot/candle_close_exit.py:60` |
 | Candle-close trail (post-confirm) | after confirm, exit on first opposite-color 1-min close; live exit = earlier of (chandelier) OR (candle-close) | `tradestation-bot/candle_close_exit.py:63-68 (chandelier_decision docstring)` |
 | Catastrophe stop (legacy candle_close mode) | 1.0 x ATR | `tradestation-bot/candle_close_exit.py:25` |
 | EOD forced-flatten time | 15:50 ET (3:50 PM) | `tradestation-bot/market_hours.py:68 + tradestation-bot/market_hours.py:69` |
+| Live exit OWNER (Loop 155, LIVE Mon 6/29) | Tape Watcher (tape_watcher --live-exit) fires exits tick-fast via the proven flatten_symbol + holds the exit_ownership lease; exit_bot_v2 DEFERS for TW-owned names. no-double-exit is STRUCTURAL (flatten re-reads live qty -> no-op on flat, no flip). Resting stop = always-on dead-man backstop; lease TTL reclaim (45s) on TW death. | `strategy-research/tape_watcher.py (run_live fire) + tradestation-bot/exit_ownership.py + exit_bot_v2 skip-guard` |
+| TW kill-switch (Loop 157) | create tradestation-bot/tw_abort.flag -> TW stands down + releases the lease (exit_bot_v2 resumes; resting stops stay); delete to resume. Read each cycle -- no restart/deploy. | `tradestation-bot/exit_ownership.py:abort_requested` |
 
 ## STOP COVERAGE
 | Fact | Live value | Source |
 |---|---|---|
+| ** AS-OF | figures below are HISTORICAL (pre-Loop-155). Re-arm 0% is FIXED Loop 155 (LIVE Mon 6/29); re-arm coverage rises + latency drops from Monday once re-arm stops register + TW owns exits. | `SESSION_LOG.md Loop 155` |
 | Entries with a broker resting stop | 107/282 = 37.9% | `strategy-research/stop_coverage_audit.py (re-derived from broker_orders_unified.csv)` |
 | 9:35 cohort coverage | 107/111 = 96% | `stop_coverage_audit.py` |
 | Re-arm/late cohort coverage | 0/171 = 0% | `stop_coverage_audit.py` |
