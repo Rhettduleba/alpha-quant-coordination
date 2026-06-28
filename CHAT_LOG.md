@@ -5908,3 +5908,95 @@ document for every load-bearing claim.
 Want me to also push the chat-excerpt file to the public repo so ChatGPT can read *this* exchange too, or keep it local?
 
 ---
+
+
+## Turn — 2026-06-28 11:42:58 ET
+
+**Rhett:**
+
+# HANDOFF → CLAUDE CODE — Exit rebuild: close 2 gaps before Monday (kill-switch + 15:50 three-way) + 1 rename
+# From: Planning Claude | 2026-06-27 ET (Code: number + stamp; log it + SYSTEM_FACTS line per standing rule)
+# The exit rebuild (Loop 155) cleared the 8-invariant bar — the structural no-double-exit (flatten_symbol re-reads
+# live broker qty → no-op on flat, no flip) is exactly right, and the fail-open lease + resting-stop backstop are
+# solid. THREE small items remain before Monday. No K change, no exit-logic change — these are safety-controls only.
+
+## 1. KILL-SWITCH (the one real missing control) — REQUIRED
+- Today: if TW is alive-but-MISBEHAVING (not dead), the lease only hands back on TW DEATH (45s reclaim). There is no
+  way for the human to ABORT a live-but-wrong TW mid-session without killing the process or a code deploy.
+- Add a single ABORT flag (follow the existing `SAFE_MODE_ENFORCE` pattern — a flag/env/file the running code reads
+  each cycle, no deploy): when set, TW immediately STOPS firing exits and RELEASES its lease → exit_bot_v2 resumes as
+  exit owner within its normal cycle, and the broker resting stops remain in place underneath throughout.
+- PROVE: flipping the abort hands ownership back with NO gap (no instant where a position has zero owner) and no
+  double-exit during the handoff. Give Rhett the literal one-line action to flip it (the exact file/flag to set).
+
+## 2. CONFIRM THE 15:50 EOD THREE-WAY (explicit trace) — REQUIRED
+- At 15:50 EOD-flatten, three mechanisms can touch one position: TW, the resting stop, and the EOD-flatten
+  (market_hours 15:50). Explicitly trace it and confirm the structural no-op/no-flip holds for the THREE-way case
+  (not just TW-vs-resting-stop): whichever acts first flattens; the other two find qty==0 → clean no-op; the resting
+  stop is cancelled (no orphan carried overnight). State the outcome + the file:line that guarantees it.
+
+## 3. RENAME (hygiene) — the task `AlphaQuant_TW_LiveShadow` now does LIVE-EXIT; the "Shadow" name is misleading.
+- Rename to reflect live-exit (e.g. `AlphaQuant_TW_LiveExit`) so no future reader trusts it as shadow. Low priority;
+  do it cleanly (update the task + any reference) without disturbing the Monday 9:25 trigger.
+
+## REPORT BACK (plain English — the human reads this)
+1. Kill-switch: armed? The exact one-line action Rhett uses to abort TW live. Proof of clean no-gap handoff.
+2. The 15:50 three-way trace result + the line that guarantees no double-flatten/no-flip/no orphan at EOD.
+3. Rename done + Monday 9:25 trigger confirmed intact.
+4. Anything still only provable Monday live — name it.
+
+## /planning
+- Add "Exit rebuild: kill-switch + 15:50 EOD three-way confirm + task rename — final pre-Monday safety items" =
+  IN_PROGRESS. Update stamp.
+
+**Claude Code:**
+
+Three pre-Monday safety items. Let me work through them in order, starting with the kill-switch. First, add the abort mechanism to the lease module (file-flag, read each cycle, no deploy):
+Now wire abort into TW's lease-publish and fire paths (with transition logging):
+Kill-switch proven (no-gap, resting stops untouched, clean toggle). Now item 2 — the 15:50 three-way trace. Let me verify the EOD-flatten path cancels working orders and flattens via the same re-read-qty mechanism:
+EOD-flatten uses the same proven `flatten_symbol` (eod_watchdog.py:41,187). Let me get the exact guaranteeing line numbers in `flatten_symbol` and read `flatten_all_positions` to confirm the three-way:
+**Item 2 confirmed — no code change needed.** The 15:50 three-way is structurally safe:
+
+- TW and EOD-flatten both route through the same `flatten_symbol`; EOD calls it at [eod_watchdog.py:187](tradestation-bot/eod_watchdog.py).
+- **The guarantee, shared by all three software flatteners:** [exit_orders.py:351-353](tradestation-bot/exit_orders.py) re-reads live qty and returns "confirmed flat" with **no order** on qty==0; line 356 derives side from the **live** sign (no flip); line 361 `cancel_working_exit_orders` cancels the resting stop **before** flattening (no orphan).
+- So whichever acts first (TW / resting-stop fill / EOD) flattens; the other two find qty==0 → clean no-op; the resting stop is either cancelled (line 361) or terminal-filled → **no orphan overnight**. (eod_watchdog intentionally ignores the lease — EOD must force-flatten everyone — and the broker-arbitrated no-op makes that safe.)
+
+Now item 3 — the rename. Let me find all references first:
+References: the BAT comment, SESSION_LOG, roadmap (CHAT_LOG is historical — leave it). The health-check expected-tasks list doesn't include this task, so no check to update. Let me do the task rename (preserve action/trigger/principal), then verify the Monday 9:25 trigger survives:
+Rename complete — `AlphaQuant_TW_LiveExit`, Ready, **Monday 9:25 trigger intact** (DaysOfWeek=62 = Mon–Fri, S4U/Highest, same BAT action). Now update the forward-looking references (BAT comment, SESSION_LOG, roadmap):
+All three items done. Let me run a final compile check, then log Loop 157 and update the state references:
+Let me log Loop 157 and update the state-block references:
+All three items done and pushed (Loop 157). The roadmap warning was just a literal backslash in a Windows path inside my log string — harmless, text wrote correctly.
+
+## Report back — exit rebuild final safety items
+
+**1. Kill-switch — ARMED and PROVEN.**
+A human abort for a TW that's *alive but misbehaving* (death was already handled by the 45s lease-reclaim). It follows the `SAFE_MODE_ENFORCE` pattern: `exit_ownership.abort_requested()` reads a flag file **every cycle — no restart, no deploy**.
+
+**Your one-line action to abort TW live:**
+```powershell
+New-Item -ItemType File C:\AlphaQuant\tradestation-bot\tw_abort.flag
+```
+To resume: delete that file. The moment it exists, TW **clears its lease** (so `exit_bot_v2` resumes as exit owner on its next cycle) and **stops firing** — and the broker resting stops stay in place underneath the whole time.
+
+**No-gap proof** (5-step off-market test, passed): abort set → TW clears the lease + stops firing → `owned_fresh()` empties → exit_bot_v2 owns everything; **the abort path calls `clear_lease()` only — it never touches a stop**, so the 1.4×ATR resting stops are continuous broker-side protection across the handoff; clear the flag → TW re-owns next poll. There is no instant with zero owner (the resting stop is always underneath), and no double-exit (flatten is structurally idempotent on a flat position).
+
+**2. 15:50 EOD three-way — CONFIRMED safe, no code change needed.**
+TW, the resting stop, and the EOD-flatten can all touch one position at 15:50. EOD-flatten uses the **same** `flatten_symbol` ([eod_watchdog.py:187](tradestation-bot/eod_watchdog.py)). The guarantee, shared by all three software flatteners:
+- [exit_orders.py:351-353](tradestation-bot/exit_orders.py) — re-reads live qty, returns "confirmed flat" with **no order** when qty==0;
+- line **356** — side from the **live** position sign (no flip);
+- line **361** — `cancel_working_exit_orders` cancels the resting stop **before** flattening (no orphan).
+
+**Outcome:** whichever acts first flattens; the other two find qty==0 → clean no-op; the resting stop is cancelled (line 361) or terminal-filled → **no orphan carried overnight.** No double-flatten, no flip. (eod_watchdog deliberately ignores the lease — EOD must force-flatten everyone — and the broker-arbitrated no-op makes that safe.)
+
+**3. Rename — DONE, trigger intact.**
+`AlphaQuant_TW_LiveShadow` → **`AlphaQuant_TW_LiveExit`** (re-registered with the identical BAT action, trigger, and S4U/Highest principal; old task removed). **Monday 9:25 trigger verified intact** (DaysOfWeek=62 = Mon–Fri, 09:25 start). BAT comment updated; no Python health check referenced the old name (no stale-validation trap created). The verbatim CHAT_LOG keeps the old name as history.
+
+**4. Still only provable Monday live** (named honestly):
+- TW's tick-stream **completeness/stability** under a real session (Sunday connects but no ticks flow).
+- The kill-switch handoff and the 15:50 three-way under **real fills** (validated structurally + off-market, not yet against a live position).
+- The actual **latency drop** (poll ~5–7 min → ~15s-detect/tick-fast).
+
+Monday's EOD reconcile (`tw_report.py` + `stop_coverage_audit`) is the live proof. Logged Loop 157, SESSION_LOG state block + roadmap updated, pushed. Per your standing rule: any double-exit / orphan / two-owner event Monday = I flag it, I do not auto-patch live.
+
+---
