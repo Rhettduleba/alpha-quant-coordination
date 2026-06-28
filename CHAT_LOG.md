@@ -5828,3 +5828,83 @@ Investigating, I found the **dashboard had the identical staleness** — plus a 
 All logged (Loop 156), SESSION_LOG state block + roadmap refreshed, dashboard live, pushed. The durable change: the things that describe live state (dashboard cards, R-basis) now **read from the live config** instead of hardcoding it, and the one piece that still has to be hand-written (the state-block narrative) now has an automated tripwire.
 
 ---
+
+
+## Turn — 2026-06-28 11:36:35 ET
+
+**Rhett:**
+
+first put everything in this chat from when i asked you, "make sure everything isupdated" allthe way to the end of your last communication, put it on a markdown. Then i want to let chat gpt read the session log and any other imprtnat documenst of this project, give methe location of each logging document and give me a prompt to make chat gps go and read them
+
+**Claude Code:**
+
+I'll do both. Let me first confirm the exact public repo URL so the ChatGPT links are correct, then build the markdown:
+Public repo confirmed: `github.com/Rhettduleba/alpha-quant-coordination`. Now let me write the chat excerpt markdown:
+Both deliverables are ready.
+
+## 1. Chat excerpt → saved
+
+The verbatim communication from "make sure everything is updated" to the end of the dashboard fix is at:
+
+**`C:\AlphaQuant\CHAT_EXCERPT_2026-06-28_state-sweep.md`**
+
+## 2. Logging documents — locations
+
+The project's live docs are mirrored to a **public GitHub repo** (`github.com/Rhettduleba/alpha-quant-coordination`), so ChatGPT can read them directly via the raw URLs. Code/data files stay local-only.
+
+| Document | What it is | Local path | ChatGPT-readable URL |
+|---|---|---|---|
+| **SESSION_LOG.md** | Master handoff — current state + turn-by-turn ledger | `C:\AlphaQuant\SESSION_LOG.md` | `…/main/SESSION_LOG.md` |
+| **SYSTEM_FACTS.md** | Machine-generated live mechanics (source of truth for config values) | `C:\AlphaQuant\SYSTEM_FACTS.md` | `…/main/SYSTEM_FACTS.md` |
+| **CHAT_LOG.md** | Verbatim Rhett↔Claude, every turn | `C:\repos\alpha-quant-coordination\CHAT_LOG.md` | `…/main/CHAT_LOG.md` |
+| **foundation_map.md** | Whole-system verified-vs-assumed component ledger | `C:\AlphaQuant\outputs\reports\foundation_map.md` | `…/main/reports/foundation_map.md` |
+| **reports/** (8 analyses) | exit_k_sweep, advisor_audit, gate_effect_analysis, gross_signal_quality, execution_cost_ledger, gap_fade_test, news_sentiment_anon_test, tw_shadow_report | `C:\AlphaQuant\outputs\reports\` | `…/main/reports/<name>.md` |
+| **CLAUDE.md** | Architecture + standing rules | `C:\AlphaQuant\CLAUDE.md` | `…/main/CLAUDE.md` |
+| **EDGE_TUNES.md / ALPHA_QUANT_STATE.md / STRATEGY_SPEC** | Tune log / architecture snapshots | `C:\AlphaQuant\…` | `…/main/<name>.md` |
+
+(URL base = `https://raw.githubusercontent.com/Rhettduleba/alpha-quant-coordination/main/`)
+
+**Local-only — NOT in the public repo (upload to ChatGPT manually if you want it read):**
+- `planning_roadmap.json` → `C:\AlphaQuant\ai-trading-strategy-agent\outputs\planning_roadmap.json`
+- `CSHV_FINDINGS.md` (5-min health verifier) → `C:\AlphaQuant\CSHV_FINDINGS.md`
+- `bot_alerts.jsonl` (critical bot events) → `C:\AlphaQuant\bot_alerts.jsonl`
+- `broker_orders_unified.csv` (broker-truth P&L) → `C:\AlphaQuant\tradestation-bot\broker_orders_unified.csv`
+
+## 3. Prompt for ChatGPT (copy-paste)
+
+```
+You are reviewing "Alpha Quant," a SIM-only automated equity day-trading system on
+TradeStation (account SIM1623888M) built around an Opening-Range Breakout (ORB) strategy.
+Read its live project documentation from this public GitHub repo, then help me reason about it.
+
+Fetch and read these plain-text/markdown URLs IN ORDER:
+
+1. Master handoff — current state + turn-by-turn log:
+   https://raw.githubusercontent.com/Rhettduleba/alpha-quant-coordination/main/SESSION_LOG.md
+2. Machine-generated live mechanics (source of truth for live config):
+   https://raw.githubusercontent.com/Rhettduleba/alpha-quant-coordination/main/SYSTEM_FACTS.md
+3. Whole-system "verified-vs-assumed" component ledger:
+   https://raw.githubusercontent.com/Rhettduleba/alpha-quant-coordination/main/reports/foundation_map.md
+4. The analysis reports:
+   https://raw.githubusercontent.com/Rhettduleba/alpha-quant-coordination/main/reports/exit_k_sweep.md
+   https://raw.githubusercontent.com/Rhettduleba/alpha-quant-coordination/main/reports/advisor_audit.md
+   https://raw.githubusercontent.com/Rhettduleba/alpha-quant-coordination/main/reports/gate_effect_analysis.md
+   https://raw.githubusercontent.com/Rhettduleba/alpha-quant-coordination/main/reports/gross_signal_quality.md
+   https://raw.githubusercontent.com/Rhettduleba/alpha-quant-coordination/main/reports/execution_cost_ledger.md
+   https://raw.githubusercontent.com/Rhettduleba/alpha-quant-coordination/main/reports/gap_fade_test.md
+5. Architecture + standing rules:
+   https://raw.githubusercontent.com/Rhettduleba/alpha-quant-coordination/main/CLAUDE.md
+
+After reading, give me:
+(a) a 5-bullet summary of the system's CURRENT state and posture (cite the doc for each),
+(b) the top open risks / gaps,
+(c) anything across the docs that looks internally inconsistent or stale.
+Do NOT invent details — if something isn't in the docs, say "not in the docs." Cite the source
+document for every load-bearing claim.
+```
+
+**One caveat:** ChatGPT can only fetch those URLs if web browsing is enabled (GPT‑4o / o-series with browsing). If it says it can't browse, open each raw URL yourself and paste the contents in — `SESSION_LOG.md` alone gets it ~80% of the way, since it's the master handoff.
+
+Want me to also push the chat-excerpt file to the public repo so ChatGPT can read *this* exchange too, or keep it local?
+
+---
