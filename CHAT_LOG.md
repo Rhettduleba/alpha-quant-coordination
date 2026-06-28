@@ -6169,3 +6169,113 @@ Adopted, made durable, and demonstrated on this very turn. Owning it plainly, as
 The automated backstops behind checklist items #1/#2 are already live from earlier this session — CSHV `session_log_state_block_fresh` (L156) and `system_facts_fresh` (L158) WARN within 5 minutes if either doc drifts from live truth — so the discipline now has a tripwire under it, not just my word. From here, every turn ends with that one-liner.
 
 ---
+
+
+## Turn — 2026-06-28 14:19:49 ET
+
+**Rhett:**
+
+# HANDOFF → CLAUDE CODE — BUILD v1: Premarket Intelligence Engine — catalyst-classifier + EOD reconcile (RESEARCH-ONLY)
+# From: Planning Claude | 2026-06-28 ET (Code: number + stamp; CLAIM→VERIFY→SHOW close-out per the standing protocol)
+# This is v1 of a larger phased vision (full spec is held). v1 = the irreducible core on data WE ALREADY HAVE.
+# RESEARCH-ONLY / SHADOW: changes NO trades, NO selection, NO sizing, NO stops, NO config. The LLM is a catalyst
+# CLASSIFIER + risk ANNOTATOR, never a trader. Queue BEHIND Monday's exit-rebuild + gate-off evidence — not urgent.
+
+## SCOPE — build ONLY these two, on existing data (Finnhub news + SEC EDGAR + TS quotes/bars + NASDAQ earnings cal)
+### Build A — `llm_catalyst_classifier.py` (strict-JSON catalyst labels per in-play name)
+- For each in-play / armed name, send the LLM ONLY: ticker, company, sector, current premarket stats, and the
+  retrieved Finnhub headlines + EDGAR filing snippets + earnings-calendar fields for THAT name. Nothing timestamped
+  after decision time. Never "pick winners."
+- LLM returns STRICT JSON ONLY (no prose), fixed enum, with these fields per name:
+  known_catalyst (true/false/unclear), catalyst_category (fixed enum: earnings_beat_guide_raise / earnings_miss_cut
+  / earnings_mixed / analyst_upgrade / analyst_downgrade / fda_approval / fda_rejection / clinical_success /
+  clinical_failure / mna / strategic_review / activist / offering_dilution / buyback_dividend / legal_regulatory /
+  mgmt_change / contract_win / sympathy / sector_macro / technical_only / unknown), sentiment_direction
+  (bullish/bearish/mixed/neutral/unclear), freshness, first_seen_et, news_age_minutes, source_count,
+  primary_source_found, rumor_flag, stale_flag, impact_1_10, confidence_1_10, why_market_cares,
+  what_would_make_this_wrong, source_ids[], and unsupported_claims (must be empty or "not_in_sources").
+- HARD: if the sources don't support a claim → "not_in_sources". Separate bullish/bearish from any trade rec
+  (there is none). Sanitize headline text before the LLM sees it (prompt-injection hygiene, already in news_feed).
+- AUDIT LOG (`logs/llm_catalyst_audit.jsonl`): per call — timestamp, model string, prompt hash, source_ids, raw LLM
+  JSON, schema-validation status, schema errors, fallback-on-parse-fail. Outputs → `data/premarket/YYYY-MM-DD/llm/
+  catalyst_labels.jsonl`.
+
+### Build B — `premarket_trade_reconcile.py` (did the catalyst labels relate to outcomes?) — EOD
+- Join each day's catalyst labels to ACTUAL TradeStation trades. For every traded name, attach its catalyst label.
+- Bucket outcomes by catalyst_category AND by freshness — report trades, avg GROSS, win%, profit factor PER bucket.
+- SPLIT 9:35 vs re-arm separately (our paths behave differently). GROSS only for now (fees deferred/unvalidated).
+- Outputs: `reports/premarket_reconcile/YYYY-MM-DD_catalyst_expectancy.csv` + a short `_reconcile.md`.
+
+## HARD CONSTRAINTS (the guardrails — keep exactly)
+- RESEARCH-ONLY: no trading-path touch, no watched file, no gate/selection/sizing/stop/config change. Freeze intact.
+- DO NOT build a composite/blended score. Keep catalyst_category, freshness, etc. as SEPARATE columns tested
+  individually. (The weighted total_research_score in the full spec is the composite-router trap — explicitly skip it.)
+- DO NOT wire options flow / borrow / SSR / IV / short-interest / social — we don't have those feeds. v1 uses only
+  the existing sources. (Those are LATER phases, marked not-wired.)
+- Point-in-time: no data timestamped after decision time enters a label. No future/EOD outcome in the classifier input.
+- LLM cost-scoped: classify only in-play/armed names, not all ~530.
+
+## VERIFICATION TASKS TO CLOSE (plain English back to Planning)
+1. Sample catalyst_labels.jsonl rows (a few names) showing the strict JSON + a "not_in_sources" example + source_ids.
+2. Confirm the audit log captures model/prompt-hash/source-ids/raw-JSON/validation; schema-validation works (show a
+   rejected/ malformed case handled).
+3. Confirm RESEARCH-ONLY: zero trading-path touch (no advisor_control write, no gate/selection change).
+4. A sample EOD catalyst_expectancy.csv (even on a past day) with 9:35-vs-re-arm split, gross-only.
+5. Confirm NO composite score built + options/borrow/SSR NOT wired (correctly deferred).
+
+## /planning
+- Add "Premarket Intelligence Engine v1 (catalyst classifier + EOD reconcile, research-only) — part of the phased
+  premarket build" = IN_PROGRESS. Note: full vision is the larger spec; v1 is existing-data-only. Update stamp.
+
+**Claude Code:**
+
+Research-only build, queued behind Monday — I'll build it well per the senior-fullstack standard, with the guardrails baked in. Let me first map the existing data sources I'll wire (news_feed API, earnings source, claude_client, candidate log, round-trips) before writing anything:
+I have all the pieces: `news_feed.fetch_company_news/fetch_edgar_8k` (with `published_ts` for point-in-time filtering), `orb_earnings_veto.is_earnings_blackout`, `claude_client.call_claude`, the candidate log for in-play names, and `eod_debrief.round_trips_net` for the reconcile. Sanitize lives in `daily_report` (handoff said news_feed) — I'll write a self-contained one. Let me build **Build A**:
+Compile and check which recent date has selected in-play names to run a real sample on:
+6/25 has MU (earnings day), QCOM, DELL — a good catalyst mix. Let me run Build A on the first 6 selected names there (point-in-time cutoff 09:35; ~6 LLM calls):
+The classifier needs the API keys loaded from `.env` (the advisor's entry point does this; mine didn't). Let me add `.env` loading:
+Both keys load. Now run Build A on 6/25 (background, ~6 LLM calls + fetches):
+While that runs, let me build **Build B** (the EOD reconcile):
+Build A finished. Let me check its output and the generated artifacts:
+All 6 are schema-valid and the "not_in_sources" guardrail works — but **every name has empty source_ids** because the point-in-time filter and Finnhub's fetch window mismatch on a past date: `fetch_company_news(days_back=3)` fetches relative to **now** (6/25–6/28), but the cutoff drops everything after 6/25 09:35. For correct point-in-time-on-a-past-date, I need a date-range fetch ending at the cutoff. Let me check the fetch internals:
+`fetch_company_news` anchors to **now**, not the decision date. Let me add a point-in-time as-of fetch (date range ending at the cutoff) so past-date research retrieves the right news:
+Still 0 — let me debug the raw Finnhub response directly (the news_shadow data had 2026 MU news, so the API does return it; something about the date range):
+Found the bug: I cap to the 8 *most-recent* articles **before** the point-in-time filter — so for MU the top-8 are all 6/25 *afternoon* (post-cutoff) and get dropped, while the qualifying 6/24 earnings news is buried below the cap. Fix: filter to ≤cutoff **before** capping:
+Point-in-time news now retrieved correctly — MU shows its "massive Q3 earnings boost" catalyst, QCOM shows the analyst upgrade + Meta contract win, all ≤09:35 ET on 6/25. Let me re-run Build A to get proper labels with populated source_ids:
+While Build A re-runs, let me unit-test the schema validation (verification task #2 — show a malformed/rejected case is handled):
+Schema validation works (rejects off-enum, out-of-range, malformed, non-dict — all with specific errors + clean fallback). Let me check Build A's re-run:
+6/25 has 23 round-trips; 4 of my classified names were traded. For a meaningful reconcile I'll classify the full traded set after confirming this run works. Let me check Build A:
+Excellent — the classifier now works correctly with point-in-time sources: **MU → earnings_beat_guide_raise (fresh=breaking, conf=9, 7 sources)**, QCOM → contract_win (Meta deal), DELL → analyst_downgrade, DLTR → buyback, and PENN → technical_only with 0 sources (the "not_in_sources" case). Let me classify the full 20-name traded set so the reconcile is complete:
+While the 20-name run proceeds, let me verify the audit log (verification task #2 — model/prompt-hash/source-ids/raw-JSON/validation captured):
+Audit log is complete — model, prompt_hash, source_ids (8), schema_valid/errors, tokens, raw JSON all captured (and the ```json-fenced response is parsed correctly). Let me wait for the 20-name run, then run Build B:
+20/20 schema-valid. Now run Build B (the EOD reconcile) on 6/25:
+Both builds work end-to-end, and the reconcile even surfaces a coherent (in-sample) signal — earnings_beat_guide_raise −$1,144/trade (MU was the 6/25 kill), "breaking" freshness worst at −$310/trade, while sector_macro/analyst_upgrade were positive. Now let me verify the guardrails explicitly (tasks #3 + #5):
+All guardrails verified — no trading-path writes, no composite score, no options/borrow/SSR (the only matches are the guardrail *comments* saying they're deferred), writes only to research dirs. Now the close-out per the protocol. Let me stamp, log, and re-read to prove it saved:
+Both builds complete, validated, and pushed. Here's the report against the five verification tasks.
+
+## Premarket Intelligence Engine v1 — built (research-only)
+
+**1. Strict-JSON catalyst labels + `not_in_sources` + source_ids** — sample (6/25, point-in-time ≤09:35 ET):
+| name | catalyst_category | sentiment | fresh | conf | src | note |
+|---|---|---|---|---|---|---|
+| MU | earnings_beat_guide_raise | bullish | breaking | 9 | 7 | "Micron blowout Q3 beat" |
+| QCOM | contract_win | bullish | today | 7 | 3 | "Meta as first data-center customer" |
+| DELL | analyst_downgrade | bearish | today | 7 | 2 | "GF Securities downgrade" |
+| DLTR | buyback_dividend | bullish | today | 9 | 3 | "$500M buyback" |
+| PENN | technical_only | bullish | none | 1 | 0 | **0 sources → `unsupported_claims:['not_in_sources']`** |
+
+**2. Audit log + validation** — every call logs `ts/symbol/model(claude-sonnet-4-6)/prompt_hash/source_ids/source_count/raw_llm_json/schema_valid/schema_errors/fallback_used/tokens`. Schema validation unit-tested and **rejects malformed**: off-enum (`catalyst_category='moon_rocket'`), out-of-range (`impact=99`), missing fields, and non-dict — each returns specific errors → clean fallback (`unclear/unknown/conf=1`). The ```json-fenced LLM responses parse correctly.
+
+**3. RESEARCH-ONLY confirmed** — grep of both files: **zero** trading-path writes (no order/submit/`advisor_control`/config/`flatten`/lease). Writes only to `data/premarket/`, `reports/premarket_reconcile/`, `logs/`. No watched/live file touched; freeze intact.
+
+**4. EOD `catalyst_expectancy.csv` with 9:35-vs-re-arm split (gross-only)** — 6/25 sample (23 round-trips, 20 labeled). It even surfaced a coherent in-sample signal: `earnings_beat_guide_raise` **−$1,144/trade** (MU = the 6/25 kill — the beat got chased and lost), `breaking` freshness worst at **−$310/trade**, while `sector_macro`/`analyst_upgrade`/`legal_regulatory` were positive. Split shown per path (e.g., 9:35 earnings_beat −$1,668 vs re-arm −$620). Labeled "association, in-sample/small-N, feeds NO decision."
+
+**5. NO composite + unwired feeds deferred** — no `total_score`/`weighted`/`blended` field anywhere (category/freshness/sentiment/impact/confidence are **separate** columns, each bucketed independently). Options/borrow/SSR/IV/short-interest/social are **not wired** (the only matches are the guardrail comments marking them as later phases).
+
+One bug I caught and fixed mid-build (showing it, not hiding it): the first run returned empty `source_ids` for every name because I capped to the 8 most-recent articles **before** the point-in-time filter — so for a past date the cap grabbed post-cutoff items and dropped the qualifying earnings news. Fixed to filter ≤cutoff *then* cap; re-verified MU now picks up its 6/24-25 earnings sources.
+
+**Close-out:**
+
+> **Loop 160 (14:18 ET):** built Premarket Intelligence Engine v1 (catalyst classifier + EOD reconcile, research-only; verified 6/25, 20/20 schema-valid) · **SESSION_LOG re-read+stamped** — line 222 "Loop 160 (2026-06-28 14:18 ET) — BUILD: Premarket Intelligence Engine v1…" · **SYSTEM_FACTS: N/A** (no watched/live file changed) · **pushed HEAD 86223d0** (reconcile.md mirrored; labels/audit stay local research data) · **names checked** (new files clearly named, nothing mislabeled) · **UNVERIFIED: none** — both builds ran on real data; the catalyst→outcome relationship itself is explicitly in-sample/small-N, not a proven edge.
+
+---
