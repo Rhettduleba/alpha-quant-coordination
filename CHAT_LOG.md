@@ -5537,3 +5537,197 @@ All done — Loop 154 pushed with deterministic full-coverage numbers (n=282, 0 
 Report at [reports/exit_k_sweep.md](https://raw.githubusercontent.com/Rhettduleba/alpha-quant-coordination/main/reports/exit_k_sweep.md); logged Loop 154, SYSTEM_FACTS regenerated, roadmap marked DONE, pushed. Read-only confirmed — no orders, no watched files, no exit change, freeze intact.
 
 ---
+
+
+## Turn — 2026-06-28 11:08:51 ET
+
+**Rhett:**
+
+# HANDOFF → CLAUDE CODE — REAL SYSTEM CHANGE (LIVE MON 6/29, SIM): TW exit-cutover + re-arm resting-stop coverage
+# From: Planning Claude | 2026-06-27 ET (Code: number + stamp; log it + SYSTEM_FACTS line per standing rule)
+# ⚠️ THIS IS NOT SHADOW. Rhett's mandate: real changes to the live SIM bot that FIRE MONDAY. Watched-file changes →
+# freeze intentionally broken, clean-day count RESETS (accepted: we're fixing the broken core, not protecting a
+# broken count). Two linked changes, ONE coherent exit rebuild. SIM account — contained downside.
+#
+# ⚠️ CAREFUL-CODING MANDATE (Rhett, explicit): these changes CAN impact performance and CAN backfire if coded wrong.
+# Write it correctly the first time. REUSE proven code paths, do not author new exit/stop logic. After writing,
+# RE-READ your own diff against the safety checklist below BEFORE declaring done. If any item is unproven, say so —
+# do not assume. A wrong exit is worse than the current slow one.
+
+## CONTEXT (verified)
+- Exit K-sweep proved the ~$7k bleed is TIMING/COVERAGE, not the K multiple. KEEP K=1.4 (near-optimal on the
+  plateau). Do NOT change K, do NOT change the exit STRUCTURE (candle-close confirm 0.15 + 1.4 chandelier). This
+  rebuild changes only WHEN/HOW FAST the exit fires + WHO owns it + re-arm broker-stop coverage.
+- Today: software poll `exit_bot_v2` owns exits, first-poll ~5 min late; resting-stop coverage 37.9% (9:35 96% via
+  `submit_stop_loss_exit` in orb_runner post-fill; re-arm 0% — `orb_multiscan` never calls it).
+
+## CHANGE 1 — RE-ARM RESTING-STOP COVERAGE 0% → ~100% (reuse the proven 9:35 mechanism)
+- Make the re-arm/`orb_multiscan` post-fill path call the SAME `submit_stop_loss_exit`, SAME 1.4×ATR, SAME side
+  logic the 9:35 path already uses. No new stop code, no new distance.
+- Idempotent: exactly ONE resting stop per entry (guard like 9:35's `entries_submitted`); a restart must not double-
+  stack stops.
+- Cancel-on-exit: when the position is flattened, the resting stop is cancelled (inherit 9:35's cancel path) — zero
+  orphan resting orders that could fire on a later re-entry.
+
+## CHANGE 2 — TW BECOMES THE LIVE EXIT OWNER (fast timing) — SINGLE-OWNER, NON-NEGOTIABLE
+- Promote `tape_watcher --live` from observer to the ACTIVE exit: it watches the tape (RESUBSCRIBE_S=15s to pick up
+  new 9:35 + re-arm fills; near-tick reaction once watching) and fires the REAL exit using the LIVE exit logic
+  verbatim (`candle_close_exit.chandelier_decision`, K=1.4) — same decisions as today, just fired fast instead of
+  on the ~5-min poll.
+- ⚠️ EXACTLY ONE EXIT OWNER: when TW is live, the old `exit_bot_v2` poll MUST stand down as an exit-FIRER for any
+  position TW owns. No position may have two things able to flatten/exit it. Pick the clean cut: TW owns exits;
+  exit_bot_v2 reverts to monitor/reconcile-only (or is disabled for owned symbols). Prove there is no path where
+  both fire on the same position. This is the #1 way to lose money in SIM that doesn't exist today — engineer it out.
+- TW fires the exit; the broker resting stop (Change 1) remains the always-on backstop if TW/process dies. When TW
+  exits, cancel the resting stop (no orphan). When the resting stop fills, TW must see it and not re-fire.
+
+## SAFETY CHECKLIST — RE-READ THE DIFF AGAINST THIS BEFORE DECLARING DONE
+[ ] Exactly one exit owner per position (TW); exit_bot_v2 cannot also fire on TW-owned positions. PROVEN, not assumed.
+[ ] No double-exit / no flip-to-opposite-side path exists (trace it).
+[ ] Re-arm: exactly one resting stop per entry; cancel-on-exit wired; no orphan at EOD.
+[ ] 9:35 path's existing 96% placement + cancel UNCHANGED (regression — we only ADD re-arm + swap exit owner).
+[ ] K=1.4 and exit STRUCTURE unchanged (this is timing/coverage/owner only).
+[ ] Idempotent across a mid-session restart (no double stops, no two owners after respawn).
+[ ] Tick-gap handling: if the stream drops/stalls, TW fails SAFE — the broker resting stop covers it; TW must not
+    silently stop watching without the resting stop in place.
+
+## VALIDATION (off-market this weekend, before Monday open)
+- Dry-run/replay: every re-arm fill → one resting stop + one cancel; TW is the sole exit firer; exit_bot_v2 does not
+  fire on owned positions; restart doesn't double up. Show it.
+- Regression: 9:35 placement/cancel byte-for-byte unchanged.
+
+## MONDAY LIVE PROOF (SIM)
+- Fires at Monday open. EOD reconcile: re-arm coverage 0%→~100%; every position has exactly one exit (no double-
+  exits, no orphan resting orders); exit latency drops from ~5-7min toward ~15s-detection/near-tick. tw_report.py +
+  stop_coverage_audit confirm. ANY double-exit / orphan / two-owner event = real bug → flag immediately, do NOT
+  auto-patch live.
+
+## VERIFICATION TASKS TO CLOSE (plain English back to Planning)
+1. Change 1 done: re-arm calls the proven stop path, one-per-entry, cancel-on-exit (file:line).
+2. Change 2 done: TW is the SINGLE live exit owner; exit_bot_v2 stood down for owned positions (show the cut).
+3. The full safety checklist, each item PROVEN (not assumed) — especially one-exit-owner + no double-exit.
+4. Off-market validation result + 9:35 regression unchanged + restart-idempotency.
+5. Confirm freeze-broken + count-reset stated; both fire Monday; SIM.
+
+## /planning
+- Add "EXIT REBUILD (LIVE Mon): re-arm stop coverage + TW single-owner fast exit — K unchanged, timing/coverage fix"
+  = IN_PROGRESS. Note freeze intentionally broken, count resets, fires Monday SIM. Update stamp.
+
+**Claude Code:**
+
+This is a real, live-Monday change to the exit path with a money-losing failure mode (double-exit) — the careful-coding mandate is explicit: reuse proven paths, prove single-owner, don't author new exit logic, re-read the diff. **I will not touch a watched exit file until I've fully mapped the four proven paths involved.** Verification first. Let me map them.
+Now I understand the proven 9:35 stop path (orb_runner.py:931-992: iterate `entries_submitted` → `sl_already` idempotency guard → `submit_stop_loss_exit`). Let me see how `orb_multiscan` arms/tracks fills and whether it has any post-fill pass at all:
+`orb_multiscan` arms entries (tracked in `_TAGS`/`state["fired"]`) but has **no post-fill monitor pass** — that's the 0% re-arm coverage. The proven 9:35 monitor lives in orb_runner keyed on `entries_submitted`. Let me map the last three things: how that monitor is invoked, the exit_bot_v2 ownership model, and tape_watcher's live state (does it place real orders today?):
+I've mapped all four proven paths before touching anything (per the careful-coding mandate). The mapping surfaced a genuine safety fork I need your call on **before** I edit any live-exit file — because it directly conflicts with this handoff's own "reuse proven paths / flag unproven items" mandate.
+
+**What I verified (code, not assumption):**
+
+- **Change 1 is clean.** The 9:35 stop path (`monitor_fills_and_place_sl`, [orb_runner.py:864-992](tradestation-bot/orb_runner.py)) runs every cycle off persisted `orb_daily_state.json`, with `sl_already` idempotency + a cancel path. `orb_multiscan` arms entries but has **no post-fill pass at all** (that's the 0%). This is reusable, strictly-additive safety. Low risk.
+
+- **Change 2 is where the danger is — and three of its pieces are *not* "reuse proven paths":**
+  1. **`tape_watcher` is shadow-only and sends ZERO orders** ([tape_watcher.py:7,26](strategy-research/tape_watcher.py)) — `on_tick` only *logs* a would-fire. Making it the live exit owner means **authoring real order-firing into a component that has never fired one.**
+  2. **`exit_bot_v2` has no ownership mechanism** — it flattens *every* open position ([exit_bot_v2.py:314](tradestation-bot/exit_bot_v2.py)). "Stand down for TW-owned positions" requires **authoring new dual-owner coordination that doesn't exist** — exactly the double-exit money-losing path, and exactly what the mandate says not to author.
+  3. **TW's live tick-stability is unproven** — its own proving run is scheduled for *this same Monday* ([tape_watcher.py:24](strategy-research/tape_watcher.py): "on a weekend it connects but no ticks flow"). Change 2 makes an unproven real-time component the **sole** live-exit owner the same day it's first validated.
+
+So Change 2, as written, asks me to author new order-firing + new dual-owner coordination on an unproven component controlling live (SIM) money — which the handoff itself flags as "the #1 way to lose money in SIM that doesn't exist today." The mandate says: *if any item is unproven, say so.* These three are.
+
+Change 1 stands alone safely and is the bigger safety win (it removes naked re-arm positions, and the resting stop is the dead-man backstop that makes *everything* else safe). How do you want to sequence Change 2?
+Understood — full cutover Monday, with maximal care and full off-market validation. You've made the risk call; now I engineer it so it can't bite. The single-owner guarantee depends entirely on **how these processes are actually launched**, so let me lock that down first — it's foundational to proving no double-exit:
+**Critical architectural finding that makes this safe-by-design:** the bot is a **single-threaded sequential loop** — each cycle runs ORB RUNNER (step 3, includes the stop monitor) → ORB MULTI-SCAN (step 4) → EXIT BOT (step 5), one subprocess at a time, never concurrent. That reshapes both changes:
+
+- **Change 1:** no cross-process race exists — if `orb_multiscan` appends its armed entries to the shared `daily_state["entries_submitted"]`, the **existing proven monitor** places + cancels the resting stop next cycle, identically to 9:35. Near-zero new code.
+- **Change 2:** `exit_bot_v2` is a per-cycle *step*, not always-on — so TW (always-on streamer) + exit_bot_v2 (per-cycle) need a heartbeat-lease ownership signal with reclaim-on-TW-death as the fail-safe.
+
+Let me read the exact 9:35 `entries_submitted` schema and the monitor invocation to build Change 1 faithfully:
+Exact schema captured (`symbol, side, quantity, stop_price, atr, rel_vol, order_id, submitted_at, edge_tags`); the monitor needs `symbol/order_id/side/atr/submitted_at`. For Change 1 I'll have `orb_multiscan` append its armed entries to that shared list so the existing monitor handles them. Let me see the rest of `run_multiscan` (where `_arm` returns) to place the append correctly:
+Change 1 design is solid (append valid-ATR re-arm entries to shared `entries_submitted`; never reinit/wipe 9:35 state; sequential model = no race). Before I write it, I must verify the **cancel-on-flatten for resting stops** (the orphan-prevention checklist item) — it's inherited from the 9:35 path, so I need to confirm that path actually cancels, not assume it:
+Verified: `cancel_working_exit_orders` ([exit_orders.py:230](tradestation-bot/exit_orders.py)) cancels every working exit order for symbol+side before any flatten — so the resting stop is cancelled on exit, no orphan. Re-arm inherits this by construction (same ORB_SL order type). **Orphan-prevention confirmed, not assumed.**
+
+Now implementing **Change 1**. Edit 1a — carry ATR + rel_vol on armed entries:
+Edit 1b — register armed re-arm entries into the shared `daily_state` so the proven monitor places + cancels the resting stop (never wipes 9:35 state; valid-ATR only; idempotent by order_id):
+Change 1 is in. For real validation (not just compile), let me refactor the registration into a testable helper so I can unit-test the invariants directly:
+Now compile and run the off-market invariant test for Change 1:
+Registered 0 — the helper's `_load_daily_state` isn't reading my temp file. Let me check what `_load_daily_state` actually does:
+The helper is correct — my test used a fake future date, but `_load_daily_state` resets any file whose date ≠ the *real* `_today_str()`. Let me align the test to real today (and test the rollover guard properly):
+**Change 1 complete and validated** (T1–T5 pass: valid-ATR re-arm entries registered, 9:35 state preserved byte-for-byte, idempotent, rollover-guarded). orb_runner is untouched.
+
+Now Change 2. The linchpin of the no-double-exit guarantee is whether `flatten_symbol` is **idempotent on an already-flat position** — if it reads the live qty and no-ops on flat, the broker position itself becomes the single-owner arbiter (you can't exit what's already gone), making double-exit structurally impossible regardless of the lease. Let me verify that before designing the lease:
+**This is the linchpin — and it's exactly right.** `flatten_symbol` ([exit_orders.py:309](tradestation-bot/exit_orders.py)) **re-reads the live broker position each attempt, returns "confirmed flat" with no order if qty==0, and derives the exit side from the live position sign** — so a second flatten on an already-flat position is a clean no-op, and there is **no flip-to-opposite path**. This makes no-double-exit **structural and broker-arbitrated**, not dependent on the lease. The lease only governs *speed* (which owner fires first); a lease bug costs latency, never safety. That's the property that makes Change 2 safe to build.
+
+Let me smoke-test that the Change-1 edit didn't break orb_multiscan's module integrity (offline demo, no market needed):
+Change 1 is fully validated and orb_multiscan's integrity confirmed. The Change 2 safety floor is verified (broker-arbitrated). Let me build the **shared lease module** — the single-owner coordination contract both sides will use — with full tests, since it's self-contained and the foundation for the rest of Change 2:
+**Lease module done and fully validated** (T1–T7: fail-open on missing/stale/malformed, reclaim-on-dead-TW, atomic write). 
+
+This is the right point to checkpoint with discipline — I will not rush the remaining Change 2 wiring (TW live order-firing + launch + end-to-end validation) into the tail of a long session when the mandate is explicit that "a wrong exit is worse than the current slow one." Let me log the state honestly and push:
+Checkpoint pushed. Here's where the exit rebuild stands against the handoff's verification tasks — honest about done-vs-pending, because a half-validated live exit is exactly what the mandate forbids.
+
+## Exit rebuild — status (Loop 155)
+
+First: I surfaced the one genuine risk (making TW the sole live-exit owner the same day its tick-stability is first proven) — you chose **full cutover**, so that's the plan. **K stays 1.4** (exonerated Loop 154); this is timing/coverage/owner only.
+
+**✅ CHANGE 1 — re-arm resting-stop coverage 0% → ~100% — DONE + VALIDATED.**
+- Pure proven-path reuse: `orb_multiscan` now registers each armed re-arm entry into orb_runner's shared `daily_state["entries_submitted"]`, so the **existing** `monitor_fills_and_place_sl` places one 1.4×ATR resting stop per fill and `cancel_working_exit_orders` cancels it on flatten (no orphan — verified). **orb_runner is untouched.**
+- Off-market tests **T1–T5 pass**: valid-ATR registered / bad-ATR skipped / **9:35 entries + sl_orders_placed preserved byte-for-byte** / idempotent (re-run = 0) / rollover-guard (never wipes 9:35 state) / bad-shape no-op. Module offline-demo clean.
+- Ships Monday automatically (per-cycle subprocess loads the new file; no restart needed; bot idle Sunday).
+
+**🟡 CHANGE 2 — TW single live-exit owner — safety floor verified, lease built+tested, wiring pending.**
+- **The critical safety proof is done:** no-double-exit is **structural, not lease-dependent** — `flatten_symbol` re-reads the live broker qty each attempt, **no-ops on a flat position**, and derives side from the live sign (**no flip**). A second flatten on an already-flat position does nothing. So a lease bug costs only *latency*, never a double-exit.
+- **Shared lease `exit_ownership.py` built + tested (T1–T7):** **fail-open** on missing/stale/malformed (exit_bot_v2 owns everything = status quo) and **reclaim within ≤45s on a dead TW**. Atomic write, TTL = 3× TW's poll.
+- **Remaining (next focused pass before Monday open):** exit_bot_v2 skip-guard (read `owned_fresh()`, defer, fail-open); TW `--live-exit` firing mode (write lease+heartbeat, fire via `flatten_symbol`, cancel resting stop, stream-drop fail-safe); detached launch + supervisor_guardian coverage; end-to-end validation (single-owner trace, restart idempotency, stream-drop fail-safe, 9:35 regression).
+
+**Against your verification tasks:** (1) ✅ Change 1 done (file:line — [orb_multiscan.py `_register_rearm_resting_stops`](tradestation-bot/orb_multiscan.py), reuses orb_runner's monitor + `cancel_working_exit_orders`); (2) 🟡 single-owner — *safety floor proven, lease built+tested, the exit_bot_v2/TW wiring is the pending piece*; (3) 🟡 safety checklist — the Change-1 items proven (9:35 unchanged, one-stop-per-entry, cancel-on-exit, idempotent), the TW-owner items pending; (4) ✅ Change-1 off-market validated + 9:35 regression confirmed unchanged; (5) ✅ **freeze intentionally broken, clean-day count resets, Change 1 fires Monday SIM** — all stated and logged.
+
+I deliberately stopped rather than rush the live order-firing + launch into a long session's tail — per your own mandate, *"a wrong exit is worse than the current slow one."* Change 1 (the bigger safety win — it removes the naked re-arm positions) is real, validated, and ships Monday on its own. I'll complete and fully validate the Change 2 wiring as the next careful pass.
+
+One question to close the loop on sequencing:
+Finishing Change 2 now, carefully and fully validated. Let me read exit_bot_v2's position loop to place the skip-guard correctly and to mirror its exact `flatten_symbol` call in TW (proven-path reuse):
+Skip-guard placement is clear (top of the position loop, fail-open). Let me add it to exit_bot_v2 — contained, fail-open, changes no exit logic:
+Let me read the full `run_live` loop — this is where TW firing + lease management goes:
+Now I understand `run_live`. I'll add live-exit firing as a `fire` flag on the same proven watch loop (so shadow and live-exit share identical watching logic), reusing `flatten_symbol` + the lease. Let me see `Watched.__init__` and `main()` to wire the flag and the per-position fired-state:
+Clean firing model locked: once TW fires (success or fail), mark `real_exit_done=True` → it drops from the lease → exit_bot_v2 reclaims if the position is still open (else no-ops on flat). Let me wire it. Edit A — per-position fired-state:
+Edit B — add `fire` mode to `run_live` (lease publish + real flatten via the proven path + clear-on-exit):
+Now the `_live_fire_setup` helper + wiring the calls into the loop. Let me find the journal logger TW should reuse:
+Both importable, BOT is on TW's path. Let me add the fire-setup helper and wire the lease/fire calls into the loop:
+Now clear the lease on exit (atexit for clean shutdown + explicit on max_seconds break; hard-kill falls back to TTL staleness). Let me wire that:
+Now read `main()` to add the `--live-exit` flag:
+Now compile everything and run the end-to-end validation suite:
+All compile and TW integrity holds. For real test coverage of the firing path (not just compile), let me refactor `_maybe_fire` to a testable module-level function, then run the end-to-end validation suite:
+**E2E suite passes** — single-owner defer, fire-once, no-flip (side from live qty), idempotent, error-safe handoff. The exit logic is validated. Last piece: the **launch + supervisor coverage** so TW runs Monday and respawns if it dies. Let me check the supervisor infrastructure:
+supervisor_guardian watches the supervisor chain. There's already a scheduled task (`AlphaQuant_TW_LiveShadow`) that launches TW Monday 9:25 AM — the cleanest launch is to repoint it from `--live` to `--live-exit`. Let me check it:
+Let me query via PowerShell (schtasks returned nothing in Bash — likely environment):
+`AlphaQuant_TW_LiveShadow` exists. Let me read its action and trigger so I can repoint it to `--live-exit`:
+The launch infra exists: `AlphaQuant_TW_LiveShadow` runs `run_tw_live.bat` weekly Mon–Fri 9:25 AM, S4U/Highest (no popup). I need to repoint the BAT from `--live` to `--live-exit` and add intraday respawn. Let me read it:
+The exit logic is done and validated; the launch just needs the BAT repointed to `--live-exit` with intraday respawn (fail-safe covers any restart gap). Let me write it:
+The BAT logic validated (loops, reads time, counter-caps, exits cleanly). Now the mandate's required final step — **re-read the full diff against the 7-item safety checklist**. Let me run a final integration check confirming all pieces load together and the import chain is clean:
+All green: compiles, lease fails open, K/structure unchanged (1.4/0.15/1.4, chandelier_decision verbatim). **Change 2 is code-complete and off-market-validated.** Let me update the log to reflect completion and push:
+Both changes are code-complete, off-market-validated, and pushed. Here's the full close-out against the handoff's verification tasks.
+
+## Exit rebuild — DONE (LIVE Monday 6/29 SIM)
+
+**⚠️ Freeze intentionally broken, clean-day count resets, both changes fire Monday SIM — stated and logged.** K stays 1.4 (exonerated); this is timing/coverage/owner only.
+
+### ✅ 1. Change 1 — re-arm resting-stop coverage 0% → ~100%
+[orb_multiscan.py `_register_rearm_resting_stops`](tradestation-bot/orb_multiscan.py) registers each armed re-arm entry into orb_runner's shared `daily_state["entries_submitted"]`, so the **existing proven** `monitor_fills_and_place_sl` places one 1.4×ATR stop per fill (idempotent) and `cancel_working_exit_orders` cancels it on flatten (no orphan). **orb_runner untouched.** Tests T1–T5 pass.
+
+### ✅ 2. Change 2 — TW is the single live exit owner; exit_bot_v2 stands down
+- **The cut:** [exit_bot_v2.py](tradestation-bot/exit_bot_v2.py) gained a fail-open skip-guard — `if symbol in exit_ownership.owned_fresh(): continue`. TW (`tape_watcher.py --live-exit`) publishes the [exit_ownership.py](tradestation-bot/exit_ownership.py) lease and fires real exits via the proven `flatten_symbol`. Launch: `run_tw_live.bat` repointed `--live`→`--live-exit` with a counter-capped, time-gated respawn loop; the existing `AlphaQuant_TW_LiveShadow` S4U task fires it Monday 9:25.
+
+### ✅ 3. Safety checklist — every item PROVEN, not assumed
+- **One exit owner / no double-exit / no flip** — *structural*: `flatten_symbol` re-reads live qty, returns "confirmed flat" with no order on qty==0, derives side from the live position sign. A second flatten on a flat position is a clean no-op. The lease only governs *which* owner fires first; a lease bug costs latency, never a double-exit. (verified by code read + E2E: signed_qty long +/short −, fire-once, idempotent.)
+- **Re-arm: one stop per entry, cancel-on-exit, no orphan** — Change 1 idempotent registration + `sl_already` + `cancel_working_exit_orders` (verified).
+- **9:35 path unchanged** — orb_runner untouched; T1 confirms 9:35 entries + `sl_orders_placed` preserved byte-for-byte; exit_bot_v2 change is purely additive.
+- **K=1.4 + structure unchanged** — `chandelier_decision` verbatim; `--print-config` shows 1.4/0.15/1.4.
+- **Restart idempotent** — registration idempotent (T2), resting-stop `sl_already`, TW re-claims on restart, flatten no-ops on flat.
+- **Tick-gap fail-safe** — stream drop → TW stops heartbeating → lease goes stale → exit_bot_v2 reclaims ≤45s (T3); the 1.4×ATR resting stop is the always-on backstop.
+
+### ✅ 4. Off-market validation + 9:35 regression + restart-idempotency
+Lease T1–T7 (fail-open/reclaim), Change-1 T1–T5 (9:35 preserved, idempotent), E2E suite (defer/fire-once/no-flip/idempotent/error-safe-handoff), BAT loop logic, all-files compile, K/structure regression — all pass.
+
+### ✅ 5. Freeze-broken + count-reset stated; both fire Monday SIM
+Logged in SESSION_LOG (Loop 155) and roadmap.
+
+**One honest caveat I won't paper over:** this is validated *off-market* — TW can't stream on a Sunday, so the **live Monday behavior is unproven until open.** The fail-safe design (resting-stop backstop + fail-open lease + broker-arbitrated flatten) bounds the downside, and Monday's EOD reconcile (`tw_report` + `stop_coverage_audit`) is the live proof: re-arm coverage 0→~100%, every position exactly one exit, latency ~15s-detect. Per your standing rule, **any double-exit / orphan / two-owner event Monday = flag immediately, do not auto-patch live.**
+
+Minor cleanup noted: the task name `AlphaQuant_TW_LiveShadow` is now a misnomer (it does live-exit) — low-priority rename.
+
+---
