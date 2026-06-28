@@ -5073,3 +5073,94 @@ Done. Here's the result of Rhett's gap-fade test.
 Logged to SESSION_LOG (Loop 149), SYSTEM_FACTS regenerated, report mirrored + pushed to the coordination repo (secret-scan clean), roadmap marked DONE. Planning can read it at [reports/gap_fade_test.md](https://raw.githubusercontent.com/Rhettduleba/alpha-quant-coordination/main/reports/gap_fade_test.md).
 
 ---
+
+
+## Turn — 2026-06-28 07:23:39 ET
+
+**Rhett:**
+
+# HANDOFF → CLAUDE CODE — AUDIT: what does the Advisor actually DO, and has it helped or hurt? (read-only)
+# From: Planning Claude | 2026-06-27 ET (Code: number + stamp; log it + SYSTEM_FACTS line per standing rule)
+# WHY: the Advisor is the THIRD core component and the ONLY one never measured against outcomes. The other two we
+# measured this weekend (gate, exit/timing) were both mis-built. Same failure risk here: trusted by design, never
+# verified. Audit it the same way — READ-ONLY, broker truth, no live touch, freeze intact. NO ASSUMING.
+
+## THE THREE QUESTIONS TO ANSWER (broker truth, not design intent)
+1. WHAT IT IS: confirm the live advisor's model, schedule, and how it forms its opinion — read the actual code path
+   (ai-trading-strategy-agent advisor + claude_client). What model string? What inputs does it get? What's the prompt/
+   logic that turns inputs into the control file? State verified-vs-unverified for each.
+2. WHAT IT ACTUALLY EMITS: dump and characterize the real history of advisor_control_latest.json (and any archive).
+   On a typical day, what does it SAY — does it name specific tickers to block/allow, set a market posture, size, or
+   emit a near-empty ALLOW-everything? How often is it non-trivial vs inert? Quantify: of the last N days, how many
+   times did the control file actually CHANGE a bot decision vs default-ALLOW (passthrough)?
+3. HAS IT HELPED OR HURT (the real one): for every instance the advisor actually GATED/altered a trade (e.g. blocked
+   a name, flipped a posture), compute the counterfactual — what would that trade have done WITHOUT the advisor's
+   intervention? Net it out, GROSS only. Did the advisor's interventions make money, lose money, or do nothing?
+   If the advisor is fail-open and rarely intervenes, SAY SO with the number (e.g. "intervened on X of Y trades").
+
+## HARD CONSTRAINTS
+- READ-ONLY: no orders, no watched file, no behavior change, no advisor_control write. GROSS only. Freeze intact.
+- VERIFY don't assume: "the advisor is designed to X" is NOT proof it does X — same rule that caught the gate.
+- Counterfactual on altered trades = DERIVED/lower-fidelity (label it); validate the counterfactual engine vs a few
+  real trades like the gate analysis did (~5% check).
+- Flag small-N: if the advisor rarely intervenes, the helped/hurt sample may be tiny — report it honestly, don't
+  over-conclude.
+
+## VERIFICATION TASKS TO CLOSE (plain English back to Planning)
+1. The advisor's real model + how its opinion is formed (verified from code), verified-vs-unverified labeled.
+2. What it actually emits day-to-day, and how often it CHANGES a bot decision vs passes through (ALLOW).
+3. The helped-or-hurt number: gross effect of the advisor's actual interventions (with counterfactual fidelity noted).
+4. Bottom line in one sentence: is the advisor net-positive, net-negative, or effectively inert on broker truth?
+
+## /planning
+- Add "Advisor audit — what it does + helped/hurt on broker truth (3rd core component)" = IN_PROGRESS, read-only.
+  Update stamp.
+
+**Claude Code:**
+
+I'll audit the Advisor read-only. Let me start by mapping the live code path and the control-file history in parallel.
+Now Q1 (model) and whether it's actually running. Let me read `claude_client`, check the schedule, and inspect the live control file + run-log history:
+Model confirmed `claude-sonnet-4-6`, 308 runs logged. Now the load-bearing wiring question (this is exactly what the gate audit caught): **does the advisor's control file actually reach the live ORB trade path, or only a dead composite path?** Let me check which bot modules consult `advisor_filter_engine`:
+The ORB path consults `should_block_entry` (blocks only). Let me read exactly what that covers, and the orb_runner call site:
+Critical finding forming: ORB consults only `should_block_entry` (hard blocks). The soft controls (WATCHLIST, PROMOTE, min-change — the *most-emitted* directives) appear to be composite-`bot_loop`-only. Let me confirm ORB's imports and check whether real trades are ORB or composite:
+**Two structural findings already** (both gate-style): (1) **100% of real trades are ORB** (282 orb_v1_6 + 3 h5) — **zero** composite/`bot_loop` trades; (2) ORB consults **only hard blocks**, never the soft controls. So the advisor's most-emitted directives — `REQUIRE_MIN_NET_CHANGE_PCT` (90), `WATCHLIST_TODAY` (74), `PROMOTE_SYMBOL` — are **structurally inert on the real book** (composite-only path that never traded).
+
+Now I need the ground truth of which hard blocks *actually* hit a candidate. Let me inspect the run-log payload, the filter-engine log, and the candidate log's block field:
+The run log carries only control *types*, not the blocked symbols. But `advisor_filter_engine.log` (39MB, ~110k BLOCK lines) is the ground-truth of actual block decisions. Critically, **blocked symbols never reach the candidate log** (ORB `continue`s before logging). Let me see the log format, then extract real block-events:
+1,541 real block events. Let me parse them properly — distinct (date, symbol) blocks post-5/26, characterize the *reasons*, and run the decisive counterfactual cross-references (did any blocked name coincide with a traded/selected candidate; did BLOCK_ALL ever fire on a day the bot traded; what are the time cutoffs):
+Striking: post-5/26 the advisor's symbol blocks were **actually exercised on only 3 (date,symbol) combos**, **zero** intersecting any traded or selected name, and BLOCK_ALL fired only on 5/26 (a no-trade day anyway). Let me verify this isn't an artifact — check the 3 blocks, whether the bot is even honoring the control file recently, and whether emitted block-symbols are ORB-eligible:
+Now it's decisive and verified. Let me close two mechanism questions to make the report airtight: what ORB's `universe` actually is (explains why so few blocks fire), the 3 time-cutoff events, and whether the *emitted* block-symbols even overlap the kind of names ORB trades:
+The current control file shows **`control_count: 0`** yet the run log says the 6/27 run emitted 13 controls — a contradiction I must resolve (RULE #0). Let me read the actual control-file structure:
+Resolved — controls live under `active_controls` (13), with a parallel `approved_controls` (6) and `human_approval_required: True`. Note the current BLOCK_SYMBOL is GOOGL "status [NO] broker-flagged" — same broker-relay pattern as 6/19. Let me confirm which list the bot actually reads (active vs approved) and that post-5/26 blocks are *all* broker-flag relays, not advisor judgment:
+Definitive: bot reads `active_controls` (no approval gate at the filter), and **192/192 post-5/26 block events were broker-[NO] relays — zero advisor judgment**. One last hole to close before concluding "inert": does ORB's `build_universe()` pull from the advisor's universe channel? If so, the advisor could shape ORB selection indirectly:
+Airtight. ORB's `build_universe()` = S&P 500 + supplement (cache); it does **not** consume the advisor channel (which only supplies a cosmetic sector map). The advisor has **no path** to shape ORB selection. Let me write this up as a reproducible audit tool + report:
+Audit complete and clean. Now log it (Loop 150), mirror + push, update roadmap:
+Now mirror to the coordination repo, secret-scan, and push:
+Pushed. (The secret-scan "hits" are false positives — the literal strings `sk-proj-...` and `OPENAI_API_KEY=` appearing in my own prior **incident notes** in CHAT_LOG, not a real key value. No actual secret present.)
+
+Audit complete. Here's the answer to Planning's four tasks — **broker truth, not design intent.**
+
+## Advisor audit — what it does, and has it helped or hurt?
+
+**1. What it is (verified from code).**
+- **Model:** `claude-sonnet-4-6` ([claude_client.py:14](ai-trading-strategy-agent/src/advisor/claude_client.py)). **Schedule:** 8:00 AM / 12:30 PM / 4:30 PM ET — **308 runs logged**, it genuinely runs and calls Claude for real.
+- **Inputs:** market snapshot, trade journal (recent + all-time), historical pattern analysis, advisor memory, earnings, news, bot-health.
+- **Path:** prompt_builder → call_claude → response_parser → control_writer writes `active_controls`; the bot re-reads it every loop (status `CONTROL_VALID` on every read — it is *not* being rejected).
+
+**2. What it emits + how often it changes a bot decision.** Every run emits ~13 controls (~6 BLOCK_SYMBOL + 2 REQUIRE_MIN + 1 time-cutoff + 1 WATCHLIST + 3 PROMOTE). **But here's the gate-style structural gap:**
+- **100% of real trades are ORB** (282 orb_v1_6 + 3 h5). The composite `bot_loop` path took **zero** trades.
+- **ORB consults only `should_block_entry`** (hard blocks). The soft controls — **WATCHLIST, PROMOTE, REQUIRE_MIN_*, SET_MAX_PCT, REDUCE_MAX_POS — the *majority* of what it emits — are read only by the composite path that never traded.** Structurally inert on the book.
+- ORB's universe is S&P500+supplement; it does **not** consume the advisor's universe channel either. The advisor has no path to shape ORB selection.
+
+**3. Helped or hurt (the real number).** Post-5/26 the bot logged 698 block events, but:
+- BLOCK_SYMBOL = 192 events but only **3 distinct names** (CVX/JNJ/MCD, all 6/19) — and **192/192 were pure relays of the broker's own `[NO]`-unavailable flag, zero advisor-judgment blocks.**
+- BLOCK_ALL fired only on 5/26 (a 0-trade day anyway).
+- **blocked ∩ traded = 0; blocked ∩ ORB-selected = 0.** The advisor's blocks never once intersected a name ORB would have traded. Counterfactual is **exact, not derived** (no altered trade to simulate). **Gross effect = $0, on 0 of 285 trades.**
+
+**4. Bottom line (one sentence).** **The Advisor is net-neutral / effectively inert on broker truth** — it runs, calls Claude, and writes a validated control file, but the bulk of its output targets a path that never trades, and its only book-reaching control was always just echoing the broker's own ineligibility flag, changing zero trades and zero dollars.
+
+**Honest caveats:** this is the post-5/26 window only (the current-bot baseline; pre-5/26 it *did* make judgment blocks and the composite path traded). And this measures **effect on trades** — the advisor still does real human-facing/advisory work (regime read, watchlist, memory, daily review); that's advisory, not inert. I did **not** assess the *quality* of the LLM's reasoning, only whether it reaches the book.
+
+That's **three trusted-by-design components in a row** found mis-wired or inert (gate anti-selects → exit killed → advisor inert). Report at [reports/advisor_audit.md](https://raw.githubusercontent.com/Rhettduleba/alpha-quant-coordination/main/reports/advisor_audit.md); logged Loop 150, roadmap marked DONE. Freeze intact, no watched files touched.
+
+---
