@@ -7174,7 +7174,7 @@ C:\AlphaQuant is a git repo (branch main, HEAD `e06b1d4`, no remote), **693 trac
 
 First: locate `gh`, see the full untracked list, and **content** secret-scan everything that would be pushed (tracked + to-be-added), including the temp dashboard password and any hardcoded API keys:
 Two findings:
-1. **Content secret-scan: CLEAN** across all 759 files that would be pushed — no hardcoded `sk-ant`/`sk-proj`/AWS keys/`aq-gTsM65`/api-key/password literals. All the new weekend code (`exit_ownership.py`, `tape_watcher.py`, `gate_scorer_shadow.py`, `orb_runner`/`exit_bot_v2`/`orb_multiscan`/`risk_config` mods, dashboard pages) is present and will be captured.
+1. **Content secret-scan: CLEAN** across all 759 files that would be pushed — no hardcoded `sk-ant`/`sk-proj`/AWS keys/`[redacted-dead-pw]`/api-key/password literals. All the new weekend code (`exit_ownership.py`, `tape_watcher.py`, `gate_scorer_shadow.py`, `orb_runner`/`exit_bot_v2`/`orb_multiscan`/`risk_config` mods, dashboard pages) is present and will be captured.
 2. **`gh` is NOT installed** — creating a private repo under Rhett's account will need his action. I'll prep everything so it's a one-step finish.
 
 Let me locate the `.env` files (to build a redacted `.env.example`) and confirm they're gitignored & excluded from the backup set:
