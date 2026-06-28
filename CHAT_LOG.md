@@ -7683,3 +7683,65 @@ No password value was printed or committed anywhere.
 **Close-out (Loop 174, 2026-06-28 19:05 ET):** SESSION_LOG.md:222 (Loop 174, re-read & saved) ✓ · roadmap updated ✓ · coordination mirrored + pushed HEAD **`ad8f8fd`** (secret-scan clean — no password value present) ✓ · dashboard bind stays 127.0.0.1, bot untouched, freeze intact · SYSTEM_FACTS regen **N/A** (no trading-logic/config change).
 
 ---
+
+
+## Turn — 2026-06-28 19:17:35 ET
+
+**Rhett:**
+
+# HANDOFF → CLAUDE CODE — Tunnel script not found at the path I gave Rhett — report the EXACT path + run command
+# From: Planning Claude | 2026-06-28 ET (Code: number + stamp; CLAIM→VERIFY→SHOW close-out per the standing protocol)
+# Rhett ran `C:\AlphaQuant\tradestation-bot\tunnel_start.ps1` → CommandNotFoundException (file not found there). The
+# tunnel scripts were built Loop 164. Find their ACTUAL location + give Rhett the exact command. READ-ONLY: confirm
+# paths only; do NOT start the tunnel yourself, do NOT expose anything. No watched/trading/config change. Freeze intact.
+
+## DO
+1. Locate `tunnel_start.ps1` and `tunnel_stop.ps1` — report their EXACT full paths (search C:\AlphaQuant).
+2. Give Rhett the EXACT command(s) to run them from PowerShell, including the right directory. If they must be run
+   from a specific working dir, say so. If PowerShell execution policy would block a .ps1 (common), give the exact
+   way to run it (e.g. `powershell -ExecutionPolicy Bypass -File "<full path>"`).
+3. Confirm the script's pre-flight (refuses to start unless ALPHAQUANT_DASH_PASSWORD set) is intact, and that it
+   installs cloudflared on first run. Do NOT run it — just confirm readiness + the exact invocation.
+
+## VERIFICATION TASKS TO CLOSE (plain English back to Planning)
+1. Exact full path of tunnel_start.ps1 + tunnel_stop.ps1.
+2. The exact copy-paste command Rhett runs to start the tunnel (with execution-policy handling if needed).
+3. Confirm pre-flight + cloudflared-install-on-first-run intact. (Do NOT start it.)
+
+**Claude Code:**
+
+Read-only — locating the scripts and confirming their contents. Rhett used `...\tradestation-bot\tunnel_start.ps1`, but I created these at the **root** of `C:\AlphaQuant` in Loop 164. Let me verify the actual paths and read the pre-flight logic:
+Confirmed: both scripts live at the **root** of `C:\AlphaQuant`, not in `tradestation-bot`. Let me read `tunnel_start.ps1` to confirm the pre-flight gate, the cloudflared auto-install, and any working-dir requirement:
+Everything confirmed. The script uses **absolute paths internally** (cloudflared at `C:\AlphaQuant\cloudflared.exe`, `.env` at the bot folder), so it can be run from **any** working directory. Pre-flight and auto-install are both intact. Let me log this and give Rhett the exact commands:
+Execution policy is `RemoteSigned` (locally-created scripts run fine, but I'll give the bulletproof `Bypass` form). Recording and pushing:
+Recorded and pushed (coordination HEAD `06de3b7`).
+
+## Tunnel scripts — found, with exact commands
+
+**The path Rhett tried doesn't exist** — the scripts are at the **root** of `C:\AlphaQuant`, not in `tradestation-bot`.
+
+**1. Exact full paths:**
+- `C:\AlphaQuant\tunnel_start.ps1`
+- `C:\AlphaQuant\tunnel_stop.ps1`
+
+**2. Exact copy-paste command to START the tunnel** (runs from any directory — the script uses absolute paths internally):
+```
+powershell -ExecutionPolicy Bypass -File "C:\AlphaQuant\tunnel_start.ps1"
+```
+To STOP it (or just press Ctrl+C in the tunnel window):
+```
+powershell -ExecutionPolicy Bypass -File "C:\AlphaQuant\tunnel_stop.ps1"
+```
+*(Execution policy is `RemoteSigned`, so locally-created scripts already run — but the `-ExecutionPolicy Bypass` form is bulletproof regardless.)*
+
+**3. Pre-flight + auto-install confirmed intact** (I read the script; did **not** run it):
+- **Refuses to start unless `ALPHAQUANT_DASH_PASSWORD` is set** (lines 15–22) — auth-before-exposure holds. It also warns if the password is still the temporary `aq-*` default, but that won't fire since Rhett set his own.
+- **Verifies the dashboard is up with auth live** (expects a 401) before exposing anything (lines 28–36) — and the dashboard is currently up with auth live (PID 348 from the last fix).
+- **Downloads cloudflared automatically on first run** if `C:\AlphaQuant\cloudflared.exe` is missing (lines 38–43).
+
+When he runs it, it prints a `https://<random>.trycloudflare.com` URL; anyone opening it hits the dashboard's password prompt first (the second lock). Bind stays 127.0.0.1 — the tunnel is outbound-only, no inbound port opened.
+
+---
+**Close-out (Loop 175, 2026-06-28 19:16 ET):** SESSION_LOG.md:222 (Loop 175, re-read & saved) ✓ · coordination mirrored + pushed HEAD **`06de3b7`** (secret-scan clean) ✓ · read-only — tunnel NOT started, nothing exposed, no watched/trading/config change, freeze intact · SYSTEM_FACTS regen **N/A**.
+
+---
