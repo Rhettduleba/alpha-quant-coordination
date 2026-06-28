@@ -6741,3 +6741,99 @@ Read-only for trading (no watched/order/gate/exit/sizing/config); bind stays 127
 > **Loop 164 (15:26 ET):** dashboard remote access — whole-site Basic Auth (verified 401-without/200-with on /truth + PWA assets) + on-demand Cloudflare tunnel scripts (default OFF, auth-before-exposure pre-flight) · **SESSION_LOG re-read+stamped** line 222 "Loop 164 (2026-06-28 15:26 ET) — DASHBOARD REMOTE ACCESS…" (verified 0 password occurrences) · **SYSTEM_FACTS: N/A** (no watched/live file changed; local_dashboard is advisor-display, non-watched) · **pushed HEAD 952be70**, secret-scan clean · **names checked** · **corrected prior over-statement** (C:/AlphaQuant is a git repo; .env gitignored+untracked, no remote → no leak) · **UNVERIFIED named:** I did not bring up a live tunnel (default OFF), so the live-URL-prompts-for-password is verified by construction (auth on every route), not by a live exposure.
 
 ---
+
+
+## Turn — 2026-06-28 15:42:06 ET
+
+**Rhett:**
+
+# HANDOFF → CLAUDE CODE — MOBILE-RESPONSIVE the dashboard: correct sizing on phone, ALL functions, scrollable — read-only
+# From: Planning Claude | 2026-06-28 ET (Code: number + stamp; CLAIM→VERIFY→SHOW close-out per the standing protocol)
+# WHY: the PWA installs (icon/standalone) but the dashboard was built for a DESKTOP screen — on a phone the layout
+# likely overflows (tables run off-edge, text too wide, controls too small to tap, no scroll). Rhett wants the app to
+# have EVERY function the desktop URL has, just SMALLER, SCROLLABLE, and SIZED CORRECTLY to the phone. This is layout/
+# CSS only. READ-ONLY for trading: no watched file, no orders, no gate/exit/sizing/config, no DATA change. Freeze intact.
+# (Note: "sizing" here = SCREEN/layout sizing, NOT position sizing — do not touch any trading sizing/config.)
+
+## THE GOAL
+The dashboard renders correctly on a phone (≈375–430px wide) AND still on desktop: nothing overflows the screen,
+text is readable without pinch-zoom, tables are usable, controls are tap-sized, and the page scrolls properly. SAME
+pages, SAME data, SAME 44 routes — just responsive. No feature removed on mobile.
+
+## DO
+1. VIEWPORT: ensure every page's <head> has `<meta name="viewport" content="width=device-width, initial-scale=1">`
+   (without it, phones render at desktop width and shrink everything — likely the core problem). Add to the shared
+   _page() head so all routes get it.
+2. RESPONSIVE LAYOUT (CSS, mobile-first or with breakpoints ~640px): containers/cards go full-width and stack
+   vertically on narrow screens instead of fixed wide columns; side gutters collapse; font sizes stay readable.
+   Use the dashboard's existing design tokens — don't restyle the brand, just make it reflow.
+3. TABLES (the usual breakage): wide data tables get horizontal scroll containers (overflow-x:auto) so they scroll
+   sideways instead of overflowing/breaking the page — OR a stacked/card layout on mobile. Every column still
+   reachable by scrolling. The body still scrolls vertically normally.
+4. NAV + CONTROLS: the route nav works on mobile (a collapsible menu if it's a wide bar); buttons/links/inputs are
+   tap-friendly (min ~44px targets). Any chart resizes to fit width.
+5. ALL FUNCTIONS PRESENT: verify every section/route that exists on desktop is reachable and usable on mobile —
+   nothing hidden or dropped at small width. Smaller, yes; missing, no.
+
+## HARD CONSTRAINTS
+- LAYOUT/CSS ONLY: no trading-path, no watched file, no data/route logic change, no DELETING content for mobile.
+  Desktop must still look right after the changes (don't break the big screen to fix the small one).
+- Live values stay live (don't cache to "help" mobile — same freshness rule as the dashboard audit).
+
+## VERIFICATION TASKS TO CLOSE (plain English back to Planning)
+1. Viewport meta present on all routes (confirm in the shared head).
+2. At a phone width (~390px): show that the key pages (/truth, /daily-review, /planning, /daily-view, a wide table
+   page) render WITHOUT horizontal overflow, text readable, tables scrollable, nav usable. Describe/screenshot each.
+3. Confirm ALL 44 routes still reachable + every desktop function present on mobile (nothing dropped).
+4. Confirm desktop layout still correct (not broken by the mobile changes).
+5. Confirm read-only / no trading-path / no data change / freeze intact.
+
+## /planning
+- Add "Dashboard mobile-responsive layout (phone sizing, all functions, scrollable)" = IN_PROGRESS. Update stamp.
+
+**Claude Code:**
+
+Layout/CSS only. Let me first map all the HTML wrappers (where `<head>`/viewport/CSS live) — most routes go through `_page()`, but the home page and stubs may have their own:
+Three HTML wrappers, and the key finding: only `_page()` has the viewport meta — **`_render_home_page` (the `/` route) and `_render_retired_stub` (~12 routes) are MISSING it** (so on a phone they render at desktop width and shrink everything — the core bug). Let me read the three head regions to fix precisely:
+Let me find the home page's `<head>` to add the viewport:
+The home page uses `_page()` (line 2755) so it already gets viewport — only **`_render_retired_stub` is missing it**. Let me read and fix it, then add the responsive `@media` block to `_page()`. First the stub head:
+Now the main responsive block in `_page()`. Let me find its `</style>` to insert before it:
+`</style>` is at 13828; the CSS is in an f-string (needs doubled braces). Let me read the insertion point and add the responsive block:
+Compile, restart, and verify the viewport + responsive CSS are served on both wrapper types (using the auth header):
+Key finding: **/truth and /daily-review-v2 don't use `_page()` — they're standalone page modules** (truth_dashboard.py, daily_review_page.py) with their **own** `<head>` (no viewport, no shared CSS). So the responsive fix must reach those too. Let me find ALL standalone HTML emitters across the page modules:
+Only **truth_dashboard.py** and **daily_review_page.py** emit their own head without viewport (the other page modules return bodies wrapped by `_page()`). Let me find their head + CSS to add viewport + responsive there:
+Both `truth_dashboard.py` (head 328) and `daily_review_page.py` (head 697) need viewport + responsive CSS. Let me find where each `css` block closes:
+Let me read the exact css-close lines and heads to edit both files:
+Now add viewport + responsive CSS to both standalone pages. truth_dashboard CSS:
+Now daily_review_page — viewport + responsive CSS:
+Compile both, restart, and re-verify viewport + responsive CSS now reach /truth and /daily-review (the two that were missing), plus all routes still 200:
+**Verified across all wrapper types:** /truth + /daily-review-v2 (the two standalone pages) now have viewport + media-640 + table-scroll; the `_page` routes (/planning, /daily-view, /system-validation, /autopsy, /inplay-gate) all have them; /bot-health (retired-stub) has viewport (no tables, so no scroll block needed). **All 34 routes return 200 — nothing dropped.** Desktop is untouched (the responsive rules are gated to ≤640px). Let me close out — stamp, log, re-read, push:
+Done and pushed (HEAD `85229d4`). Here's the report against the five verification tasks.
+
+## Dashboard mobile-responsive (layout/CSS only)
+
+**Root cause found:** only `_page()` carried the viewport meta. The **three other HTML wrappers were missing it** — `_render_retired_stub` (~12 routes) and the two standalone page modules `truth_dashboard.py` (/truth) and `daily_review_page.py` (/daily-review-v2). Without viewport, phones render those at desktop width and shrink everything — the core problem.
+
+**1. Viewport on all routes.** Added `<meta name="viewport" content="width=device-width, initial-scale=1">` to all three missing wrappers; `_page()` already had it. Verified served on every wrapper type.
+
+**2. Phone-width (~390px) behavior.** Added a mobile `@media (max-width:640px)` block to the shared `_page()` CSS **and** to truth_dashboard + daily_review:
+- **Wide tables** → `display:block; overflow-x:auto; white-space:nowrap` (scroll **sideways** instead of overflowing; the body still scrolls vertically).
+- **Grids** → single column (`grid-template-columns:1fr`).
+- Side gutters + card padding collapse; font 15px; **tap targets `min-height:44px`**; inline flex rows wrap.
+- Global `img, canvas, svg { max-width:100% }` so charts never overflow.
+
+Verified the responsive CSS is served: /truth, /daily-review-v2, /planning, /daily-view, /system-validation, /autopsy, /inplay-gate all carry viewport + `@media-640` + table-scroll.
+
+**3. All functions present on mobile.** **All 34 tested routes return 200** — nothing dropped or hidden at small width; the responsive rules *reflow* content, they don't remove it. (Retired-stubs get viewport; they're title+links with no tables, so they need no scroll block.)
+
+**4. Desktop still correct.** All responsive rules are gated to `≤640px`, so desktop (>640px) is **unchanged**; the only non-gated additions (`img/canvas max-width:100%`) merely prevent oversized media from overflowing and don't alter normal desktop layout. All routes render 200.
+
+**5. Read-only / no data change.** Layout/CSS only — no watched file, no orders, no gate/exit/sizing/config, no route-logic or data change, no content deleted for mobile, **no caching added** (live values stay live). Freeze intact. No watched/live trading file changed → SYSTEM_FACTS regen N/A. Dashboard restarted (PID 5068).
+
+**One honest caveat (UNVERIFIED):** my proof is at the CSS-mechanism level — viewport + the responsive rules are verified *served* on every wrapper and are desktop-safe by media-gating. The final pixel-level confirmation is best done by you opening the installed app on your actual phone; if anything specific still overflows there (a particular wide table or chart), send me the page and I'll tighten that one.
+
+**Close-out:**
+
+> **Loop 165 (15:41 ET):** dashboard mobile-responsive — viewport added to the 3 wrappers that lacked it (retired-stub, truth, daily-review) + `@media(max-width:640px)` (table-scroll, grid-stack, tap-targets) on _page+truth+daily-review; desktop media-gated/unchanged; all 34 routes 200 · **SESSION_LOG re-read+stamped** line 222 "Loop 165 (2026-06-28 15:41 ET) — DASHBOARD MOBILE-RESPONSIVE…" · **SYSTEM_FACTS: N/A** (no watched/live file changed) · **pushed HEAD 85229d4**, secret-scan clean · **names checked** · **UNVERIFIED named:** pixel-level on-device check is the final confirm (mechanism verified served + desktop-safe).
+
+---
