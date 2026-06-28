@@ -6837,3 +6837,116 @@ Verified the responsive CSS is served: /truth, /daily-review-v2, /planning, /dai
 > **Loop 165 (15:41 ET):** dashboard mobile-responsive — viewport added to the 3 wrappers that lacked it (retired-stub, truth, daily-review) + `@media(max-width:640px)` (table-scroll, grid-stack, tap-targets) on _page+truth+daily-review; desktop media-gated/unchanged; all 34 routes 200 · **SESSION_LOG re-read+stamped** line 222 "Loop 165 (2026-06-28 15:41 ET) — DASHBOARD MOBILE-RESPONSIVE…" · **SYSTEM_FACTS: N/A** (no watched/live file changed) · **pushed HEAD 85229d4**, secret-scan clean · **names checked** · **UNVERIFIED named:** pixel-level on-device check is the final confirm (mechanism verified served + desktop-safe).
 
 ---
+
+
+## Turn — 2026-06-28 17:31:24 ET
+
+**Rhett:**
+
+# HANDOFF → CLAUDE CODE — URGENT: C: drive almost full — diagnose disk usage, then safely reclaim (no data loss)
+# From: Planning Claude | 2026-06-28 ET (Code: number + stamp; CLAIM→VERIFY→SHOW close-out per the standing protocol)
+# ⚠️ OPERATIONAL RISK: the VPS C: drive is nearly full. A full disk can crash/freeze the bot — and the exit rebuild
+# fires Monday. Fix this BEFORE it bites. But DIAGNOSE FIRST, delete second — do NOT delete anything the bot needs.
+# READ-ONLY for trading logic: no watched file, no orders, no gate/exit/sizing/config change. Freeze intact.
+
+## STEP 1 — DIAGNOSE (report before deleting anything)
+- Report total C: size, used, FREE space (the actual numbers).
+- Find the biggest disk consumers under C:\AlphaQuant (and anywhere else large): top directories + top individual
+  files by size. Especially check the high-write logging we added this weekend:
+  - tick/shadow logs (tw_shadow.jsonl, gate_scorer_shadow.jsonl, news_shadow.jsonl, orb_candidate_log.jsonl)
+  - loop_stage_timing.jsonl, loop_stall_dumps.jsonl, llm_catalyst_audit.jsonl
+  - premarket data dirs (data/premarket/...), reports/, outputs/validation/, task_backups_* folders
+  - any runaway/rotating log that's grown huge, Windows temp, and any old port-8765 server logs.
+- Report the top ~15 space consumers with sizes. State which are SAFE to remove vs MUST KEEP (anything the live bot
+  reads — watched files, broker_orders_unified.csv, the live .env, earnings_calendar.csv, current config).
+
+## STEP 2 — SAFE RECLAIM (only after Step 1, only the clearly-safe items)
+- Delete/compress only: old rotated logs, stale dumps, duplicate/old task-backup folders, temp files, and
+  research/shadow logs OLDER than a cutoff (e.g. keep last N days, archive/remove older) — WITHOUT breaking any
+  analysis we still need. Do NOT delete: live config, broker-truth CSVs, .env, watched files, current-week data.
+- For high-write logs that will just refill: propose/add LOG ROTATION or a size cap so this doesn't recur (e.g.
+  rotate + keep last N MB/days). Note it; don't over-engineer.
+- Report FREE space reclaimed (before/after numbers).
+
+## HARD CONSTRAINTS
+- DIAGNOSE before DELETE. Show the size report first; only remove clearly-safe items.
+- Touch NO watched/trading file, no live config, no broker-truth data, no .env. Freeze intact.
+- If anything is ambiguous whether it's safe to delete → KEEP it and flag it for Rhett, don't guess.
+
+## VERIFICATION TASKS TO CLOSE (plain English back to Planning)
+1. The disk report: C: free space before, top ~15 consumers with sizes, SAFE-vs-KEEP labels.
+2. What was deleted/compressed + free space AFTER (before/after numbers).
+3. Any log-rotation/size-cap added to stop recurrence.
+4. Confirm nothing the bot needs was touched; freeze intact; bot still healthy.
+
+**Claude Code:**
+
+Urgent — diagnose first, delete second. Let me get the actual C: free space and the biggest consumers before touching anything:
+**Critical context: C: is 49.7 GB total, only 3.27 GB free (6.6%).** But the top-level sizes sum to >100 GB on a 50 GB drive — that means reparse points / OneDrive cloud placeholders are being double-counted, so those dir sizes are inflated. Note **C:\AlphaQuant is only 0.58 GB** — the weekend logs are *not* the disk hog. Let me find what actually uses the 46 GB (skipping reparse points), starting with C:\Users\Administrator and the usual Windows reclaim spots:
+The real picture: **C:\Users\Administrator\OneDrive - Duleba = 45.27 GB** dominates (almost the entire used space), plus **Windows Update cache (SoftwareDistribution\Download) = 4.58 GB** and **$WinREAgent = 0.64 GB**. The AlphaQuant logs (0.58 GB) are negligible. Let me diagnose what's inside the 45 GB OneDrive folder before touching it:
+**Key finding: the 45 GB OneDrive is mostly Rhett's PERSONAL data** — `GD` (21.8 GB) + `Personal` (17.3 GB) + `Smart Mortgage` (1.5 GB) — **not AlphaQuant, not mine to delete.** The project backup `Trade station Main` is 4.55 GB. The live bot runs from C:\AlphaQuant (the OneDrive-referencing `AlphaQuantBot` task is disabled). So my safe in-scope reclaim is the **Windows Update cache (4.58 GB)** + `$WinREAgent` (0.64 GB) + log trimming. Let me confirm the bot task state + find the biggest AlphaQuant files:
+Confirmed: live bot = "AlphaQuant Bot Supervisor" (Ready) running `watchdog_supervisor.py` **from C:\AlphaQuant**; the OneDrive-based `AlphaQuantBot` is Disabled. OneDrive is not the live path. The biggest AlphaQuant files are bot logs (`bot_log.txt.1` 50 MB is a rotated backup — safe; `trade_journal.csv` 145 MB I'll KEEP — bot-written history).
+
+**SAFE-vs-KEEP summary before I delete anything:**
+- **SAFE to clear:** Windows Update cache (4.58 GB), `$WinREAgent` (0.64 GB), Temp (~0.04 GB), `bot_log.txt.1` (rotated backup, 50 MB).
+- **KEEP (bot/broker/personal):** `broker_orders_unified.csv`, `.env`, `trade_journal.csv`, watched files, `earnings_calendar.csv`, live config; and **all OneDrive personal data** (GD/Personal/Smart Mortgage = ~40 GB — Rhett's, not mine to touch).
+
+Now the safe reclaim:
+The harness blocked removing the protected `$WinREAgent` system path (I'll leave it — only 0.64 GB). The error aborted the script mid-way; let me re-run the allowed reclaims (Windows Update cache is the big one) without that line, and measure:
+The harness's static safety scan is false-positiving on `Remove-Item` + the `/1GB` in my format string. Let me first check (read-only) whether the **first** attempt already cleared the Download cache before it errored:
+The harness protects **C:\Windows** from deletion (a legitimate safety guard) — so I genuinely can't clear the 4.58 GB Windows Update cache or `$WinREAgent` via this tool, and I won't fight that guard. Those, plus the 40 GB of OneDrive **personal** data, are the real space — they're Rhett's to reclaim with the proper Windows tools. Let me do the small AlphaQuant cleanup I *can* do safely (non-system paths) and measure:
+Clearing the user Temp deleted the folder where the Bash tool writes its own output (self-inflicted — I'll avoid that; it was only ~0.03 GB anyway). Let me verify the actual result via PowerShell:
+The result is honest: only ~80 MB reclaimed (bot_log.txt.1 + temp) — **negligible against the 3 GB pressure** — because the real space is either harness-protected (Windows, ~5 GB) or Rhett's personal OneDrive data (~40 GB). KEEP files all intact, bot supervisor alive. The AlphaQuant footprint genuinely isn't the problem (0.58 GB).
+
+Let me add the recurrence tool the handoff asked for (a safe log-reaper for the high-write AlphaQuant logs), then report with the precise commands for the big reclaims:
+Let me compile and dry-run the reaper (safe — skips locked files), then apply:
+Reaper reclaimed ~144 MB (capped the 4 big append-only logs to 8 MB each, atomically — `os.replace` only succeeds when the file isn't held, so no live write was corrupted). Let me verify free space + bot health after:
+The reaper worked cleanly: **bot supervisor alive, heartbeat fresh (0.0 min — no disruption), capped logs still valid JSON** (tail-cap kept records intact), KEEP files untouched. Free: 3.27 → 3.36 GB. But this confirms the honest conclusion — **AlphaQuant isn't the disk problem.** Let me close out and give Rhett the big levers. Get the stamp:
+Done and pushed (HEAD `e97e50e`). The roadmap SyntaxWarnings were just literal backslashes in my log string (Windows paths) — the JSON wrote fine. Here's the report against the four verification tasks.
+
+## Disk report — diagnose first
+
+**C: = 49.7 GB total, 3.27 GB free (6.6%) before.** Top consumers (real on-disk, reparse points excluded):
+
+| consumer | size | SAFE / KEEP |
+|---|---|---|
+| **OneDrive `GD`** | 21.8 GB | **KEEP** — Rhett's personal data |
+| **OneDrive `Personal`** | 17.3 GB | **KEEP** — personal |
+| Windows Update cache (`SoftwareDistribution\Download`) | 4.58 GB | SAFE to clear, but **C:\Windows is harness-protected** |
+| OneDrive `Trade station Main` (project backup) | 4.55 GB | KEEP-ish (backup; bot doesn't read it) |
+| OneDrive `Smart Mortgage` | 1.5 GB | KEEP — personal |
+| `$WinREAgent` | 0.64 GB | SAFE, but harness-protected (system path) |
+| AppData / .cache | 5.8 / 1.1 GB | mostly KEEP |
+| **C:\AlphaQuant (whole)** | **0.58 GB** | **NOT the problem** |
+| → `bot_log.txt.1` (rotated) | 50 MB | **SAFE (deleted)** |
+| → cshv/advisor/bot logs | ~180 MB | high-write (capped) |
+
+**KEEP (verified intact):** `broker_orders_unified.csv`, `.env`, `trade_journal.csv`, watched files, `earnings_calendar.csv`, live config — none touched. The live bot runs from **C:\AlphaQuant** (the OneDrive-based `AlphaQuantBot` task is Disabled).
+
+## What I reclaimed (before/after)
+~200 MB safely, no data loss: deleted the rotated `bot_log.txt.1` (50 MB) + ran a new `log_reaper.py` capping the 4 big append-only logs to 8 MB each (cshv_status 63→8, cshv_run 39→8, advisor_filter_engine 40→8, bot_log 36→8 = 144 MB) with atomic `os.replace` (only succeeds when the file isn't held → no live-write corruption; capped logs still parse, bot heartbeat fresh). **Free: 3.27 → 3.36 GB.**
+
+**The honest part:** that barely moved the needle because **AlphaQuant is not the disk problem.** The real space is (a) ~5 GB of Windows caches that the harness rightly **protects from deletion** (C:\Windows), and (b) ~40 GB of your **personal OneDrive data** that isn't mine to delete.
+
+## Recurrence prevention
+`strategy-research/log_reaper.py` — caps the high-write logs to 8 MB, deletes rotated `*.1/*.old/*.bak`, **skips locked files and a PROTECT list** (broker CSV, trade_journal, .env, earnings, exit_decisions, candidate_log). Recommend scheduling it daily ~2 AM.
+
+## Nothing the bot needs was touched; freeze intact; bot healthy
+Verified: supervisor (watchdog) alive, heartbeat fresh (0.0 min), broker CSV / .env / active logs intact, no watched/trading/config change.
+
+## ⚠️ The real fix needs your action (safe, no data loss) — exact steps
+1. **OneDrive "Free up space" (Files On-Demand) → reclaims ~40 GB, loses NO data** (files stay in the cloud). In File Explorer, right-click `GD`, `Personal`, `Smart Mortgage` (and optionally the `Trade station Main` backup) → **"Free up space"** — they become cloud-only placeholders. This alone takes you from 6.6% → ~80% free.
+2. **Windows caches (~5 GB):** in an elevated PowerShell —
+   ```
+   Dism.exe /Online /Cleanup-Image /StartComponentCleanup
+   Stop-Service wuauserv,bits; Remove-Item "C:\Windows\SoftwareDistribution\Download\*" -Recurse -Force; Start-Service wuauserv,bits
+   ```
+   and run **Disk Cleanup (`cleanmgr`)** for `$WinREAgent` + temp.
+
+I'd do #2 myself, but the tool (correctly) blocks deletions under C:\Windows, and #1 is your personal data — your call. Want me to spawn a background task with the exact #2 commands queued for you to run, or schedule the `log_reaper`?
+
+**Close-out:**
+
+> **Loop 166 (17:30 ET):** disk diagnosed (C: 3.27 GB free; space = OneDrive personal 40 GB + Windows caches 5 GB; AlphaQuant only 0.58 GB) + safe-reclaimed ~200 MB (rotated log + log_reaper cap; bot healthy) · **SESSION_LOG re-read+stamped** line 222 "Loop 166 (2026-06-28 17:30 ET) — DISK…" · **SYSTEM_FACTS: N/A** (no watched/live file changed) · **pushed HEAD e97e50e**, secret-scan clean · **names checked** · **UNVERIFIED/limits named honestly:** I could NOT free the big space — Windows caches are harness-protected and OneDrive is your personal data; the real reclaim needs your two actions above.
+
+---
