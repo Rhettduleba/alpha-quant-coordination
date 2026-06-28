@@ -5253,3 +5253,59 @@ Report at [reports/advisor_audit.md](https://raw.githubusercontent.com/Rhettdule
 That's **three trusted-by-design components in a row** found mis-wired or inert (gate anti-selects → exit killed → advisor inert + a partial strategy-not-symbols regression). The recurring failure mode is consistent: **built and validated in isolation, never verified end-to-end against the actual ORB book.**
 
 ---
+
+
+## Turn — 2026-06-28 08:20:26 ET
+
+**Rhett:**
+
+# HANDOFF → CLAUDE CODE — SMALL TEST (queue, after advisor audit): news-sentiment ANONYMIZATION test (read-only)
+# From: Planning Claude | 2026-06-27 ET. Research-grounded; not urgent; run when between bigger items.
+# WHY: a Columbia study (Glasserman & Lin) found LLM news-sentiment reads can be DISTORTED by the model's baked-in
+# general knowledge of the company ("distraction effect") — and ANONYMIZING the company name/ticker before the LLM
+# scores sentiment actually IMPROVED results, especially for LARGE companies (exactly our fade-prone mega-caps).
+
+## TEST (read-only, on the news_feed shadow data)
+- Take a sample of company-news items already pulled. Score sentiment two ways with the same model: (a) raw headline
+  with the company name/ticker present, (b) name/ticker stripped/masked. Compare the sentiment reads.
+- Question: does masking change the read, and (where we can join to the trade outcome) does the masked read align
+  better with what the stock actually did? Mega-caps especially.
+
+## CONSTRAINTS / CLOSE
+- READ-ONLY/shadow; no trading impact; no live touch. Small sample is fine — this is a directional check.
+- Report: does anonymization change/improve the sentiment read? If yes, fold "mask names before sentiment scoring"
+  into the news/LLM-reader design as a research-proven default.
+
+**Claude Code:**
+
+Small read-only test. Let me first locate the news shadow data already pulled and see what `news_feed` stored:
+Ideal data for this test — it's dominated by exactly the fade-prone mega-caps the Columbia study flags: **MU (251), NVDA (250), AAPL (247)**, all unscored. Let me check the TS daily-bar helper for the outcome join, then build the harness:
+Everything I need. Let me build the anonymization test harness — same model scores each headline named vs masked, then I join to the actual session move (mega-cap focus):
+Masking works cleanly. Now run the full test (~60 LLM calls + bar fetches):
+The masking test ran cleanly, **but the outcome-join is broken**: most headlines are dated 6/27 (a **Saturday** — no session), so only 5 joined (all one AAPL Friday). The "1/5 vs 1/5" alignment is noise, and my verdict line mislabeled it. Let me check the pool's date spread to see if a better-joinable sample is even possible:
+There ARE joinable trading days (6/25 Thu: 196, 6/26 Fri: 445) — my GOOD_CAT-first sampling just happened to grab the Saturday m&a items. Let me fix the sampling to prefer trading-day-dated headlines so the outcome join actually populates, and harden the verdict logic:
+Now the outcome join populates (22-23 joinable). But I must flag a confound honestly (RULE #0): all 30 sampled landed on **6/26**, so the "22 joinable" collapse to just **3 distinct ticker-day outcomes** (AAPL +2.29 up, MU −1.40 down, NVDA −0.73 down) — the alignment metric has ~3 degrees of freedom, not 22. Let me add that caveat + a clear verdict/recommendation:
+That f-string got mangled. Let me fix it cleanly:
+Now add the verdict/recommendation block before caveats:
+Two problems to fix (RULE #0): the LLM is **non-deterministic run-to-run** (flip count bounced 2→0 between runs), and I hardcoded "flipped polarity once." That actually raises the key methodological question: **is the ~2/30 masking effect real, or within the model's own noise floor?** Let me measure the noise floor directly — score each headline NAMED twice and compare self-disagreement to the masking effect:
+90 LLM calls now (named/named2/masked × 30) — running in background. Let me wait for it:
+Rigorous null result now. The noise-floor measurement is decisive: **masking's effect (1/30 label change, |Δscore| 0.02) is *below* the model's own run-to-run noise (4/30, 0.05) — indistinguishable from noise.** That's what makes this conclusive rather than just "small N." Let me log it (Loop 152), mirror, and push:
+Done — Loop 152 pushed. Here's the result of the news-sentiment anonymization test.
+
+## News-sentiment anonymization test (Glasserman-Lin distraction effect)
+
+**The study's effect did not reproduce on our data — anonymization is indistinguishable from noise.**
+
+I scored 30 mega-cap headlines (MU/NVDA/AAPL from the `news_shadow.jsonl` shadow data — which is dominated by exactly the large-cap names the study flags) twice with the same model (sonnet-4-6, temp 0): once **named**, once with the company name/ticker/aliases **masked**.
+
+**1. Does masking change the read?** Barely — **1/30 labels changed, 0 polarity flips, mean |Δscore| 0.02.** The decisive move was measuring the **noise floor**: I scored each *named* headline a second time and it disagreed with itself **4/30 times (|Δscore| 0.05)**. So the masking effect (1/30) is **below the model's own run-to-run noise** — statistically indistinguishable from noise. (This caught a trap: earlier single-pass runs showed a 2–3/30 "effect" that was just LLM stochasticity, not masking.)
+
+**2. Does masking align better with what the stock did?** No — named 5/20 vs masked 6/21, a tie. And I have to flag the confound honestly: the joinable items collapse to only **3 distinct ticker-day outcomes** (all 6/26 — AAPL +2.29% up, MU −1.40% down, NVDA −0.73% down), so that alignment metric has ~3 degrees of freedom, not 20. It's anecdote, not a rate.
+
+**Recommendation.** **Do not** fold "mask names before sentiment scoring" in as a *proven* accuracy win — this test didn't reproduce one. But masking is cheap, harmless, and both the Columbia result and the (very weak) lean here point the same way, so adopting it as a **precautionary default** in any future LLM news-reader is reasonable — labeled research-motivated, not locally-proven. A real test needs larger N, news joined to the correct **forward** session (not a few same-day moves), and a day where mega-caps moved both directions. Worth re-running once `news_shadow` accumulates more trading days.
+
+Report at [reports/news_sentiment_anon_test.md](https://raw.githubusercontent.com/Rhettduleba/alpha-quant-coordination/main/reports/news_sentiment_anon_test.md); logged Loop 152, roadmap updated, pushed. Shadow only — no orders, no watched files, no trading impact.
+
+One note for the queue: this test is **moot for the live book today** anyway, since the advisor (the thing that would consume news sentiment) is currently inert on trades per the Loop 150-151 audit. It matters only if/when an LLM news-reader gets wired into selection — which is the right time to apply the precautionary default.
+
+---
