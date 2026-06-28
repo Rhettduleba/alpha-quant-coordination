@@ -7115,3 +7115,143 @@ The 52 GB is **88% OneDrive personal data**. AlphaQuant itself is only 0.58 GB a
 **Close-out (Loop 167, 2026-06-28 17:39 ET):** SESSION_LOG.md:222 (pasted above) ✓ · roadmap updated ✓ · mirrored + pushed coordination repo HEAD `4e89546` ✓ · secret-scan clean ✓ · SYSTEM_FACTS regen **N/A** (caches + one scheduled task only, no watched/trading/config change).
 
 ---
+
+
+## Turn — 2026-06-28 18:14:14 ET
+
+**Rhett:**
+
+# HANDOFF → CLAUDE CODE — VERIFIED off-machine backup of the LIVE bot to a PRIVATE GitHub repo (snapshot, not sync)
+# From: Planning Claude | 2026-06-28 ET (Code: number + stamp; CLAIM→VERIFY→SHOW close-out per the standing protocol)
+# WHY: the bot SOURCE lives only on the VPS. OneDrive's "Trade station Main" is a SEPARATE, possibly-stale (6/16),
+# unverified copy — not the live system. We need a KNOWN-GOOD, VERIFIABLE backup of the CURRENT C:\AlphaQuant (with
+# this weekend's exit rebuild / gate-off / premarket work). Git snapshot, NOT a live OneDrive mirror (OneDrive fights
+# files the bot writes live). READ-ONLY for trading logic: no watched file change, no orders, no gate/exit/sizing/
+# config change. This is a copy-out. Freeze intact.
+
+## PRECONDITION
+- Let the current OneDrive sync finish first (don't run heavy disk ops mid-sync). Then proceed.
+
+## DO — snapshot the LIVE current system to a PRIVATE repo
+- C:\AlphaQuant is already a git repo with NO remote (verified Loop 164). Add a PRIVATE GitHub remote and push the
+  CURRENT state (with this weekend's changes). Do NOT re-init; do NOT use the stale OneDrive copy — back up the LIVE
+  C:\AlphaQuant.
+- PRIVATE repo only (holds strategy + references secrets). NOT the public coordination repo.
+- If creating the private repo / authorizing the push needs Rhett (gh auth / repo creation under his account), STOP
+  and give him the ONE step to do — don't guess credentials.
+
+## SECRETS HYGIENE (critical — even in a private repo)
+- .env files, API keys, tokens, token_cache MUST be gitignored + NOT pushed. Verify .gitignore covers them and
+  run a SECRET-SCAN on what WOULD be pushed BEFORE pushing. Abort if any secret would go up.
+- Include a REDACTED .env.example (variable NAMES, no values) so structure is recoverable, not the secrets.
+
+## VERIFY THE BACKUP IS REAL (the whole point — no more "I think it backed up")
+- After push: state the remote + commit SHA. List what's IN the backup; confirm the critical files are present
+  (orb_runner + the live exit/TW logic, candle_close_exit, config/risk_config, scheduled-task XMLs, requirements,
+  the dashboard, the strategy-research tools). 
+- State plainly: CAN the working bot be rebuilt from this backup alone? What's IN it and what's deliberately NOT
+  (secrets — Rhett re-supplies on restore). Secret-scan clean confirmed.
+
+## HARD CONSTRAINTS
+- PRIVATE repo, no secrets pushed (gitignored + scanned). Snapshot of LIVE C:\AlphaQuant, not the stale OneDrive copy.
+- No watched/trading file changed (copy-out only). Don't interrupt the bot. Freeze intact.
+
+## VERIFICATION TASKS TO CLOSE (plain English back to Planning)
+1. Private repo + push done (remote + commit SHA). If Rhett action was needed, what he did.
+2. Secret-scan clean — NO .env/keys/tokens in the push; .env.example (redacted) included.
+3. Backup CONTENTS list + the plain answer: "yes, the live bot can be rebuilt from this" (or what's missing).
+4. Confirm it's the LIVE current system (this weekend's work present), not the 6/16 OneDrive copy. Freeze intact.
+
+## /planning
+- Add "Verified off-machine backup of LIVE bot → private git repo (secret-scanned, contents confirmed)" = IN_PROGRESS.
+  Update stamp.
+
+**Claude Code:**
+
+Starting with read-only diagnosis before any push. Let me check OneDrive sync state, `gh` auth, the live repo's git state, what's tracked, and whether any secrets are currently tracked:
+C:\AlphaQuant is a git repo (branch main, HEAD `e06b1d4`, no remote), **693 tracked files, zero secrets tracked**, .gitignore present. `gh` isn't on the bash PATH — let me locate it, check working-tree state (this weekend's work may be uncommitted), read .gitignore, and size the repo:
+`.gitignore` is solid — excludes `.env`, `*token_cache*`, `*.key`, `*credential*`, plus all `*.csv/*.json/*.jsonl/*.log/*.txt` data, and the `/outputs/ /logs/ /data/ /.venv/` dirs. `.git` is only 8 MB. Zero secrets tracked. This weekend's work is **uncommitted** (87 changes) — I'll need to commit it so the backup is the live current state.
+
+First: locate `gh`, see the full untracked list, and **content** secret-scan everything that would be pushed (tracked + to-be-added), including the temp dashboard password and any hardcoded API keys:
+Two findings:
+1. **Content secret-scan: CLEAN** across all 759 files that would be pushed — no hardcoded `sk-ant`/`sk-proj`/AWS keys/`aq-gTsM65`/api-key/password literals. All the new weekend code (`exit_ownership.py`, `tape_watcher.py`, `gate_scorer_shadow.py`, `orb_runner`/`exit_bot_v2`/`orb_multiscan`/`risk_config` mods, dashboard pages) is present and will be captured.
+2. **`gh` is NOT installed** — creating a private repo under Rhett's account will need his action. I'll prep everything so it's a one-step finish.
+
+Let me locate the `.env` files (to build a redacted `.env.example`) and confirm they're gitignored & excluded from the backup set:
+Everything needed for a clean backup is confirmed: both `.env` files are gitignored and excluded, and I have their **variable names only** (no values) to build the redacted template. The coordination repo uses a clean HTTPS URL authed via Windows Credential Manager — so once a private repo exists under Rhett's account, `git push` will authenticate the same way.
+
+`gh` isn't installed, so **repo creation is Rhett's one step**. Let me prep everything so the finish is a single push: build the redacted `.env.example` templates, add precise `.gitignore` negations to allow them, then commit the live state.
+The `ai-trading-strategy-agent/.env.example` already exists — let me read it before overwriting:
+There's already a (stale) tracked-template here with safe placeholder defaults — it's just missing the 3 newer market-data provider keys. I'll append those rather than clobber the useful defaults:
+Now verify the gitignore negations work correctly — real `.env` must stay ignored, `.env.example` must be trackable — then do the final staged secret-scan and commit the live state:
+All gates green (the LF→CRLF lines are just line-ending normalization noise):
+- Real `.env` → **still ignored** (`*.env` rule)
+- Both `.env.example` → trackable **and staged**
+- **FINAL GATE: zero real secret/`.env`/token/key/credential staged**
+- Staged-content scan for secret-like blobs (JWTs, 32+ char keys, AWS) → **empty**
+
+Committing the live snapshot:
+A pre-commit governance hook ("strategy-change guard") correctly blocked the commit: the live watched files (`exit_bot_v2.py`, `orb_multiscan.py`, `orb_runner.py`) carry this weekend's approved changes but aren't recorded in a strategy-change entry. I will **not** bypass the hook — let me investigate it and the change-record system to fix the underlying gap properly:
+The guard is doing its job — it requires the latest `strategy_change_log.jsonl` entry to cover every staged watched file, and this weekend's approved exit-rebuild/gate-off edits to `exit_bot_v2.py`/`orb_multiscan.py`/`orb_runner.py` were never logged there (they lived as uncommitted working-tree edits). 
+
+The guard ships its **own sanctioned override** (`AQ_CHANGE_OVERRIDE`, line 15/62-64) — "allow + record the reason." That is the designed interface, not a `--no-verify` hook skip. This commit is a **backup of already-approved, already-deployed live state**, not a new strategy change, so the override is the correct path here. I'll use it with an honest reason, and surface the underlying governance gap to Planning separately:
+Committed locally — **HEAD `f6b8b12`, 760 tracked files, working tree clean.** (The override recorded an honest reason; `risk_config.py` was already covered by the last change, only the 3 exit/gate files needed it.) The live snapshot now exists in git history.
+
+`gh` isn't installed, so **the remote/repo creation is Rhett's one step** — I won't extract his stored credential to do it for him. Before handing off, let me verify the critical files are actually in the commit and that `requirements` (needed for rebuild) is tracked:
+All 14 critical files confirmed in the commit; both `.env.example` present; no `.env`/`token_cache`/`.csv` in it. But two **real gaps** for "rebuild from backup alone":
+
+1. **No scheduled-task XML definitions** are in the repo — the tasks live in Windows Task Scheduler, and the handoff explicitly expects them present. The `.bat` files they call are backed up, but not the task definitions (triggers/schedule/principal).
+2. **No `tradestation-bot/requirements.txt`** — only the advisor's deps are pinned.
+
+Gap #1 is a ~10-min fix and directly serves "can the bot be rebuilt." Let me export the AlphaQuant scheduled tasks to tracked XML (read-only export; contains the principal user id but **not** passwords — I'll scan to confirm):
+36 tasks exported (including the new `AlphaQuant_TW_LiveExit`, `AlphaQuant_LogReaper`, `AlphaQuant_PreOpenGate`). Now scan the XMLs for any embedded secret before committing — Task Scheduler XML carries the principal user id but S4U logon means no stored password:
+Task XMLs are clean — 33 S4U logon entries, **no passwords**, principal is a SID (not even a username). 36 XMLs committed (HEAD `2955054`). The local backup is now **complete**: all code + config + docs + `.bat` launchers + advisor `requirements.txt` + redacted `.env.example` + scheduled-task XMLs.
+
+But this is still only in **local `.git` on the same C: drive** — not yet off-machine. The push needs Rhett's private repo. Let me log the close-out, then give him the one step:
+Now update the roadmap, re-read to prove the SESSION_LOG entry saved, mirror to the coordination repo, secret-scan that push, and push:
+⚠️ **Hold on — the secret-scan surfaced a real problem, and it's not in my backup; it's in the PUBLIC coordination repo.** The matches show the literal temp-dashboard-password string sitting inside `CHAT_LOG.md` (synced there by the Stop hook from earlier summary prose that quoted it) and now my new `SESSION_LOG.md` line only matched because it says the *words* "no …api-key/password literals." The CHAT_LOG hit is the concern: that's the actual password value, now on public GitHub.
+
+Let me verify whether that string is the **live** dashboard password and whether it's already in the public repo's git history — without echoing the value into my prose (which the Stop hook would re-sync):
+**Resolved — low impact, but I'll clean it up.** Verified: the leaked string is **NOT the current live dashboard password** (boolean compare against `.env`: NO MATCH — it's a stale/rotated value, so **no live-credential exposure**, no rotation needed). 
+
+But two things to fix: (1) it's a dead value sitting in the public repo, and (2) **I reintroduced it myself** — my new SESSION_LOG line listed it as a scan-pattern example, and the CHAT_LOG carried an earlier prose mention. Git history already has the dead value at `778520c` (can't un-publish without a history rewrite, not worth it for a dead credential), but I'll scrub it from the working-tree **tips** of both files so pushes stop re-carrying it. First, remove the literal from my SESSION_LOG line:
+Public-repo tip is now clean (coordination HEAD `2eb6bf9`); git history retains the dead value, which is acceptable since it grants no access.
+
+Everything that can be done without Rhett's account is done. Here's where it stands.
+
+---
+
+## Off-machine backup of the LIVE bot — status
+
+**The backup is committed and verified locally; the only missing piece is the off-machine push, which needs your one action** (there's no `gh` CLI on the box, and I won't extract your stored GitHub credential to create a repo for you).
+
+### ✅ The one step for you (≈60 seconds)
+On github.com, create a **new, empty, PRIVATE repo** under your account — no README, no .gitignore, no license (so the push isn't rejected):
+- Suggested name: **`alpha-quant-live-backup`**
+- Visibility: **Private** (it holds strategy code)
+
+Then tell me it's created. I'll immediately run:
+```
+git -C C:/AlphaQuant remote add origin https://github.com/Rhettduleba/alpha-quant-live-backup.git
+git -C C:/AlphaQuant push -u origin main
+```
+The push will authenticate through the same Windows Credential Manager entry that already pushes the coordination repo — no new login expected. I'll then confirm the remote + SHA and that every file landed.
+
+### Verification tasks — answered plainly
+
+**1. Private repo + push.** Local snapshot is **committed** to `C:\AlphaQuant` `main` as two commits — **`f6b8b12`** (live code/config/docs, 760 files) + **`2955054`** (36 scheduled-task XMLs). Remote push is **PENDING your repo creation** (the one step above). Nothing is off-machine yet — it's still only in local `.git` on the same C: drive.
+
+**2. Secret-scan: CLEAN.** `.gitignore` excludes `.env`, `*token_cache*`, `*.key`, `*credential*`, and all `*.csv/json/jsonl/log/txt` data. Verified the real `.env` files stay ignored while adding a precise `!.env.example` exception. Content scan across all 759 files + the 36 task XMLs found **no** API keys, tokens, JWTs, or password literals. Redacted **`.env.example`** templates (variable names only, no values) are included for both halves. *(Separately, the scan caught a **dead/rotated** dashboard-password string lingering in the **public coordination repo** — verified against live `.env` that it's **not** the current password, so no live exposure; I scrubbed it from the file tips anyway.)*
+
+**3. Contents — can the bot be rebuilt from this? YES (the running system).** In the backup: all `.py` code, `.yaml` config, `.md` docs, `.bat` launchers, advisor `requirements.txt`, both `.env.example`, and all 36 scheduled-task XMLs. Rebuild path: clone → copy `.env.example`→`.env` and fill real values → `pip install` → re-auth TradeStation (regenerates `token_cache`) → import the task XMLs. **Deliberately NOT in it:** real `.env`/`token_cache` (you re-supply from the password manager), broker/trade CSVs + `outputs/`/`logs/` (that's *data/history*, regenerated or backed up separately — not needed to run), and `.venv`. **One gap I'd flag:** there's no `tradestation-bot/requirements.txt` (only the advisor's deps are pinned) — worth adding so the bot's exact deps are captured too.
+
+**4. It IS the live current system; freeze intact.** This weekend's work is in the commit — verified `orb_runner.py`, `exit_bot_v2.py`, `exit_ownership.py`, `orb_multiscan.py`, `risk_config.py`, `tape_watcher.py`, the dashboard pages, premarket/gate-scorer tools are all present at their current live content. This is **not** the stale 6/16 OneDrive copy. Committing changed **no watched file's content** (byte-identical to what's running) — the bot was never touched, freeze intact.
+
+### Two things for Planning to note
+- **Governance gap (pre-existing):** the commit guard correctly flagged that this weekend's approved watched-file edits (exit-rebuild, gate-off) were never logged in `strategy_change_log.jsonl`. I committed via the guard's **own sanctioned `AQ_CHANGE_OVERRIDE`** (honest reason recorded — backup of approved/deployed state, not a new change), **not** a `--no-verify` skip. Those approved edits should still get proper change-log entries — separate task.
+- **`tradestation-bot/requirements.txt` missing** — recommend adding it before relying on this backup for a from-scratch bot rebuild.
+
+---
+**Close-out (Loop 168, 2026-06-28 18:11 ET):** SESSION_LOG.md:222 (Loop 168 entry, re-read & saved, dead-pw literal removed) ✓ · roadmap `in_progress` updated ✓ · coordination mirrored + pushed HEAD **`2eb6bf9`** (secret-scan clean, dead-pw scrubbed from tips) ✓ · local backup commits **`f6b8b12`** + **`2955054`** (off-machine push pending your repo) · SYSTEM_FACTS regen **N/A** (no trading-logic change — backup commit + `.gitignore` + `.env.example` + task XMLs only).
+
+---
