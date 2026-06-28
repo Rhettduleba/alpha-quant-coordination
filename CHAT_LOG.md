@@ -6403,3 +6403,94 @@ The fix: an **mtime+size-keyed cache** in `eod_debrief.round_trips_net/_all` (th
 > **Loop 161 (14:31 ET):** dashboard audit — fixed staleness disease (truth R labels, daily_workflow deploy+gate, premarket exit → all read-live) + mtime cache (/truth 5295→14ms, no staleness) · **SESSION_LOG re-read+stamped** line 222 "Loop 161 (2026-06-28 14:31 ET) — DASHBOARD VALIDATION…" · **SYSTEM_FACTS: N/A** (no watched/live file changed) · **pushed HEAD 73dfdaa** · **names checked** (no mislabels) · **UNVERIFIED: I targeted the hardcoded-config disease + HTTP-200 + the slowest pages, not an exhaustive element-by-element value check of all 44 pages** — the highest-risk class (stale config) is swept and the offenders fixed; a full per-element value audit of every page is a larger follow-up if you want it.
 
 ---
+
+
+## Turn — 2026-06-28 14:44:14 ET
+
+**Rhett:**
+
+# HANDOFF → CLAUDE CODE — BUILD: Shadow Gate Scorer (Phase 1 — log candidate signals + outcomes, change NOTHING)
+# From: Planning Claude | 2026-06-28 ET (Code: number + stamp; CLAIM→VERIFY→SHOW close-out per the standing protocol)
+# WHY: the in-play gate is OFF (proven anti-selecting). We will rebuild a SMARTER gate — but evidence-first, in
+# SHADOW, because there is NO proven entry signature, so inventing positive criteria from theory = repeating the
+# original mistake. Phase 1 = a pure-logging shadow scorer that records INDIVIDUAL candidate signals + the real
+# outcome per candidate, so the DATA tells us which signals (if any) rank winners above losers. NO composite score.
+# RESEARCH-ONLY: no orders, no watched file, no selection/exit/sizing/config change. Freeze intact.
+
+## BUILD: `strategy-research/gate_scorer_shadow.py` (read-only)
+For EVERY candidate the bot evaluates at 9:35 AND on each re-arm scan (whether or not it's traded), log one row with:
+- IDENTITY: date, symbol, path (9:35 / re-arm window), timestamp, was_traded (true/false), entry side (long/short).
+- INDIVIDUAL SIGNALS (each a SEPARATE column — do NOT blend): 
+  - gap_pct (vs prior close), gap_direction, entered_with_gap (bool),
+  - extension: distance from a short moving average / from VWAP at signal time (how stretched),
+  - relative_volume (opening-range vs prior-14d) AND, if cheap, a time-of-day-expected-volume version,
+  - market_cap_bucket (mega / large / mid / small),
+  - dollar_volume (liquidity),
+  - market_context: SPY/QQQ direction at the open + whether the candidate aligns or fights it,
+  - catalyst_present + catalyst_type (from the existing news_feed shadow tags — advisory),
+  - the old gate's verdict (would-pass / would-reject + reason) for comparison.
+- OUTCOME (joined later, read-only): for traded names = broker-truth gross result; for NOT-traded candidates =
+  the DERIVED counterfactual ORB result (same engine the gate_effect_analysis used, validated ~5%) — LABELED as
+  derived/lower-fidelity, never mixed with broker-truth.
+
+## HARD CONSTRAINTS
+- RESEARCH-ONLY: logs to a SEPARATE file (e.g. outputs/validation/gate_scorer_shadow.jsonl); touches NO trading path,
+  NO watched file, NO selection. The gate stays OFF. Freeze intact.
+- NO composite/blended score in this build — individual signal columns ONLY. (Phase 2 measures each one separately;
+  building a score now is the composite-router trap.)
+- Point-in-time: every signal is recorded as it was AT the candidate's decision time — no future/outcome data leaks
+  into a signal column. Outcomes are joined separately and labeled by fidelity.
+
+## VERIFICATION TASKS TO CLOSE (plain English back to Planning)
+1. Sample gate_scorer_shadow.jsonl rows (a few traded + a few not-traded candidates) showing the individual signal
+   columns + the outcome join + fidelity labels.
+2. Confirm it logs ALL candidates (9:35 + re-arm), not just traded ones, and the old-gate verdict column is present.
+3. Confirm RESEARCH-ONLY: no trading-path touch, gate still OFF, freeze intact.
+4. Confirm NO composite score — columns are individual.
+
+## /planning
+- Add "Gate rebuild Phase 1: shadow scorer (log individual signals + outcomes, evidence-first)" = IN_PROGRESS.
+  Note Phases 2-4 (measure each signal → assemble simple rules from only what discriminates → shadow vs no-gate
+  verdict). Update stamp.
+
+**Claude Code:**
+
+Another research-only build. The key realization: the bot **already logs every candidate** to `orb_candidate_log.jsonl` (point-in-time, at decision time) with most of these signals — so this is a read-only transform/join, NOT re-instrumentation (which would touch watched files, forbidden). Let me confirm the candidate-log coverage and check the existing counterfactual engine I can reuse:
+I have everything: `gate_effect_analysis.cf_gross()` is a reusable derived-counterfactual engine, the candidate log has **full 9:35 coverage** (100 not-selected + 27 selected) with the old-gate verdict + all signal fields. Re-arm only logs *armed* candidates (re-instrumenting it = a watched-file change, forbidden) — I'll note that caveat. This is a read-only transform/join. Let me build it:
+Let me verify `cf_gross`'s cache key + the bar-tuple format (my extension VWAP assumes volume at index 5 — need to confirm) before running:
+`cf_gross` uses key `(date, sym)` but my `_extension_atr` uses `(sym, date)` — they'd double-fetch bars. Let me align the key to share the cache:
+Signals-only works: 127 candidates (110 @ 9:35 + 17 re-arm), 35 traded with broker-truth outcomes. Now run WITH the derived counterfactual + extension (bar-based) on a subset to demonstrate both fidelities:
+While that runs, let me verify the guardrails (research-only + no composite):
+Guardrails clean (no trading-path writes, no composite, separate file). The outcomes run finished — let me check coverage and show sample rows (traded + not-traded with fidelity labels):
+The scorer works end-to-end: **14 broker-truth + 28 derived-counterfactual + 3 no-bars** outcomes, all individual signal columns + old-gate verdict + fidelity labels. It already surfaces the anti-select pattern (TECH/RVTY rejected MOVE_EXHAUSTED but positive; PENN old-gate-PASS → −$448). The `--limit` overwrote the file with 45 rows — let me produce the canonical full 127-candidate file:
+Full canonical file produced: **127 candidates (110 @ 9:35 + 17 re-arm), 35 broker-truth + 85 derived-counterfactual outcomes.** Now the close-out per protocol:
+Built, verified, and pushed (HEAD `8a038e0`). Here's the report against the four verification tasks.
+
+## Gate rebuild Phase 1 — Shadow Gate Scorer (research-only)
+
+**1. Sample rows — individual signal columns + outcome join + fidelity labels** (6/25):
+
+*Traded (broker-truth outcome):*
+- `TECH 9:35 long` gap=+21.8% relvol=46.7 mcap=mid ext=−0.02 **old-gate=False/MOVE_EXHAUSTED** → **+$93.72 [broker_truth]**
+- `PENN 9:35 long` gap=+5.5% relvol=2.6 **old-gate=True/PASS** → **−$448.14 [broker_truth]** (gate passed a loser)
+
+*Not-traded (derived counterfactual):*
+- `DLTR 9:35 long` gap=+4.9% relvol=8.5 old-gate=True/PASS → **+$133.38 [derived_counterfactual]**
+- `MTD 9:35 long` gap=+6.2% relvol=3.5 old-gate=True/PASS → **+$218.24 [derived_counterfactual]**
+- `DHI 9:35 short` gap=+5.8% entered_with_gap=False old-gate=False/DIR_MISMATCH → **+$82.80 [derived_counterfactual]**
+
+Each signal is its own column; outcomes carry `outcome_fidelity` ∈ {`broker_truth`, `derived_counterfactual`, `derived_no_bars`} — never mixed.
+
+**2. Logs ALL candidates + old-gate verdict present.** 127 candidates on 6/25 (110 @ 9:35 incl. not-selected, 17 re-arm), not just the 35 traded. Every row carries `old_gate_pass`/`old_gate_reason`/`old_gate_selected`. **Honest caveat:** the bot's re-arm path only logs *armed* candidates (re-instrumenting `orb_multiscan` to log non-armed ones would be a **watched-file change — forbidden**), so re-arm not-traded coverage is limited to what's logged; 9:35 has full coverage.
+
+**3. Research-only confirmed.** Grep-verified: no order/submit/flatten/advisor_control/config writes; reads `orb_candidate_log.jsonl` + broker round-trips, writes only the separate `outputs/validation/gate_scorer_shadow.jsonl`. The gate stays OFF; freeze intact.
+
+**4. No composite score.** Grep-verified — individual signal columns only, no blended/total/weighted score (the composite-router trap explicitly avoided). It also **reuses** the validated `gate_effect_analysis.cf_gross` engine for the derived counterfactual rather than inventing a new one.
+
+The data already hints at what Phase 2 will measure: the old gate rejected positive names on `MOVE_EXHAUSTED` (TECH +$93, RVTY +$67) and passed a loser (PENN −$448) — consistent with the anti-select finding, now captured per-candidate with each signal isolated.
+
+**Close-out:**
+
+> **Loop 162 (14:42 ET):** built gate-rebuild Phase-1 shadow scorer (individual signals + fidelity-labeled outcomes; 6/25: 127 candidates, 35 broker-truth + 85 derived-cf; research-only, no composite) · **SESSION_LOG re-read+stamped** line 222 "Loop 162 (2026-06-28 14:42 ET) — BUILD: Gate rebuild Phase 1…" · **SYSTEM_FACTS: N/A** (no watched/live file changed) · **pushed HEAD 8a038e0** (scorer jsonl stays local research data) · **names checked** · **UNVERIFIED named:** re-arm coverage = armed-only (the bot doesn't log non-armed re-arm candidates and re-instrumenting it is forbidden); the not-traded outcomes are explicitly **derived counterfactual**, not broker truth.
+
+---
