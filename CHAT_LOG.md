@@ -7355,3 +7355,22 @@ One honest correction logged plainly: my Loops 166/167 treated OneDrive's 45 GB 
 **Close-out (Loop 169, 2026-06-28 18:18 ET):** SESSION_LOG.md:222 (Loop 169 entry, re-read & saved, includes the 166/167 correction) ✓ · roadmap updated ✓ · coordination mirrored + pushed HEAD **`f694f41`** (secret-scan clean; re-synced dead-pw string scrubbed from tip) ✓ · READ-ONLY pass — deleted nothing, no watched/trading/config change, freeze intact · SYSTEM_FACTS regen **N/A** (measurement only).
 
 ---
+
+
+## Turn — 2026-06-28 18:23:09 ET
+
+**Rhett:**
+
+is the session updated for planing?
+
+**Claude Code:**
+
+Let me verify directly rather than just assert it:
+Yes — verified, not assumed:
+
+- **Live SESSION_LOG is current** — Loops 166→169 all present, **Loop 169 (the disk ground-truth + the 166/167 correction) at the top** of the ledger (line 222).
+- **The public coordination mirror is byte-identical** to the live file (`diff` = IDENTICAL) and **pushed** — coordination repo is in sync with origin (`main...origin/main`, nothing ahead). Loop 169 confirmed present in the pushed copy.
+
+That's the surface Planning reads, so it's fully ramped on this turn's work. Both the backup (Loop 168) and disk ground-truth (Loop 169) entries are in.
+
+---
