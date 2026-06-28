@@ -5414,3 +5414,91 @@ Done — Loop 153 pushed. The foundation map is built and is now the master ledg
 The throughline across the weekend: every broken/inert component shares one failure mode — **built and validated in isolation, never verified end-to-end against the actual ORB book.** The map makes that legible and gives the rebuild a verified starting point instead of a trusted-by-design one.
 
 ---
+
+
+## Turn — 2026-06-28 09:58:10 ET
+
+**Rhett:**
+
+# HANDOFF → CLAUDE CODE — ANALYSIS: exit ATR-multiple sweep 0.5→2.0 on TW 1-min/tick replay — READ-ONLY
+# From: Planning Claude | 2026-06-27 ET (Code: number + stamp; log it + SYSTEM_FACTS line per standing rule)
+# WHY: the live exit uses K=1.4×ATR for BOTH the resting stop AND the chandelier trail (candle_close_exit.py /
+# orb_runner.py:98). Research consensus for ATR stops is ~1.5–3× (2× typical); 1.4 sits at/below the tight, whipsaw-
+# prone edge — and we have NO record it was fit to OUR data (likely inherited from ORB research lineage). The exit is
+# already flagged BROKEN (killed 6/25). So: find the K that best balances capping catastrophes vs NOT clipping
+# recoverable winners. READ-ONLY analysis; no live touch; freeze intact.
+
+## STEP 0 — PROVENANCE (answer first, verify don't assume)
+- How was K=1.4 actually chosen? Search the repo/history/EDGE_TUNES for any fit/derivation. If it was inherited or
+  hand-picked (not optimized on our trades), say so plainly — that's the finding (same "trusted-by-design" pattern).
+
+## THE SWEEP (read-only)
+Vary ONLY the ATR multiple K across {0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.8, 2.0}.
+Hold the exit STRUCTURE constant (candle-close confirm + chandelier trail) — vary the distance/trail multiple only,
+so this is ONE variable, not two. For every historical trade, replay each K and record where it would have exited.
+
+## CRITICAL — TIMING FIDELITY (Rhett's point, non-negotiable)
+- Run the replay through the TAPE WATCHER on 1-MINUTE bars (or finer/tick where TW's live stream provides it) —
+  NOT on the bot's executed exits (those came through the broken ~5–7 min poll; testing K on laggy data measures
+  the lag, not the stop). The whole point is "what would each K do with PROPER timing."
+- FIDELITY CAVEAT (state it): within a 1-min bar we can't always resolve whether the high or low printed first, so
+  adjacent K values that differ by a hair may be indistinguishable at 1-min. Rank confidently; do NOT promote a
+  hair's-width winner from 1-min data. Note where tick data (TW live, proving Mon) would sharpen it.
+
+## MEASURE — per K, and per trade
+1. PER LOSER: at each K, how much smaller/larger is the loss? Does tighter K cap the catastrophes (the MU class)?
+2. PER WINNER: at each K, would the stop have fired BEFORE the trade became a winner? (the must-not-cut danger of
+   going tighter) — count WINNERS KILLED at each K.
+3. PER K AGGREGATE: total P&L (GROSS), win rate, profit factor, avg loss, avg win, expectancy, max single loss,
+   AND the two headline counts: catastrophes-capped vs winners-killed.
+4. THE ANSWER: which K maximizes expectancy WITHOUT clipping recoverable winners — the balance Rhett described. Show
+   the full curve (P&L + winners-killed vs K) so the trade-off is visible, not just the argmax.
+
+## HARD CONSTRAINTS
+- READ-ONLY: no orders, no watched file, no exit change. GROSS only (no fee model). Freeze intact.
+- ONE variable (K); hold exit structure constant. Label 1-min vs tick fidelity. In-sample → this RANKS candidates
+  for an OOS test, it does NOT promote a number. Flag MU/single-trade dominance in any bucket (recurring trap).
+
+## VERIFICATION TASKS TO CLOSE (plain English back to Planning)
+1. PROVENANCE: how 1.4 was chosen (fit to our data, or inherited?).
+2. The K-sweep curve: expectancy / P&L / winners-killed / catastrophes-capped across 0.5→2.0.
+3. The best-balance K + how it compares to the current 1.4 (better/worse/same, by how much).
+4. Fidelity statement (1-min vs tick) + any MU/single-trade dominance + honest in-sample caveat.
+
+## /planning
+- Add "Exit ATR-multiple sweep 0.5→2.0 (find the right K; provenance of 1.4) — read-only, TW timing" = IN_PROGRESS.
+  Update stamp.
+
+**Claude Code:**
+
+Substantial analysis. Let me start with Step 0 (provenance of K=1.4) and read the exit logic + the Tape Watcher replay harness I'll parameterize:
+Let me find the proposal that introduced 1.4 to see if it was fit to our data or hand-picked:
+**Provenance answered:** K=1.4 was **not** fit to our data. The deploy comment ([candle_close_exit.py:55-59](tradestation-bot/candle_close_exit.py)) shows it was hand-picked at Loop 121 to "replace BOTH the 0.15 phase-1 and the 1.0 catastrophe with a single wide 1.4×ATR chandelier" — chosen to fix confirmed false-stop-outs, sitting "wider than 1.0." The tuning lineage (TUNE-12) compared 0.15 vs 1.0; **1.4 itself was never grid-searched on our P&L** — same trusted-by-design pattern.
+
+Now the sweep. I'll build a faithful no-look-ahead chandelier replay parameterized by K, on 1-min bars:
+282 trades, 233 unique (sym,date) = ~466 fetches. Running in background to avoid timeout:
+Clean run, n=282, zero skipped (no throttling). This is a **major, counter-to-hypothesis result** — let me verify the headline before reporting (RULE #0): the replay shows K=1.4 → **+$7,488 gross**, but the bot's *actual* realized gross was ~+$187. That gap would be the execution lag, not the multiple. Let me confirm the actual-gross comparison exactly:
+Confirmed: actual broker gross **+$461** vs replay-at-1.4 **+$7,488** — a **~$7,027 gap** (optimistic upper bound). This is the real story, and it **exonerates K=1.4**. Let me bake the timing finding + reframe into the tool, and soften the "1.6 wins" framing (it's within 1-min noise — must not promote it):
+Re-running to regenerate the report with the new sections (background, ~466 fetches):
+The numbers shifted between runs (282 trades → 234) — **bar-fetch throttling caused 48 skips this run**, making coverage (and the exact totals) non-deterministic. The qualitative conclusions held across both runs, but I need deterministic full coverage for honest numbers (same throttle issue I fixed in gap_fade). Let me add fetch-retry to guarantee all 282:
+The poll loops keep getting backgrounded. Let me just read the output file directly:
+The retry-backoff is making the run slower (throttle retries). Let me wait for it with a shorter bounded check:
+The full-coverage re-run (with throttle-retry) is still completing in the background — I'll finalize the SESSION_LOG entry and push once it lands with deterministic numbers. But the **analysis is done**, and the conclusions are robust (consistent across the two completed runs, n=282 and n=234; only exact dollar magnitudes shift with coverage). Here are the four tasks answered.
+
+## Exit ATR-multiple (K) sweep 0.5→2.0 — the answer
+
+**1. Provenance of K=1.4 — hand-picked, NOT fit to our data.** Loop 121 (PROP-EXIT-CANDLE-1.4ATR, 2026-06-18): 1.4 was chosen to replace the 0.15 phase-1 + 1.0 catastrophe with "a single **wide** 1.4×ATR chandelier" to fix confirmed false-stop-outs ([candle_close_exit.py:55-59](tradestation-bot/candle_close_exit.py)). The tuning lineage (TUNE-12) only compared 0.15 vs 1.0; **1.4 itself was never grid-searched on our trades** — inherited/hand-picked. Same trusted-by-design pattern. This sweep is the first actual fit.
+
+**2 + 3. The sweep, and the big finding — it's the TIMING, not the multiple.** Replaying the *same structure and same K=1.4* on clean 1-minute bars instead of the bot's ~5–7 min poll yields **~+$5,900–7,500 gross**, vs the bot's **actual broker gross of ~+$460–1,080** over the same trades. That **~$5–7k gap is the execution-lag cost** (late exits + the re-arm 0%-resting-coverage gap) — **not the K multiple.** (Replay is optimistic — fills exactly at the chandelier level, no exit slippage — so it's an upper bound, but the direction is unambiguous.)
+
+On K specifically: **K=1.4 is exonerated.** At proper 1-min timing, the whole range **K≥1.0 is a flat plateau** (total spread only ~$1,200 across 1.0→2.0; expectancy ~$26–29/trade; win 75%; PF ~1.4). 1.4 sits comfortably in it, near-optimal. The handoff's prior that "1.4 sits at the tight whipsaw edge" is **not supported** — the whipsaw edge is **below 1.0** (K=0.5 kills 27–32 winners and collapses to breakeven; K=0.7 still kills ~10). The confident, directional finding is **don't go tighter than ~1.0.**
+
+**4. Fidelity + dominance + caveat.** Don't promote the nominal argmax — it **wandered between 1.6 and 1.2 across runs**, i.e. within the 1-min fidelity noise (max-loss is also non-monotonic across 1.4/1.5/1.6 — a tell of intrabar/single-trade noise). **1.0–2.0 are statistically indistinguishable at 1-min**; tick data (TW live, proving Monday) would sharpen the close calls. MU dominance flagged: at K=1.4 MU is ~−19% of total, and even MU's *worst* single loss at 1-min replay (~−$0.5k to −$1.6k depending on K) is far below its lagged −$1,668 broker loss — again, the **lag**, not the stop. In-sample, GROSS-only → this **ranks** candidates for an OOS test, it does not promote a number.
+
+## The reframe this drives
+
+The exit's measured failure (6/25 kill) was **not the K multiple** — re-tuning K is the wrong fix. The recoverable money is in **execution timing + re-arm stop coverage** (foundation-map #4/#8). That's a redirect of the rebuild priority: the K is fine; fix the lag.
+
+I'll lock the SESSION_LOG entry (Loop 154), regenerate SYSTEM_FACTS, and push the canonical report once the full-coverage run completes — I'll confirm when it lands.
+
+---
