@@ -5164,3 +5164,92 @@ Audit complete. Here's the answer to Planning's four tasks — **broker truth, n
 That's **three trusted-by-design components in a row** found mis-wired or inert (gate anti-selects → exit killed → advisor inert). Report at [reports/advisor_audit.md](https://raw.githubusercontent.com/Rhettduleba/alpha-quant-coordination/main/reports/advisor_audit.md); logged Loop 150, roadmap marked DONE. Freeze intact, no watched files touched.
 
 ---
+
+
+## Turn — 2026-06-28 07:54:40 ET
+
+**Rhett:**
+
+# HANDOFF → CLAUDE CODE — AUDIT: what does the Advisor DO, and has it helped or hurt? (read-only, research-grounded)
+# From: Planning Claude | 2026-06-27 ET (Code: number + stamp; log it + SYSTEM_FACTS line per standing rule)
+# WHY: the Advisor is the THIRD core component and the ONLY one never measured against outcomes. The other two we
+# measured this weekend (gate, exit/timing) were both mis-built. The external research literature on LLM trading
+# advisors says the honest PRIOR is skeptical: bias-corrected studies find LLM strategies routinely FAIL to generate
+# alpha out-of-sample, and models that look great in-sample/static often do WORSE live. So audit walks in skeptical,
+# hunts the field's #1 failure (look-ahead bias) explicitly, and does NOT get impressed by good in-sample numbers.
+# READ-ONLY, broker truth, GROSS only, no live touch, freeze intact. NEVER ASSUME — verify against real execution.
+
+## SKEPTICAL PRIOR (from the research — hold this stance)
+- Bias-corrected LLM-trading studies (FINSABER, LiveTradeBench, StockBench) find the apparent edge VANISHES out-of-
+  sample; assume the advisor is NEUTRAL-OR-HARMFUL until broker truth proves otherwise.
+- Good in-sample / backtest numbers are NOT evidence — the literature is full of LLM strategies that looked strong
+  in-sample and died live. Trust only out-of-sample, broker-truth, net effect.
+
+## THE FOUR QUESTIONS TO ANSWER (broker truth, not design intent)
+1. WHAT IT IS: confirm the live advisor's model string, schedule, and how it forms its opinion — read the actual
+   code path (advisor + claude_client). What inputs does it get? What prompt/logic turns inputs into the control
+   file? Label verified-vs-unverified for each.
+2. WHAT IT ACTUALLY EMITS: dump + characterize the real history of advisor_control_latest.json (+ any archive). On a
+   typical day what does it SAY — name tickers to block/allow? set a posture? size? or near-empty ALLOW-everything?
+   QUANTIFY: of the last N days, how many times did the control file actually CHANGE a bot decision vs default-ALLOW
+   passthrough? (If it's fail-open and rarely bites, that's the headline — say so with the number.)
+3. LOOK-AHEAD HUNT (the field's #1 failure — do this explicitly): does ANY input the advisor used arrive with
+   information not available at the moment it would have acted? Check timestamp discipline — news publication-time
+   vs ingestion-time, prices, and especially any outcome/label that postdates the decision. If the advisor's
+   "signal" leans on anything decided AFTER the entry moment, flag it as look-ahead-contaminated (same class as the
+   confirmed-vs-unconfirmed trap we already caught).
+4. HAS IT HELPED OR HURT (the real one): for every instance the advisor actually GATED/altered a trade, compute the
+   counterfactual — what would that trade have done WITHOUT the intervention? Net it, GROSS only. Did the advisor's
+   interventions make money, lose money, or nothing?
+
+## HARD CONSTRAINTS
+- READ-ONLY: no orders, no watched file, no behavior change, no advisor_control write. GROSS only. Freeze intact.
+- VERIFY don't assume: "designed to X" is NOT proof it does X — the rule that caught the gate.
+- Counterfactual on altered trades = DERIVED/lower-fidelity (label it); validate the engine vs a few real trades
+  (~5% check, like the gate analysis).
+- Flag small-N: if it rarely intervenes, the helped/hurt sample may be tiny — report honestly, don't over-conclude.
+- MONOCULTURE NOTE (from research): advisor + news reader + 9:15/9:40 reports are the SAME base model — if it's
+  wrong about a name it may be wrong everywhere at once. Note any place the advisor's view is already echoed
+  elsewhere in the stack (correlated-error risk), for awareness, not action.
+
+## VERIFICATION TASKS TO CLOSE (plain English back to Planning)
+1. The advisor's real model + how its opinion is formed (verified from code), verified-vs-unverified labeled.
+2. What it emits day-to-day + how often it CHANGES a bot decision vs passes through (the intervention rate).
+3. Look-ahead check: does its input use any post-decision / mis-timestamped information? Clean or contaminated?
+4. The helped-or-hurt number: gross effect of its actual interventions (counterfactual fidelity noted).
+5. One-sentence bottom line: is the advisor net-positive, net-negative, or effectively inert on broker truth?
+
+## /planning
+- Add "Advisor audit — what it does + look-ahead check + helped/hurt on broker truth (3rd core component, research-
+  grounded skeptical prior)" = IN_PROGRESS, read-only. Update stamp.
+
+**Claude Code:**
+
+This is the same component as Loop 150, but with **two genuinely new asks**: an explicit **look-ahead hunt on the advisor's inputs** (Q3) and the **monoculture/correlated-error note**. Q1/Q2/helped-hurt I've verified; I'll reuse those and focus the new work on look-ahead and timestamp discipline. Let me hunt the look-ahead vectors directly in code.
+Found a contradiction to resolve (RULE #0): memory says per-symbol P&L was *removed* from the prompt (5/28 "strategy not symbols"), but line 307 builds a `symbol_pnl` loop. Let me read that section and the news/timestamp handling:
+Three look-ahead findings forming. Let me resolve the `symbol_pnl` baseline question and the monoculture (is news sentiment LLM-derived, same model?) to complete the picture:
+Look-ahead picture complete. Let me record the verified findings and extend the report with the new sections (look-ahead + monoculture + the secondary `symbol_pnl` regression I uncovered):
+Now log Loop 151, mirror, push, update roadmap:
+Done — pushed as Loop 151. This handoff added two new asks to the Loop 150 audit; here's the complete five-task answer back to Planning, with the **new look-ahead and monoculture findings** up front.
+
+## Advisor audit (research-grounded, skeptical prior) — five tasks closed
+
+**1. What it is (verified from code).** Model `claude-sonnet-4-6` ([claude_client.py:14](ai-trading-strategy-agent/src/advisor/claude_client.py)); runs 8:00 AM / 12:30 / 4:30 ET (308 runs logged); inputs = snapshot + journal + pattern analysis + memory + earnings + news + bot-health; path prompt_builder→call_claude→response_parser→control_writer. All VERIFIED. **Unverified/not assessed:** the *quality* of the LLM's reasoning — this audit measures effect, not opinion quality.
+
+**2. What it emits + intervention rate.** ~13 controls/run, control file honored (`CONTROL_VALID`). But **the intervention rate on the real book is effectively zero**: 100% of trades are ORB; ORB reads only hard blocks; the majority of emitted controls (WATCHLIST/PROMOTE/REQUIRE_MIN/SET_MAX_PCT) are read only by the composite path **that never traded**. blocked∩traded = 0, blocked∩selected = 0.
+
+**3. Look-ahead hunt (NEW — the field's #1 failure).** **VERDICT: CLEAN in live operation.** The advisor's inputs do **not** postdate the moment it acts — this is the *opposite* of the confirmed-vs-unconfirmed trap. Verified: runs fire 8:00/12:30/4:30 ET and controls govern only *later* entries (information precedes action); news is ingested live so every headline is ≤ run-time by construction, and [news_collector.py:22-23](ai-trading-strategy-agent/src/advisor/news_collector.py) shows **no separate sentiment model** (Claude judges raw headlines → no LLM-sentiment leak); no same-day outcome/label sits in the prompt. *Caveat:* the run log holds ~6 off-schedule runs per hour = a replay/backtest batch — distrust any in-sample/replay advisor number (matches your prior), but it never touched the book.
+
+**4. Helped or hurt.** Post-5/26: 698 block events, but BLOCK_SYMBOL = **3 distinct names (CVX/JNJ/MCD, 6/19), 192/192 pure broker-`[NO]`-flag relays, zero advisor judgment**; BLOCK_ALL only on 5/26 (a 0-trade day). Counterfactual is **exact, not derived** (no altered trade to simulate). **Gross effect = $0 on 0 of 285 trades.**
+
+**5. Bottom line (one sentence).** **The Advisor is net-neutral / effectively inert on broker truth** — and notably, your skeptical research prior is *vindicated, but via a different mechanism than look-ahead*: not "fake in-sample edge that dies live," but **"no edge applied at all"** — it's structurally disconnected from the book, so there's nothing for look-ahead to contaminate.
+
+**Plus two findings the deeper dig surfaced:**
+- **Monoculture (latent, not realized):** advisor + 9:15/9:40 daily_report are both `sonnet-4-6` but VERIFIED independent (no cross-feed), and neither alters the book — correlated-error risk is latent only.
+- **Secondary regression (not look-ahead):** per-symbol rolling-10-day P&L **is still rendered into the advisor prompt** ([prompt_builder.py:307-310](ai-trading-strategy-agent/src/advisor/prompt_builder.py), `symbol_pnl` not baseline-filtered in [journal_analyzer.py:136](ai-trading-strategy-agent/src/advisor/journal_analyzer.py)). The documented "performance-by-symbol REMOVED / strategy-not-symbols" cleanup landed in the *pattern* section but this *recent-performance* surface survived. The advisor **can** see recent per-symbol P&L — worth a deliberate decision. No change made (read-only).
+
+Report at [reports/advisor_audit.md](https://raw.githubusercontent.com/Rhettduleba/alpha-quant-coordination/main/reports/advisor_audit.md); logged Loop 151, SYSTEM_FACTS regenerated, roadmap updated, pushed. Freeze intact, no watched files touched.
+
+That's **three trusted-by-design components in a row** found mis-wired or inert (gate anti-selects → exit killed → advisor inert + a partial strategy-not-symbols regression). The recurring failure mode is consistent: **built and validated in isolation, never verified end-to-end against the actual ORB book.**
+
+---
