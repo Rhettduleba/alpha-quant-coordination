@@ -1,5 +1,7 @@
 # Alpha Quant — State of Record
 
+> ⚠️ **STALE (June 11 snapshot). For CURRENT state read [`SESSION_LOG.md`](SESSION_LOG.md) — the master handoff.** Since this snapshot: exit mode is now `candle_1.4atr_chandelier` (K=1.4, not the old `candle_close`); the in-play gate is live; the Loop-123 exit was forward-tested to a KILL 6/25; and the Loop-155 EXIT REBUILD (re-arm resting-stop coverage + TW single live-exit owner) fires Mon 6/29 SIM. This doc is a "deeper reference" architecture snapshot only.
+
 **Version:** 3.9
 **Last updated:** June 11, 2026
 **Owner:** Rhett

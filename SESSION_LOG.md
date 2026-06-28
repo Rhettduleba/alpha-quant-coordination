@@ -310,20 +310,28 @@ pinged when the other writes. Coordination is *pull-based* — each side checks 
 
 ---
 
-## CURRENT SYSTEM STATE  (as of 2026-06-11 ~10:45 PM ET)
+## CURRENT SYSTEM STATE  (as of 2026-06-28 ~PM ET — refreshed Loop 155; verify constants via SYSTEM_FACTS.md)
 
 ### Live root & accounts
 - **Live root:** `C:\AlphaQuant\` (OneDrive folder is backup-only since the 5/21 migration). Always use absolute `C:\AlphaQuant\...` paths.
 - **ORB strategy:** `orb_v1_6`, equities, account **SIM1623888M**. Bot = `tradestation-bot\run_bot.py`.
 - **H5 strategy:** Gao @MES futures, account **SIM1623889F** — currently **QUARANTINED / sidelined** (flag `h5_disabled.flag`); code/state intact.
-- **SIM-only, non-negotiable.** Daily $2k stop temporarily OFF in SIM for data collection; 5% account-DD kill remains.
+- **SIM-only, non-negotiable.** `DAILY_MAX_LOSS` intentionally OFF in SIM for data collection (must restore before live); 5% account-DD kill remains.
 
-### What is DEPLOYED right now (bot behavior)
-- **ORB_MULTISCAN = ON** (deployed 6/11 5:26 PM). Hourly re-arm windows: **10:35, 11:35, 12:35, 13:35, 14:35** on top of the 9:35 opening scan. Goal: lift capital utilization toward the 75% target (6/11 peak was only 34.8% of $400k).
-- **DEPLOY_CONTROLLER = ON — but only governs the MULTI-SCAN RE-ARM path, NOT the primary 9:35 scan** (corrected 2026-06-14 Loop 35 by the wiring audit). `orb_runner.py` (the 9:35 main book) never calls it; it sizes by its own constants (TARGET_DAY_TRADE_GROSS/TOP_N ≈ $15k/name, MAX_DAY_TRADE_GROSS $400k gross). So the controller's per-position $25k / per-side 50% / 75% target apply to re-arm fills only. OPEN DESIGN Q: should it govern the 9:35 book too, or is re-arm-only intended?
-- **CONVICTION_SIZING = OFF** (flat sizing until data earns the tilt).
-- **ORB_EXIT_MODE = candle_close** (0.15×ATR Phase-1 stop → confirm +0.15×ATR → first opposite-color 1-min candle close → 1.0×ATR catastrophe).
-- All of the above are flag-gated in `tradestation-bot\risk_config.py` — flip back to revert. **Tomorrow (6/12) is the FIRST live multi-scan session — watch it.**
+### POSTURE (read this first)
+- **Between experiments / forward-test mode.** The Loop-123 chandelier exit (`candle_1.4atr_chandelier`, K=1.4) was forward-tested to a **KILL on 6/25** (day NET −$2,017; MU −$1,670). Decision (Rhett): keep the framework live, improve in SHADOW, no revert.
+- **This weekend (Loops 148-154) = whole-system read-only audit.** Findings: in-play GATE anti-selects (rejects winners); ADVISOR is inert on the book (0/285 trades); EXIT K=1.4 is EXONERATED (the ~$7k bleed is execution TIMING/COVERAGE, not the multiple); foundation_map.md is the master verified-vs-assumed ledger. See the FINDINGS LEDGER below + `reports/` in the coordination repo.
+- **⚠️ FREEZE BROKEN + clean-day count RESET (Loop 155, accepted):** the EXIT REBUILD below is a REAL live-SIM change firing **Monday 6/29**, not shadow.
+
+### What is DEPLOYED right now (bot behavior) — verify against SYSTEM_FACTS.md
+- **ORB_EXIT_MODE = `candle_1.4atr_chandelier`** (Loop 121, live 6/19): single 1.4×ATR ratchet chandelier floor + post-confirm (0.15×ATR) candle-close trail; resting broker stop at 1.4×ATR; EOD flatten 15:50 ET. (NOT the old `candle_close` 0.15/1.0 — that block was stale.)
+- **IN-PLAY GATE = ON** (`ORB_INPLAY_GATE=True`, live 6/16); **HTB/halted fail-safe exclusion = ON**; **SAFE_MODE_ENFORCE = False** (gate teeth off).
+- **ORB_MULTISCAN = ON.** Re-arm windows 10:35/11:35/12:35/13:35/14:35 on top of the 9:35 opening scan. (Re-arm path is UNGATED by design and is the gross-positive slice — do NOT touch it.)
+- **DEPLOY_CONTROLLER = ON — governs the RE-ARM path only**, NOT the 9:35 book (sizes by its own constants). Deploy base $400k × target **0.95 = $380k**; per-position $25k; per-side 0.50 ($200k); MAX_OPEN_POSITIONS=16. CONVICTION_SIZING = OFF.
+- **🆕 EXIT REBUILD (Loop 155, FIRES MON 6/29 SIM) — K UNCHANGED (1.4), timing/coverage/owner only:**
+  - **Change 1 (re-arm resting-stop coverage 0%→~100%):** `orb_multiscan` now registers re-arm fills into the shared `daily_state` so the proven 9:35 monitor places/cancels their 1.4×ATR resting stop. Ships Mon automatically (per-cycle subprocess). orb_runner untouched.
+  - **Change 2 (TW single live-exit owner):** `tape_watcher.py --live-exit` becomes the fast exit firer (fires via the proven `flatten_symbol`), holding the `exit_ownership.py` lease so `exit_bot_v2` defers for symbols TW owns. Launched Mon 9:25 by the `AlphaQuant_TW_LiveShadow` S4U task (BAT repointed to `--live-exit` + respawn). no-double-exit is STRUCTURAL (flatten no-ops on a flat position). Off-market validated; LIVE Mon behavior unproven until open → Mon EOD reconcile is the proof.
+- Flags live in `tradestation-bot\risk_config.py`. **Monday 6/29 is the first live session of the exit rebuild — watch the open + EOD reconcile (tw_report.py + stop_coverage_audit). ANY double-exit / orphan / two-owner = flag, do NOT auto-patch live.**
 
 ### Dashboard (the advisor command center)
 - Local server: `http://127.0.0.1:8765/` — `python src/main.py trade-review-ui --host 127.0.0.1 --port 8765` from `C:\AlphaQuant\ai-trading-strategy-agent\`.
