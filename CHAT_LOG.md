@@ -5502,3 +5502,38 @@ The exit's measured failure (6/25 kill) was **not the K multiple** — re-tuning
 I'll lock the SESSION_LOG entry (Loop 154), regenerate SYSTEM_FACTS, and push the canonical report once the full-coverage run completes — I'll confirm when it lands.
 
 ---
+
+
+## Turn — 2026-06-28 10:01:20 ET
+
+**Rhett:**
+
+<task-notification>
+<task-id>bcp4z3h13</task-id>
+<tool-use-id>toolu_01DNgnP8TVDhZyy5hHSY8PYL</tool-use-id>
+<output-file>C:\Users\ADMINI~1\AppData\Local\Temp\claude\C--Users-Administrator-OneDrive---Duleba-Trade-station-Main\3253950a-388c-4a7a-99cc-cec0c4ed9f69\tasks\bcp4z3h13.output</output-file>
+<status>completed</status>
+<summary>Background command "Re-run with retry for full coverage" completed (exit code 0)</summary>
+</task-notification>
+
+**Claude Code:**
+
+The full-coverage run completed. Let me read the canonical numbers:
+Canonical full-coverage run: **n=282, 0 skipped**, deterministic (matches the first clean run exactly). Now log Loop 154, mirror, and push:
+All done — Loop 154 pushed with deterministic full-coverage numbers (n=282, 0 skipped, matches the first clean run exactly). Here is the final answer to Planning's four tasks.
+
+## Exit ATR-multiple (K) sweep 0.5→2.0 — final
+
+**1. Provenance.** K=1.4 was **hand-picked, not fit** — Loop 121 chose "a single **wide** 1.4×ATR chandelier" to fix the 0.15 false-stop-outs; the tuning lineage only ever compared 0.15 vs 1.0. **1.4 was never grid-searched on our trades** — this sweep is the first actual fit. (Same trusted-by-design pattern as the gate/advisor.)
+
+**2. The curve + the big finding.** The headline isn't a better K — **it's the timing.** Replaying the *same structure and same K=1.4* on clean 1-min bars yields **+$7,488 gross**, versus the bot's **actual +$461** over the identical 282 trades — a **~$7,027 gap that is execution lag** (the ~5–7 min poll + the re-arm 0%-resting-coverage gap), **not the multiple**. (Replay is optimistic — fills exactly at the stop level, no exit slippage — so it's an upper bound, but the direction is unambiguous.)
+
+**3. The best-balance K vs current 1.4.** **K=1.4 is exonerated.** At proper timing, **K≥1.0 is a flat plateau** — totals $7,220–$8,177 (spread only **$957** across 1.0→2.0), expectancy ~$26–29/trade, 75% win, PF ~1.4 — and 1.4 sits near-optimal in it. The nominal argmax (K=1.6, +$690 ≈ +$2.4/trade over 1.4) **is within the 1-min fidelity noise** — it wandered between 1.6 and 1.2 across runs, and max-loss is non-monotonic across 1.4/1.5/1.6. So **I do not promote a number.** The one confident, directional finding: **do not tighten below ~1.0** (K=0.5 kills 32 winners and collapses to breakeven). The handoff's prior that "1.4 sits at the tight whipsaw edge" is **not supported** — the whipsaw edge is *below* 1.0.
+
+**4. Fidelity + dominance.** 1-minute bars, no intrabar look-ahead (stop level uses water through bar t-1); within a bar, high-vs-low order is unresolved, so 1.0–2.0 are statistically indistinguishable — **tick data (TW live, proving Monday) would sharpen the close calls.** MU flagged: −$1,395 (−19%) of total at K=1.4, and even MU's *worst* 1-min single loss (−$1,572 at 1.4, −$577 at 2.0) is below its lagged −$1,668 broker loss — the lag again. In-sample → this **ranks** K for an OOS test; it doesn't promote one.
+
+**The reframe this drives:** the exit's measured failure was **not the K multiple** — re-tuning K is the wrong fix and would recover little. The ~$7k of lost gross lives in **execution timing + re-arm stop coverage** (foundation-map **#4/#8**). That sharpens the rebuild priority: leave K alone, fix the lag.
+
+Report at [reports/exit_k_sweep.md](https://raw.githubusercontent.com/Rhettduleba/alpha-quant-coordination/main/reports/exit_k_sweep.md); logged Loop 154, SYSTEM_FACTS regenerated, roadmap marked DONE, pushed. Read-only confirmed — no orders, no watched files, no exit change, freeze intact.
+
+---
