@@ -7255,3 +7255,103 @@ The push will authenticate through the same Windows Credential Manager entry tha
 **Close-out (Loop 168, 2026-06-28 18:11 ET):** SESSION_LOG.md:222 (Loop 168 entry, re-read & saved, dead-pw literal removed) ✓ · roadmap `in_progress` updated ✓ · coordination mirrored + pushed HEAD **`2eb6bf9`** (secret-scan clean, dead-pw scrubbed from tips) ✓ · local backup commits **`f6b8b12`** + **`2955054`** (off-machine push pending your repo) · SYSTEM_FACTS regen **N/A** (no trading-logic change — backup commit + `.gitignore` + `.env.example` + task XMLs only).
 
 ---
+
+
+## Turn — 2026-06-28 18:20:09 ET
+
+**Rhett:**
+
+di you update the session log to keep planning ramped up on this last turn? # HANDOFF → CLAUDE CODE — DISK GROUND TRUTH: what is ACTUALLY consuming C: (real on-disk bytes, not logical size)
+# From: Planning Claude | 2026-06-28 ET (Code: number + stamp; CLAIM→VERIFY→SHOW close-out per the standing protocol)
+# WHY: contradiction to resolve — Rhett set NO OneDrive folders to "always available," yet OneDrive was reported as
+# 45GB. Either Files-On-Demand was off, OR the 45GB was LOGICAL size (placeholders) not REAL on-disk usage. Stop
+# theorizing — measure the truth. READ-ONLY: no deletion this pass, no watched/trading file, no config change.
+
+## ANSWER THESE EXACTLY (real numbers)
+1. C: drive: total / used / FREE — right now. (And did FREE change vs the earlier ~before-free-up number? By how much?)
+2. The OneDrive folder under C:\Users\Administrator: report BOTH its logical "Size" AND its "Size on disk" (actual
+   allocated bytes). If Size-on-disk is tiny but logical Size is ~45GB → it was placeholders, never a real disk hog.
+   Use a method that distinguishes them (e.g. Get-ChildItem with allocation/`Length` vs actual cluster size, or
+   `compact`/`fsutil`/dir-on-disk — whatever reliably shows ACTUAL bytes consumed for OneDrive placeholder files).
+3. The REAL top consumers of ACTUAL on-disk space on C: (top ~12), by true bytes-on-disk — not logical size. Where
+   is the used space REALLY going? (OneDrive real bytes, AppData, Windows, pagefile/hiberfil, AlphaQuant, etc.)
+4. Plain verdict: was OneDrive ever actually consuming significant REAL disk, or was that a logical-size misread?
+   And what is the ACTUAL biggest real consumer?
+
+## HARD CONSTRAINTS
+- READ-ONLY: measure only, delete nothing this pass. No watched/trading file, no config. Freeze intact.
+- Distinguish LOGICAL size from ON-DISK size explicitly — that distinction is the whole question.
+
+## VERIFICATION TASKS TO CLOSE (plain English back to Planning)
+1. C: total/used/free now + whether free-up actually changed free space (by how much).
+2. OneDrive logical Size vs Size-on-disk (the key number).
+3. The true top real-disk consumers.
+4. One-line verdict: what is ACTUALLY eating the disk, and was OneDrive ever really the cause?
+
+**Claude Code:**
+
+Yes — I logged **Loop 168** to SESSION_LOG.md:222 last turn (the backup entry, re-read and confirmed saved). Now the disk ground-truth measurement.
+
+This is the right question to settle empirically. The key is distinguishing **logical size** (what `Length` reports, including OneDrive placeholders) from **on-disk allocation** (actual bytes via `GetCompressedFileSizeW`, which returns ~0 for dehydrated Files-On-Demand placeholders). Let me start with the volume, the root-level heavy hitters (pagefile/hiberfil — prime suspects), and confirm the SESSION_LOG state:
+**Already a big signal: FREE is now 9.18 GB — up +4.56 GB since my cache clear**, but I only reclaimed ~1.34 GB then. Something freed ~4.5 GB more in between (consistent with OneDrive dehydrating files to placeholders). And `hiberfil.sys` is absent (hibernation off); `pagefile.sys` = 5.93 GB real.
+
+Now the core question — OneDrive **logical vs on-disk**, via the Win32 allocation API plus a placeholder (Offline-attribute) count:
+**That is the answer.** OneDrive: **logical 45.29 GB but on-disk 0.00 GB** — 24,685 of 24,690 files are dehydrated placeholders (Offline attribute), only **5 files** actually materialized locally. Files-On-Demand **is** on. The "45 GB" was logical size, never real disk. My Loop 166/167 entries reported it as a real consumer — that was a logical-size misread, and I'll correct it.
+
+So `used` = 40.48 GB with OneDrive ≈ 0 real means the space is elsewhere. Let me find the true top consumers (outside OneDrive, logical ≈ on-disk since only OneDrive has placeholders):
+The per-folder **logical** sums (subtotal 63.86 GB) exceed the volume's real `used` of 40.48 GB — that gap is the tell: **C:\Windows\WinSxS uses hardlinks + NTFS compression**, so `Length`-based sums overcount real bytes there. The volume's 40.48 GB is ground truth. Let me close the gap and name the real consumers precisely — drill the surprisingly-large Program Files (15.6 GB), check VSS shadow storage and Recycle Bin (real disk that's easy to miss), and get Windows's *compressed* real size:
+I have the ground truth. Let me reconcile and record it. Summary of findings:
+
+- **Volume:** 49.66 GB total / 40.48 used / **9.18 free**
+- **OneDrive: 45.29 GB logical but 0.00 GB on-disk** (24,685 placeholders, 5 hydrated) — definitively **not** a real consumer
+- **Real consumers:** C:\Windows (OS; logical 28.6 but hardlink/compression-inflated), Program Files 15.56 (**WindowsApps 10.48** = Store packages, Office 2.99), pagefile 5.93, AppData 5.15 (Local 4.30)
+- No VSS shadow storage, Recycle Bin ~0
+- Free jumped +4.56 GB beyond my ~1.34 GB clear → consistent with OneDrive/Storage Sense dehydrating files (can't prove the exact event)
+
+Recording the close-out, **including a plain correction of my Loop 166/167 entries** that reported OneDrive's 45 GB as real disk:
+Now prove it saved, update roadmap, mirror to coordination, secret-scan, push:
+Same benign hit recurring: it's my **own prior-turn prose** ("scan for …aq-… literals") that the Stop hook re-synced to CHAT_LOG — the dead value's *name*, not a live credential (already verified NO MATCH to live `.env`). To stop the whack-a-mole I'll redact the CHAT_LOG tip once more and, going forward, never type the literal in prose:
+Done — coordination tip clean (HEAD `f694f41`).
+
+And to your first question: **yes, the SESSION_LOG was updated for the backup turn** (Loop 168 at line 222) and now again for this one (Loop 169) — Planning stays ramped.
+
+---
+
+## Disk ground truth — measured, not theorized
+
+**The contradiction is resolved: OneDrive was never consuming real disk. The 45 GB was logical size (placeholders), a misread — and I made that misread in Loops 166/167, now corrected in the ledger.**
+
+### The four answers
+
+**1. C: total / used / free now.** 49.66 GB total · **40.48 used · 9.18 free**. Free **did** change: it's up **+4.56 GB** vs the 4.62 GB I left after the Loop 167 cache clear. But I only freed ~1.34 GB then — so ~4.5 GB of the gain came from elsewhere, almost certainly OneDrive/Storage-Sense **dehydrating files to placeholders** (there are now 24,685 placeholders). I did *not* witness that event, so I'm flagging it as inference, not proof.
+
+**2. OneDrive logical vs on-disk — the key number.** Measured with the Win32 `GetCompressedFileSizeW` allocation API over all 24,690 files:
+- **Logical "Size": 45.29 GB**
+- **Size on disk: 0.00 GB**
+- **24,685 of 24,690 files are dehydrated Files-On-Demand placeholders** (Offline attribute, ~0 real bytes); only **5** are materialized locally.
+
+So Files-On-Demand **is** on, and the personal folders (GD / Personal / Smart Mortgage) sit in the cloud, not on C:.
+
+**3. The true top real-disk consumers.** The per-folder *logical* sums total 63.86 GB — far more than the 40.48 GB the volume actually reports used — because **C:\Windows\WinSxS uses hardlinks + NTFS compression** that inflate `Length`-based sums. Framing against volume truth, the real consumers are:
+
+| Consumer | Size | Note |
+|---|---|---|
+| C:\Windows | 28.6 GB logical | OS component store — real is **less** (hardlink/compression inflated) |
+| C:\Program Files | 15.56 GB | of which **WindowsApps 10.48** (MS Store packages), Office 2.99, OneDrive-app 0.69 |
+| C:\Program Files (x86) | 6.00 GB | |
+| **pagefile.sys** | **5.93 GB** | real, fixed |
+| AppData | 5.15 GB | Local 4.30, Roaming 0.86 |
+| ProgramData | 1.89 GB | |
+| C:\AlphaQuant | 0.40 GB | our project — negligible |
+| **OneDrive (on-disk)** | **0.00 GB** | 45.29 logical, all placeholders |
+
+No VSS shadow storage, Recycle Bin ~0, no `hiberfil.sys` (hibernation off).
+
+**4. One-line verdict.** **OneDrive was never the cause — that was a logical-size misread (0.00 GB real on disk).** The actual biggest real consumer is the **Windows OS install + bundled Microsoft Store apps (WindowsApps) + Program Files**, followed by the pagefile and AppData. The disk is genuinely small (≈50 GB) and mostly filled by Windows itself; at 9.18 GB free it's now comfortable.
+
+One honest correction logged plainly: my Loops 166/167 treated OneDrive's 45 GB as real disk pressure and pointed you at "Files-On-Demand to reclaim 40 GB." That reclaim was already in effect (the files were placeholders all along), so there was never 40 GB of OneDrive data to free. The real headroom lever, if you ever need it, is Windows component cleanup (`Dism /Online /Cleanup-Image /StartComponentCleanup`) — not OneDrive.
+
+---
+**Close-out (Loop 169, 2026-06-28 18:18 ET):** SESSION_LOG.md:222 (Loop 169 entry, re-read & saved, includes the 166/167 correction) ✓ · roadmap updated ✓ · coordination mirrored + pushed HEAD **`f694f41`** (secret-scan clean; re-synced dead-pw string scrubbed from tip) ✓ · READ-ONLY pass — deleted nothing, no watched/trading/config change, freeze intact · SYSTEM_FACTS regen **N/A** (measurement only).
+
+---
