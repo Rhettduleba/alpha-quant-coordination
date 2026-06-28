@@ -6494,3 +6494,85 @@ The data already hints at what Phase 2 will measure: the old gate rejected posit
 > **Loop 162 (14:42 ET):** built gate-rebuild Phase-1 shadow scorer (individual signals + fidelity-labeled outcomes; 6/25: 127 candidates, 35 broker-truth + 85 derived-cf; research-only, no composite) · **SESSION_LOG re-read+stamped** line 222 "Loop 162 (2026-06-28 14:42 ET) — BUILD: Gate rebuild Phase 1…" · **SYSTEM_FACTS: N/A** (no watched/live file changed) · **pushed HEAD 8a038e0** (scorer jsonl stays local research data) · **names checked** · **UNVERIFIED named:** re-arm coverage = armed-only (the bot doesn't log non-armed re-arm candidates and re-instrumenting it is forbidden); the not-traded outcomes are explicitly **derived counterfactual**, not broker truth.
 
 ---
+
+
+## Turn — 2026-06-28 15:10:53 ET
+
+**Rhett:**
+
+# HANDOFF → CLAUDE CODE — (1) AUDIT dashboard access control + (2) make it installable as an APP (web manifest) — read-only
+# From: Planning Claude | 2026-06-28 ET (Code: number + stamp; CLAIM→VERIFY→SHOW close-out per the standing protocol)
+# Rhett wants to (a) share the dashboard with a friend and (b) make it feel like an app. Both depend on KNOWING what's
+# exposed first. READ-ONLY for trading: no watched file, no orders, no gate/exit/sizing/config. Display/packaging only.
+
+## ITEM 1 — ACCESS-CONTROL AUDIT (answer plainly, do NOT assume)
+- Does the dashboard (local_dashboard.py) have ANY authentication/login today? Yes/no, and how (if any).
+- What is it bound to — localhost only, or 0.0.0.0 (reachable from the network)? What port?
+- Is it currently reachable from OUTSIDE the VPS (open firewall port / any tunnel already running)? 
+- State plainly: as of now, who can see this dashboard, and does it require a password? This is the security
+  fact Rhett needs before sharing a panel that shows positions / P&L / $380k sizing / every trade.
+
+## ITEM 2 — MAKE IT INSTALLABLE AS AN APP (web-app manifest + icon) — cosmetic, no trading touch
+- Add a web app manifest (name "Alpha Quant", icon, theme color, display: standalone, start_url) + link it in the
+  dashboard's HTML <head> so phone/desktop browsers can "Install" / "Add to Home Screen" → it opens full-screen with
+  an icon, like an app. Add a simple icon (no external/branded assets).
+- Optional, only if trivial: a minimal service worker for the app shell so it launches cleanly. Do NOT cache live
+  data (same freshness rule as the dashboard audit — live values must stay live).
+- This changes NOTHING about what the dashboard serves — it only lets the existing pages install as an app.
+
+## DO NOT (in this handoff)
+- Do NOT open the VPS to the internet, do NOT start a public tunnel, do NOT add remote access in this pass — that's a
+  SEPARATE decision after we see the access-control audit (Item 1). Packaging ≠ exposing.
+
+## VERIFICATION TASKS TO CLOSE (plain English back to Planning)
+1. The access-control answer: auth yes/no, bind address, port, reachable-from-outside yes/no — the plain security fact.
+2. Manifest added + the dashboard installs as an app (show it works: installable on desktop/mobile).
+3. Confirm read-only / no trading-path touch / no remote exposure added / freeze intact.
+
+## /planning
+- Add "Dashboard: access-control audit + installable-app (web manifest)" = IN_PROGRESS. Update stamp.
+
+**Claude Code:**
+
+Two items: a read-only security audit, then cosmetic app-packaging. Let me start with **Item 1 — the access-control facts** (auth, bind address, port, external reachability):
+**No authentication** (the "token" matches are the TradeStation API token-cache path, not dashboard auth; no login/password/401). Default `--host 127.0.0.1`, port 8765. Let me verify the *actual* listening bind, firewall, and any tunnel:
+**Item 1 security facts are clear.** The actual listening socket is **127.0.0.1:8765** (localhost only — not 0.0.0.0), no firewall rule opens it, and the only "tunnel" match is my own PowerShell query process (false positive — its command line literally contains "tunnel"). No real tunnel/ngrok/cloudflared. Let me confirm that false positive, then build Item 2:
+Let me read the `_page()` head to add the manifest links:
+Now add the three static routes (manifest, icon, service worker). Let me find the do_GET routing entry:
+Now add the `_write_pwa` helper (mirroring `_write_html`) and the three asset constants. Let me find `_write_html`:
+Now add the three asset constants at module level. Let me find the insertion point before the server function:
+Compile, restart the dashboard, and verify the PWA assets serve + are linked:
+Compile OK (the /dev/stdin trick fails on Windows — irrelevant). Let me restart the dashboard and verify the PWA routes + head over HTTP:
+PowerShell tripped on naming collisions (`H` = Get-History alias, `$home` is read-only) — not the assets. The restart succeeded (new PID 4968). Let me verify cleanly with Python:
+All PWA assets serve correctly and the head is wired — **the dashboard is now installable** (manifest "Alpha Quant", standalone, icon, SW registered; served on localhost = a secure context, so Chrome/Edge will offer "Install"). Both items done. Let me close out — stamp, log, re-read, push:
+Both items complete and pushed (HEAD `7415940`). Here's the report against the three verification tasks.
+
+## Item 1 — Access-control audit (the plain security fact)
+
+Verified against the live system, not assumed:
+
+- **Authentication: NONE.** No login, password, token, or basic-auth on the dashboard. (The only "token" references in the code are the *TradeStation API* token-cache path — unrelated.)
+- **Bind address: 127.0.0.1 (localhost only).** Confirmed the **actual listening socket** is `127.0.0.1:8765` — not `0.0.0.0`. The `--host` default is `127.0.0.1`.
+- **Port: 8765.**
+- **External reachability: NO.** No Windows firewall rule references port 8765, and **no tunnel is running** (ngrok/cloudflared/localtunnel/ssh-R — none; the single "tunnel" process match was my own query process whose command line contained the word "tunnel" — a false positive I confirmed).
+
+**Plain statement:** *As of now, only someone logged into the VPS itself (console or RDP on WIN-FIBSSOQKI7K) can see the dashboard. It is not reachable from outside the VPS, and it has no password.* So before sharing a panel that shows positions / P&L / $380k sizing / every trade, you'd need to add **both** remote access **and** authentication — a separate, gated decision (deferred here, per the handoff: packaging ≠ exposing).
+
+## Item 2 — Installable as an app (PWA)
+
+Added three static shell assets + linked them in every page's `<head>`:
+- **`/manifest.webmanifest`** — name "Alpha Quant", `display: standalone`, `start_url: /`, theme `#15467f`, 2 icons (any + maskable).
+- **`/icon.svg`** — self-contained "AQ" monogram (no external/branded assets).
+- **`/sw.js`** — enables install + standalone launch; **pass-through fetch, caches nothing**, so live positions/P&L/config are never served stale (your freshness rule).
+
+Verified over HTTP: all three serve `200` with correct content-types, the manifest is valid JSON, and the head carries the manifest link + theme-color + apple-touch-icon + `apple-mobile-web-app-capable` + the SW registration. Because it's served on **localhost (a secure context)**, Chrome/Edge on the VPS will now show **"Install Alpha Quant"** → opens full-screen with the icon. (Mobile install will work once remote access is set up — that's the deferred decision.) It changes nothing about what the pages serve.
+
+## Item 3 — Read-only / no exposure / freeze
+
+No watched file, no orders, no gate/exit/sizing/config change — display + packaging only. **No remote exposure added** (bind stays 127.0.0.1, no tunnel started). Freeze intact. No watched/live trading file changed → SYSTEM_FACTS regen N/A. Dashboard restarted (PID 4968) so it's live.
+
+**Close-out:**
+
+> **Loop 163 (15:09 ET):** dashboard access-control audit (no auth, 127.0.0.1:8765 localhost-only, no firewall/tunnel → VPS-local only) + installable PWA (manifest/icon/sw, caches nothing) · **SESSION_LOG re-read+stamped** line 222 "Loop 163 (2026-06-28 15:09 ET) — (1) DASHBOARD ACCESS-CONTROL AUDIT…" · **SYSTEM_FACTS: N/A** (no watched/live file changed) · **pushed HEAD 7415940** · **names checked** (new routes clearly named) · **UNVERIFIED: none** — bind/firewall/tunnel checked against the live host; PWA assets verified over HTTP. No remote exposure added.
+
+---
