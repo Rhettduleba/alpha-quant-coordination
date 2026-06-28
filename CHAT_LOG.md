@@ -6098,3 +6098,74 @@ Done — all of Item 1 + Item 2 complete and pushed (Loop 158). Both doc guardra
 One cosmetic note: a `\t` in my Loop-157 roadmap *text* rendered as a literal tab in that one descriptive string (the actual `tw_abort.flag` path is correct everywhere in code and SESSION_LOG) — harmless, but I'll clean it on the next roadmap write.
 
 ---
+
+
+## Turn — 2026-06-28 13:46:00 ET
+
+**Rhett:**
+
+# HANDOFF → CLAUDE CODE — STANDING OPERATING DISCIPLINE (read every session; this governs HOW you work, not one task)
+# From: Planning Claude | 2026-06-28 ET. Rhett's mandate: stop the process failures (claimed-but-not-done log
+# updates, stale source docs, misnamed artifacts). Build quality is good; the GAP is verification + housekeeping.
+# These are now HARD per-turn requirements. "I updated it" is not acceptable — you must PROVE it each time.
+
+## THE CORE RULE: CLAIM → VERIFY → SHOW. Never report a step done without proving it in the same turn.
+For EVERY turn, before you say "done," run this close-out checklist and REPORT each item with evidence:
+
+1. SESSION_LOG updated — and VERIFIED: after writing, RE-READ the file back and paste the actual new line + the new
+   LAST-UPDATED stamp. If you can't paste it back, it didn't save — fix it. (This is the exact failure Rhett caught:
+   you said the log was updated and it wasn't.)
+2. SYSTEM_FACTS current — if this turn changed ANY watched/live file, REGENERATE system_facts.py and confirm the
+   changed rows reflect it. A live change with a stale SYSTEM_FACTS = a failed turn.
+3. Loop number + ET timestamp on the log entry, in sync with the shared counter.
+4. Names match reality — no artifact/task/file labeled "shadow/test/old" if it now does something live. Rename on the
+   spot.
+5. Pushed — confirm the mirror/commit actually landed (state the HEAD), not just "synced."
+
+## ON VERIFICATION OF YOUR OWN WORK (the engineering standard, every build)
+- CLAIM → VERIFY → SHOW applies to code too: don't report an invariant/test "passes" — paste the assertion output or
+  the file:line that proves it. "Validated" without an artifact = not validated.
+- Re-read your own diff adversarially (try to break it) before declaring done. Trace failure modes, not just the
+  happy path.
+- If you find you previously OVER-stated something ("auto-update locked in" when only transport was), CORRECT it
+  plainly in the log — own it, like the Loop-156 staleness correction. That honesty is required, not optional.
+
+## NEVER ASSUME — broker truth only
+- "The code is written to do X" is NOT proof it does X. Verify against real execution/broker state. Every load-
+  bearing "it does X" needs a check that confirms it actually happened.
+- If something can't be verified this turn, say "UNVERIFIED" explicitly — do not present it as done.
+
+## WHAT GOOD LOOKS LIKE (one-line close-out Planning should see every turn)
+"Loop N (HH:MM ET): <what changed> · SESSION_LOG re-read+stamped <stamp> · SYSTEM_FACTS regen'd (rows: …) · pushed
+HEAD <sha> · names checked · [any UNVERIFIED items named]."
+
+## /planning
+- Add "Code standing discipline protocol (claim→verify→show, per-turn close-out)" = ACTIVE. Update stamp.
+
+**Claude Code:**
+
+This handoff is a standing behavioral mandate, and it names process failures I genuinely made this session (the stale SESSION_LOG block, the "auto-update locked in" overstatement). I'll adopt it, make it durable across sessions, and — per the protocol itself — **demonstrate the close-out on this very turn** rather than just claiming I'll comply.
+
+First, make it persist across sessions (this is exactly what a feedback memory is for):
+Now index it in MEMORY.md:
+Now the SESSION_LOG entry — and per the protocol, I'll get the real ET timestamp rather than guess it:
+Now bump the state-block stamp (honestly — content last changed L158, reviewed L159):
+Now fix the cosmetic `\t` artifact in the roadmap (the small fix I said I'd make — applying the discipline, not deferring again) and add the ACTIVE protocol entry:
+The write succeeded (fixed 1, 23 entries) — my verification *one-liner* threw, not the write. Let me verify cleanly:
+The repr is ambiguous — let me confirm whether it's a real tab and fix it definitively with forward slashes (no escape ambiguity):
+Confirmed it was a real tab (ord 9) — now definitively fixed (no tabs remain, clean forward-slash path). Now, per checklist #1, let me **re-read the SESSION_LOG and paste back the actual saved line + stamp** (proving it saved, not just claiming it):
+Re-read confirms both saved (Loop 159 entry at line 222 with the 13:42 ET stamp; state-block stamp updated at line 324; both guardrails OK). Now push and capture HEAD:
+Adopted, made durable, and demonstrated on this very turn. Owning it plainly, as the protocol requires: the failures it targets — the 17-day-stale state block I claimed was current, and "auto-update locked in" when only the CHAT_LOG transport was wired — were mine, and this checklist is the right fix.
+
+**What I did (durable, not just "noted"):**
+- Wrote `feedback_claim_verify_show_closeout.md` to persistent memory + indexed it in MEMORY.md, so the discipline carries across sessions, not just this one.
+- Roadmap entry **ACTIVE** + stamp bumped.
+- Applied it immediately: fixed the cosmetic `\t` artifact in the Loop-157 roadmap path I'd said I'd clean (confirmed it was a real tab via ord, replaced with a clean forward-slash path, verified zero tabs remain) — closing a "said I'd do it" loop rather than deferring again.
+
+**The close-out, in the format you want:**
+
+> **Loop 159 (13:42 ET):** adopted CLAIM→VERIFY→SHOW per-turn discipline (durable memory + MEMORY.md index + roadmap ACTIVE; fixed Loop-157 roadmap `\t` artifact) · **SESSION_LOG re-read+stamped** — line 222 "Loop 159 (2026-06-28 13:42 ET) — STANDING DISCIPLINE adopted…", state-block stamp line 324 "reviewed Loop 159 @ 2026-06-28 13:42 ET" · **SYSTEM_FACTS: n/a** (no watched/live file changed this turn — regen correctly skipped, not stale; both CSHV doc-guardrails return OK) · **pushed HEAD 9776400** · **names checked** (nothing renamed this turn) · **UNVERIFIED: none.**
+
+The automated backstops behind checklist items #1/#2 are already live from earlier this session — CSHV `session_log_state_block_fresh` (L156) and `system_facts_fresh` (L158) WARN within 5 minutes if either doc drifts from live truth — so the discipline now has a tripwire under it, not just my word. From here, every turn ends with that one-liner.
+
+---
