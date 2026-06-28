@@ -5731,3 +5731,43 @@ Logged in SESSION_LOG (Loop 155) and roadmap.
 Minor cleanup noted: the task name `AlphaQuant_TW_LiveShadow` is now a misnomer (it does live-exit) — low-priority rename.
 
 ---
+
+
+## Turn — 2026-06-28 11:15:48 ET
+
+**Rhett:**
+
+make sure you are completely up to date on session log and anything that planning reads
+
+**Claude Code:**
+
+Good call — let me audit everything Planning reads and make sure it's all current, not just the FINDINGS ledger I appended to. Planning reads: SESSION_LOG.md (including the top "CURRENT SYSTEM STATE" ramp-up block), SYSTEM_FACTS.md, planning_roadmap.json, CHAT_LOG.md, and reports/. Let me check the state of each.
+The top "CURRENT SYSTEM STATE" block is **badly stale** (dated 2026-06-11) — it still says `ORB_EXIT_MODE = candle_close`, which is wrong (live mode is `candle_1.4atr_chandelier` since Loop 121), and it predates the 6/25 kill, the freeze, and the Loop-155 rebuild. A fresh Planning Claude ramping from this would be misled. Let me fix it with verified-current values:
+Now the roadmap's `where_we_are` meta is also stale (says "freeze holds, fixes in shadow"). Let me fix it and verify the full coordination-repo sync state:
+SESSION_LOG state block and roadmap meta both refreshed. Now let me verify two things Planning may rely on: whether `planning_roadmap.json` is mirrored to the coordination repo (the `/planning` updates need to reach Planning), and that CHAT_LOG is syncing:
+`planning_roadmap.json` is **not** in the coordination repo — so my `/planning` roadmap updates may not be reaching Planning through it. And there's a stale `ALPHA_QUANT_STATE.md` (Jun 12). Let me read the README to see what Planning is actually supposed to read before I decide what to sync:
+The README confirms **SESSION_LOG.md is the master handoff Planning reads first** — and it's now current (FINDINGS ledger Loops 148–155 + refreshed CURRENT STATE block). SYSTEM_FACTS, CHAT_LOG, and all reports are fresh (Jun 28). The roadmap isn't a README-listed Planning-read artifact, so SESSION_LOG covers it. 
+
+One gap: the "deeper reference" `ALPHA_QUANT_STATE.md` is Jun 12 and could mislead with the old exit mode. Let me add a staleness banner so it can't, then re-push. Let me check its top:
+Now regenerate SYSTEM_FACTS, mirror the refreshed SESSION_LOG, secret-scan, and push everything:
+Everything Planning reads is now current and pushed. Here's what I checked and what needed fixing:
+
+## Audit of Planning-read artifacts — all now current
+
+Per the coordination repo's README, **`SESSION_LOG.md` is the master handoff Planning reads first.** I verified every artifact:
+
+| Artifact | Status | Action |
+|---|---|---|
+| **SESSION_LOG.md** — FINDINGS ledger | ✅ current | Loops 148–155 all logged |
+| **SESSION_LOG.md** — top "CURRENT SYSTEM STATE" block | ⚠️ **was badly stale** (dated 6/11, said `ORB_EXIT_MODE = candle_close`) | **Rewrote** with verified-current values: exit mode `candle_1.4atr_chandelier` (K=1.4), gate ON, post-kill posture, the weekend audit findings, and the Loop-155 exit rebuild firing Monday |
+| **SYSTEM_FACTS.md** | ✅ current | Regenerated (machine-gen from live constants) |
+| **CHAT_LOG.md** | ✅ current | Auto-synced via the Stop hook (Jun 28 11:08) |
+| **reports/** | ✅ current | All 8 weekend reports + tw_shadow present |
+| **planning_roadmap.json** | ✅ current | Updated `current_state` + the stale `where_we_are` meta (it said "freeze holds, fixes in shadow" — now reflects freeze-broken + Monday rebuild) |
+| **ALPHA_QUANT_STATE.md** ("deeper reference") | ⚠️ stale (6/11) | Added a **stale banner** at the top pointing to SESSION_LOG, so its old exit-mode info can't mislead a fresh reader |
+
+**The key fix:** the top state block was 17 days stale and would have told a fresh Planning Claude the wrong exit mode and a pre-kill posture. It now correctly reflects: between-experiments/forward-test mode, the 6/25 kill, gate-anti-selects / advisor-inert / K-exonerated findings, and the ⚠️ **freeze-broken Loop-155 exit rebuild that fires Monday 6/29 SIM** (re-arm resting-stop coverage + TW single live-exit owner), with the watch-the-open / flag-don't-auto-patch instruction.
+
+Secret-scanned clean, committed, and pushed (HEAD `cdaaf25`). A fresh Planning session reading `SESSION_LOG.md` from the repo will now ramp up on an accurate picture.
+
+---
