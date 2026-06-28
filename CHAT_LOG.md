@@ -6279,3 +6279,127 @@ One bug I caught and fixed mid-build (showing it, not hiding it): the first run 
 > **Loop 160 (14:18 ET):** built Premarket Intelligence Engine v1 (catalyst classifier + EOD reconcile, research-only; verified 6/25, 20/20 schema-valid) · **SESSION_LOG re-read+stamped** — line 222 "Loop 160 (2026-06-28 14:18 ET) — BUILD: Premarket Intelligence Engine v1…" · **SYSTEM_FACTS: N/A** (no watched/live file changed) · **pushed HEAD 86223d0** (reconcile.md mirrored; labels/audit stay local research data) · **names checked** (new files clearly named, nothing mislabeled) · **UNVERIFIED: none** — both builds ran on real data; the catalyst→outcome relationship itself is explicitly in-sample/small-N, not a proven edge.
 
 ---
+
+
+## Turn — 2026-06-28 14:32:48 ET
+
+**Rhett:**
+
+# HANDOFF → CLAUDE CODE — DASHBOARD VALIDATION: audit EVERY page for accuracy + freshness + function, then reduce lag
+# From: Planning Claude | 2026-06-28 ET (Code: number + stamp; CLAIM→VERIFY→SHOW close-out per the standing protocol)
+# WHY: we already found TWO stale-dashboard bugs this session (the exit card described the OLD candle_close mechanics;
+# the R-multiple denominator was a hardcoded 0.15 → every R was ~9× too large for 9 days). Same "page reads a stale
+# hardcoded value instead of live source" disease likely hides on other pages. Rhett wants the WHOLE dashboard:
+# (1) accurate, (2) every element working, (3) all data current, (4) faster (less lag). READ-ONLY audit + display/
+# performance fixes ONLY — no trading-path/watched-file/selection/exit/sizing change. Freeze intact.
+
+## PART 1 — INVENTORY (do first)
+- Enumerate EVERY dashboard page/route actually served (e.g. /planning, /daily-view, /current-strategy, /truth,
+  /shadow-results, /edge-tunes, and any others). List each route + what it's supposed to show. Don't assume the list
+  is complete — scan the server for all registered routes.
+
+## PART 2 — ACCURACY + FRESHNESS AUDIT (per page, the core ask)
+For EACH page, verify every displayed value against its LIVE source (SYSTEM_FACTS / live code import / broker truth /
+the report JSON it's meant to render). For each element report: CORRECT / STALE / WRONG / BROKEN, with the evidence.
+Hunt specifically for the disease we already found:
+- HARDCODED values that should READ LIVE (the R-multiple 0.15 and the exit-card text were exactly this). Any constant
+  baked into a page that duplicates a live config value is a staleness bug waiting to happen → make it read live.
+- Anything still describing the PRE-Monday system (must reflect: gate OFF, TW single exit owner, re-arm stop coverage
+  fix, K=1.4 chandelier, deploy target $380k). 
+- Numbers that should tie to broker truth but are computed from a stale basis (like the R denominator was).
+- Date/"last updated" stamps that are silently old.
+
+## PART 3 — FUNCTION AUDIT (everything working)
+- Every page returns HTTP 200 (no 500s/broken routes). Every link/tab/control works. Every table/chart renders (no
+  empty/erroring widgets). Any element that depends on a feed shows a clear freshness/▢stale state, not silent blanks.
+- Flag any page element that is dead, orphaned, or describes a removed feature.
+
+## PART 4 — SPEED / REDUCE LAG (Rhett: make it move faster)
+- Profile what makes the dashboard slow: per-page load time + the slowest operations (heavy queries, re-reading large
+  files like SESSION_LOG/JSONL on every request, recomputing instead of caching, synchronous blocking calls,
+  re-parsing broker CSVs per load).
+- Reduce it WITHOUT sacrificing freshness or accuracy: cache expensive reads with a short TTL, read incrementally
+  instead of full-file, precompute on the EOD/debrief pass where possible, lazy-load heavy sections, avoid recomputing
+  the same thing per request. State the before/after load time for the slowest pages.
+- HARD: caching must NOT reintroduce staleness — anything that displays a live config/broker value must still reflect
+  the current truth (short TTL + invalidate on change). Speed must not come at the cost of Part 2.
+
+## HARD CONSTRAINTS
+- READ-ONLY for trading: no watched file, no orders, no gate/selection/exit/sizing/config change. Display + perf only.
+- Prefer making pages READ LIVE over patching a hardcoded value (fix the disease, not the symptom). Where a page must
+  cache, use short TTL + invalidate-on-change so it can't rot.
+- Tie into the existing freshness guardrails (the CSHV `session_log_state_block_fresh` + `system_facts_fresh` checks)
+  — if a similar "page X is stale" guardrail is cheap to add for the worst offenders, note it.
+
+## VERIFICATION TASKS TO CLOSE (plain English back to Planning)
+1. The full route inventory + a per-page table: element → CORRECT/STALE/WRONG/BROKEN → fix applied.
+2. The list of hardcoded-should-be-live values found + which now read live.
+3. Confirmation every page is 200 + every control/table/chart works (or what's broken + fixed).
+4. Speed: slowest pages before/after load times + what was done; confirm no freshness traded for speed.
+5. Confirm read-only / no trading-path touch / freeze intact.
+
+## /planning
+- Add "Dashboard validation: accuracy + freshness + function audit + lag reduction" = IN_PROGRESS. Update stamp.
+
+**Claude Code:**
+
+Large audit. Let me work the four parts systematically, starting with the full route inventory from the server:
+~44 routes — a large surface. Let me get function + speed in one pass (HTTP status + load time for every route), then hunt the staleness disease across all page modules at once. First the HTTP/timing sweep (server is live on :8765):
+**Function audit (Part 3): all routes 200 — no 500s.** But ~12 routes return only ~1.2KB in ~1ms (e.g. `/bot-health`, `/market-intelligence`, `/session-summary`, `/root-cause`, `/post-market-debrief`) — likely stubs/redirects to investigate. **Speed (Part 4): clear targets** — `/daily-review-v2` 8.3s, `/truth` 5.3s, `/trade-performance` 4.2s, `/autopsy` 3.2s.
+
+Now the core ask (Part 2) — hunt the staleness disease across ALL page modules at once:
+Found the disease in several pages — same class as the two already fixed. Priority: **`truth_dashboard.py` has hardcoded "0.15×ATR" R-denominator text in 4 places** (the /truth page — "is it working"). I must check whether it *computes* R with a hardcoded 0.15 (→ R still 9× wrong) or uses the live `r_multiple`:
+**Good — `truth_dashboard` computes R correctly via the live `r_multiple` (R_STOP_ATR_FRAC, my Loop-156 fix).** But the *display labels* still hardcode "0.15×ATR" and "1.0×ATR" (lines 255, 333, 278) — so the /truth page shows a **wrong label on a correct number** (misleading). Classic disease — make the labels read live. Let me read the exact lines:
+Now fix the three stale labels to read live (the computation already does):
+truth_dashboard labels now read live. Now `daily_workflow_page.py` has "$300k target" (×2) — the live deploy target is $380k. Let me read and fix to live:
+`daily_workflow_page` is static text with multiple stale refs: "$300k" (×2, now $380k) AND "applies in-play gate" (gate is now OFF). Let me see if it has a render function so I can read those live rather than re-hardcode:
+`ROWS` is module-level static. Let me make `render_body` substitute the live deploy target + gate state (read-live, not re-hardcoded). Let me read `render_body`:
+`render_body` renders `sys_act` directly — I'll read the deploy target + gate state live and substitute (so it can't rot again):
+Now `premarket_page.py:255` — the stale exit description. Let me read and fix it to the live exit:
+premarket_page shows the live exit *mode* but a hardcoded old *description*. Let me make the description branch on the live mode:
+Let me compile the changed pages, then profile the slow ones (Part 4):
+Both slow pages call `eod_debrief.round_trips_net_all()` / `round_trips_net(day)` per request — re-parsing the entire broker CSV + reconstructing round-trips each load (plus /truth does live ATR API fetches). The safe fix: an **mtime-keyed cache** in `eod_debrief` (read function, non-watched) — invalidates the instant the CSV changes, so **speed with zero staleness**, and every consumer benefits. Let me find it:
+`round_trips_net_all()` calls `round_trips_net(d)` per date, and each re-parses the **whole** CSV — so it parses the CSV ~N times per page load. Confirmed non-watched. Let me add an mtime+size-keyed cache (invalidates the instant the CSV changes → no staleness). Let me read `round_trips_net` to place it:
+Now add the mtime-keyed cache and wrap both functions:
+Compile and verify the cache is correct (identical data) + measure cold-vs-warm:
+Cache verified: **174ms → 0.0ms warm, identical 285 round-trips, invalidates on CSV change.** But the running dashboard (PID 2176) imported the *old* eod_debrief + page modules at startup, so I must restart it to pick up all my changes. Let me restart and measure the slow pages cold-vs-warm:
+**/truth: 5295ms → 14ms warm (huge).** But /daily-review-v2 (3.7s warm) and /trade-performance (3.8s, no change — bypasses the cache) still need work. Let me profile what they re-do per load:
+Let me check the ~12 tiny "stub" routes (are they dead or intentional redirects?) and the /trade-performance hotspot:
+Both clarified: the ~12 tiny routes are **intentional `_render_retired_stub` pages** (retired, redirect to replacements — not broken), and /trade-performance has its **own** cache module (separate from mine). Let me verify my Part-2 fixes render correctly on the live (restarted) dashboard:
+All Part-2 fixes render live: /truth R label "1.4×ATR" (not 0.15), /pre-market "1.4×ATR chandelier", /daily-workflow "$380k" + gate "OFF". Let me do a final disease-sweep to confirm no other hardcoded-config offenders remain before closing out:
+Clean — the `$400k` refs are the correct deploy *base/cap* (not stale), and the `$300k` literal at line 32 is live-substituted to $380k at render (verified). All compile. Let me close out per protocol — get the stamp, log, re-read to prove:
+Done and pushed (HEAD `73dfdaa`). Here's the dashboard audit against the five verification tasks.
+
+## Dashboard validation — accuracy, freshness, function, lag
+
+**1. Route inventory + per-page verdict.** 44 routes enumerated. The staleness disease (hardcoded value that should read live) — same class as the two bugs found earlier this session — and the fixes:
+
+| Page | Element | Verdict | Fix |
+|---|---|---|---|
+| /truth | R-denominator labels ("÷ 0.15×ATR", "≥1.0×ATR", header) | **WRONG label on a correct number** (computation already used live `r_multiple`) | now read `R_STOP_ATR_FRAC`/`CATASTROPHE_ATR_FRAC` (live 1.4) |
+| /daily-workflow | "$300k target" (×2), "applies in-play gate" | **STALE** (now $380k; gate OFF) | render reads live `deploy_target()` + `ORB_INPLAY_GATE`, substitutes |
+| /pre-market-evaluation | "Exit mode" subtitle "0.15×ATR stop…" | **STALE** (old candle_close) | branches on live mode → "1.4×ATR chandelier (TW-owned)" |
+| /current-strategy, R-multiple | (exit card + R basis) | already fixed Loop 156 | — |
+| /daily-review-v2 | R + deploy figures | **CORRECT** (reads live r_multiple; $400k is the correct base/cap) | — |
+
+**2. Hardcoded-should-be-live found → now read live:** the three truth_dashboard R/catastrophe labels, the daily_workflow deploy-target + gate-state, and the premarket exit description. Verified rendering on the live dashboard: /truth shows "÷1.4×ATR", /pre-market "1.4×ATR chandelier", /daily-workflow "$380k" + gate "OFF". Fixing the *disease* (read live) rather than re-patching a constant, per your instruction.
+
+**3. Function — every route 200.** All 44 return HTTP 200, no 500s. The ~12 tiny ~1.2KB routes (/bot-health, /market-intelligence, /session-summary, /root-cause, /post-market-debrief, …) are **intentional `_render_retired_stub` pages** (retired → redirect to their replacements), not broken or orphaned.
+
+**4. Speed — before/after (no freshness traded):**
+| page | before | after (warm) |
+|---|---|---|
+| **/truth** | 5295 ms | **14 ms** |
+| /daily-review-v2 | 7897 ms | 3721 ms |
+| /autopsy | 2668 ms | 962 ms |
+| /trade-performance | 3810 ms | 3788 ms (has its own cache module — noted, separate) |
+
+The fix: an **mtime+size-keyed cache** in `eod_debrief.round_trips_net/_all` (the slow pages re-parsed the whole broker CSV per request — N full parses). It **invalidates the instant `broker_orders_unified.csv` changes**, so a new fill → cache clears → next load re-parses fresh. Verified: cached == cold (identical 285 round-trips) and re-parses on a forced sig-change — **speed with zero staleness.** `eod_debrief` is non-watched. The remaining /daily-review warm cost is per-trade chart bar-fetches (a candidate for a bars cache, lower priority); /trade-performance has its own cache module worth a separate look.
+
+**5. Read-only / freeze intact.** No watched file, no orders, no gate/selection/exit/sizing/config change — display + perf only. No watched/live trading file changed → SYSTEM_FACTS regen N/A. Dashboard restarted (PID 1056) so all fixes are live.
+
+**Close-out:**
+
+> **Loop 161 (14:31 ET):** dashboard audit — fixed staleness disease (truth R labels, daily_workflow deploy+gate, premarket exit → all read-live) + mtime cache (/truth 5295→14ms, no staleness) · **SESSION_LOG re-read+stamped** line 222 "Loop 161 (2026-06-28 14:31 ET) — DASHBOARD VALIDATION…" · **SYSTEM_FACTS: N/A** (no watched/live file changed) · **pushed HEAD 73dfdaa** · **names checked** (no mislabels) · **UNVERIFIED: I targeted the hardcoded-config disease + HTTP-200 + the slowest pages, not an exhaustive element-by-element value check of all 44 pages** — the highest-risk class (stale config) is swept and the offenders fixed; a full per-element value audit of every page is a larger follow-up if you want it.
+
+---
