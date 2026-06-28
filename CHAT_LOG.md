@@ -6576,3 +6576,68 @@ No watched file, no orders, no gate/exit/sizing/config change — display + pack
 > **Loop 163 (15:09 ET):** dashboard access-control audit (no auth, 127.0.0.1:8765 localhost-only, no firewall/tunnel → VPS-local only) + installable PWA (manifest/icon/sw, caches nothing) · **SESSION_LOG re-read+stamped** line 222 "Loop 163 (2026-06-28 15:09 ET) — (1) DASHBOARD ACCESS-CONTROL AUDIT…" · **SYSTEM_FACTS: N/A** (no watched/live file changed) · **pushed HEAD 7415940** · **names checked** (new routes clearly named) · **UNVERIFIED: none** — bind/firewall/tunnel checked against the live host; PWA assets verified over HTTP. No remote exposure added.
 
 ---
+
+
+## Turn — 2026-06-28 15:12:29 ET
+
+**Rhett:**
+
+# HANDOFF → CLAUDE CODE — (1) AUDIT dashboard access control + (2) make it installable as an APP (web manifest) — read-only
+# From: Planning Claude | 2026-06-28 ET (Code: number + stamp; CLAIM→VERIFY→SHOW close-out per the standing protocol)
+# Rhett wants to (a) share the dashboard with a friend and (b) make it feel like an app. Both depend on KNOWING what's
+# exposed first. READ-ONLY for trading: no watched file, no orders, no gate/exit/sizing/config. Display/packaging only.
+
+## ITEM 1 — ACCESS-CONTROL AUDIT (answer plainly, do NOT assume)
+- Does the dashboard (local_dashboard.py) have ANY authentication/login today? Yes/no, and how (if any).
+- What is it bound to — localhost only, or 0.0.0.0 (reachable from the network)? What port?
+- Is it currently reachable from OUTSIDE the VPS (open firewall port / any tunnel already running)? 
+- State plainly: as of now, who can see this dashboard, and does it require a password? This is the security
+  fact Rhett needs before sharing a panel that shows positions / P&L / $380k sizing / every trade.
+
+## ITEM 2 — MAKE IT INSTALLABLE AS AN APP (web-app manifest + icon) — cosmetic, no trading touch
+- Add a web app manifest (name "Alpha Quant", icon, theme color, display: standalone, start_url) + link it in the
+  dashboard's HTML <head> so phone/desktop browsers can "Install" / "Add to Home Screen" → it opens full-screen with
+  an icon, like an app. Add a simple icon (no external/branded assets).
+- Optional, only if trivial: a minimal service worker for the app shell so it launches cleanly. Do NOT cache live
+  data (same freshness rule as the dashboard audit — live values must stay live).
+- This changes NOTHING about what the dashboard serves — it only lets the existing pages install as an app.
+
+## DO NOT (in this handoff)
+- Do NOT open the VPS to the internet, do NOT start a public tunnel, do NOT add remote access in this pass — that's a
+  SEPARATE decision after we see the access-control audit (Item 1). Packaging ≠ exposing.
+
+## VERIFICATION TASKS TO CLOSE (plain English back to Planning)
+1. The access-control answer: auth yes/no, bind address, port, reachable-from-outside yes/no — the plain security fact.
+2. Manifest added + the dashboard installs as an app (show it works: installable on desktop/mobile).
+3. Confirm read-only / no trading-path touch / no remote exposure added / freeze intact.
+
+## /planning
+- Add "Dashboard: access-control audit + installable-app (web manifest)" = IN_PROGRESS. Update stamp.
+
+**Claude Code:**
+
+This is the same handoff I completed as **Loop 163** moments ago (pushed HEAD `7415940`). Rather than duplicate it, let me re-verify the work is still live and report — not re-execute blindly.
+Confirmed — this work is already complete (Loop 163) and **still live** on re-verification just now. This handoff is a duplicate of the one I closed minutes ago, so I'm reporting the re-verified facts rather than redoing it.
+
+## Item 1 — Access-control (re-verified now)
+- **Authentication: NONE** — `0` auth/login/password/401 lines in `local_dashboard.py`.
+- **Bind: 127.0.0.1:8765** (localhost only — the live listening socket was confirmed `127.0.0.1`, not `0.0.0.0`; server still up, responding on 127.0.0.1).
+- **Reachable from outside: NO** — no firewall rule on 8765, no tunnel running.
+- **Plain fact: only a VPS-local user (console/RDP on WIN-FIBSSOQKI7K) can see it; not reachable from outside; no password.** Sharing requires remote access + auth first — a separate gated decision (deferred; packaging ≠ exposing).
+
+## Item 2 — Installable app (re-verified now)
+- `/manifest.webmanifest` → 200, `application/manifest+json`, name "Alpha Quant", `display: standalone`.
+- `/icon.svg` → 200, `image/svg+xml` (self-contained AQ monogram).
+- `/sw.js` → 200, `application/javascript` (install + standalone launch only; caches nothing → live data stays live).
+- Linked in every page `<head>` (manifest + theme-color + apple-touch-icon + apple-mobile-web-app-capable + SW register). Installable on the VPS's Chrome/Edge (localhost = secure context → "Install Alpha Quant").
+
+## Item 3 — Read-only / no exposure / freeze
+No watched/trading file touched; no remote exposure added (bind stays 127.0.0.1, no tunnel); freeze intact.
+
+**Close-out:**
+
+> **No new change this turn — duplicate of Loop 163 (HEAD 7415940), re-verified.** SESSION_LOG already carries the Loop-163 entry (line 222, stamped 2026-06-28 15:09 ET); SYSTEM_FACTS N/A (no watched/live file changed); nothing new to push. **UNVERIFIED: none** — bind, auth-absence, and all three PWA assets re-checked live just now.
+
+If Planning intended a *different* follow-up (e.g., now decide on remote access + auth, or add a specific icon/asset), point me at it and I'll take it — but the audit + PWA packaging as written are done. One flag for you: if this re-send was accidental, no harm done; if it was meant to push further (actually exposing it to a friend), that's the gated remote-access + authentication decision we deliberately deferred — say the word and I'll spec it.
+
+---
