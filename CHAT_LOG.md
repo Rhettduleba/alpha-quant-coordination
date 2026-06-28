@@ -7606,3 +7606,80 @@ The disk went from ~6% free (critical) to **~35% free (17.17 GB)** — comfortab
 **Close-out (Loop 173, 2026-06-28 18:54 ET):** SESSION_LOG.md:222 (Loop 173, re-read & saved) ✓ · roadmap updated ✓ · coordination mirrored + pushed HEAD **`a1b74b1`** (secret-scan clean) ✓ · bot healthy, Python untouched, freeze intact · SYSTEM_FACTS regen **N/A** (no trading-logic/config change).
 
 ---
+
+
+## Turn — 2026-06-28 19:06:48 ET
+
+**Rhett:**
+
+# HANDOFF → CLAUDE CODE — Dashboard login failing for Rhett — diagnose + fix (auth/restart), do NOT print the password
+# From: Planning Claude | 2026-06-28 ET (Code: number + stamp; CLAIM→VERIFY→SHOW close-out per the standing protocol)
+# Rhett set ALPHAQUANT_DASH_PASSWORD in tradestation-bot/.env but the dashboard login (any-username + his password)
+# REJECTS him. Find why + fix. SECURITY: do NOT print/echo the actual password value anywhere (it syncs to a public
+# repo). READ-ONLY for trading: no watched file, no orders, no config change. Freeze intact.
+
+## DIAGNOSE
+1. Is the running dashboard server (PID on :8765) the one started AFTER Rhett set the password? Check its start time
+   vs the .env modified time. If the server started BEFORE the .env change, it's running with the OLD/temp password
+   in memory → that's the cause.
+2. Is ALPHAQUANT_DASH_PASSWORD set in tradestation-bot/.env and NON-empty? Confirm WITHOUT printing its value — report
+   only: present yes/no, length, and whether it has surrounding QUOTES or leading/trailing WHITESPACE (common bugs).
+3. Confirm _check_auth reads the SAME env var the .env sets (no mismatch like a different var name / a different .env
+   file being loaded than the one Rhett edited).
+
+## FIX
+4. If it's the stale-server cause: RESTART the dashboard so it loads the current password (note: restart the dashboard
+   ONLY — do not touch the trading bot / watched processes). Confirm the new PID.
+5. If it's a quotes/whitespace formatting issue in the .env: tell Rhett exactly how the line should look (format only,
+   not his value) so he can fix it — e.g. `ALPHAQUANT_DASH_PASSWORD=yourpassword` with no quotes, no spaces.
+6. After the fix, VERIFY (without exposing): any-username + correct-password → 200; wrong password → 401. State it works.
+
+## HARD CONSTRAINTS
+- NEVER print the password value (public-synced chat/repo). Report only presence/length/format characteristics.
+- Restart the DASHBOARD only, not the bot. Bind stays 127.0.0.1. No watched/trading/config change. Freeze intact.
+
+## VERIFICATION TASKS TO CLOSE (plain English back to Planning)
+1. The cause (stale server / formatting / var mismatch).
+2. The fix applied (restart w/ new PID, or the exact .env format Rhett needs).
+3. Confirmed: any-username + correct password now logs in (200); wrong password rejected (401). No password value printed.
+
+**Claude Code:**
+
+Diagnosing without ever printing the password value. Let me check three things at once: which `.env` and var name the dashboard's auth actually reads, the running server's start time vs the `.env` mtime, and the password's format characteristics (presence/length/quotes/whitespace only):
+The code confirms no var/file mismatch: `_load_dash_env()` reads **`tradestation-bot/.env`** (exactly where Rhett set it) and the var name matches. But I see the likely culprit in the code: `_load_dash_env` runs **once per process** (`_DASH_ENV_LOADED` guard) and uses `os.environ.setdefault` — so a server started **before** the `.env` change holds the old password in memory and never re-reads. Let me confirm: server start time vs `.env` mtime, plus password format characteristics (no value printed):
+**Cause confirmed: stale server.** PID 5068 started **15:39:51**, but the `.env` was updated **17:20:21** — Rhett set the password ~1h40m *after* the server launched, so it's running with the old password in memory and never re-reads. The `.env` format is clean (length 10, no quotes, no whitespace) — so formatting is not a factor.
+
+Before restarting, one check to make sure the restart will actually work: the code uses `os.environ.setdefault`, so a persistent OS env var or a launcher that exports the var would shadow the `.env`. Checking for that (presence only):
+No persistent env var anywhere, and the launcher doesn't export the password — so a fresh process will cleanly load the new password from `.env` via `setdefault`. The fix is a clean **dashboard-only** restart. Killing PID 5068 (the `trade-review-ui` server — *not* the bot's pythonw processes 6048/9232/10548) and relaunching on 127.0.0.1:8765:
+New dashboard up: **PID 348, started 19:05:05** (after the 17:20 `.env` change), listening on :8765. Now verify auth end-to-end — correct password → 200, wrong → 401, no auth → 401 — reading the password from `.env` inside the script and **never printing it**:
+All checks **PASS** — login is fixed:
+- correct password + any username → **200**
+- wrong password → **401**
+- no auth header → **401**
+- bot untouched (heartbeat 6s; I only killed the `trade-review-ui` server, never the bot's pythonw processes)
+
+The password value was never printed (the `�` is just an em-dash encoding artifact). Recording the close-out:
+Recorded and pushed (coordination HEAD `ad8f8fd`). The secret-scan "hit" is benign — it matched a backtick in an earlier instructional CHAT_LOG line (`set ALPHAQUANT_DASH_PASSWORD= to your own…`), not an actual value; no password was leaked.
+
+## Dashboard login — fixed
+
+**Rhett can log in now.** Here are the three answers:
+
+**1. Cause: stale server** (not formatting, not a config mismatch). The dashboard (PID 5068) started at **15:39:51**, but Rhett edited `tradestation-bot/.env` at **17:20:21** — ~1h40m later. The auth code loads the `.env` **once per process** (`_load_dash_env` has a `_DASH_ENV_LOADED` guard and uses `os.environ.setdefault`), so the running server still held the *old* password in memory and never re-read the file. I ruled out the other suspects:
+- **Format:** clean — present, length 10, no surrounding quotes, no leading/trailing whitespace.
+- **Var/file mismatch:** none — the code reads the exact file Rhett edited (`tradestation-bot/.env`) and the exact var (`ALPHAQUANT_DASH_PASSWORD`).
+- **Shadowing:** no persistent `ALPHAQUANT_DASH_PASSWORD` in User/Machine/Process scope, and the launcher doesn't export it.
+
+**2. Fix: dashboard-only restart.** Stopped just the `trade-review-ui` server (verified its command line before killing — not a bot process), relaunched it detached on **127.0.0.1:8765** → **new PID 348** (started 19:05:05). It loaded the current password from `.env` on startup. The trading bot was not touched — its pythonw PIDs are unchanged (6048/9232/10548) and the heartbeat is 6s fresh.
+
+**3. Verified (password read from `.env` in-script, never printed):**
+- correct password + any username → **200** ✅
+- wrong password → **401** ✅
+- no auth header → **401** ✅
+
+No password value was printed or committed anywhere.
+
+---
+**Close-out (Loop 174, 2026-06-28 19:05 ET):** SESSION_LOG.md:222 (Loop 174, re-read & saved) ✓ · roadmap updated ✓ · coordination mirrored + pushed HEAD **`ad8f8fd`** (secret-scan clean — no password value present) ✓ · dashboard bind stays 127.0.0.1, bot untouched, freeze intact · SYSTEM_FACTS regen **N/A** (no trading-logic/config change).
+
+---
