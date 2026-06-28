@@ -7460,3 +7460,107 @@ The disk is now comfortable (≈33% free vs ~6% when this started). The only rem
 **Close-out (Loop 170, 2026-06-28 18:42 ET):** SESSION_LOG.md:222 (Loop 170 entry, re-read & saved) ✓ · roadmap updated ✓ · coordination mirrored + pushed HEAD **`142d476`** (secret-scan clean) ✓ · SYSTEM_FACTS regen **N/A** (no trading-logic/config change — OS housekeeping + Office uninstall only) · freeze intact, bot healthy.
 
 ---
+
+
+## Turn — 2026-06-28 18:52:46 ET
+
+**Rhett:**
+
+# HANDOFF → CLAUDE CODE — DISK CLEANUP: reclaim Windows cache + remove Office/junk apps + LIST anything else (surgical)
+# From: Planning Claude | 2026-06-28 ET (Code: number + stamp; CLAIM→VERIFY→SHOW close-out per the standing protocol)
+# WHY: 50GB VPS disk, ~9GB free. Rhett: "get rid of anything we don't need." Do it SURGICALLY — the bot runs on
+# pythonw (watchdog_supervisor + run_bot). PYTHON + the bot's runtime/deps are OFF-LIMITS. Remove confirmed-safe
+# junk now; LIST anything else for Rhett's approval (NO blind sweep). No watched/trading/config change. Verify bot
+# HEALTHY after each part. Freeze intact.
+
+## PART 1 — WINDOWS UPDATE / COMPONENT CACHE (~5GB, safe OS housekeeping)
+- Run `Dism /Online /Cleanup-Image /StartComponentCleanup` (compacts WinSxS old components).
+- Clear `C:\Windows\SoftwareDistribution\Download` (stop `wuauserv`, clear, restart it) + `$WinREAgent` (Disk Cleanup).
+  Re-downloadable update files — safe. Report free space before/after.
+
+## PART 2 — REMOVE OFFICE + UNNEEDED STORE APPS (surgical uninstall, not folder-delete)
+- FIRST list installed Office + Store (Appx) packages with sizes so we SEE what's there before removing.
+- REMOVE via proper uninstall (Remove-AppxPackage / OS uninstaller — NEVER hand-delete WindowsApps/Program Files):
+  - Microsoft Office (Rhett confirms not used on this VPS).
+  - Consumer bloat safe on a headless trading VPS: Xbox/GamingApp, Solitaire, Maps, Clipchamp, Photos, News, Weather,
+    consumer Teams, and similar. List each before removing.
+- ⚠️ DO NOT REMOVE (system / bot-critical): Python (pythonw = bot runtime), .NET runtimes, VC++ redistributables,
+  Microsoft Store framework / App Installer / WinAppRuntime deps, anything the bot imports. Ambiguous → KEEP + flag.
+
+## PART 3 — FIND MORE (list for approval, do NOT auto-remove)
+- Scan the whole machine for anything else genuinely unneeded on a headless trading VPS: extra installed programs,
+  large leftover folders, old installers, other caches, duplicate runtimes, abandoned tooling.
+- LIST each with size + plain-English "what it is / why it looks removable / any risk." Do NOT remove these — present
+  to Rhett for a yes/no on each. Ambiguous whether bot/Windows needs it → KEEP + flag. Goal: full visibility, zero
+  blind deletion.
+
+## HARD CONSTRAINTS
+- Surgical uninstall only; never hand-delete system folders (breaks Windows). PYTHON + bot runtime/deps untouchable.
+- After EACH part verify bot HEALTHY: watchdog_supervisor (pythonw) alive, run_bot alive, bot_heartbeat.json < 60s
+  fresh, TS auth OK. If anything degrades → STOP, report, don't continue. No watched/trading/config change. Freeze intact.
+
+## VERIFICATION TASKS TO CLOSE (plain English back to Planning)
+1. Part 1: space reclaimed (before/after).
+2. Part 2: what was uninstalled (Office + which apps) + space reclaimed; what was KEPT and why.
+3. Part 3: the list of everything else that COULD go (size + risk each) — for Rhett's decision, nothing removed.
+4. Confirm Python/bot runtime untouched + bot HEALTHY after. Total free space now. Freeze intact.
+
+**Claude Code:**
+
+Parts 1 & 2 are already done (Loop 170: +7.14 GB, FREE now 16.44 GB, bot healthy). This re-send adds nothing new there — I'll go straight to finishing **Part 3** (the read-only inventory for your approval), which I was mid-scan on. One more targeted scan — Downloads/old installers, duplicate-runtime check, and a final heartbeat — then I'll compile the list:
+Part 3 scan complete (read-only; bot heartbeat 3s, FREE 16.44 GB). No duplicate Python runtimes, no leftover installers, no `Windows.old`. Here's the full picture for your decision. Let me record it then present:
+Logged and pushed (coordination HEAD `d5fc03d`). **Parts 1 & 2 were completed in Loop 170** (+7.14 GB; FREE now 16.44 GB; bot healthy). Here's **Part 3 — the complete "what else could go" picture. Nothing was removed; this is for your decision.**
+
+## TIER A — clear & low-risk (I recommend removing)
+| Item | Size | What it is / why removable | Risk |
+|---|---|---|---|
+| Orphaned Office cache (`AppData\Local\Microsoft\Office`) | **607 MB** | Leftover user cache from the Office you just uninstalled — dead weight now | None (Office already gone) |
+| `npm-cache` | **109 MB** | Re-downloadable JS package cache | None (regenerates) |
+| Update-Orchestrator logs (`ProgramData\Microsoft\USOShared`+`USOPrivate`) | **~130 MB** | Windows Update session logs | Very low (logs) |
+
+**≈ 0.85 GB, safe.**
+
+## TIER B — bigger, your call (defaults to KEEP)
+| Item | Size | What it is / why it looks removable | Risk |
+|---|---|---|---|
+| **Microsoft Edge** browser (`EdgeCore`+`Edge`+`EdgeUpdate`) | **≈3.9 GB** | You use Chrome; Edge is the unused default browser | **MEDIUM** — Edge removal on Windows is finicky/semi-supported, and **EdgeWebView2 (1.7 GB) must stay** (runtime dependency for desktop apps, likely the Claude app). Reversible by reinstall |
+| Windows **Search** index (`ProgramData\Microsoft\Search`) | **269 MB** | Rarely search files on a headless server; could disable the Search service | Low (slower file search) |
+| **Node.js** | **~102 MB** | The bot is Python-only; nothing in it uses Node | Low but ambiguous — other tooling you added might |
+| `$WinREAgent` (root) | **655 MB** | WinRE servicing leftover | Protected system path — can't remove via tooling anyway; low value |
+
+## TIER C — KEEP (do not touch)
+Python 3.14.4 (660 MB — **bot runtime**), Windows Defender (1.36 GB), VC++/.NET-Native/WindowsAppRuntime/UI.Xaml/winget, **EdgeWebView2** (1.7 GB, dependency), C:\Recovery (527 MB, WinRE image), OneDrive (1.2 GB, your backup), Chrome (1.25 GB, your browser), Claude (622 MB) + OpenAI tools (184 MB), pagefile (5.93 GB). Verified: only one Python runtime (no duplicates), no stale installers in Downloads, no `Windows.old`.
+
+At 16.44 GB free (≈33%), the disk is already comfortable — Tier A is easy cleanup, Tier B is optional.
+You chose **Edge** (Tier A wasn't selected — I'll leave it; it's still there if you want it later). Removing Edge is the MEDIUM-risk item, so I'll do it carefully — locate the official Edge uninstaller, keep WebView2, and verify the bot after. First, find the uninstaller and exact layout (read-only):
+Confirmed: the authoritative uninstaller is `setup.exe --uninstall --msedge --system-level`, and **WebView2 is a separate package that survives**. I'll add `--force-uninstall` for non-interactive removal and target only `msedge` (never Chrome). Running it now with before/after measurement:
+Mixed signal: Edge unregistered (gone) and WebView2 intact, but the folder dropped 2.31 GB while **free space barely moved** — that suggests pending-reboot finalization or a leftover process still holding files. Let me re-measure after settling, check for lingering Edge processes / pending file ops, and verify the bot:
+I need to be honest about this result rather than claim a 3.9 GB win. Here's what actually happened:
+
+**Edge is functionally uninstalled** (unregistered, browser gone, **WebView2 kept**, bot healthy), but the **real disk reclaim was ~0** — free went 16.44 → 16.46 GB. The folder's logical size dropped 2.31 GB while actual free space barely moved, which means the "3.61/3.9 GB" was **hardlink-inflated logical size** — `Edge\Application` and `EdgeCore` share hardlinked binaries. This is the exact same lesson as Loop 169 (OneDrive 45 GB) and Windows/WinSxS: logical size ≠ real bytes. A ~1.3 GB `EdgeCore` remnant remains and would clear on a reboot — which I am **not** doing (the bot is live). Bot verified healthy throughout (same PIDs, heartbeat 14s).
+
+Let me record this accurately:
+Recorded and pushed (coordination HEAD `8da181d`; the `\A` warning is just "Edge\Application" in my string — wrote fine).
+
+## Edge removal — honest outcome
+
+**Functionally done, but it didn't free real disk** — and I want to be straight about that rather than report a 3.9 GB win that didn't happen:
+
+- ✅ Edge **uninstalled** via the official uninstaller (unregistered, browser gone)
+- ✅ **WebView2 kept** (dependency intact)
+- ✅ **Bot healthy** throughout (same PIDs, heartbeat 14s, TS auth live; only `msedge` was stopped, never Chrome)
+- ⚠️ **Real space reclaimed: ~0** (FREE 16.44 → 16.46 GB)
+
+The reason is the same trap we hit with OneDrive (45 GB) and Windows/WinSxS (28.6 GB): the "3.9 GB" was **logical size inflated by hardlinks** — `Edge\Application` and `EdgeCore` share the same physical binaries. Removing Edge dropped the *logical* count by 2.3 GB but freed almost no actual bytes. A ~1.3 GB `EdgeCore` remnant plus queued file-rename ops would clear on a **reboot**, which I did **not** do — the bot is live and I won't restart the VPS without your explicit go-ahead. So: Edge is gone as a program, but to actually recover its disk you'd need a reboot.
+
+I'm also correcting my own Part 3 estimate: that "Edge ≈ 3.9 GB" figure was itself a logical-size overstatement.
+
+## The better real win is still on the table
+**Tier A (~0.85 GB) is *guaranteed real* reclaim** — unlike Edge, the orphaned Office cache (607 MB), npm-cache (109 MB), and update logs (~130 MB) are real bytes, not hardlinks. You didn't select it, so I left it, but it's the cleaner win if you want it — just say the word and I'll take it (no reboot needed, no bot impact).
+
+The disk is comfortable regardless: **16.46 GB free (~33%)**, up from ~6% when this started.
+
+---
+**Close-out (Loop 172, 2026-06-28 18:51 ET):** SESSION_LOG.md:222 (Loop 172, re-read & saved, includes the Edge-estimate correction) ✓ · roadmap updated ✓ · coordination mirrored + pushed HEAD **`8da181d`** (secret-scan clean) ✓ · bot healthy, freeze intact, Python untouched · SYSTEM_FACTS regen **N/A** (no trading-logic/config change).
+
+---
