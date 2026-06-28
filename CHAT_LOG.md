@@ -6641,3 +6641,103 @@ No watched/trading file touched; no remote exposure added (bind stays 127.0.0.1,
 If Planning intended a *different* follow-up (e.g., now decide on remote access + auth, or add a specific icon/asset), point me at it and I'll take it — but the audit + PWA packaging as written are done. One flag for you: if this re-send was accidental, no harm done; if it was meant to push further (actually exposing it to a friend), that's the gated remote-access + authentication decision we deliberately deferred — say the word and I'll spec it.
 
 ---
+
+
+## Turn — 2026-06-28 15:28:00 ET
+
+**Rhett:**
+
+# HANDOFF → CLAUDE CODE — Dashboard REMOTE ACCESS: (1) add login/auth, then (2) password-protected tunnel — read-only
+# From: Planning Claude | 2026-06-28 ET (Code: number + stamp; CLAIM→VERIFY→SHOW close-out per the standing protocol)
+# GOAL: let Rhett use the dashboard as an app on his phone + share with a friend — SAFELY. Current state (verified
+# Loop 163): NO auth, bound 127.0.0.1:8765, not reachable outside the VPS. Exposing it = exposing positions/P&L/
+# $380k sizing/every trade. So AUTH FIRST, THEN tunnel. READ-ONLY for trading: no watched file, no orders, no gate/
+# exit/sizing/config change. Freeze intact. ORDER MATTERS — do Item 1 and verify it BEFORE Item 2.
+
+## ITEM 1 — ADD AUTHENTICATION (login) to the dashboard — do this FIRST
+- Add a simple, robust auth layer in front of EVERY route in local_dashboard.py (all 44 + the PWA assets): no page
+  loads without a valid session. Options, pick the simplest that's solid:
+  (a) HTTP Basic Auth on every request, or (b) a single-password login form + signed session cookie. Either is fine;
+  whole-site gate is the requirement.
+- Password/credentials come from an ENV var or the gitignored .env (NOT hardcoded, NOT committed — same secret
+  hygiene as the API keys). Rhett sets the password value himself; do not invent/store a real one in the repo.
+- Constant-time password comparison; session cookie (if used) httponly + secure; a logout path. Don't overbuild —
+  one strong shared password is enough for a personal dashboard.
+- The PWA service worker caches nothing, so auth won't be bypassed by a cached page (good — confirm it).
+- VERIFY: every route returns 401/redirect-to-login WITHOUT the password, and 200 WITH it. Test a few routes incl.
+  /truth and the PWA assets. Bind stays 127.0.0.1 in this item (still local-only until Item 2).
+
+## ITEM 2 — PASSWORD-PROTECTED TUNNEL (remote/phone access) — only AFTER Item 1 verifies
+- Use a Cloudflare Tunnel (cloudflared) — free, no inbound firewall port opened, more secure than ngrok. It connects
+  OUTbound from the VPS to Cloudflare and serves the local 127.0.0.1:8765 at an https URL. Do NOT change the bind to
+  0.0.0.0 and do NOT open a firewall port — the tunnel is the only path in.
+- Layer the tunnel's OWN access control on top where available (Cloudflare Access / service token / at minimum the
+  dashboard's Item-1 password). Two locks: the tunnel + the app login.
+- Make it START/STOP on demand (a script Rhett runs to bring the share link up, and shut it down when done) — NOT a
+  permanent always-on exposure. Default state = OFF.
+- VERIFY: with the tunnel UP, the https URL prompts for the password (Item 1) and only loads after it; with the
+  tunnel DOWN, nothing is reachable from outside. Give Rhett the exact start/stop commands + the URL.
+
+## HARD CONSTRAINTS
+- READ-ONLY for trading: no watched file, orders, gate/exit/sizing/config. Auth/tunnel are infra, not trading-path.
+- AUTH BEFORE EXPOSURE: do not start any tunnel until Item 1 (login on every route) is verified. Never expose the
+  dashboard unauthenticated, even briefly.
+- Secrets: password + any tunnel token via env/.env, gitignored, NOT in the public repo. Secret-scan after.
+- Default to CLOSED: tunnel off by default, on-demand only.
+
+## VERIFICATION TASKS TO CLOSE (plain English back to Planning)
+1. Auth: every route (incl. /truth + PWA assets) requires the password — show a 401-without / 200-with test. Password
+   via env, not committed.
+2. Tunnel: the on-demand start/stop commands + the https URL; proof it prompts for the password and that DOWN = not
+   reachable. Default OFF.
+3. Confirm bind stays 127.0.0.1 (no 0.0.0.0, no firewall port opened), read-only, freeze intact, secret-scan clean.
+
+## /planning
+- Add "Dashboard remote access: login/auth + on-demand password-protected tunnel (default OFF)" = IN_PROGRESS.
+  Update stamp.
+
+**Claude Code:**
+
+This is the real remote-access build — order matters: **auth first, verified, then the tunnel (default OFF)**. Let me start with Item 1. First, find the request handlers (`do_GET`/`do_POST`) to add a whole-site auth gate:
+cloudflared isn't installed (Item 2 will handle that via script). Let me build Item 1 — the auth gate. First the module-level auth helpers:
+Now wire the gate into `do_GET` and `do_POST` (auth before everything, including PWA assets):
+Compile, then set a temporary password in the gitignored `.env` (the main tree isn't a git repo, so it's never committed) and restart to test:
+**Critical correction (RULE #0): C:/AlphaQuant IS a git repo** — I wrongly assumed it wasn't. I just wrote a password into `.env` there, so I must immediately verify `.env` is gitignored, untracked, and has no leaking remote:
+**Verified safe:** `tradestation-bot/.env` **is gitignored, untracked, and the C:/AlphaQuant repo has no remote** — the temp password can't leak (and the only repo with a remote, the coordination repo, never gets .env). My earlier "not a git repo" was wrong; corrected, and the secret hygiene holds. Now restart and test the auth gate (401-without / 200-with):
+**Item 1 verified — every route (incl. /truth + all PWA assets) is 401 without the password, 401 with a wrong one, 200 only with the correct password.** Auth-before-exposure is in place. Now Item 2 — the on-demand tunnel scripts (default OFF; I will NOT bring up a live tunnel). Let me write them:
+Now verify the tunnel scripts **without bringing a tunnel up** (default OFF): syntax, the auth-before-exposure pre-flight gate, the stop script, and that the scripts embed no secret:
+Both items verified. Item 2 scripts: syntax OK, **embed no password** (read from .env), pre-flight refuses without a password, and DOWN = not reachable (no cloudflared, bind 127.0.0.1). Now close out — stamp, log (no password value in any file), secret-scan, push:
+Done and pushed (HEAD `952be70`). Secret scan clean — the password is in **no** pushed file (SESSION_LOG: 0 occurrences). 
+
+**Note on secrets:** I'm deliberately **not printing the temporary password here** — the CHAT_LOG auto-syncs to the public coordination repo, so I won't put a credential in chat. It's in your gitignored `.env`; you'll replace it with your own anyway.
+
+## Item 1 — Authentication (done + verified)
+Whole-site HTTP Basic Auth in `local_dashboard.py`: `_check_auth()` runs at the top of **both** `do_GET` and `do_POST`, gating **every route including the PWA assets**. Constant-time compare; password read from `ALPHAQUANT_DASH_PASSWORD` (env/.env, never hardcoded). Verified live on the restarted server:
+
+| route | no password | wrong password | correct password |
+|---|---|---|---|
+| `/`, `/truth`, `/daily-review-v2`, `/manifest.webmanifest`, `/icon.svg`, `/sw.js` | **401** | **401** | **200** |
+
+The service worker caches nothing, so no cached-page bypass. Bind stays 127.0.0.1.
+
+## Item 2 — On-demand tunnel (scripts ready, default OFF)
+Two scripts (I did **not** bring a tunnel up — default OFF):
+- **Start:** `powershell C:\AlphaQuant\tunnel_start.ps1` — Cloudflare quick tunnel; connects **outbound** (no 0.0.0.0, no firewall port) and prints a `https://<random>.trycloudflare.com` URL. It **refuses to start unless the dashboard password is set** (auth-before-exposure), installs cloudflared on first run, and gives two locks: the unguessable URL + your dashboard password.
+- **Stop:** `powershell C:\AlphaQuant\tunnel_stop.ps1` — kills the tunnel; dashboard is local-only again.
+
+Verified without exposing: both parse clean, **embed no password** (read from .env), pre-flight refuses when the password is empty, stop is a safe no-op, and **DOWN = not reachable** (no cloudflared running, bind 127.0.0.1). "Prompts for password" is guaranteed by construction — every route 401s unauthenticated, including through the tunnel. (The quick-tunnel URL is ephemeral and prints when *you* run start, so there's no fixed URL to capture.)
+
+## Item 3 — Constraints held
+Read-only for trading (no watched/order/gate/exit/sizing/config); bind stays 127.0.0.1; no firewall port opened; **no tunnel started (default OFF)**; freeze intact. Secret-scan clean.
+
+**One honest correction (RULE #0):** last turn I said "C:/AlphaQuant is NOT a git repo" — it **is**. I re-verified the impact: `tradestation-bot/.env` is gitignored + untracked, and that repo has **no remote**, so the password and API keys can't leak (and the coordination repo never receives `.env`). No exposure occurred, but I want the record corrected.
+
+**Your two actions before sharing:**
+1. Open `C:\AlphaQuant\tradestation-bot\.env`, set `ALPHAQUANT_DASH_PASSWORD=` to your own strong password, and restart the dashboard.
+2. Run `tunnel_start.ps1` to get the link; `tunnel_stop.ps1` when done.
+
+**Close-out:**
+
+> **Loop 164 (15:26 ET):** dashboard remote access — whole-site Basic Auth (verified 401-without/200-with on /truth + PWA assets) + on-demand Cloudflare tunnel scripts (default OFF, auth-before-exposure pre-flight) · **SESSION_LOG re-read+stamped** line 222 "Loop 164 (2026-06-28 15:26 ET) — DASHBOARD REMOTE ACCESS…" (verified 0 password occurrences) · **SYSTEM_FACTS: N/A** (no watched/live file changed; local_dashboard is advisor-display, non-watched) · **pushed HEAD 952be70**, secret-scan clean · **names checked** · **corrected prior over-statement** (C:/AlphaQuant is a git repo; .env gitignored+untracked, no remote → no leak) · **UNVERIFIED named:** I did not bring up a live tunnel (default OFF), so the live-URL-prompts-for-password is verified by construction (auth on every route), not by a live exposure.
+
+---
