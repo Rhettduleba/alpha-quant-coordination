@@ -5771,3 +5771,60 @@ Per the coordination repo's README, **`SESSION_LOG.md` is the master handoff Pla
 Secret-scanned clean, committed, and pushed (HEAD `cdaaf25`). A fresh Planning session reading `SESSION_LOG.md` from the repo will now ramp up on an accurate picture.
 
 ---
+
+
+## Turn — 2026-06-28 11:29:05 ET
+
+**Rhett:**
+
+also, make all related chnges to the dashboard. Consider the dashboard is as importnat as the sssion log. how could you have missed the session log? How could that be stale? You told me to shut you down restart and the aytomatically update session log would be wired and locked in?
+
+**Claude Code:**
+
+You're right to be annoyed, and you deserve a straight answer, not a deflection. Let me first verify exactly what the auto-sync actually does vs. what I let rot, then make the dashboard changes. Let me check the hook and find where the dashboard shows system state:
+Now I have the honest root cause. Let me pin down the dashboard specifics before I answer and fix — checking the validation page (memory flagged it for stale exit checks) and how state is shown:
+I have what I need to answer you honestly and fix it. Let me check the two things that matter most: the dashboard's "current strategy" page (the equivalent of the session-log state block) and the stale R-multiple basis I just spotted:
+Now I understand the shape. Key finding: the **R-multiple basis is stale** — `r_multiple.py` still uses `R_STOP_ATR_FRAC = 0.15` (the old candle_close Phase-1 stop), but the live initial risk is the **1.4×ATR** chandelier floor. So every R-multiple on the dashboard is ~9× wrong. Its only consumers are display modules (daily_review, truth, trade_analytics) — no kill/cert gate — so fixing it is display-only and safe. Let me see the current-strategy page content and the truth page header to scope the dashboard edits:
+The current-strategy page reads live constants via `strategy_signals_page.render_body()` (good — exit *mode* won't go stale). But it won't know about the new rebuild *behaviors*. Let me read its exit section:
+Found it — the dashboard has the **exact same staleness** as the session log. The exit card's *title* reads the live mode (`candle_1.4atr_chandelier`) but its *body* still describes the old candle_close mechanics (0.15 phase-1, 1.0 catastrophe) — and there's no mention of the re-arm resting stops or TW exit owner. Let me read the full card region and fix it to read live:
+This is the dashboard's exact equivalent of the stale session-log block — and it even falsely claims at the bottom "Values read live... not a hand-maintained doc" while the exit body is hand-written for the *old* mode. Let me see `_load()` so I can wire the exit params to read live:
+`_load()` already advertises "never go stale" — the exit card just didn't honor it. Let me add a live exit-params loader and rewrite the exit card to read live + branch on mode + show the Loop-155 rebuild. Edit 1 — the loader:
+Edit 2 — rewrite the exit card to read live, branch on mode, and show the rebuild:
+Edit 3 — fix the stale intro phrasing:
+Now the R-multiple bug — `r_multiple.py` still divides by a 0.15×ATR risk basis when the live initial stop is 1.4×ATR (display-only, but every R on the dashboard is ~9× wrong). Let me read the full module and fix it to track the live value:
+Confirmed: R-multiple's only consumers are display modules (daily_review, truth, trade_analytics) — no kill/cert gate — so this is a display-correctness fix. Let me make the basis track the live resting stop so it can't go stale again:
+Now compile the dashboard changes and run the r_multiple self-check + render the strategy page to confirm it's accurate and live:
+Both dashboard fixes verified: the exit card now shows the live `candle_1.4atr_chandelier` mechanics (1.4×ATR chandelier + resting stop) and r_multiple tracks the live 1.4 basis. Now the **guardrail** — the real answer to "how could this go stale": I need a check that catches a hand-written state block drifting from live truth. Let me see how CSHV registers checks:
+CSHV uses a `@register` decorator returning `CheckResult(name, category, status, msg)`. Let me confirm the status constants and add a guardrail check that catches the exact failure — the SESSION_LOG state block not naming the live exit mode:
+Let me add the guardrail check — it catches a SESSION_LOG state block that doesn't name the live exit mode (exactly the failure that went unnoticed 6/19→6/28):
+The guardrail works — it passes now and would have caught the old stale block (WARN). Running every 5 min in CSHV, it would have flagged this instead of it sitting unnoticed for 17 days. Let me check whether the dashboard server is running (it caches imports, so a fix needs a restart to take effect):
+The dashboard server is running (PID 5760) with the **old code cached in memory** — so per verify-load discipline, my changes aren't live until it's restarted. Since you asked to make the dashboard changes (i.e., make them live), let me restart it detached:
+Dashboard back up (PID 6860, port 8765). Let me verify the live page actually serves the corrected exit card:
+The page updated (the stale 0.15-phase1 text is **gone**) — my verification regex was just too strict (it spanned `</b>` tags). Let me re-check with tag-agnostic patterns:
+The live dashboard is fully corrected and the stale content is gone. Let me log this honestly (including the root-cause) and push:
+The guardrail just caught a real bug — **in itself**. My Loop 156 ledger entry contains the prose "CURRENT SYSTEM STATE", and the check's `find("CURRENT SYSTEM STATE")` matched that prose (which appears above the actual block) instead of the real section. A guardrail that false-WARNs is exactly the stale-validation anti-pattern. Let me anchor it on the real markdown header and bound it by the next header:
+Fixed — the guardrail now anchors on the real header and passes. (It catching a bug in itself is the system working: a false-WARNing check is the exact stale-validation trap, now closed.)
+
+Here's the straight answer to your question, no hedging.
+
+## How the session log went stale — and why my "locked in" claim was wrong
+
+**What I actually wired** (and what I told you was "locked in") is the **Stop hook → CHAT_LOG sync + file mirroring**. That's **transport**: every turn it ships the verbatim conversation and copies SESSION_LOG/SYSTEM_FACTS to the repo Planning reads. That part *is* working and never missed.
+
+**What I did NOT wire — and wrongly implied I had** is the **curation of the hand-written "CURRENT SYSTEM STATE" block** at the top of the session log. That block is narrative I have to edit by hand on every deploy. I diligently appended to the *findings ledger* every loop (so the history was complete), but I never refreshed the *state header* — so it sat saying `ORB_EXIT_MODE = candle_close` for 17 days after the 6/19 deploy changed it. The hook copies bytes; it can't know the bytes are stale.
+
+That's on me. The automation covered the chat transport, not the state curation, and I overstated what "locked in" meant. You were right to call it.
+
+## What I fixed (dashboard treated as equal priority)
+
+Investigating, I found the **dashboard had the identical staleness** — plus a real bug:
+
+1. **Dashboard exit card** (`/current-strategy`) — its title showed the live mode but the body hard-described the *old* candle_close mechanics (0.15 phase-1, 1.0 catastrophe), with no mention of the rebuild. Rewrote it to **read live** (`RESTING_SL_FRAC`/`CONFIRM_ATR`/`CHANDELIER_ATR`/flatten time) + show the Loop-155 rebuild (re-arm coverage + TW exit owner). **Restarted the server (verify-load) and confirmed live on :8765** — shows the chandelier/resting/rebuild rows; all stale text gone.
+
+2. **R-multiple bug** (`r_multiple.py`) — the R denominator was a hardcoded `0.15` (old phase-1 stop) while the live initial risk is the **1.4×ATR** resting stop. So **every R-multiple on the dashboard has been ~9× too large since 6/19.** Fixed to read the live `RESTING_SL_FRAC` (display-only; no kill/cert gate consumes it).
+
+3. **The guardrail** so this can't rot silently again — a CSHV check `session_log_state_block_fresh` that **WARNs whenever the state block stops naming the live exit mode.** It runs every 5 minutes into `CSHV_FINDINGS.md` (which I read at session start), so a future drift surfaces immediately instead of after 17 days. Proven it would have caught this one.
+
+All logged (Loop 156), SESSION_LOG state block + roadmap refreshed, dashboard live, pushed. The durable change: the things that describe live state (dashboard cards, R-basis) now **read from the live config** instead of hardcoding it, and the one piece that still has to be hand-written (the state-block narrative) now has an automated tripwire.
+
+---
