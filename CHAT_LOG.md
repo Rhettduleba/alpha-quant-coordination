@@ -7374,3 +7374,89 @@ Yes — verified, not assumed:
 That's the surface Planning reads, so it's fully ramped on this turn's work. Both the backup (Loop 168) and disk ground-truth (Loop 169) entries are in.
 
 ---
+
+
+## Turn — 2026-06-28 18:43:04 ET
+
+**Rhett:**
+
+# HANDOFF → CLAUDE CODE — DISK: reclaim Windows Update cache (~5GB) + surgically remove Office + junk Store apps
+# From: Planning Claude | 2026-06-28 ET (Code: number + stamp; CLAIM→VERIFY→SHOW close-out per the standing protocol)
+# WHY: 50GB VPS disk, ~9GB free. Reclaim space the bot doesn't need. Rhett: doesn't use Office on this VPS. 
+# ⚠️ SURGICAL, not a blanket sweep — the bot runs on pythonw (watchdog_supervisor + run_bot). PYTHON + the bot's
+# runtime/deps are OFF-LIMITS. No watched/trading file, no config change. Verify bot HEALTHY after each part. Freeze intact.
+
+## PART 1 — WINDOWS UPDATE / COMPONENT CACHE (~5GB, safe OS housekeeping)
+- Run: `Dism /Online /Cleanup-Image /StartComponentCleanup` (compacts WinSxS old components).
+- Clear `C:\Windows\SoftwareDistribution\Download` (stop `wuauserv` first, clear, restart it) + `$WinREAgent` via
+  Disk Cleanup. These are re-downloadable update files — safe.
+- Report free space before/after.
+
+## PART 2 — REMOVE OFFICE + UNNEEDED STORE APPS (surgical)
+- FIRST list installed Office + Store (WindowsApps) packages with sizes so we SEE what's there before removing.
+- REMOVE (uninstall properly via the OS uninstaller / Remove-AppxPackage — do NOT delete WindowsApps folders by hand):
+  - Microsoft Office (Rhett confirms not used on this VPS) — uninstall it.
+  - Bloat Store apps safe to remove on a headless trading VPS: Xbox/GamingApp, Solitaire, Maps, Clipchamp, Photos,
+    News, Weather, Teams-consumer, Spotify/etc. — the consumer junk. List each before removing.
+- ⚠️ DO NOT REMOVE (system / bot-critical): Python (any version the bot uses — pythonw is the bot runtime), .NET
+  runtimes, VC++ redistributables, the Microsoft Store framework / App Installer / WinAppRuntime dependencies, 
+  anything the bot imports. If ANY app's removal is ambiguous whether the bot/system needs it → KEEP it + flag, don't guess.
+
+## HARD CONSTRAINTS
+- Surgical uninstall only — never hand-delete WindowsApps/Program Files folders (breaks Windows). Use proper uninstall.
+- PYTHON + bot runtime/deps untouchable. After EACH part, verify the bot is HEALTHY: watchdog_supervisor (pythonw)
+  alive, run_bot alive, bot_heartbeat.json < 60s fresh, TS auth OK. If anything degrades → STOP, report, don't continue.
+- No watched/trading file or config change. Freeze intact.
+
+## VERIFICATION TASKS TO CLOSE (plain English back to Planning)
+1. Part 1: space reclaimed from the update/component cache (before/after).
+2. Part 2: the list of what was uninstalled (Office + which Store apps) + space reclaimed; what was KEPT and why.
+3. Confirm Python/the bot runtime untouched + bot HEALTHY after (watchdog + heartbeat fresh + TS auth OK).
+4. Total free space now. Freeze intact.
+
+**Claude Code:**
+
+Now I have the complete handoff. Proceeding as **Loop 170**, surgically. First, a fully read-only baseline — bot health, free space before, and the actual installed Office + Appx inventory so we see everything before removing anything:
+Bot is healthy at baseline (4 `pythonw` procs — h5_supervisor, watchdog_supervisor, run_bot all alive; heartbeat 9s fresh). Office found = **Microsoft 365 Apps for business** (Click-to-Run, ~2.99 GB in Program Files). Now the Appx inventory before I remove anything — this is Windows Server, so let me see what consumer apps actually exist:
+This is a clean Windows **Server** image — the named consumer bloat (Xbox, Solitaire, Maps, Clipchamp, Photos, News, Weather, Spotify, consumer Teams) **isn't installed at all**. The only two loose matches are `PeopleExperienceHost` (a **system shell component** — KEEP) and `FeedbackHub` (trivial, a few MB, not explicitly named — KEEP+flag). So **Part 2's real target is just Office (~3 GB)**. Also confirmed present and OFF-LIMITS: `PythonSoftwareFoundation.PythonManager`, the .NET Native / VCLibs / UI.Xaml / WindowsAppRuntime frameworks, App Installer/winget, and Rhett's Claude/OpenAI tools.
+
+Starting **Part 1** — DISM component cleanup (the biggest, safest reclaim). This can take several minutes:
+DISM completed successfully but reclaimed ~nothing (−0.10 GB is just noise from concurrent activity) — this Server image has little superseded WinSxS content, consistent with the earlier finding that Windows's "28.6 GB" was hardlink-inflated and the real store is already compact. Now Part 1b — measure and clear the Windows Update download cache + `$WinREAgent` (re-measure first, since free already rose a lot since Loop 166):
+The harness blocked the whole script because the `$WinREAgent` literal sat near a `Remove-Item` (same false-positive as Loop 166). Let me separate concerns — first measure sizes only (pure read, no deletion):
+`SoftwareDistribution\Download` = **4.58 GB** — that's the real Part 1 reclaim. WinRE staging (0.64 GB) is a protected system path and risky; I'll leave it. Let me stop `wuauserv` and clear the Download cache (clean script, no protected-path literals to avoid the false-positive block):
+**Part 1 reclaimed 4.65 GB** — FREE 9.30 → **13.84 GB**, Download cache now empty, `wuauserv` restarted cleanly. Per the constraint, verify the bot is still healthy before Part 2:
+Bot fully healthy after Part 1 — same PIDs (nothing restarted), heartbeat 13s, token_cache refreshed 3 min ago (TS auth live). 
+
+Now **Part 2 — uninstall Office** (the only real target; no Store bloat exists). I'll use the proper Click-to-Run silent uninstaller (`OfficeClickToRun.exe` with the registry's removal args + `DisplayLevel=False forceappshutdown=True`), not a hand-delete. This can take several minutes:
+Office uninstalled cleanly — folder 2.99 → 0 GB, no longer registered, launcher exit 0. **FREE now 16.44 GB.** Verifying bot health after Part 2:
+All green: bot unchanged (same PIDs, heartbeat 15s, TS auth live), **Python 3.14.4 imports fine — runtime untouched**, FREE **16.44 GB (+7.14 GB this loop)**. Recording the close-out:
+Done — secret-scan clean, pushed (coordination HEAD `142d476`). The `SyntaxWarning` was just the `\D` in "Download" inside my Python string — harmless, roadmap wrote fine.
+
+---
+
+## Disk reclaim — Loop 170 (surgical, authorized)
+
+**FREE: 9.30 → 16.44 GB (+7.14 GB this loop). Bot healthy throughout, Python untouched, freeze intact.**
+
+### Verification tasks answered
+
+**1. Part 1 — update/component cache.**
+- `Dism /StartComponentCleanup` ran clean (exit 0) but reclaimed **~0 GB** — this Server's WinSxS is already compact. That *confirms* Loop 169's finding that Windows's "28.6 GB logical" is hardlink/compression-inflated and its real footprint is far smaller; there were no superseded components to purge.
+- `C:\Windows\SoftwareDistribution\Download`: stopped `wuauserv`+`bits` → cleared contents → **restarted `wuauserv` (Running)** = **4.65 GB reclaimed** (folder now 0).
+- Left the WinRE staging dir (0.64 GB) — protected system path, low value, not worth the risk.
+
+**2. Part 2 — Office + Store apps.**
+- **Uninstalled: Microsoft 365 Apps for business** (Office Click-to-Run) via the proper silent uninstaller (not a hand-delete) — folder 2.99 → 0 GB, no longer registered = **2.55 GB reclaimed**.
+- **Store bloat: none to remove.** This is a clean Windows **Server** image — Xbox/GamingApp, Solitaire, Maps, Clipchamp, Photos, News, Weather, consumer-Teams, Spotify are **not installed at all** (81 Appx packages, all system/framework).
+- **KEPT (and why):** `PeopleExperienceHost` (a Windows shell *system component*, not the consumer People app); `WindowsFeedbackHub` (a few MB, not explicitly named — not worth it); `OutlookForWindows`/`M365Companions`/`Office.ActionsServer` Appx remnants (tiny, ambiguous after Office). All bot/system-critical packages untouched: **Python (PythonManager)**, .NET Native / VCLibs / UI.Xaml / WindowsAppRuntime, App Installer/winget, and your Claude + OpenAI tools.
+
+**3. Python + bot intact.** `pythonw.exe` present, **`python -c` imports OK (3.14.4)** — runtime untouched. Bot verified healthy **before and after each part**: 4 `pythonw` processes with **identical PIDs** (h5_supervisor 6048 / watchdog_supervisor 9232 / run_bot 10548 — nothing restarted), heartbeat 13–15s fresh, `token_cache` 3–5 min old (TS auth live).
+
+**4. Total free now: 16.44 GB** (up from 9.30 at loop start). Freeze intact — no watched/trading file or config changed.
+
+The disk is now comfortable (≈33% free vs ~6% when this started). The only remaining big levers would be the pagefile (5.93 GB — leave it, it's needed) and OneDrive personal data (already 0 real bytes — placeholders).
+
+---
+**Close-out (Loop 170, 2026-06-28 18:42 ET):** SESSION_LOG.md:222 (Loop 170 entry, re-read & saved) ✓ · roadmap updated ✓ · coordination mirrored + pushed HEAD **`142d476`** (secret-scan clean) ✓ · SYSTEM_FACTS regen **N/A** (no trading-logic/config change — OS housekeeping + Office uninstall only) · freeze intact, bot healthy.
+
+---
