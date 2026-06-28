@@ -4909,3 +4909,167 @@ The loss is concentrated in **mega/large-caps that fade**, exactly the names the
 **The disentangled answer:** the 9:35 path loses partly because the open is hard, but largely because **the gate is mis-calibrated — it rejects low-RelVol / small-move / *exhausted* names that win, and keeps liquid mega/large-caps that fade.** The candidate fix is to recalibrate or scope the gate (especially loosen the exhausted/low-RelVol rejects and de-weight mega-caps) — but that's a **watched-file change → separate handoff, gated, OOS-tested first.** Report mirrored to the coordination repo; logged + SYSTEM_FACTS updated; /planning IN_PROGRESS.
 
 ---
+
+
+## Turn — 2026-06-28 07:04:14 ET
+
+**Rhett:**
+
+This session is being continued from a previous conversation that ran out of context. The summary below covers the earlier portion of the conversation.
+
+Summary:
+1. Primary Request and Intent:
+   The overarching role: I am "Claude Code" (VPS build/empirical node) for **Alpha Quant**, a SIM-only TradeStation trading system (account SIM1623888M), executing "Planning Claude" handoffs relayed by Rhett. The system is post-kill (forward test of the Loop-123 exit KILLED 6/25) in an "improve in shadow, no revert" phase under a freeze on live strategy. Every handoff is read-only/shadow unless explicitly a config change. Standing rules: number+stamp each loop, log to SESSION_LOG FINDINGS LEDGER, regenerate SYSTEM_FACTS, mirror to the coordination repo + push, secret-scan before push.
+
+   This window's chronological intents (each a Rhett/Planning handoff):
+   1. Finish the deploy-target change (DEPLOY_TARGET_PCT 0.75→0.95 = $300k→$380k) **everywhere including the dashboard**, after reverting scheduled-task conversions.
+   2. Audit: is a protective broker stop placed on EVERY entry, and how fast? (read-only)
+   3. "so do you... write everything you do... to the session log? ... i can simply tell planning to read the session log am i correct?" — then build the CHAT_LOG auto-sync.
+   4. Confirm this and every turn are updated on the session log (led to Stop-hook build).
+   5. "ill restart now, so should i just close you and openyou back up?"
+   6. After restart: "what does planning need to read at each turn... Session log or chat log or both?"
+   7. BUILD SYSTEM_FACTS auto-generated live-truth sheet (Layer 1).
+   8. BUILD Tape Watcher (TW) v1 — shadow exit observer.
+   9. (Re-asked) free news feed APIs → built news_feed.py (Finnhub + EDGAR).
+   10. Then: "so back to our highly debated problem... write a summary... put it all on a PDF... confirmed unconfirmed and exit strategy conversation. Then make a separate pdf with our current exit and entry signal spelled out in plain english if you use an acronym spell it out" — built 2 PDFs.
+   11. "why cant you use the trade station news feed... is that news feed avaible through the API key?" — answered: no, TS API has no news; FMP/Finnhub are the source.
+   12. Provided Finnhub key → wire it + close pending verifications.
+   13. "i dont know what you did with the key, but use it. I command you im not regenerating a new key, use the key i gave you that is a directive" — reassured the key IS in use.
+   14. Wire NOT_WIRED inputs into the 9:15 Market View (futures/foreign/econ).
+   15. Diagnose the recurring 9:30-AM loop-stall (read-only instrumentation).
+   16. BUILD execution-cost / implementation-shortfall ledger (the binding constraint).
+   17. ANALYZE gross signal quality — is there an edge before cost, and where? (5 splits)
+   18. (Re-sent duplicate of #17).
+   19. ANALYZE is the in-play gate helping or hurting (gate-vs-timing confound)?
+   20. TEST Rhett's gap-fade hypothesis on the gated 9:35 losers (CURRENT, in progress).
+
+   **Security/governance constraints stated (verbatim intent, MUST persist):** SIM-only non-negotiable; never edit WATCHED strategy files for non-approved changes; "Strategy changes are advisory-only... must go through a proposal artifact under outputs/proposals/ and stay inactive until a human records explicit approval in config/manual_approvals.yaml"; never place/cancel orders or touch positions autonomously; never commit real secrets to the PUBLIC coordination repo (Finnhub/OpenAI/Anthropic keys stay in gitignored .env); CREATE_NO_WINDOW/detached for subprocesses; don't over-refresh TS tokens; verify-load discipline; DO NOT touch the re-arm path (it wins); freeze on live strategy holds; "stop asking for permission and simply execute" (Rhett directive); GROSS only / no fees in the cost-deferred analyses.
+
+2. Key Technical Concepts:
+   - Two systems: Bot (`C:\AlphaQuant\tradestation-bot\`) + Advisor/dashboard (`ai-trading-strategy-agent\src\advisor\`, http.server 127.0.0.1:8765 via `main.py trade-review-ui`). Live root `C:\AlphaQuant`; OneDrive backup-only. Python exe: `C:\Users\Administrator\AppData\Local\Python\pythoncore-3.14-64\python.exe`.
+   - WATCHED strategy files (never edit for non-approved changes): risk_config.py, bot_loop.py, exit_bot_v2.py, candle_close_exit.py, advisor_filter_engine.py, symbol_universe.py, orb_runner.py, orb_multiscan.py, short_bot.py, mover_scanner.py. (run_bot.py, deploy_controller.py, eod_debrief.py, system_health_verifier.py, daily_review_page.py, local_dashboard.py, clean_day_certifier.py are NON-watched.)
+   - Deployed exit: `ORB_EXIT_MODE="candle_1.4atr_chandelier"` (risk_config.py:60). Resting broker stop = RESTING_SL_FRAC=1.4×ATR (orb_runner.py:98); CONFIRM_ATR=0.15, CHANDELIER_ATR=1.4 (candle_close_exit.py); EOD flatten 15:50 ET (market_hours.py:68/69 FORCED_FLATTEN_HOUR/MINUTE).
+   - Main loop (run_bot.py line ~598): `while True: _loop_counter+=1; _write_heartbeat(); _run_step_with_heartbeat("LONG ENTRY BOT", [bot_loop.py])...` Each step = a subprocess via `_run_step_with_heartbeat` (hard_cap=180s, beats heartbeat every 10s). Stall signature = heartbeat fresh + loop_count frozen = a slow/long cycle.
+   - In-play gate (`inplay_gate.py`): `evaluate(symbol, side, price, prior_close, day_relvol, dollar_vol_20d, cfg)` → GateResult(passed, reason, metrics). Thresholds: INPLAY_MIN_DOLLAR_VOL_20D=$20M, INPLAY_MIN_DAY_RELVOL=2.0, INPLAY_MOVE_MIN_PCT=0.02, INPLAY_MOVE_MAX_PCT=0.09, INPLAY_TOP_N=10. Gate live 6/16.
+   - `eod_debrief.round_trips_net(date)` / `round_trips_net_all()` = canonical broker-truth round-trips: keys [sym, occ, side, entry_px, entry_dt, exit_px, exit_dt, qty, gross, commission, fee, net, intended_px, entry_slip_dollars, entry_slip_bps, strategy, notional, date]. `_to_et()`, `_f()`, `entry_slip()` helpers.
+   - `claude_client.call_claude(system_prompt, user_prompt, *, model="claude-sonnet-4-6", max_tokens, temperature)` → dict {text, input_tokens, output_tokens, error}.
+   - `tape_watcher` reusable helpers: `minute_bars_for_day(client, sym, date)`, `atr14_asof(client, sym, date)`; reuses `candle_close_exit.chandelier_decision(side, avg_price, last_price, high_water, low_water, atr, last_closed_candle)→(should_exit, reason, confirmed)`.
+   - CHAT_LOG Stop hook: `.claude/settings.json` (at OneDrive cwd) uses exec-form `{"type":"command","command":"...python.exe","args":["...planning_turn_sync.py"],"timeout":60}` to avoid bash backslash mangling.
+   - Coordination repo: `C:\repos\alpha-quant-coordination` (PUBLIC GitHub `Rhettduleba/alpha-quant-coordination`). Gets SESSION_LOG.md, SYSTEM_FACTS.md, CHAT_LOG.md, reports/*.md. Read at `https://raw.githubusercontent.com/Rhettduleba/alpha-quant-coordination/main/SESSION_LOG.md`.
+   - S4U scheduled-task logon = runs as Administrator, session 0, NO window, no password — the popup fix.
+   - exit_decisions.jsonl logs the bot's actual `confirmed` flag per decision (gold source for confirm state, but confirm is POST-entry = look-ahead).
+   - Implementation Shortfall: decision (signal_trigger_px) → arrival (market_price_ref_at_submit) → fill (fill_price), side-aware adverse-positive.
+
+3. Files and Code Sections:
+   - **`strategy-research/gap_fade_test.py`** (CURRENT, being fixed) — tests Rhett's gap-fade theory. First run: n=111 9:35 equity trades, 52 losers; BUT 66/111 (60%) were `unknown` gap-class (bar fetches throttled). Key finding: **gap-up & long = -$233.6/trade, PF 0.23** (toxic, but n=7); only 2 of 22 long losers were gap-up. I just edited it to add `_pc_map()` (reads prior_close from candidate log, no fetch) and changed `_prior_close()` signature to `_prior_close(client, sym, date, cache, pc_map)` which checks pc_map first. **INCOMPLETE/BROKEN STATE**: `classify(client, rt, cache)` still has the OLD signature and calls `_prior_close(client, sym, date, cache)` (missing pc_map arg); `run()` does not yet build/pass pc_map. Must update `classify` signature to `classify(client, rt, cache, pc_map)`, change its internal `_prior_close(...)` call to pass `pc_map`, and in `run()` add `pc_map = _pc_map()` and `rows = [classify(client, r, cache, pc_map) for r in rts]`.
+   - **`strategy-research/gate_effect_analysis.py`** — gate-vs-timing analysis. Found gate ANTI-SELECTS: rejected-name counterfactual +$48.2/trade (PF 1.98, n=140 sim'd) vs passed broker-truth -$29.1/trade (PF 0.66, n=111). 67% of winning re-arm names (60/89, +$8,143) would be blocked by 9:35 gate quality criteria. 9:35 loss concentrated in mega-caps (-$229/trade). Sim validated (QCOM cf+$437 vs broker+$433; MU cf-$1,582 vs -$1,668). Caught/fixed: passed-sim API-throttle (used broker-truth instead), task-2 dollar_vol_20d artifact (0/457 logged on re-arm → bypassed with 1e9 to test RelVol/move/dir only).
+   - **`strategy-research/gross_signal_quality.py`** — GROSS-only 5-split breakdown. Re-arm path +$19.7/trade PF1.30 (esp 10:35 window +$41/trade PF1.61); short +$11.2 PF1.18; confirmed/unconfirmed is LOOK-AHEAD (not entry edge). Fixed extension to use real gap from prior_close (move_pct was wrong units).
+   - **`strategy-research/execution_cost_ledger.py`** — gross +$187 flat → net -$1,153, commission ~$1,340 is the killer. Entry IS small (0.82 bps; delay 2.52 offset by exec -1.7). Tie-out MATCH ($1,339.71 vs $1,339.73).
+   - **`tradestation-bot/run_bot.py`** (NON-watched) — added loop-stall instrumentation: imports `faulthandler, threading, io`, guarded `psutil`; module constants `_DIAG_DIR=C:\AlphaQuant\logs`, `_STAGE_TIMING_FILE`, `_STALL_DUMP_FILE`, `_STALL_THRESHOLD_S=90`, `_cur_stage` dict + `_cur_stage_lock`; `_diag_append()`, `_stall_watchdog()` (observe-only daemon). In `_run_step_with_heartbeat`: added `_step_start`, `_killed`, `_cur_stage.update(...)` after Popen, `_killed=True` in kill branch, and a `finally` logging stage timing. Started watchdog thread before `while True`. Also fixed two `taskkill subprocess.run` calls (lines 226, 349) to add `creationflags=_NO_WINDOW`. Restarted (verify-load) — loop cycling, timing log populating.
+   - **`ai-trading-strategy-agent/src/advisor/daily_report.py`** (NEW) — LLM Daily Report Layer. FACTS assembled in code (LLM only opines + confidence + unsure). `_futures_facts(client)` (@ES/@NQ via TS, reachable), `_foreign_facts()` (EWJ/EWG/FXI Finnhub ETF proxy, lagged), econ_calendar = NOT_WIRED (Finnhub 403 premium). `generate_market_view()`, `generate_inplay_review()`, `latest_reports()`, score-it log, `sanitize()` (injection hygiene), `_load_env()`.
+   - **`ai-trading-strategy-agent/src/advisor/daily_view_page.py`** (NEW) + route `/daily-view` in local_dashboard.py.
+   - **`strategy-research/news_feed.py`** (NEW) — Finnhub (FINNHUB_API_KEY) + SEC EDGAR 8-K (keyless, UA "AlphaQuant Research alphaquant-sim-research@example.com"). `fetch_company_news(symbol, days_back=2, cap=6)`, `fetch_edgar_8k()`, `tag_catalyst()`, `attribute_trades(date, overnight_days=1)`. Finnhub free = 60 calls/min (X-Ratelimit-Limit:60, verified live), non-commercial. Tagging precision ~83% relevant/~62% strict.
+   - **`strategy-research/planning_turn_sync.py`** (Stop hook) — verbatim turn sync. SECRET_RES now has 4 patterns incl. generic `(?i)\b(?=[a-z0-9]*\d)(?=[a-z0-9]*[a-z])[a-z0-9]{24,}\b` to catch Finnhub-style keys; redact() loop applies SECRET_RES[0],[2],[3].
+   - **`strategy-research/system_facts.py`**, **`stop_coverage_audit.py`**, **`tape_watcher.py`** (+`--smoke`), **`tw_report.py`** — all from earlier this session.
+   - **`tradestation-bot/system_health_verifier.py`** (NON-watched) — `_schtasks_names()`, `_schtasks_task()` replacing Get-ScheduledTask in chk_scheduled_tasks_present + chk_scheduled_task_last_run_recent.
+   - **`ai-trading-strategy-agent/.env`** — FINNHUB_API_KEY=[REDACTED] added (gitignored, NOT tracked, NOT pushed).
+
+4. Errors and fixes:
+   - **Stop hook never firing**: root cause = bash ate backslashes in the command path (`C:\Users`→`C:UsersAdministrator...` → command not found, exit 127). Fixed with exec-form `args` array in settings.json (no shell). User feedback: "i have given you 'order' before and they ended up in failuer" — I removed myself from the loop via the hook instead of re-promising.
+   - **Permission prompts / "asking permission"**: Rhett: "stop asking for permission and simply execute. Also the pop up command window has never stopped." Settings were already bypassPermissions — the "asking" was MY behavior (ending turns with "do you want me to X or Y?"). Stopped. Popups = 21 Interactive scheduled tasks → converted to S4U.
+   - **Finnhub key redaction gap**: Rhett pasted key in plaintext; my redaction wouldn't catch it (not sk-, not hex, not key=value). Hardened with generic 24+ alnum pattern; tested (key→[REDACTED], short SHAs/words survive).
+   - **"i dont know what you did with the key, but use it... I command you"**: Rhett thought I rejected the key (from my "optional: rotate" aside). Reassured — key IS in .env and working (live HTTP 200 NVDA call proven). Dropped the rotate suggestion.
+   - **Gate-effect passed-sim throttle (4/200)** + **task-2 dollar_vol artifact (0/457 logged)**: Caught both via RULE#0 verification; fixed (task1 use broker-truth for passed; task2 bypass $-vol floor with 1e9).
+   - **OPENAI_API_KEY env dump**: my `export $(grep ... | head -0)` bug → `head -0` empty → bare `export` printed entire env including `OPENAI_API_KEY="sk-proj-..."`. It's only in the local transcript (tool output not synced to public CHAT_LOG). Flagged to Rhett; will avoid that pattern. Secret-scanned subsequent pushes for sk-proj-/sk-ant-/key-prefix — all clean.
+   - **Clean-day handoff premise wrong**: I corrected my own earlier (wrong) note that consecutive_clean=0 was CIM-noise-driven — verified it's REAL faults (loop-stalls + 6/19 gate-fail-open). Did NOT game the count.
+   - **gap_fade_test 60% unknown coverage** (CURRENT): bar fetches throttled → fixing with candidate-log prior_close (edit in progress, BROKEN signature mismatch).
+   - **MES futures filtering**: gap_fade_test filters out MESU26 (the +$650/$-862 H5 futures outlier) from 9:35 equities.
+   - **Edit tool requires Read first**; Bash cwd resets to OneDrive path between calls (use absolute paths); console cp1252 can't print unicode (×/Δ/✓) so reports write UTF-8 files + guard print with `sys.stdout.buffer.write(md.encode("utf-8","replace"))`.
+
+5. Problem Solving:
+   - Established the core analytical narrative: GROSS is flat (+$187); commission (~3bps RT) is the binding cost; the re-arm path (esp 10:35) + short side are the entry-observable positive edge; the 9:35 gate appears to ANTI-SELECT (rejects winners by RelVol-low/exhausted/small-move criteria, keeps fade-prone mega-caps); confirmed/unconfirmed is the EXIT lever (look-ahead), not an entry edge. The gap-fade test (current) is testing whether the 9:35 loss is specifically the overnight-gapper-fades pattern — early read: gap-up&long is toxic (-$234/trade) but explains only a minority of losses (coverage was only 40% due to throttling).
+   - Verify-first discipline repeatedly caught data artifacts (dollar_vol not logged, move_pct wrong units, prior_close understates multi-day gaps, sim throttling, confirmed=look-ahead).
+
+6. All user messages:
+   - (Continuation prompt) "Continue from where you left off without asking..." [deploy-target work]
+   - "# HANDOFF → CLAUDE CODE — Audit: is a protective stop placed on EVERY entry, and how fast? (read-only)..."
+   - "so do you as i asked you to a long time ago, write everything you do, such as the resuts of this test to the session log? So i dont need to have you make a handoff to planning, i can simply tell planning to read the session log am i correct?"
+   - "just to confirm this and every turn are updated on the session log"
+   - "ok, your back, but now im confuused what does planning need to read at each turn to be completely ramped up, Session log or chat log or both?" [NOTE: this came AFTER a restart; before it: "ill restart now, so should i just close you and openyou back up?" and "Continue from where you left off." with my "No response requested."]
+   - "# HANDOFF → CLAUDE CODE — BUILD: SYSTEM_FACTS auto-generated live-truth sheet (Layer 1)..."
+   - "# HANDOFF → CLAUDE CODE — BUILD: Tape Watcher (TW) v1 — SHADOW ONLY..."
+   - "# HANDOFF → CLAUDE CODE — TW v1: LIVE-SHADOW PROVING RUN..."
+   - "# HANDOFF → CLAUDE CODE — FIX: clean-day false alarm..."
+   - "i was getting those anouying command window popups yesterday, have you fixed that agin?" / "so i want to know the possible damage the fix can cause... i would chose Covert all but i want to understand... If you are confident that you canncovert all with no effect on the sysytem then i would go with that"
+   - "ok, revert all : then i want to change the target capital deployment to 95% of $400k, when you make the chnage make sure you make it everywhere such as the dashboard also"
+   - "this is the finnhub key [REDACTED] # HANDOFF → CLAUDE CODE — Finnhub key provided: wire it..."
+   - "so back to our highly debated problem... write a summary of our discuss the testing we did, your comments and pushback and put it all on a PDF, this was the confirmed unconfirmed and exit strategy conversation. Then make a separate pdf with our current exit and entry signal spelled out in plain english if you use an acronym spell it out [Request interrupted by user] # HANDOFF → ... Free Financial News Feed API Options..."
+   - "why cant you use the trade station news feed to colect realy time news is that news feed avaible through the API key?"
+   - "i dont know what you did with the key, but use it. I command you im not regenerating a new key, use the key i gave you that is a directive"
+   - "# HANDOFF → CLAUDE CODE — BUILD: LLM Daily Report Layer v1 (9:15 Market View + 9:40 In-Play Review)..."
+   - "# HANDOFF → CLAUDE CODE — Wire the available NOT_WIRED inputs into the LLM Market View..."
+   - "# HANDOFF → CLAUDE CODE — DIAGNOSE the recurring 9:30-AM main-loop stall..."
+   - "# HANDOFF → CLAUDE CODE — BUILD: Implementation-Shortfall / Execution-Cost Ledger..."
+   - "# HANDOFF → CLAUDE CODE — ANALYZE: Gross signal quality..." (sent twice)
+   - "# HANDOFF → CLAUDE CODE — ANALYZE: Is the in-play GATE helping or hurting?..."
+   - "# HANDOFF → CLAUDE CODE — TEST Rhett's gap-fade hypothesis on the gated 9:35 losers (read-only, GROSS)..."
+
+7. Pending Tasks:
+   - **Complete the gap_fade_test.py fix** (the active task): finish updating `classify()` signature + `run()` to use `_pc_map()`, re-run, get proper gap coverage, report the 4 verification tasks (% of losers gapped/with-gap/noise-then-fade; gross/win/PF per bucket; long-losses=gap-up-longs cross-check; caveats), then log to SESSION_LOG ledger + regenerate SYSTEM_FACTS + mirror report to coordination repo + secret-scan + push + update /planning roadmap.
+   - Carried open items (from prior turns, not currently active): arm pre-open gate (SAFE_MODE_ENFORCE flip after clean shadow mornings); Earnings Phase D (point live veto at fresh NASDAQ); Monday TW live-shadow proving run (AlphaQuant_TW_LiveShadow runs Mon 9:25 AM) + tw_report 6/29; the loop-stall live catch (Monday open); gate recalibration (watched-file change, separate handoff, OOS test first).
+
+8. Current Work:
+   I was executing the gap-fade hypothesis test handoff. Built `strategy-research/gap_fade_test.py` and ran it; first run found gap-up&long toxic (-$233.6/trade, PF 0.23) but had a 60% `unknown` gap-class coverage problem from bar-fetch throttling. I was fixing the coverage by switching from per-symbol daily-bar fetches to the candidate-log `prior_close`. I had just completed an Edit adding `_pc_map()` and a new `_prior_close(client, sym, date, cache, pc_map)` signature:
+   ```python
+   def _pc_map():
+       """(date, sym) -> prior_close from the candidate log (no API fetch)..."""
+       import json
+       m = {}
+       p = BOT / "orb_candidate_log.jsonl"
+       for ln in p.read_text(...).splitlines():
+           ... pc = r.get("prior_close"); m[(date,sym)] = float(pc) ...
+       return m
+   def _prior_close(client, sym, date, cache, pc_map):
+       pc = pc_map.get((date, sym.upper()))
+       if pc: return pc
+       ... (daily-bar fallback) ...
+   ```
+   The code is currently BROKEN: `classify(client, rt, cache)` still calls `_prior_close(client, sym, date, cache)` (missing the new `pc_map` 5th arg), and `run()` does not yet build `pc_map = _pc_map()` nor pass it to classify.
+
+9. Optional Next Step:
+   Complete the gap_fade_test.py signature fix to finish the in-progress repair, then re-run and report. Specifically: (a) change `def classify(client, rt, cache):` → `def classify(client, rt, cache, pc_map):` and its internal `pc = _prior_close(sym, date, cache)` (actually `_prior_close(client, sym, date, cache)`) → `pc = _prior_close(client, sym, date, cache, pc_map)`; (b) in `run()`, add `pc_map = _pc_map()` near `cache = {}` and change `rows = [classify(client, r, cache) for r in rts]` → `rows = [classify(client, r, cache, pc_map) for r in rts]`; (c) compile + re-run `python gap_fade_test.py`, confirm gap coverage improved (fewer `unknown`); (d) report the verification tasks ("Of the gated 9:35 losers: what % gapped, what % were entered WITH the gap, what % showed early-noise-then-fade"; "Gross/win/PF for gap-up-long vs gap-down-short vs no-gap vs against-gap"; "Does this confirm the long-side losses = gap-up-and-went-long?"; caveats); (e) per standing rules: number+stamp the loop, append a SESSION_LOG FINDINGS-LEDGER entry, regenerate SYSTEM_FACTS, copy `outputs/reports/gap_fade_test.md` to `C:/repos/alpha-quant-coordination/reports/`, mirror SESSION_LOG.md + SYSTEM_FACTS.md, secret-scan (grep for d9029chr01qk / sk-ant- / sk-proj-), commit + push to the coordination repo, and update `planning_roadmap.json` ("Gap-fade hypothesis test on gated 9:35 losers (Rhett's theory)" = IN_PROGRESS). This is directly in line with the most recent handoff: "# HANDOFF → CLAUDE CODE — TEST Rhett's gap-fade hypothesis on the gated 9:35 losers (read-only, GROSS)... For every gated 9:35 trade (esp. the LOSERS), classify and report: 1. GAP... 2. DIRECTION VS GAP... 3. EARLY SHAPE... 4. THE PATTERN TEST... 5. CROSS-CHECK the long/short finding."
+
+If you need specific details from before compaction (like exact code snippets, error messages, or content you generated), read the full transcript at: C:\Users\Administrator\.claude\projects\C--Users-Administrator-OneDrive---Duleba-Trade-station-Main\3253950a-388c-4a7a-99cc-cec0c4ed9f69.jsonl
+Continue the conversation from where it left off without asking the user any further questions. Resume directly — do not acknowledge the summary, do not recap what was happening, do not preface with "I'll continue" or similar. Pick up the last task as if the break never happened.
+
+**Claude Code:**
+
+Now compile, run the final deterministic report, and verify the synthesis renders:
+Deterministic and honest. One header-accuracy fix (it says "9:30 open" but I now use the logged 9:35 price), then push:
+Now append the FINDINGS-LEDGER entry to SESSION_LOG, then mirror + push. Let me read the ledger anchor:
+Now mirror to the coordination repo, secret-scan, and push:
+Pushed. Now update the planning roadmap (the gap-fade item → DONE):
+Done. Here's the result of Rhett's gap-fade test.
+
+## Gap-fade hypothesis — VERDICT: directionally SUPPORTED, but MU-dominated
+
+**First, a reproducibility fix that mattered (RULE #0).** My initial bar-based gap classification was **non-deterministic** — TS throttling randomized which ~50% of names got classified each run, and `gap-up & long` swung from **−$1,814 → +$182 → −$2,188** across three runs. I caught it before reporting and rebuilt the gap from the **logged 9:35 scan price vs prior_close** (`orb_candidate_log.jsonl`) — no fetch, full coverage. Two consecutive runs are now identical. The numbers below are stable.
+
+**Findings** (52/111 classified = gate-era 6/15+; pre-6/15 9:35 trades have no candidate row):
+
+| bucket | n | avg/trade | PF |
+|---|---|---|---|
+| gap-up & long | 19 | **−$115** | 0.31 |
+| gap-down & short | 33 | **−$34** | 0.70 |
+| with-gap (both, combined) | 52 | **−$64** | — |
+| against-gap | **0** | — | — |
+
+1. **The gate structurally MANDATES the losing pattern.** The 9:35 gate requires direction-match (long needs up / short needs down), so **every gapped entry is by construction a *with-gap* entry** — there are literally zero against-gap entries it could make. With-gap entries lose −$64/trade. The gate can't avoid this without changing the direction rule.
+2. **The catastrophic read is mostly one trade.** `gap-up & long` is the worst bucket (PF 0.31), but **76% of its loss is the single MU 6/25 trade** (−$1,668 of −$2,188). Ex-MU it's −$28.9/trade — real drag, but mild, not catastrophic.
+3. **The long-side loss IS substantially the gap-up-longs.** 45% of long losers (10/22) were gap-up-longs, grossing −$3,158 — *more* than the entire net long loss, meaning ex-gap-up-longs the long side turns positive.
+
+**My pushback / caveats:** in-sample, GROSS-only, small N, MU-dominated, gap measured vs *immediate* prior close (understates multi-day), and the "noise-then-fade" mechanism is **deferred** (1-min-bar throttling makes the intrabar read unreliable). So this is a **hypothesis pointing the fix at gap-handling** — don't force chasing gap-direction, consider fading large gaps — to be **OOS-tested**. It is *not* a gate or strategy change; freeze intact, no watched files touched.
+
+Logged to SESSION_LOG (Loop 149), SYSTEM_FACTS regenerated, report mirrored + pushed to the coordination repo (secret-scan clean), roadmap marked DONE. Planning can read it at [reports/gap_fade_test.md](https://raw.githubusercontent.com/Rhettduleba/alpha-quant-coordination/main/reports/gap_fade_test.md).
+
+---
