@@ -5309,3 +5309,108 @@ Report at [reports/news_sentiment_anon_test.md](https://raw.githubusercontent.co
 One note for the queue: this test is **moot for the live book today** anyway, since the advisor (the thing that would consume news sentiment) is currently inert on trades per the Loop 150-151 audit. It matters only if/when an LLM news-reader gets wired into selection — which is the right time to apply the precautionary default.
 
 ---
+
+
+## Turn — 2026-06-28 08:52:04 ET
+
+**Rhett:**
+
+# HANDOFF → CLAUDE CODE — BUILD: the Verified-vs-Assumed FOUNDATION MAP (whole-system component audit) — READ-ONLY
+# From: Planning Claude | 2026-06-27 ET (Code: number + stamp; log it + SYSTEM_FACTS line per standing rule)
+# WHY: three core components trusted-by-design were measured this weekend and ALL were wrong/inert (gate
+# anti-selects, exit killed, advisor inert). That's a PATTERN, not bad luck — assume the whole foundation is
+# unproven until measured. Before any rebuild, we need ONE complete map: every core component, what it actually
+# does (broker truth), why it was built that way, whether it's been measured against OUTCOMES, and the verdict.
+# This ABSORBS the 4 existing findings and DRIVES audits of the still-unmeasured pieces. READ-ONLY; no live touch;
+# freeze intact. The goal is complete understanding before we rebuild anything.
+
+## BUILD: a living ledger `strategy-research/foundation_map.py` → `outputs/reports/foundation_map.md`
+For EACH core component below, fill four columns from VERIFIED sources (code + broker truth), labeling
+verified-vs-assumed for every claim:
+  (1) WHAT IT ACTUALLY DOES (verified from live code/data — not design intent)
+  (2) WHY IT WAS BUILT THIS WAY (the original rationale, if recoverable)
+  (3) MEASURED AGAINST OUTCOMES? (yes/no — has its real effect on P&L ever been checked?)
+  (4) VERDICT: WORKS / UNPROVEN / BROKEN-or-INERT (+ the evidence)
+
+## COMPONENTS (in pipeline order)
+1. UNIVERSE BUILD — orb_universe.build_universe() (S&P500 + supplement). What's actually in it, how it's filtered,
+   HTB exclusion. **UNMEASURED — flag as a gap to audit.**
+2. SELECTION / IN-PLAY GATE — RelVol floor + top-N + reject rules. **MEASURED 6/27 = ANTI-SELECTS** (absorb the
+   finding: rejected names +$48/trade cf vs passed −$29; mega-cap fade bias). VERDICT broken.
+3. ENTRY TRIGGER — the raw ORB entry logic (range def, breakout condition, the stop-limit collar). **UNMEASURED as a
+   standalone — flag.** (Execution shortfall was measured small/good, but the trigger LOGIC's edge wasn't isolated.)
+4. EXIT / STOP COVERAGE — candle_close + 1.4×ATR chandelier + resting stop. **MEASURED: killed 6/25; stop coverage
+   37.9% (9:35 96% / re-arm 0%), ~7min late.** VERDICT: timing wrong + a real before-live safety gap.
+5. SIZING — per-position $25k / per-side $200k / deploy-target. **UNMEASURED for outcome effect — flag** (does fixed-
+   dollar sizing help or hurt vs risk-based? never checked).
+6. RISK / CORRELATION — is there any correlation/factor-concentration control? (We believe NOT.) **UNMEASURED — flag.**
+7. ADVISOR — **MEASURED 6/27 = INERT** (0/285 trades, soft controls read by a path that takes no trades). Absorb.
+8. SAFETY / INFRA — loop-stall (9:30 freeze, instrumented), exit-monitor-death exposure, supervisor. Note state.
+
+## OUTPUT
+- The filled ledger table + a RANKED rebuild priority list that falls out of it (broken core selectors first;
+  unmeasured-but-load-bearing next; safety gaps flagged for before-live).
+- A clean list of the UNMEASURED components (1,3,5,6) as the next audits to run — because that's where the next
+  surprise hides.
+- The honest reframe: which components WORK and must be PRESERVED (e.g. the gross-positive re-arm/short slice, the
+  well-controlled entry execution) — this is "strip the broken layers, keep the working core," NOT rebuild-from-zero.
+
+## HARD CONSTRAINTS
+- READ-ONLY: no orders, no watched file, no behavior change. Freeze intact. Every claim labeled verified vs assumed.
+- Do NOT propose or make any fix in this pass — this is the MAP. Fixes are separate, gated, one-at-a-time handoffs
+  AFTER the map, each with: pre-stated expected behavior → shadow validation on broker truth → regression check.
+
+## VERIFICATION TASKS TO CLOSE (plain English back to Planning)
+1. The filled foundation_map.md (all 8 components, 4 columns each, verified-vs-assumed labeled).
+2. The ranked rebuild priority list + the list of still-UNMEASURED components to audit next.
+3. The PRESERVE list (what works and must not be broken).
+4. Confirm read-only; nothing touched; freeze intact.
+
+## /planning
+- Add "Foundation map (verified-vs-assumed whole-system audit) — complete understanding before rebuild" = IN_PROGRESS.
+  Update stamp. This becomes the master ledger the rebuild works from.
+
+**Claude Code:**
+
+Building the foundation map. I'll absorb the 4 measured findings I already have verified, but the unmeasured components (universe filters, entry trigger, sizing, risk/correlation) need fresh code verification. Let me gather those facts — starting with the machine-generated truth sheet and the entry/sizing/risk code:
+SYSTEM_FACTS gives me most verified mechanics. Note it says HTB/halted exclusion flag = True (contra my memory) — I'll verify enforcement, not just the flag. Let me close the remaining unmeasured-component facts: universe count/filters, sector/correlation control, and HTB wiring:
+I now have verified facts for all 8 components. Key corrections to the handoff's priors: **HTB exclusion IS wired and enforced** (orb_runner:652, fail-safe, `ORB_EXCLUDE_HARD_TO_BORROW=True` — my memory was stale); **sizing is `min(risk-based, notional)`, not purely fixed-dollar**; and there are **two different universes** (530-name ORB scan list vs 145 research-brain advisor channel — ORB uses the 530). Let me build the living ledger:
+Two sizing constant names are off. Let me find the real names:
+All values verified, zero UNVERIFIED. Let me view the full rendered map to confirm it reads correctly:
+The map is complete and reads cleanly. Now log it (Loop 153), mirror, and push:
+Done — Loop 153 pushed. The foundation map is built and is now the master ledger the rebuild works from.
+
+## Foundation Map — verified-vs-assumed whole-system audit
+
+**The pattern held.** Every claim is tagged `[V]` verified-from-code/broker-truth, `[M]` measured-against-outcomes, or `[A]` assumed. All 8 components, four columns each, live-anchored (the script pulls real constants on each run). Report: [reports/foundation_map.md](https://raw.githubusercontent.com/Rhettduleba/alpha-quant-coordination/main/reports/foundation_map.md).
+
+**Verdict tally:**
+- **BROKEN / INERT (measured):** #2 gate (anti-selects), #4 exit (killed 6/25 + 0% re-arm stop coverage), #7 advisor (inert, $0 on 285 trades).
+- **UNPROVEN (mechanically OK, outcome never measured):** #1 universe, #3 entry-trigger logic, #5 sizing, #6 risk/correlation, #8 infra-survivability.
+
+**Three priors the audit corrected (RULE #0 caught these):**
+- **HTB exclusion IS enforced** — fail-safe, wired in orb_runner:652 (my memory note saying "no HTB" was stale).
+- **Sizing is risk-aware**, `min(risk_shares, notional_shares)` — *not* the naive fixed-dollar scheme the handoff feared.
+- **Two different universes exist** — ORB scans the **530-name** S&P500+supplement list, *not* the 145-name research-brain `advisor_universe` (that channel only supplies a cosmetic sector map).
+
+**Ranked rebuild priority** (do not act — gated, one-at-a-time):
+1. **#2 gate** — highest-leverage broken core selector.
+2. **#4 exit timing + #8 the re-arm 0%-coverage safety gap** — measured kill + a real before-live naked-position exposure.
+3. **#6 add a correlation/concentration control + restore `DAILY_MAX_LOSS`** — hard before-live gates (no correlation control exists today; daily-loss is intentionally OFF in SIM).
+4. **#1 / #3 / #5** — audit *before* touching; unproven but not shown broken.
+5. **#7 advisor** — lowest urgency (inert ≠ hurting); fix the per-symbol-P&L prompt leak.
+
+**Still-unmeasured → the next audits** (where the next surprise hides): universe composition, the *isolated* entry-trigger edge (strip selection/gap/timing), the sizing scheme, and correlation/concentration on clustered mega-cap days.
+
+**Preserve list — strip the broken layers, keep the working core** (this is *not* rebuild-from-zero):
+- The **re-arm path** (+$19.7/trade, PF 1.30; 10:35 window +$41/trade PF 1.61) — ungated, the gate's anti-selection never touches it.
+- The **short side** (+$11.2/trade, PF 1.18).
+- **Entry execution mechanics** (0.82 bps slippage, stop-limit collar caps it).
+- **HTB/halted fail-safe exclusion** and the SIM-only guards.
+- The advisor's **one-way typed-control valve architecture** (sound even though its content is inert).
+
+**Four tasks back to Planning, closed:** (1) filled map — 8 components × 4 columns, every claim tagged; (2) ranked priority + the unmeasured-next list above; (3) preserve list above; (4) **read-only confirmed — no orders, no watched files, no behavior change, no fix proposed; freeze intact.** Logged Loop 153, SYSTEM_FACTS regenerated, roadmap marked DONE, pushed.
+
+The throughline across the weekend: every broken/inert component shares one failure mode — **built and validated in isolation, never verified end-to-end against the actual ORB book.** The map makes that legible and gives the rebuild a verified starting point instead of a trusted-by-design one.
+
+---
