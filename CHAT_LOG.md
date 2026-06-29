@@ -8027,3 +8027,77 @@ Recorded and pushed (coordination HEAD `345ccb1`).
 **Close-out (Loop 179, 2026-06-29 04:42 ET):** SESSION_LOG.md:222 (Loop 179, re-read & saved) ✓ · coordination mirrored + pushed HEAD **`345ccb1`** (secret-scan clean) ✓ · READ-ONLY — diagnosed only, nothing changed, freeze intact · SYSTEM_FACTS regen **N/A**.
 
 ---
+
+
+## Turn — 2026-06-29 04:56:00 ET
+
+**Rhett:**
+
+# HANDOFF → CLAUDE CODE — FIX: EOD R-multiple ~9.3x overstated (propagate the live-frac fix dashboard already got)
+# From: Planning Claude | 2026-06-29 ET (Code: number + stamp; CLAIM→VERIFY→SHOW close-out per the standing protocol)
+# WHY: the accuracy sweep (Loop 179) found the EOD Section B R-multiple divides by a HARDCODED 0.15ATR while the live
+# resting stop is 1.4ATR → every EOD R is ~9.33x too large (1.4/0.15) AND disagrees with the dashboard's (correct) R.
+# The dashboard/truth already got this fix; eod_debrief.py never did. DISPLAY/REPORT ONLY — no trading-path, no
+# watched file, no config, no gate/exit/sizing change. Freeze intact.
+
+## FIX
+1. eod_debrief.py:606 — `r_mult = npl/(0.15*atr*qty)` hardcodes 0.15. Point it at the LIVE resting-stop frac, the SAME
+   source the dashboard fix uses: import `r_multiple.R_STOP_ATR_FRAC` (which reads `orb_runner.RESTING_SL_FRAC`, live
+   1.4) instead of the literal 0.15. After the fix, the EOD R must MATCH the dashboard's R (no more ~9.3x disagreement).
+2. COSMETIC (do while here): truth_dashboard.py:12 — stale comment "R denominator locked 0.15xATR" though code
+   correctly uses 1.4. Update the comment to match the live behavior (comment only).
+3. COSMETIC (optional, your call): the slippage label — sign convention is adverse-POSITIVE but the label doesn't
+   say so. If trivial, add "(+=adverse)" to the slippage label so the sign isn't misread. Skip if non-trivial.
+
+## VERIFY
+- Recompute a sample day's EOD R-multiple after the fix and confirm it now equals the dashboard's R (both reading
+  live 1.4) — show the before (~9.3x) vs after match.
+- Confirm eod_debrief reads the SAME live frac source as r_multiple (single source, can't drift again).
+
+## HARD CONSTRAINTS
+- DISPLAY/REPORT ONLY: no watched/trading file, no orders, no gate/exit/sizing/config change. Freeze intact.
+- Prefer reading the LIVE frac (single source) over hardcoding 1.4 — so if the stop frac ever changes, both EOD and
+  dashboard track it automatically (don't create a NEW hardcode to replace the old one).
+
+## VERIFICATION TASKS TO CLOSE (plain English back to Planning)
+1. eod_debrief R now reads the live frac (file:line) + EOD R == dashboard R on a sample day (before/after numbers).
+2. The stale comment fixed; slippage label note (done or skipped).
+3. Confirm display-only, no trading-path touch, freeze intact.
+
+**Claude Code:**
+
+Implementing the fix. Since `eod_debrief.py` is in `tradestation-bot` (and the two repos don't cross-import), the true single source both sides share is **`orb_runner.RESTING_SL_FRAC`** — which is exactly what the dashboard's `r_multiple._live_resting_frac()` reads. So I'll have eod_debrief read that same live value. First, the imports/header and a circular-import check:
+`eod_debrief` uses stdlib only at top, `BOT` is on path. Let me confirm no circular import (does `orb_runner` import `eod_debrief`?) before adding the helper:
+No circular import, `RESTING_SL_FRAC = 1.4` confirmed, line 606 confirmed. Adding the live-frac helper (mirroring the dashboard's `r_multiple`) and pointing the R denominator at it:
+Now the cosmetic fixes. Let me read the truth_dashboard stale comment and the slippage label:
+Now the optional slippage-label note. Let me find the labels and add "(+=adverse)" if trivial:
+EOD Section C already states "(adverse +)" (line 676), so only the dashboard's `daily_review` labels lack it. Adding the note to both (trivial):
+Now verify the fix. Let me confirm eod_debrief imports cleanly, `_R_STOP_FRAC` resolves to the live 1.4, it equals the dashboard's frac, and show before/after R on real 6/26 data using the same ATR source the EOD report uses:
+The fix is verified — `_R_STOP_FRAC = 1.4`, equals `orb_runner.RESTING_SL_FRAC` and the dashboard's `r_multiple.R_STOP_ATR_FRAC` (parity = **True**), before/after R = 10.000 vs 1.071 (**9.33×**). The lone "False" is just display rounding (1.0714 vs r_multiple's 1.07 — identical formula/denominator). Let me confirm on real 6/26 trades using the actual EOD ATR source:
+No rows printed — `_atr_map("2026-06-26")` has no matching symbols. Let me check whether that's a pre-existing limitation (re-arm ATR not logged) vs something else, so I report it accurately:
+Important discovery — I need to report this honestly: **`_atr_map` returns 0 symbols for 6/24–6/26**, so the EOD Section B R column currently produces **no values at all** for recent days (no ATR to divide by). That means the 9.3× overstatement was *latent* (the column's been blank, not showing wrong numbers), and I can't show "EOD R == dashboard R on real 6/26 trades" because EOD emits no R there. Two separate pre-existing items surface from this — I'll flag them, not fix them here. The frac fix itself is correct and verified.
+
+Let me restart the dashboard so the cosmetic label change is live (display-only, proven safe in Loop 174), then verify:
+Dashboard restarted (PID 5184), bot untouched (same PIDs). Quick auth-live check + timestamp, then close out:
+Dashboard auth live (401). Recording the fix + the two pre-existing items I discovered:
+Fix in place and pushed (coordination HEAD `3aa4809`).
+
+## EOD R-multiple fix — done + verified
+
+**1. EOD R now reads the live frac (single source).** Added `_live_resting_frac()` + `_R_STOP_FRAC` to `eod_debrief.py` (mirroring the dashboard's `r_multiple` pattern — reads `orb_runner.RESTING_SL_FRAC`, fallback 1.4), and changed the R denominator at [eod_debrief.py:622](tradestation-bot/eod_debrief.py:622) from hardcoded `0.15` → `_R_STOP_FRAC`. Verified:
+- `eod_debrief._R_STOP_FRAC` == `orb_runner.RESTING_SL_FRAC` == `r_multiple.R_STOP_ATR_FRAC` == **1.4** (parity True — both EOD and dashboard now read the **same single source**, can't drift again).
+- Before/after: net $300 / ATR 2 / qty 100 → R **10.000** (old 0.15) vs **1.071** (live 1.4) = **9.33× smaller**, and 1.071 matches the dashboard's `r_multiple` (1.07 at 2 dp).
+
+**2. Cosmetics done.** `truth_dashboard.py:12` stale comment updated (now says "LIVE … 1.4xATR", not "locked 0.15"). Slippage labels in `daily_review_page.py` now read **"Entry slippage (+=adv)"** and **"Avg entry slippage (+=adverse)"** so the sign isn't misread (EOD Section C already said "(adverse +)"). Dashboard restarted (PID 348→**5184**, auth live 401) so the labels show.
+
+**3. Display/report only, freeze intact.** Edited three non-watched display files (`eod_debrief.py`, `truth_dashboard.py`, `daily_review_page.py`). No watched/trading/gate/exit/sizing/config change. Bot untouched — `watchdog_supervisor` (9232) and `run_bot` (10548) same PIDs throughout.
+
+### ⚠️ Two pre-existing gaps I found (flagging, not fixing — separate handoffs)
+These are **not** caused by this change and were latent before it:
+1. **The EOD R column is currently blank for recent days.** `_atr_map` (which reads `orb_daily_state.json` `entries_submitted` ATR) returns **0 symbols for 6/24, 6/25, 6/26** — so no trade gets an R in the EOD report. That's why I couldn't show "EOD R == dashboard R" on real 6/26 trades (EOD emits no R there); the 9.3× error was *latent* (a blank column, not visibly-wrong numbers). The frac fix is still correct for whenever ATR is present.
+2. **EOD and dashboard R use different ATR sources.** EOD reads logged ATR (`_atr_map` / `orb_daily_state`, empty recently); the dashboard computes ATR from bars (`_atr14`). So even with the frac now matched, the two R's won't be numerically identical when both have values — worth unifying the ATR source so EOD R truly equals dashboard R.
+
+---
+**Close-out (Loop 180, 2026-06-29 04:54 ET):** SESSION_LOG.md:222 (Loop 180, re-read & saved) ✓ · live fix confirmed at eod_debrief.py:622 ✓ · coordination mirrored + pushed HEAD **`3aa4809`** (secret-scan clean) ✓ · display-only, bot untouched (same PIDs), freeze intact · SYSTEM_FACTS regen **N/A** (no watched/trading/config change).
+
+---
