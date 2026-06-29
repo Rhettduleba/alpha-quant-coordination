@@ -7766,3 +7766,79 @@ Done. Stopped, nothing changed.
 The mobile/app dashboard direction is shelved per your call — too much information for a phone. Ready for whatever's next.
 
 ---
+
+
+## Turn — 2026-06-29 04:20:58 ET
+
+**Rhett:**
+
+# HANDOFF → CLAUDE CODE — PRE-OPEN VALIDATION SWEEP (Mon 6/29, ~4 AM ET, ~5.5h to open) — READ-ONLY health check
+# From: Planning Claude | 2026-06-29 ET (Code: number + stamp; CLAIM→VERIFY→SHOW close-out per the standing protocol)
+# Rhett wants a pre-open "is everything actually ready" sweep before today's live changes fire. READ-ONLY: verify
+# only, change NOTHING (no orders, no watched file, no config, no restart unless something's dead). Report a clear
+# GO / NOT-READY per item. This is the morning everything we built this weekend goes live in SIM.
+
+## VERIFY EACH (broker truth, not assumption) — report GREEN / problem per line
+1. BOT ALIVE: watchdog_supervisor + run_bot (pythonw) alive, heartbeat < 60s fresh, TradeStation auth live
+   (token_cache fresh), book flat, 5% drawdown kill active.
+2. TODAY'S SCHEDULED TASKS exist + enabled + next-run = today: `AlphaQuant_TW_LiveExit` (9:25), `AlphaQuant_LLM_
+   MarketView` (9:15), `AlphaQuant_LLM_InPlayReview` (9:40). Confirm the TW task is the renamed LiveExit (not the old
+   Shadow name) and points at the live-exit command.
+3. THE LIVE CHANGES are actually set: gate OFF (`ORB_INPLAY_GATE=False`), exit K=1.4 + structure intact, re-arm
+   resting-stop coverage code in place, HTB + index-ETF exclusions still on.
+4. KILL-SWITCH ready: confirm the `tw_abort.flag` mechanism is wired (creating the file stands TW down). State the
+   exact path Rhett creates to abort, in one line.
+5. EXIT OWNERSHIP: confirm the single-exit-owner setup is in place (TW will own exits, exit_bot_v2 stands down for
+   owned positions; structural no-double-exit guard present).
+6. LOOP-STALL INSTRUMENTATION armed (to catch the recurring ~9:30 freeze today).
+7. DISK + RESOURCES: C: free space OK (~17GB), nothing that would choke at open.
+8. SYSTEM_FACTS current (reflects gate-OFF + TW-live-exit, not stale).
+
+## OUTPUT (plain English)
+- A GO / NOT-READY line per item 1-8. 
+- The ONE-LINE kill-switch action (the exact file path to create to abort TW).
+- Anything NOT ready or risky for the open, flagged clearly. If everything's green: say "system is GO for open."
+- DO NOT change anything to "fix" unless a core process is DEAD (then restart only that, report it). This is a check,
+  not a build.
+
+## HARD CONSTRAINTS
+- READ-ONLY: no orders, no watched/trading file, no config, no gate/exit change. Freeze intact. Verify, don't alter.
+
+**Claude Code:**
+
+Pre-open sweep — all read-only. Let me verify the 8 items against actual process/OS/config/broker state in parallel:
+Strong progress. Most items check out, but I hit one thing I must resolve before calling it: **the 5% drawdown kill has a 2026-06-15 directive (line 169) that says "TURN OFF the 5% account-drawdown kill in SIM"** — so I can't assume it's active. Let me read the actual enforced state plus the remaining items (TW bat → live-exit, book flat via broker, SYSTEM_FACTS, loop-stall recency):
+Two key findings locked: TW bat uses `--live-exit` (live owner, single-lease) ✓, and **the 5% account-DD kill is `ACCOUNT_DD_KILL_ENABLED = False` — intentionally OFF in SIM** (Rhett's Loop 76 directive, data-gathering; per-trade exits untouched; hard gate to re-enable before live). That contradicts the handoff's "kill active" assumption — I'll flag it honestly rather than rubber-stamp it.
+
+Remaining: book-flat (broker truth), SYSTEM_FACTS currency, loop-stall armed. Checking:
+Loop-stall instrumentation is **armed and actively logging** (run_bot.py:53-85, `loop_stage_timing.jsonl` written 04:18:46 — current). SYSTEM_FACTS reflects TW-live-exit/re-arm/kill-switch, but my grep found **no gate-OFF row** — let me confirm that, and get broker-truth flat (heartbeat has no position data):
+All 8 items resolved. SYSTEM_FACTS **does** reflect gate-OFF (line 27: "In-play gate … False (OFF)") — my earlier pattern just missed the hyphenation. And book-flat is **broker-confirmed**: the 6/28 reconciliation shows "FLAT — 0 open positions, 0 working orders" with both-ways agreement, and the market's been closed since Friday.
+
+Recording the sweep, then the GO/NOT-READY report:
+Recorded and pushed (coordination HEAD `91df02e`).
+
+## Pre-open validation sweep — 2026-06-29 04:19 ET (~5h to open)
+
+| # | Item | Verdict |
+|---|---|---|
+| 1 | **Bot alive / auth / flat** | 🟢 **GO** — watchdog (PID 9232) + run_bot (PID 10548) alive, heartbeat **1s** (loop 5939), TS token_cache **8 min** fresh, book **FLAT** (broker recon: 0 positions / 0 working orders, agrees both ways) — **⚠️ one flag below** |
+| 2 | **Today's scheduled tasks** | 🟢 **GO** — TW_LiveExit **09:25**, LLM_MarketView **09:15**, LLM_InPlayReview **09:40**, all Ready / next-run today; TW points at `tape_watcher.py --live-exit` (the renamed LiveExit, not Shadow) |
+| 3 | **Live changes set** | 🟢 **GO** — gate `ORB_INPLAY_GATE=False`; exit `candle_1.4atr_chandelier` + `RESTING_SL_FRAC=1.4` + `1.0ATR` catastrophe; re-arm resting-stop registration in place; HTB + index-ETF exclusions both ON |
+| 4 | **Kill-switch wired** | 🟢 **GO** — `tw_abort.flag` read every cycle |
+| 5 | **Exit ownership** | 🟢 **GO** — exit_bot_v2 defers on `owned_fresh()`; re-arm registers into shared list; no-double-exit is structural (flatten re-reads live qty) |
+| 6 | **Loop-stall instrumentation** | 🟢 **GO** — armed + actively logging (`loop_stage_timing.jsonl` written 04:18:46; 90s stall-dump) |
+| 7 | **Disk / resources** | 🟢 **GO** — 16.81 GB free |
+| 8 | **SYSTEM_FACTS current** | 🟢 **GO** — reflects gate OFF, TW live-exit owner, exit mode, kill-switch |
+
+### 🛑 Kill-switch (one line)
+**To abort TW:** create the file `C:\AlphaQuant\tradestation-bot\tw_abort.flag` → TW stands down and releases the lease (exit_bot_v2 resumes, resting stops stay). Delete it to resume.
+
+### ⚠️ The one flag (not a bug — a conscious choice to confirm)
+**The 5% account-drawdown kill is OFF.** `ACCOUNT_DD_KILL_ENABLED = False` — intentionally disabled in SIM per Rhett's Loop 76 directive (data-gathering, no money-worry halts; flagged `MUST_SET_BEFORE_LIVE`). The handoff listed "5% kill active" as a GREEN condition, so I'm calling it out rather than rubber-stamping: **there is no account-level halt today.** What *is* protecting positions: the per-trade exits (1.4×ATR chandelier / candle-close / 1.0×ATR catastrophe), the always-on broker resting stops, and the manual `tw_abort.flag` kill-switch. This matches the existing SIM posture (DAILY_MAX_LOSS is also off in SIM), so it's consistent — just confirm you're comfortable running the live-change day with account-level kills off.
+
+**Bottom line: system is GO for open** — 7/8 fully green, item 1 green on aliveness/auth/flat with the intentional account-DD-kill-off caveat noted. Nothing was dead, so nothing was changed or restarted.
+
+---
+**Close-out (Loop 177, 2026-06-29 04:19 ET):** SESSION_LOG.md:222 (Loop 177, re-read & saved) ✓ · coordination mirrored + pushed HEAD **`91df02e`** (secret-scan clean) ✓ · READ-ONLY — no orders/watched/config/restart, freeze intact · SYSTEM_FACTS regen **N/A**.
+
+---
