@@ -7861,3 +7861,71 @@ Confirmed:
 So Planning has it. The full GO/NOT-READY breakdown is durably recorded, not just in chat.
 
 ---
+
+
+## Turn — 2026-06-29 04:29:31 ET
+
+**Rhett:**
+
+# HANDOFF → CLAUDE CODE — VALIDATE: are the slippage numbers on the daily-review dashboard ACCURATE? (read-only)
+# From: Planning Claude | 2026-06-29 ET (Code: number + stamp; CLAIM→VERIFY→SHOW close-out per the standing protocol)
+# WHY: slippage is part of the after-cost edge question, and we have NOT validated the dashboard's slippage figures.
+# The dashboard had a recurring stale/hardcoded-value disease this session (R-multiple 9x off, etc.) — so don't
+# assume slippage is right; PROVE it against broker truth. READ-ONLY: verify only, no change. Freeze intact.
+
+## VERIFY (broker truth, not the dashboard's own claim)
+1. WHERE does the daily-review slippage number come from? Trace the exact source: is it computed from REAL broker
+   fills (actual fill price vs a decision/arrival price), or from a MODEL/estimate/assumption? State plainly.
+2. Is it POINT-IN-TIME correct? Slippage = (fill price) vs (the quote/expected price AT decision/submit time). Confirm
+   it uses the right two prices at the right two timestamps — not a wrong reference (e.g. close, or a later quote).
+3. Recompute slippage independently for a sample of real trades (say 5-10 from a recent day) straight from broker
+   fills + the logged decision-time quotes, and COMPARE to what the dashboard shows. Do they match?
+4. Units/sign sanity: is it in bps or $/share or %, is the sign right (cost = negative), and does the dashboard label
+   match what's actually computed?
+5. Is the number LIVE (reads current data) or could it be stale/hardcoded like the bugs we already found?
+
+## OUTPUT (plain English)
+- Source of the slippage number (real fills vs model) — verified.
+- The independent recompute vs dashboard for the sample: MATCH or MISMATCH (with the numbers).
+- Verdict: are the daily-review slippage figures ACCURATE, or wrong/stale/modeled? If wrong, what's the fix (separate
+  handoff — don't fix here).
+
+## HARD CONSTRAINTS
+- READ-ONLY: verify only, change nothing. No watched/trading file, no config. Freeze intact. Don't fix in this pass —
+  diagnose first.
+
+**Claude Code:**
+
+Read-only slippage validation. Let me trace where the daily-review slippage number actually comes from — grepping the dashboard and its data sources:
+The dashboard doesn't compute slippage itself — it reads the canonical `entry_slip_dollars` from `eod_debrief.round_trips_net` (single source of truth, with a reconcile guard). So the real question is how **eod_debrief** computes it. Tracing that:
+The computation is now clear: `entry_slip(side, fill_px, intended_px)` = **actual broker fill price − intended trigger price** (side-aware, adverse normalized **positive**), where `intended_px` = the logged `signal_trigger_px` / `intended_price` / order `StopPrice`. So it's real-fill-vs-intended-entry-level, not a model — and eod_debrief itself labels it "DERIVED (actual vs intended)". 
+
+Now the critical part: independently recompute for a real sample and cross-check `fill_px` against broker truth. Let me find a recent day with trades and recompute:
+6/26 has 26 round trips, all with slippage. Recomputing a sample independently and cross-checking against the stored values + units/sign:
+My script used the wrong key — `fill_px` is None because the round-trip dict stores the entry fill under a different name (the stored `$`/`bps` values are populated and internally consistent: e.g. −0.36/154.39×1e4 = −23.32 bps ✓). Let me find the real keys and recompute properly, then cross-check the fill against the broker CSV:
+Now with the correct keys (`entry_px` = fill, `sym`, `intended_px`). Row 0 verifies by hand: short, 154.75 − 154.39 = +0.36, negated for short = **−0.36 = stored** ✓. Let me recompute the full sample properly and cross-check `entry_px` against the broker truth CSV:
+The "7 mismatches" are **my validation-script bug, not a system bug**: the round-trip dict stores `side` as `"long"/"short"`, but my recompute tested `!= "BUY"` — so it wrongly negated the longs. The stored values are correct (e.g. MRNA long filled 66.7401 below intended 66.8 = favorable −0.0599 ✓). The broker CSV has **both** `fill_price` and `intended_price`, so I can cross-check the slippage inputs directly against broker truth. Redoing with the correct side mapping + broker cross-check:
+Everything validates. Let me record and report:
+Recorded and pushed (coordination HEAD `554b368`).
+
+## Slippage validation — ACCURATE (proven against broker truth)
+
+**1. Source — real fills, not a model.** The dashboard doesn't compute slippage itself; it reads the canonical `entry_slip_dollars` from `eod_debrief.round_trips_net` (single source of truth, with a Loop-148 reconcile guard that fails loudly if the page average ever diverges). The formula is `entry_slip = actual fill price − intended entry price`, side-aware. **Verified the inputs are broker truth:** I cross-checked the round-trip `entry_px` and `intended_px` against `broker_orders_unified.csv` `fill_price`/`intended_price` for 10 trades on 6/26 — **10/10 exact match** (FDXF 154.75/154.39, CAT 1016.67/1017, MRNA 66.7401/66.8, …).
+
+**2. Point-in-time — correct two prices.** Reference = the bot's logged **intended/trigger price at submit** (`signal_trigger_px` / `intended_price` / order `StopPrice`), compared to the actual broker fill. It is **not** using close or a later quote. One honest distinction: this is *fill-vs-intended-entry-level* (the right execution metric for a stop/breakout ORB), not academic NBBO-arrival slippage — and eod_debrief labels it exactly that ("DERIVED, actual vs intended").
+
+**3. Independent recompute — MATCH.** I recomputed all **26** round trips on 6/26 from `entry_px`/`intended_px`/side → **0 mismatches**. (My first pass falsely flagged 7 longs because the round-trip `side` field is `"long"/"short"`, not `"BUY"` — that was *my* script bug; the stored values were right, which the broker cross-check then confirmed.)
+
+**4. Units/sign.** Units = **$/share** (label "Avg entry slippage (N fills)" matches the computed average; a bps version also exists). Sign convention = **adverse is POSITIVE** (long filled above / short filled below intended). 6/26 day average = **+0.068 $/sh** (slightly adverse; 18 adverse / 3 favorable / 5 zero of 26).
+
+**5. Live, not stale.** Reads broker truth per-day fresh, guarded by the reconcile check; values differ per day (26/23/21/11/16 trips across 6/26→6/22) — not hardcoded like the R-multiple bug was.
+
+### Verdict
+**The daily-review slippage figures are accurate** — real broker fills vs the logged intended entry price, recompute and broker cross-check both clean, live. **No fix needed.**
+
+**One caveat to be aware of (not a correctness bug):** the sign convention is **adverse-positive**, which is the *opposite* of the "cost = negative" convention the handoff assumed. The label doesn't state the convention, so someone expecting cost-negative would misread a `+0.068` as a gain when it's actually a small cost. If you want, a separate cosmetic handoff could add "(+ = adverse)" to the label — but the numbers themselves are correct.
+
+---
+**Close-out (Loop 178, 2026-06-29 04:28 ET):** SESSION_LOG.md:222 (Loop 178, re-read & saved) ✓ · coordination mirrored + pushed HEAD **`554b368`** (secret-scan clean) ✓ · READ-ONLY — no change, freeze intact · SYSTEM_FACTS regen **N/A**.
+
+---
