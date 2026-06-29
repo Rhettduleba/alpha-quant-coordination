@@ -8162,3 +8162,59 @@ Two NO-GO reasons, diagnosed:
 One incidental note for whoever fixes this: `code_alert_inbox.py --ack` crashed on a Windows cp1252 `UnicodeEncodeError` printing a 🚨 emoji; it only succeeded with `PYTHONIOENCODING=utf-8`. Minor observability bug (the ack still didn't advance on the first crash) — worth a `PYTHONUTF8` guard, but it's non-trading and I'm leaving it for human review under the freeze.
 
 ---
+
+
+## Turn — 2026-06-29 10:09:40 ET
+
+**Rhett:**
+
+<scheduled-task name="alphaquant-alert-triage" file="C:\Users\Administrator\.claude\scheduled-tasks\alphaquant-alert-triage\SKILL.md">
+This is an automated run of a scheduled task. The user is not present to answer questions. For implementation details, execute autonomously without asking clarifying questions — make reasonable choices and note them in your output. "write" actions (e.g. MCP tools that send, post, create, update, or delete), only take them if the task file asks for that specific action. When in doubt, producing a report of what you found is the correct output.
+
+AUTONOMOUS ALERT TRIAGE — Alpha Quant (Rhett-approved 2026-06-22; Planning Track A). You are a scheduled Claude Code run on the Alpha Quant VPS (live root C:\AlphaQuant). GOAL: Rhett must NOT be the human pager-relay. You read the SAME actionable alerts he would, auto-suppress known-noise, and ESCALATE anything that genuinely needs a human — pre-diagnosed. The human gate is preserved.
+
+IMPORTANT — FORWARD-TEST FREEZE: autonomous code-fixing is DEFERRED right now (Planning Track B). You DO NOT edit or commit ANY code this run (not even non-watched). You TRIAGE + ESCALATE only. (Auto-fix re-enables after the OOS forward test via a reviewed whitelist.)
+
+SOURCE OF TRUTH: read C:\AlphaQuant\CODE_ALERT_TRIAGE_PLAYBOOK.md and follow it EXACTLY (re-read each run). Procedure:
+1. `git -C C:\repos\alpha-quant-coordination pull` (ignore errors). Read the top stamp of C:\AlphaQuant\SESSION_LOG.md and C:\AlphaQuant\CSHV_FINDINGS.md for current state.
+2. Run: C:\Users\Administrator\AppData\Local\Python\pythoncore-3.14-64\python.exe C:\AlphaQuant\tradestation-bot\code_alert_inbox.py --json  → the NEW actionable CRITICAL alerts since last ack (the feed is already severity-gated to CRIT + de-noised; benign WARNs are handled at source, not here).
+3. For each alert: if it is KNOWN-NOISE (reader pre-tags many; or a state already confirmed benign in SESSION_LOG) → no action. Otherwise ESCALATE it: import notifier (add C:\AlphaQuant\tradestation-bot to sys.path) and call notifier.send_notification(subject="CODE TRIAGE — needs you", body= plain-English diagnosis + the specific proposed fix + whether it needs Rhett's approval (watched/strategy/risk) or just a go-ahead, level="CRITICAL"). For a SAFE non-watched fix you would normally make, STILL escalate it with the proposed fix (do not auto-edit during the freeze).
+4. ALWAYS at the end: append a short dated entry to C:\AlphaQuant\SESSION_LOG.md (what fired + what you escalated, or 'inbox clean'), copy it to C:\repos\alpha-quant-coordination\SESSION_LOG.md, commit + push that repo, then run code_alert_inbox.py --ack to advance the cursor. If nothing actionable, do NOT notify Rhett (silence = handled) — still --ack + one-line log.
+
+HARD RULES (never autonomously): NEVER edit/commit any code during the forward test (escalate fixes instead). NEVER edit a WATCHED strategy file (risk_config.py, bot_loop.py, exit_bot_v2.py, candle_close_exit.py, advisor_filter_engine.py, symbol_universe.py, orb_runner.py, orb_multiscan.py, short_bot.py). NEVER change risk/sizing/universe/stops/time-windows. NEVER place/cancel/modify orders or touch positions. NEVER deploy a strategy change. NEVER restart run_bot/watchdog_supervisor. NEVER touch credentials/.env or refresh TS tokens excessively. WHEN IN DOUBT, ESCALATE — never act on the live/trading path.
+
+ENVIRONMENT: Python = C:\Users\Administrator\AppData\Local\Python\pythoncore-3.14-64\python.exe. Work in C:\AlphaQuant. Keep each run tight + conservative. Your job: keep Discord quiet for Rhett by surfacing ONLY what truly needs him, pre-diagnosed.
+</scheduled-task>
+
+**Claude Code:**
+
+I'll execute this scheduled triage run following the playbook. Let me start with the required steps.
+Now let me read the current state files and run the inbox.
+This is materially more serious than the 9:10 AM run — there are now **3 CSHV FAILs including a position-recon mismatch (broker has 4 untracked positions) and a 160-rejection burst during RTH**. Before escalating I'll gather broker truth to pre-diagnose. Let me investigate read-only.
+Bot is alive (loop 6884) and `rel_phantom_deploy_book` shows book $198,819 == real exposure — yet recon says 4 untracked positions appeared during a SAFE_MODE entry-block. That's contradictory and needs broker truth. Let me find the file and inspect the rejections.
+The bot **is actively trading** (V, HON, ROL entries/exits filling 9:46–10:05) — so SAFE_MODE is shadow-only (`SAFE_MODE_ENFORCE` OFF), not actually holding the bot. The 9:10 AM escalation's "bot HELD all morning" was wrong. Now let me characterize the 160-rejection burst and the recon positions precisely.
+All 160 rejections are one reason: **"Only GTC/GTC+/GTD/GTD+ orders when markets are closed"** — all `orb_v1_6`, spread evenly across the universe (10 attempts each on SNPS/WDC/LITE/GOOG/KO/... ), BUY+SELLSHORT. This is the known off-hours order-class. Let me confirm the timing — whether these fired pre-9:30 (expected, markets closed) or during RTH (real bug).
+Key finding: **all 160 rejections fired in a single burst at 09:35:59** (RTH, market open) — the 9:35 ORB entry batch (~90 BUY + 70 SELLSHORT across the whole universe) was rejected en masse by the broker as *"markets are closed."* That's anomalous on a normal Monday open and touches WATCHED entry-path files. Let me check the recon positions' protection status before escalating.
+BIIB (long, 09:45), EW (long, 09:36), NKE (short, 09:37) are **open positions**; ROL is flat (covered 10:05). EW/NKE are ~24 min old yet recon at 10:00 said the bot wasn't tracking them, and none show a resting StopMarket (unlike V/HON/ROL). Let me check whether exit_bot_v2 is actually tracking them.
+highs.json/lows.json are **empty** and recent_exits.json only has ROL (now flat). So BIIB (long), EW (long), NKE (short) are open at the broker with **no resting stop and not in the exit tracker**. Let me confirm the tracker files are live (mtimes) and find the heartbeat to verify the bot's own position view.
+Confirmed: highs.json/lows.json are **live (mtime 10:07:29) but empty** — exit_bot_v2 is running yet tracking none of the 3 open positions. The recon mismatch has persisted across multiple cycles (>2). This is a genuine Bucket C situation. Let me verify the notifier signature before escalating.
+Verified. Now I'll escalate this to Rhett — two genuinely new, risk-relevant anomalies (untracked open positions + RTH mass-rejection) that touch WATCHED entry/exit-path files. Per the freeze I will NOT edit code, restart the bot, or touch positions/orders.
+Escalation delivered (Discord + Telegram OK). Now I'll log to SESSION_LOG, sync to the coordination repo, and ack the inbox.
+Pushed. Final step — ack the inbox to advance the cursor.
+Triage run complete. Cursor advanced (4 alerts marked processed).
+
+## Summary — Alert Triage 2026-06-29 ~10:08 AM ET
+
+**4 CRITICAL inbox alerts → 3 CSHV FAILs. One CRITICAL escalation sent to Rhett** (Discord 204 / Telegram 200). Forward-test freeze fully respected: **no code edited, no bot restart, no SAFE_MODE clear, no positions/orders touched.**
+
+What I found (broker-truth verified, not guessed):
+
+1. **#1 HIGHEST — 3 open positions with no exit owner.** Broker (`SIM1623888M`) holds **BIIB** long 91@218.94, **EW** long 215@92.785, **NKE** short 488@40.92 (~$59.8k notional). `highs.json`/`lows.json` are live (mtime 10:07) but **empty**; `recent_exits.json` has only ROL (now flat). No resting StopMarket exists for these 3 in `broker_orders_unified.csv` (V/HON/ROL *do* show paired StopMarket UROUT → those were protected). `rel_position_recon` FAIL persisted >2 cycles. exit_bot_v2 is running but blind to these re-arm fills — consistent with the 6/27 audit (re-arm cohort 0% resting-stop coverage). Touches WATCHED `exit_bot_v2.py` → escalated, not touched.
+
+2. **#2 NEW — 160 entry orders rejected at 09:35:59 RTH.** Full universe (~90 BUY + 70 SELLSHORT, `orb_v1_6`) all rejected *"Only GTC/… orders when markets are closed"* — **not** the benign weekend class (Monday, market open; other StopLimit entries filled in the same window). Looks like a malformed whole-universe day-order batch from `orb_multiscan`. WATCHED → escalated with proposed inspection, needs his approval.
+
+3. **#3 CORRECTION — SAFE_MODE "stuck 240 min" is cosmetic.** `SAFE_MODE_ENFORCE` is OFF, so the bot is trading normally (loop ~6884; V/HON/ROL round-trips 9:46–10:05). The earlier **9:10 AM escalation's claim "bot HELD all morning" was wrong** — I flagged this correction to Rhett.
+
+SESSION_LOG updated, synced + pushed to the coordination repo (commit `2a06138`), inbox ack'd.
+
+---
