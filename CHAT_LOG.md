@@ -8341,3 +8341,63 @@ Triage run complete. Cursor advanced (3 alerts acked — one more of the same CS
 Close-out: SESSION_LOG line written and pasted above; coordination repo pushed HEAD `9ba67ab`; no code touched (freeze intact); inbox cursor advanced.
 
 ---
+
+
+## Turn — 2026-06-29 13:06:16 ET
+
+**Rhett:**
+
+<scheduled-task name="alphaquant-alert-triage" file="C:\Users\Administrator\.claude\scheduled-tasks\alphaquant-alert-triage\SKILL.md">
+This is an automated run of a scheduled task. The user is not present to answer questions. For implementation details, execute autonomously without asking clarifying questions — make reasonable choices and note them in your output. "write" actions (e.g. MCP tools that send, post, create, update, or delete), only take them if the task file asks for that specific action. When in doubt, producing a report of what you found is the correct output.
+
+AUTONOMOUS ALERT TRIAGE — Alpha Quant (Rhett-approved 2026-06-22; Planning Track A). You are a scheduled Claude Code run on the Alpha Quant VPS (live root C:\AlphaQuant). GOAL: Rhett must NOT be the human pager-relay. You read the SAME actionable alerts he would, auto-suppress known-noise, and ESCALATE anything that genuinely needs a human — pre-diagnosed. The human gate is preserved.
+
+IMPORTANT — FORWARD-TEST FREEZE: autonomous code-fixing is DEFERRED right now (Planning Track B). You DO NOT edit or commit ANY code this run (not even non-watched). You TRIAGE + ESCALATE only. (Auto-fix re-enables after the OOS forward test via a reviewed whitelist.)
+
+SOURCE OF TRUTH: read C:\AlphaQuant\CODE_ALERT_TRIAGE_PLAYBOOK.md and follow it EXACTLY (re-read each run). Procedure:
+1. `git -C C:\repos\alpha-quant-coordination pull` (ignore errors). Read the top stamp of C:\AlphaQuant\SESSION_LOG.md and C:\AlphaQuant\CSHV_FINDINGS.md for current state.
+2. Run: C:\Users\Administrator\AppData\Local\Python\pythoncore-3.14-64\python.exe C:\AlphaQuant\tradestation-bot\code_alert_inbox.py --json  → the NEW actionable CRITICAL alerts since last ack (the feed is already severity-gated to CRIT + de-noised; benign WARNs are handled at source, not here).
+3. For each alert: if it is KNOWN-NOISE (reader pre-tags many; or a state already confirmed benign in SESSION_LOG) → no action. Otherwise ESCALATE it: import notifier (add C:\AlphaQuant\tradestation-bot to sys.path) and call notifier.send_notification(subject="CODE TRIAGE — needs you", body= plain-English diagnosis + the specific proposed fix + whether it needs Rhett's approval (watched/strategy/risk) or just a go-ahead, level="CRITICAL"). For a SAFE non-watched fix you would normally make, STILL escalate it with the proposed fix (do not auto-edit during the freeze).
+4. ALWAYS at the end: append a short dated entry to C:\AlphaQuant\SESSION_LOG.md (what fired + what you escalated, or 'inbox clean'), copy it to C:\repos\alpha-quant-coordination\SESSION_LOG.md, commit + push that repo, then run code_alert_inbox.py --ack to advance the cursor. If nothing actionable, do NOT notify Rhett (silence = handled) — still --ack + one-line log.
+
+HARD RULES (never autonomously): NEVER edit/commit any code during the forward test (escalate fixes instead). NEVER edit a WATCHED strategy file (risk_config.py, bot_loop.py, exit_bot_v2.py, candle_close_exit.py, advisor_filter_engine.py, symbol_universe.py, orb_runner.py, orb_multiscan.py, short_bot.py). NEVER change risk/sizing/universe/stops/time-windows. NEVER place/cancel/modify orders or touch positions. NEVER deploy a strategy change. NEVER restart run_bot/watchdog_supervisor. NEVER touch credentials/.env or refresh TS tokens excessively. WHEN IN DOUBT, ESCALATE — never act on the live/trading path.
+
+ENVIRONMENT: Python = C:\Users\Administrator\AppData\Local\Python\pythoncore-3.14-64\python.exe. Work in C:\AlphaQuant. Keep each run tight + conservative. Your job: keep Discord quiet for Rhett by surfacing ONLY what truly needs him, pre-diagnosed.
+</scheduled-task>
+
+**Claude Code:**
+
+I'll run this scheduled alert-triage task following the playbook. Let me start by pulling the coordination repo and reading current state.
+Now let me read the current state files and run the alert inbox.
+Inbox = 3 CRIT alerts, all one group: the SAME 2 CSHV FAILs (`rel_safe_mode_not_stuck`, `rel_position_recon`) already escalated + diagnosed 4× today (9:10 / 10:08 / 11:11 / 12:06). Per RULE #0, I must re-verify the live state before treating it as known — the position count moved 10 → 11. Let me check the TW lease, shadow log, and broker truth.
+Paths differ — let me locate the TW files (the cwd reset to OneDrive). The 12:06 PM entry referenced these files existing, so I need to find them.
+Found them. The lease `tw_exit_ownership.json` mtime is 13:04 — fresh (CSHV stamp was 13:00). Let me read the lease and shadow log with absolute paths.
+Verified. This is the **identical pre-diagnosed state** from the 12:06 PM run:
+
+- **TW lease FRESH** — PID 11776 alive, heartbeat 1:04 PM ET (≈now), owns **all 11** positions `[APP, BIIB, COHR, CRWD, EW, HII, MARA, NKE, Q, S, WMB]`. The CSHV `rel_position_recon` FAIL list is the same 11 → all owned by TW.
+- **No `tw_abort.flag`**. `tw_shadow.jsonl` LIVE (mtime 1:05 PM), 14 `live_exit_fired` today (last CANDLE_CLOSE_REVERSAL = MSTR 11:40 AM ET; count unchanged since 12:06 because no reversal signal has fired since — normal).
+- **`rel_position_recon` = same false-positive** (CSHV not lease-aware); **`rel_safe_mode` = cosmetic** (ENFORCE off, bot trading — heartbeat 22s @ CSHV 1:00 PM, journal touched 16s ago).
+- One delta vs 12:06: position count 10 → 11 (HII added) — **HII is in the TW lease `owned` list → covered.**
+- Stream-gaps persist (VEEV 28s) — the genuine day-1 risk already in Rhett's queue from 11:11.
+
+No new or novel condition. Per playbook (silence = handled; re-ping = spam) and the 12:06 precedent → **no new escalation.** Logging + ack only.
+Now sync to the coordination repo, commit/push, and ack the inbox.
+Pushed (HEAD `1145485`). Now ack the inbox to advance the cursor.
+Cursor advanced, 3 alerts marked processed. Triage run complete.
+
+## Triage summary — 2026-06-29 ~1:05 PM ET (autonomous run)
+
+**Inbox:** 3 CRITICAL, one group → the same 2 CSHV FAILs (`rel_safe_mode_not_stuck`, `rel_position_recon`) already escalated + diagnosed 4× today.
+
+**Re-verified against live truth (RULE #0):**
+- TW live-exit **PID 11776 alive**, lease heartbeat **1:04 PM ET (fresh)**, owns **all 11** flagged positions `[APP, BIIB, COHR, CRWD, EW, HII, MARA, NKE, Q, S, WMB]` — matches the CSHV recon list 1:1.
+- No `tw_abort.flag`; `tw_shadow.jsonl` LIVE (1:05 PM), 14 `live_exit_fired` today.
+- `rel_position_recon` = same **false-positive** (CSHV isn't lease-aware); `rel_safe_mode` = **cosmetic** (ENFORCE off, bot trading, heartbeat 22s).
+- Only delta vs 12:06 PM: positions 10 → 11 (HII added) — **HII is in the TW lease, so it's covered.**
+- Stream-gaps persist (VEEV 28s) — already in Rhett's queue from the 11:11 escalation.
+
+**Decision:** No new escalation — identical pre-diagnosed state; re-pinging would be spam (silence = handled). Genuine day-1 risks (ride-vs-kill, missing resting stops on the open cohort, lease-aware recon fix) remain open in Rhett's queue from earlier today.
+
+**Actions taken:** SESSION_LOG entry appended → copied to coordination repo → committed + pushed (HEAD `1145485`) → inbox `--ack`'d. Per forward-test freeze + watched-files rule: edited no code, placed/cancelled no orders, touched no positions, restarted nothing.
+
+---
