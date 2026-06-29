@@ -8218,3 +8218,69 @@ What I found (broker-truth verified, not guessed):
 SESSION_LOG updated, synced + pushed to the coordination repo (commit `2a06138`), inbox ack'd.
 
 ---
+
+
+## Turn — 2026-06-29 11:14:21 ET
+
+**Rhett:**
+
+<scheduled-task name="alphaquant-alert-triage" file="C:\Users\Administrator\.claude\scheduled-tasks\alphaquant-alert-triage\SKILL.md">
+This is an automated run of a scheduled task. The user is not present to answer questions. For implementation details, execute autonomously without asking clarifying questions — make reasonable choices and note them in your output. "write" actions (e.g. MCP tools that send, post, create, update, or delete), only take them if the task file asks for that specific action. When in doubt, producing a report of what you found is the correct output.
+
+AUTONOMOUS ALERT TRIAGE — Alpha Quant (Rhett-approved 2026-06-22; Planning Track A). You are a scheduled Claude Code run on the Alpha Quant VPS (live root C:\AlphaQuant). GOAL: Rhett must NOT be the human pager-relay. You read the SAME actionable alerts he would, auto-suppress known-noise, and ESCALATE anything that genuinely needs a human — pre-diagnosed. The human gate is preserved.
+
+IMPORTANT — FORWARD-TEST FREEZE: autonomous code-fixing is DEFERRED right now (Planning Track B). You DO NOT edit or commit ANY code this run (not even non-watched). You TRIAGE + ESCALATE only. (Auto-fix re-enables after the OOS forward test via a reviewed whitelist.)
+
+SOURCE OF TRUTH: read C:\AlphaQuant\CODE_ALERT_TRIAGE_PLAYBOOK.md and follow it EXACTLY (re-read each run). Procedure:
+1. `git -C C:\repos\alpha-quant-coordination pull` (ignore errors). Read the top stamp of C:\AlphaQuant\SESSION_LOG.md and C:\AlphaQuant\CSHV_FINDINGS.md for current state.
+2. Run: C:\Users\Administrator\AppData\Local\Python\pythoncore-3.14-64\python.exe C:\AlphaQuant\tradestation-bot\code_alert_inbox.py --json  → the NEW actionable CRITICAL alerts since last ack (the feed is already severity-gated to CRIT + de-noised; benign WARNs are handled at source, not here).
+3. For each alert: if it is KNOWN-NOISE (reader pre-tags many; or a state already confirmed benign in SESSION_LOG) → no action. Otherwise ESCALATE it: import notifier (add C:\AlphaQuant\tradestation-bot to sys.path) and call notifier.send_notification(subject="CODE TRIAGE — needs you", body= plain-English diagnosis + the specific proposed fix + whether it needs Rhett's approval (watched/strategy/risk) or just a go-ahead, level="CRITICAL"). For a SAFE non-watched fix you would normally make, STILL escalate it with the proposed fix (do not auto-edit during the freeze).
+4. ALWAYS at the end: append a short dated entry to C:\AlphaQuant\SESSION_LOG.md (what fired + what you escalated, or 'inbox clean'), copy it to C:\repos\alpha-quant-coordination\SESSION_LOG.md, commit + push that repo, then run code_alert_inbox.py --ack to advance the cursor. If nothing actionable, do NOT notify Rhett (silence = handled) — still --ack + one-line log.
+
+HARD RULES (never autonomously): NEVER edit/commit any code during the forward test (escalate fixes instead). NEVER edit a WATCHED strategy file (risk_config.py, bot_loop.py, exit_bot_v2.py, candle_close_exit.py, advisor_filter_engine.py, symbol_universe.py, orb_runner.py, orb_multiscan.py, short_bot.py). NEVER change risk/sizing/universe/stops/time-windows. NEVER place/cancel/modify orders or touch positions. NEVER deploy a strategy change. NEVER restart run_bot/watchdog_supervisor. NEVER touch credentials/.env or refresh TS tokens excessively. WHEN IN DOUBT, ESCALATE — never act on the live/trading path.
+
+ENVIRONMENT: Python = C:\Users\Administrator\AppData\Local\Python\pythoncore-3.14-64\python.exe. Work in C:\AlphaQuant. Keep each run tight + conservative. Your job: keep Discord quiet for Rhett by surfacing ONLY what truly needs him, pre-diagnosed.
+</scheduled-task>
+
+**Claude Code:**
+
+I'll execute this autonomous alert triage run following the playbook. Let me start by gathering current state.
+Now let me read current state and run the inbox.
+Three CRITICAL alerts, all CSHV FAILs. This is a continuation/escalation of what the 10:08 AM run already escalated, but the position-recon FAIL has **worsened (3 → 10 untracked positions)**. Let me verify the live state before deciding whether to re-escalate.
+Exit tracker (highs/lows.json) is freshly written (11:04) but **empty `{}`** — bot is tracking zero positions while broker holds 10. Let me verify the broker positions and whether they're protected.
+All 11 currently-open positions have **no live resting broker stop**, and the exit tracker (highs/lows.json) is empty. Let me check fill times (stale vs just-filled) and whether the exit bot / run_bot processes are actually alive.
+Now I have the full picture. The situation has **materially worsened since the 10:08 AM escalation**: untracked positions grew from 3 → 11, and a whole new re-arm cohort (8 positions, filled 10:35 AM ET) is also unprotected. Let me do two final verification checks before escalating.
+exit_bot_v2 runs as a step inside run_bot's loop each cycle, yet highs/lows.json stays empty `{}`. Let me confirm whether empty highs/lows means exit_bot is genuinely blind, or whether it rediscovers positions from the broker each cycle (which would make this less severe).
+exit_bot_v2 fetches positions live from the broker each cycle (line 292), so it isn't blind in the highs/lows sense — but the empty water-mark files after 11 fills still need explaining. Let me read the position-processing loop.
+Critical branch found (line 330-338): exit_bot_v2 **defers** to the live Tape Watcher when it holds a fresh lease — and `tape_watcher.py --live-exit` (PID 11776) is running. This would explain the empty highs/lows.json. The key question: is `--live-exit` actually placing real exit orders, or is TW still shadow-only (in which case nobody is managing these positions)? Let me check.
+Now the picture reframes substantially. A **live-exit Tape Watcher (Loop 155 Change 2) is running on the SIM trading path as of TODAY (6/29)** and has taken exit ownership of all 11 open positions — which is exactly why exit_bot defers and highs/lows.json is empty. But the 6/27 SESSION_LOG brief still says TW is "SHADOW ONLY." Let me verify the lease state, whether TW is actually firing real exits, whether tw_abort.flag is set, and the approval status before escalating.
+TW lease is fresh (heartbeat 11:08 AM ET, all 11 symbols, PID alive, no abort flag) — so TW genuinely holds live exit ownership. But I couldn't find its fire log at the expected path, and there's **no approval entry** for a TW live-exit deployment in manual_approvals.yaml. Let me locate the TW log to confirm it's actually firing exits (not alive-but-wrong), and check the change-log for a Loop 155 record.
+This completely reframes the situation. **Loop 155 (2026-06-28) is a Rhett-approved EXIT REBUILD** — TW `--live-exit` became the live exit owner as of today (6/29 SIM), with the freeze intentionally broken (his call via AskUserQuestion). The empty highs/lows.json, absent resting stops, and position_recon FAIL are all **expected** under this architecture: exit_bot defers all 11 positions to TW (lease fresh, all 11 owned, heartbeat 11:08, PID alive, no abort flag).
+
+This means the **10:08 escalation's "no exit owner / exit_bot blind" diagnosis was WRONG.** But before I tell Rhett that, RULE #0 requires me to verify TW is actually *firing* exits — not just holding leases (the "alive-but-wrong" case the kill-switch exists for). Let me check the TW fire log at the correct path.
+TW has written **zero events today** despite being alive (PID 11776 since 9:25 AM) and publishing a fresh lease (heartbeat 11:08). That's a red flag — it owns all 11 positions via the lease but isn't logging any `would_place_stop` or `live_exit_fired` activity. I need to determine whether TW is actually managing exits or is "alive-but-wrong." Let me check how TW logs in live-exit mode, find any live stdout log, and reconcile who fired today's completed exits.
+There's a direct TW stdout log at `C:\AlphaQuant\outputs\validation\tw_live.log`. The contradiction — fresh lease but zero shadow-log events today — must be resolved before I can tell Rhett anything. Let me read the live log and the actual tail of the shadow log.
+My earlier "zero events" was a **false read** — the recent events use keys `ts_wall`/`kind`, not `ts`/`event`. The actual tail shows TW IS active but logging `stream_gap` events (15–35s gaps per symbol). Let me re-query with the correct keys to get the true picture: is TW placing stops and firing exits, and how bad are the stream gaps?
+Now the picture is **verified and accurate**. Let me correct my own earlier false read: TW IS working as the live exit owner — **10 real exits fired today** (`live_exit_fired`: RBLX, CMCSA, VZ, VEEV, T, ORLY… all CANDLE_CLOSE_REVERSAL), 21 would-place-stops, fresh lease owning all 11 open positions. The 10:08 "no exit owner / exit_bot blind" diagnosis was **definitively wrong**.
+
+But the live data surfaces a **real, novel risk**: TW's quote stream is materially gappy on its first live day — 613 gaps, avg 26s, **max 152s**, concentrated on open positions (EW 116, BIIB 99, VEEV 105). TW is the sole exit owner. Let me verify one thing before escalating — whether the 11 open positions have any broker-side resting-stop backstop underneath, since that's what should cover gap windows.
+Confirmed: each of the 11 open positions shows **only its entry StopLimit (filled)** in the broker log — **no protective resting stop** underneath any of them. The full picture is now verified.
+
+Let me write the escalation. This is **Bucket C** — it touches the live exit path (TW, Loop 155, a watched deployment), it corrects a false alarm Rhett already received, and it surfaces a genuine first-live-day risk. I will NOT edit code, touch positions/orders, restart anything, or create the kill-switch flag myself (that's Rhett's call). Sending one consolidated CRITICAL:
+Escalation delivered (Discord OK:204, Telegram OK:200). Now appending the SESSION_LOG entry, syncing the coordination repo, and advancing the cursor.
+Now sync to the coordination repo, commit, push, and advance the inbox cursor.
+Triage run complete. Summary:
+
+## Autonomous Alert Triage — 2026-06-29 ~11:11 AM ET
+
+**3 CRITICAL CSHV FAILs** fired. I deep-verified all three against broker truth (`broker_orders_unified.csv`) and the TW live-exit logs before acting. The investigation **uncovered that the earlier 10:08 AM escalation was wrong** — which was the highest-value find.
+
+**Verified findings:**
+1. **Retracted a false alarm.** The 10:08 run escalated "open positions untracked / no exit owner / exit_bot blind." That was **wrong**. The positions ARE owned — by the **Tape Watcher live-exit (Loop 155, Rhett-approved EXIT REBUILD, live as of today)**. Proof: `tw_shadow.jsonl` shows **10 real exits fired today** (all CANDLE_CLOSE_REVERSAL); lease fresh (heartbeat 11:08, all 11 names, PID alive, no abort flag); exit_bot_v2 correctly defers → that's why highs/lows.json is empty. So `rel_position_recon` = **false positive** (CSHV isn't lease-aware), `rel_safe_mode` = **cosmetic** (ENFORCE off).
+2. **Raised one real new risk.** TW's quote stream is gappy on day 1: **613 gaps, avg 26s, max 152s**, concentrated on open names (EW/VEEV/BIIB) — and broker truth shows **all 11 open positions (~$219k) have zero protective resting StopMarket**, only their entry fills. So the 1.4×ATR backstop that should cover gap windows is absent. This is exactly the "tick completeness unproven until live Monday" risk now showing real degradation.
+
+**Action taken:** One consolidated CRITICAL escalated to Rhett (Discord OK:204, Telegram OK:200) with the retraction, the reclassified FAILs, the new risk, and his decision options (ride-and-judge-on-EOD vs kill-switch; investigate the missing resting stops; make CSHV lease-aware). 
+
+**Per forward-test freeze + watched-files rule:** did NOT edit code, place/cancel orders, touch positions, restart anything, or create `tw_abort.flag`. SESSION_LOG updated, synced to coordination repo (HEAD `cda3fe8`, pushed), inbox `--ack`'d and now clean.
+
+---
