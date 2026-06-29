@@ -43,6 +43,8 @@
 >
 > *(Older alert-triage stamps + reboot checklist + ledgers below are HISTORICAL — superseded by the brief above.)*
 > ---
+>
+> **[ALERT TRIAGE 2026-06-29 ~9:10 AM ET — autonomous run]** 11 CRITICAL alerts, ALL one chain: 6:00 AM pre-open gate NO-GO → SAFE_MODE engaged (since 06:00:14) → bot HELD all morning (PID 10548, started Sat 6/27 5:05 PM); won't trade at 9:30 open unless cleared. Two NO-GO reasons: (1) preflight 2 FAILs on WATCHED files orb_runner.py (mtime Sun 6/28 1:21 PM) + risk_config.py (mtime Sun 6/28 1:22 PM) both NEWER than bot start — diagnosed as benign OneDrive weekend re-sync mtime-touch (content sane: DEPLOY_TARGET_PCT=0.95 = approved); (2) reliability drill 1 DEAF detector `gate_not_failing_open` (leak expected CRITICAL, got OK) — REAL broken safety self-test, ties to open-decision (5)/6/19 gate-fail-open. **ESCALATED ONE CRITICAL to Rhett** with proposed fix (verify content unchanged → restart run_bot to clear false-FAIL at root; investigate deaf detector). Per forward-test freeze + watched-files rule: did NOT clear SAFE_MODE, restart bot, or edit any file. Holding is safe (exits never blocked). Inbox --ack'd.
 
 ---
 # 📋 FINDINGS & TEST RESULTS LEDGER  (READ THIS for "what did the latest tests find" — newest first)
