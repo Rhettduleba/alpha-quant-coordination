@@ -3255,3 +3255,7 @@ _Pinned-bar real-time method (l1_mustnotcut_audit), K pinned at 0.75 (never tigh
 _Diagnostic, in-sample. These days are in-sample for any un-promoted rule; a streak of confirming days accumulates N toward >=30 but does not promote anything -- promotion still requires a locked rule + fresh OOS forward test + the gauntlet._
 
 ---
+
+---
+
+**Alert triage 2026-06-29 ~4:10 PM ET — inbox clean (8th identical run, no re-escalation).** 3 CRIT groups, all the SAME known-cosmetic chain prior runs (6th/7th) already triaged: (1) 6/28 1:21–1:22 PM cosmetic mtime touch of orb_runner.py + risk_config.py (NO strategy_change_log entry; CSHV no_inline_risk_constant_drift / risk_constants_loadable / system_facts_fresh all OK → behavior-neutral) → (2) running bot PID 10548 started 6/27 5:05 PM < those mtimes → preflight 2 verify-load FAILs → (3) 6 AM pre-open gate NO-GO → (4) SHADOW SAFE_MODE set (SAFE_MODE_ENFORCE=False → block_new_entries() is a no-op, ZERO trading impact; bot traded normally, 23 RT NET −$3,493.02) → (5) rel_safe_mode_not_stuck FAILs all day (cosmetic, downstream of shadow SAFE_MODE). This is the documented shadow pre-open-gate observation state (OPEN DECISION 1), not an incident. No Rhett ping (silence=handled). Standing human-only clears (NOT done by triage during freeze): a supervised run_bot restart adopts the 6/28 mtimes + clears the verify-load FAILs; SAFE_MODE auto-clears on next clean gate/monitor. Acked cursor.
