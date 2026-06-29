@@ -8522,3 +8522,73 @@ Triage complete — pushed (HEAD `860030c`), inbox `--ack`'d (3 alerts marked pr
 **Actions:** No new escalation (re-ping = spam; silence = handled). Per forward-test freeze + watched-files rules: edited/placed/restarted nothing. Logged to SESSION_LOG, synced to coordination repo, inbox ack'd.
 
 ---
+
+
+## Turn — 2026-06-29 16:08:19 ET
+
+**Rhett:**
+
+<scheduled-task name="alphaquant-alert-triage" file="C:\Users\Administrator\.claude\scheduled-tasks\alphaquant-alert-triage\SKILL.md">
+This is an automated run of a scheduled task. The user is not present to answer questions. For implementation details, execute autonomously without asking clarifying questions — make reasonable choices and note them in your output. "write" actions (e.g. MCP tools that send, post, create, update, or delete), only take them if the task file asks for that specific action. When in doubt, producing a report of what you found is the correct output.
+
+AUTONOMOUS ALERT TRIAGE — Alpha Quant (Rhett-approved 2026-06-22; Planning Track A). You are a scheduled Claude Code run on the Alpha Quant VPS (live root C:\AlphaQuant). GOAL: Rhett must NOT be the human pager-relay. You read the SAME actionable alerts he would, auto-suppress known-noise, and ESCALATE anything that genuinely needs a human — pre-diagnosed. The human gate is preserved.
+
+IMPORTANT — FORWARD-TEST FREEZE: autonomous code-fixing is DEFERRED right now (Planning Track B). You DO NOT edit or commit ANY code this run (not even non-watched). You TRIAGE + ESCALATE only. (Auto-fix re-enables after the OOS forward test via a reviewed whitelist.)
+
+SOURCE OF TRUTH: read C:\AlphaQuant\CODE_ALERT_TRIAGE_PLAYBOOK.md and follow it EXACTLY (re-read each run). Procedure:
+1. `git -C C:\repos\alpha-quant-coordination pull` (ignore errors). Read the top stamp of C:\AlphaQuant\SESSION_LOG.md and C:\AlphaQuant\CSHV_FINDINGS.md for current state.
+2. Run: C:\Users\Administrator\AppData\Local\Python\pythoncore-3.14-64\python.exe C:\AlphaQuant\tradestation-bot\code_alert_inbox.py --json  → the NEW actionable CRITICAL alerts since last ack (the feed is already severity-gated to CRIT + de-noised; benign WARNs are handled at source, not here).
+3. For each alert: if it is KNOWN-NOISE (reader pre-tags many; or a state already confirmed benign in SESSION_LOG) → no action. Otherwise ESCALATE it: import notifier (add C:\AlphaQuant\tradestation-bot to sys.path) and call notifier.send_notification(subject="CODE TRIAGE — needs you", body= plain-English diagnosis + the specific proposed fix + whether it needs Rhett's approval (watched/strategy/risk) or just a go-ahead, level="CRITICAL"). For a SAFE non-watched fix you would normally make, STILL escalate it with the proposed fix (do not auto-edit during the freeze).
+4. ALWAYS at the end: append a short dated entry to C:\AlphaQuant\SESSION_LOG.md (what fired + what you escalated, or 'inbox clean'), copy it to C:\repos\alpha-quant-coordination\SESSION_LOG.md, commit + push that repo, then run code_alert_inbox.py --ack to advance the cursor. If nothing actionable, do NOT notify Rhett (silence = handled) — still --ack + one-line log.
+
+HARD RULES (never autonomously): NEVER edit/commit any code during the forward test (escalate fixes instead). NEVER edit a WATCHED strategy file (risk_config.py, bot_loop.py, exit_bot_v2.py, candle_close_exit.py, advisor_filter_engine.py, symbol_universe.py, orb_runner.py, orb_multiscan.py, short_bot.py). NEVER change risk/sizing/universe/stops/time-windows. NEVER place/cancel/modify orders or touch positions. NEVER deploy a strategy change. NEVER restart run_bot/watchdog_supervisor. NEVER touch credentials/.env or refresh TS tokens excessively. WHEN IN DOUBT, ESCALATE — never act on the live/trading path.
+
+ENVIRONMENT: Python = C:\Users\Administrator\AppData\Local\Python\pythoncore-3.14-64\python.exe. Work in C:\AlphaQuant. Keep each run tight + conservative. Your job: keep Discord quiet for Rhett by surfacing ONLY what truly needs him, pre-diagnosed.
+</scheduled-task>
+
+**Claude Code:**
+
+I'll run the autonomous alert triage following the playbook. Let me start by pulling the coordination repo and reading current state.
+Playbook loaded. Now let me read the current state and run the inbox.
+Today is Monday 6/29 — a trading day. SAFE_MODE has been stuck active since 6:00 AM ET (now 600 min / 10 hours), blocking ALL new entries all day because the pre-open gate went NO-GO. This is a Bucket C escalation (SAFE_MODE stuck). Let me pre-diagnose the root cause before escalating.
+SAFE_MODE stuck 600 min on a trading day is the core issue. The critical nuance for Rhett: does this actually block entries, or is the pre-open gate still shadow-only (teeth gated on `SAFE_MODE_ENFORCE`)? That determines severity. Let me verify.
+`SAFE_MODE_ENFORCE=False (shadow default)` per REG-19. So SAFE_MODE is shadow-only and `block_new_entries()` should be a no-op. Let me confirm that's exactly how `block_new_entries()` behaves, so I correctly tell Rhett whether trading was actually blocked today.
+Confirmed: `SAFE_MODE_ENFORCE = False` (shadow) → `block_new_entries()` is a no-op, so **trading was NOT blocked today** (bot traded: 23 RT, NET −$3,493.02). The stuck SAFE_MODE is a shadow flag firing a CSHV FAIL, not a trading halt. Now let me identify the 2 preflight FAILs that drove the 6 AM gate NO-GO — that's the real underlying signal to escalate.
+No persisted gate log with the FAIL detail. Let me run the preflight diagnostic directly (read-only) to identify the 2 FAILs for the escalation.
+Now I have the 2 FAILs: both are **verify-load checks** — `orb_runner.py` and `risk_config.py` have mtimes *newer* than the running bot's start time (the bot may be running stale copies of two WATCHED strategy files). This is exactly CLAUDE.md rule #13 territory. Let me get precise dates/times to determine whether this is a real stale-code situation or a benign mtime touch (e.g. OneDrive).
+The two WATCHED files (`orb_runner.py`, `risk_config.py`) were modified **Sunday 6/28 at 1:21–1:22 PM EDT** — not documented in the SESSION_LOG top block (which only records the 6/27 deploy-target change + restart). I need to determine if the running bot (PID 10548) started before or after that 6/28 modification, and what actually changed.
+This fully resolves the picture. Critical findings:
+
+1. **run_bot PID 10548 started 6/27 5:05 PM**; the two watched files were touched **6/28 1:21 PM** (after start) → verify-load FAILs are technically correct (bot running pre-6/28-touch copies).
+2. **No 6/28 strategy_change_log entry**, and CSHV content/drift checks are all GREEN (`no_inline_risk_constant_drift` OK, `risk_constants_loadable` OK, `system_facts_fresh` OK) → the 6/28 touch was behavior-neutral (cosmetic mtime bump), not a real unauthorized strategy change.
+3. **No trading impact**: SAFE_MODE is shadow (`SAFE_MODE_ENFORCE=False`), `block_new_entries()` is a no-op → bot traded normally today (23 RT, NET −$3,493.02).
+4. **Already triaged 7× today** — the coordination git log shows prior runs (6th, 7th) classified these exact 2 FAILs "known false-positive/cosmetic, lease-verified, no re-escalation." This is the 8th identical run; market is now closed.
+
+This is the documented shadow pre-open-gate observation state (SESSION_LOG OPEN DECISION 1), not a novel incident. Per playbook Bucket A + de-dup discipline, re-paging Rhett an 8th time is exactly the spam this system prevents. **Decision: ack + one-line log, no re-escalation.** Let me confirm the SESSION_LOG tail format and append.
+Now I'll append the one-line triage entry to SESSION_LOG, sync to the coordination repo, and ack the inbox cursor. No Rhett re-escalation (handled = silent).
+Triage complete. Cursor advanced, 3 alerts marked processed.
+
+## Triage summary — 2026-06-29 ~4:10 PM ET
+
+**Inbox: 3 CRITICAL groups, all the same known-cosmetic chain. No Rhett escalation (silence = handled).**
+
+**Verified root-cause chain (RULE #0 — every link checked against source, not assumed):**
+
+| # | Link | Verification |
+|---|------|--------------|
+| 1 | Cosmetic mtime touch of `orb_runner.py` + `risk_config.py` on **6/28 1:21–1:22 PM** | `stat` mtimes; **no** strategy_change_log entry for 6/28; CSHV `no_inline_risk_constant_drift` / `risk_constants_loadable` / `system_facts_fresh` all **OK** → behavior-neutral |
+| 2 | Running bot **PID 10548 started 6/27 5:05 PM** (< the 6/28 mtimes) | Win32_Process CreationDate epoch → 2026-06-27 17:05:24 |
+| 3 | Preflight throws 2 **verify-load** FAILs | Ran `_preflight_diagnostic.py`: the only 2 FAILs are `orb_runner.py loaded` + `risk_config.py loaded` (mtime>bot_start) |
+| 4 | 6 AM pre-open gate → NO-GO → SAFE_MODE set | `safe_mode.json` reason = gate NO-GO |
+| 5 | **No trading impact** | `SAFE_MODE_ENFORCE = False` (live-read) → `block_new_entries()` returns `(False, …)` no-op. Bot traded normally: **23 RT, NET −$3,493.02** |
+| 6 | `rel_safe_mode_not_stuck` FAIL all day | Cosmetic downstream of the shadow SAFE_MODE that never auto-cleared |
+
+**Why not escalated:** This is the documented shadow pre-open-gate observation state (SESSION_LOG OPEN DECISION 1 — gate expected to throw NO-GOs during the 3–5 observation mornings), zero trading impact, and already triaged 7× today (coordination git log: 6th/7th runs "known false-positive/cosmetic, lease-verified"). An 8th identical page is exactly the spam this system suppresses.
+
+**Standing human-only clears (NOT done by triage during the forward-test freeze):**
+- A supervised `run_bot` restart adopts the 6/28 mtimes → clears both verify-load FAILs (HARD RULE: triage never restarts run_bot).
+- SAFE_MODE auto-clears on the next clean gate/monitor run.
+
+**Actions taken:** appended SESSION_LOG entry → synced to coordination repo → committed + pushed ([582cf5f](https://github.com/Rhettduleba/alpha-quant-coordination/commit/582cf5f)) → `--ack` advanced cursor (3 processed). No code edited, no orders/positions/SAFE_MODE touched.
+
+---
