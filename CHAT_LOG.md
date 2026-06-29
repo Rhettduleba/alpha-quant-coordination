@@ -7929,3 +7929,101 @@ Recorded and pushed (coordination HEAD `554b368`).
 **Close-out (Loop 178, 2026-06-29 04:28 ET):** SESSION_LOG.md:222 (Loop 178, re-read & saved) ✓ · coordination mirrored + pushed HEAD **`554b368`** (secret-scan clean) ✓ · READ-ONLY — no change, freeze intact · SYSTEM_FACTS regen **N/A**.
 
 ---
+
+
+## Turn — 2026-06-29 04:43:25 ET
+
+**Rhett:**
+
+# HANDOFF → CLAUDE CODE — FULL ACCURACY SWEEP: EOD + dashboard — every number traced to broker truth or labeled derived
+# From: Planning Claude | 2026-06-29 ET (Code: number + stamp; CLAIM→VERIFY→SHOW close-out per the standing protocol)
+# WHY: validate that ALL data on the EOD reports + dashboard is accurate and matches BROKER TRUTH (TradeStation), or
+# is honestly labeled as derived/modeled. This session found a recurring disease: derived/stale/hardcoded values
+# shown as if they were truth (R-multiple 9x off, modeled commission, 3 stale pages). Sweep for ALL of it. READ-ONLY:
+# verify only, no change, diagnose-don't-fix. Freeze intact.
+
+## STEP 0 — DEFINE THE SOURCE OF TRUTH (state it plainly)
+- Confirm + document what "broker truth" actually IS in this system: which TradeStation API feeds / files
+  (broker_orders_unified.csv, live position/account queries, fills) are the authoritative source. List them. Every
+  dashboard/EOD number must trace to one of these OR be labeled derived/modeled.
+
+## STEP 1 — INVENTORY EVERY NUMBER (EOD reports + dashboard)
+- List every metric shown on the daily-review / EOD reports and the dashboard pages: P&L (gross + net), per-trade
+  results, slippage, commissions/fees, R-multiples, win rate, profit factor, position counts, deploy/book size,
+  spread, ATR, exit prices, etc.
+- For EACH: classify as (a) BROKER-TRUTH (comes directly from TradeStation), (b) DERIVED (computed from broker truth —
+  e.g. slippage, R-multiple, PF), or (c) MODELED/ASSUMED (e.g. any estimated commission, modeled cost).
+
+## STEP 2 — VERIFY ACCURACY (broker truth, not the dashboard's own claim)
+- For BROKER-TRUTH numbers: confirm they match what TradeStation actually reports (reconcile a recent day's trades
+  to broker_orders_unified / live fills — do the counts, fills, P&L tie out?).
+- For DERIVED numbers: independently recompute a sample (5-10 trades) from the raw broker data and COMPARE to what's
+  displayed. Flag any mismatch (like the R-multiple 9x bug). Check slippage specifically: is it fill-price vs
+  decision-time quote, point-in-time correct, right units/sign?
+- For MODELED numbers: confirm they're LABELED as estimates, not shown as truth. Any modeled commission/cost must say
+  so (we have NO validated TS fee schedule yet — net-of-fee numbers must not masquerade as real).
+- For ALL: is it LIVE (reads current data) or stale/hardcoded? Flag any baked-in value that should read live.
+
+## OUTPUT (plain English)
+- The broker-truth source list (Step 0).
+- A table: each metric → truth/derived/modeled → ACCURATE / MISMATCH / STALE / MISLABELED, with evidence.
+- The headline: which numbers are trustworthy, which are wrong/stale/mislabeled, and the priority fixes (separate
+  handoff — do NOT fix here).
+
+## HARD CONSTRAINTS
+- READ-ONLY: verify only, change nothing. No watched/trading file, no config. Freeze intact. Diagnose, don't fix.
+- Don't rubber-stamp "looks right" — recompute against raw broker data. A number is trusted only when it ties out.
+
+**Claude Code:**
+
+This is the big one — a full broker-truth reconciliation. Let me work it in parallel: dispatch an Explore agent to inventory every metric across the dashboard pages + EOD reports while I dig into the broker-truth sources and the commission/fee computation myself (the critical "modeled cost" suspect).
+The Explore inventory is thorough, but I must verify the **commission/fee provenance myself** — the Explore agent *claimed* they're "broker-actual," but the broker CSV I saw earlier (`broker_orders_unified.csv`) has **no commission or fee column** (just logged_at/order_id/strategy/account_id/symbol/side/status/reject_reason/order_type/intended_price/fill_price/quantity). So where do `en["commission"]` and `en["fee"]` come from? That's the crux of the "modeled cost" disease. Tracing `_fills`:
+Critical: `_fills` reads `o.get("CommissionFee")` and `o.get("UnbundledRouteFee")` (lines 80-81) — **not** from `broker_orders_unified.csv` (which has no such columns), but from a "raw_order_json" source (line 809: "BROKER-ACTUAL: raw_order_json CommissionFee"). I must verify that source is genuinely TradeStation-reported, not modeled. Reading `_fills`:
+`_fills` reads `broker_orders_unified.csv`, and per filled row parses the `raw_order_json` column (the full TradeStation Orders API response) to pull `CommissionFee`/`UnbundledRouteFee`. So commission **is** sourced from TS's raw JSON — *if those fields are actually populated*. The decisive empirical test: are the real values non-zero, or is this a SIM account reporting $0 (making "net" == "gross")? Let me check the actual broker data:
+**Major good finding: commission is genuinely broker-truth, not modeled.** All 52 fills on 6/26 carry a TS-reported `CommissionFee` in the raw order JSON (total $104.70, ~$2.01/round-trip, realistic values $1.00–$2.21), and net ($524.02) = gross ($628.72) − commission. Trade count reconciles (52 fills → 26 round trips). So net P&L is real broker-net, not a local model.
+
+But the inventory flagged something I must check: EOD Section B computes `r_mult = npl / (0.15 * atr * qty)` (eod_debrief.py:606) — **hardcoded 0.15**, while the dashboard's R was fixed this session to read the live 1.4 resting-stop frac. If EOD still uses 0.15 but the live stop is 1.4×ATR, that's the **same 9× R bug, unfixed in eod_debrief**. Checking:
+Confirmed: eod_debrief.py:606 hardcodes `r_mult = npl / (0.15 * a["atr"] * qty)`, and line 588's displayed "0.15ATR lvl" also uses 0.15. The live resting stop is 1.4×ATR (`RESTING_SL_FRAC=1.4`), so the initial risk is 1.4×ATR — meaning this R is ~9.3× overstated. Let me confirm the dashboard's R was fixed to 1.4 (so EOD and dashboard now disagree) by reading `r_multiple.py` and the truth-dashboard R:
+Confirmed the divergence: `r_multiple.py` reads the **live 1.4** (`R_STOP_ATR_FRAC = _live_resting_frac()` → `orb_runner.RESTING_SL_FRAC`), with a docstring noting "the 0.15 here was stale... every R was ~9x too large" — and truth_dashboard uses that shared 1.4. **But eod_debrief.py:606 still hardcodes 0.15.** So the EOD report's R column was never fixed — it's ~9.3× overstated while the dashboard is correct.
+
+Let me do the final reconcile (win rate / PF / expectancy) and quantify the EOD R overstatement concretely:
+All clear except one real bug. Win rate (61.5%), PF (1.30), expectancy ($20.15/trade) reconcile cleanly from the canonical broker-net ledger. The EOD R overstatement ratio is exactly **1.4/0.15 = 9.33×**. Recording the full sweep:
+Recorded and pushed (coordination HEAD `345ccb1`).
+
+## Full accuracy sweep — EOD + dashboard vs broker truth
+
+### Step 0 — What "broker truth" actually is
+- **`broker_orders_unified.csv`** (19 columns) — the authoritative fills log. Per filled order: `fill_price`, `quantity`, `intended_price`/`signal_trigger_px`, submit/opened/closed times, `order_id`, and crucially **`raw_order_json`** = the full TradeStation Orders-API response (carries `CommissionFee`, `UnbundledRouteFee`, `Legs`/`ExecQuantity`/`ExecutionPrice`).
+- **Live TS position query** (`reliability_checks.check_position_recon`) — for flat/position reconciliation.
+- Everything flows through **`eod_debrief.round_trips_net(date)`** — the single canonical ledger both the EOD report and the dashboards read (with reconcile guards so they can't silently diverge).
+
+### Step 1–2 — Metric verdict (verified on 6/26 by recomputing from raw broker data)
+
+| Metric | Class | Verdict | Evidence |
+|---|---|---|---|
+| Gross P&L | Derived from broker fills | ✅ ACCURATE | $628.72; 52 fills → 26 trips reconcile |
+| **Commission** | **BROKER-TRUTH** | ✅ ACCURATE + correctly labeled | TS `CommissionFee` non-zero on **all 52 fills**, $104.70 total (~$2.01/round-trip) |
+| Net P&L | Derived (gross − broker commission) | ✅ ACCURATE | $524.02 = $628.72 − $104.70 (gross ≠ net; gap = real commission) |
+| Fees (UnbundledRouteFee) | Broker-truth | ✅ ACCURATE ($0; TS reports 0) | honest |
+| Entry/exit fills | Broker-truth | ✅ ACCURATE | 10/10 match the CSV |
+| Slippage | Derived (fill vs intended) | ✅ ACCURATE | Loop 178 (sign = adverse-positive) |
+| Win rate / PF / expectancy$ | Derived from net | ✅ ACCURATE | recomputed 61.5% / 1.30 / $20.15 = canonical |
+| Trade counts | Broker-truth | ✅ ACCURATE | 52 fills → 26 round trips |
+| **R-multiple (EOD Section B)** | Derived | ❌ **WRONG — ~9.3× overstated** | `eod_debrief.py:606` hardcodes `0.15*atr`; live stop is 1.4×ATR |
+| R-multiple / exp-R (dashboard, /truth) | Derived | ✅ ACCURATE | reads live `RESTING_SL_FRAC` = 1.4 |
+| "0.15ATR lvl" column (EOD) | Derived | ✅ OK | it's the real confirm level, labeled honestly |
+
+### Headline
+
+**Trustworthy (ties to broker truth):** gross/net P&L, **commission**, fills, slippage, win rate, profit factor, expectancy-$, trade counts. The recurring "derived-shown-as-truth" disease is **not** present in the P&L stack.
+
+**One correction to the premise:** the handoff worried about *modeled commission masquerading as real* — that's **not the case here**. TradeStation reports `CommissionFee` directly in the raw order JSON (non-zero, realistic), and net P&L genuinely subtracts it. So net **is** real after-cost P&L (at SIM's TS commission schedule). The only caveat: it's the SIM account's TS-reported commission, not a verified live negotiated rate.
+
+**The one real bug → priority fix (separate handoff, not fixed here):** **EOD Section B's R-multiple is ~9.3× overstated.** The 0.15-vs-1.4 R bug was caught and fixed in the dashboard (`r_multiple.py` reads the live 1.4 resting-stop frac), but the fix **never propagated to `eod_debrief.py:606`**, which still hardcodes `0.15 * atr`. Result: the EOD report's R column disagrees with the dashboard's R by the factor 1.4/0.15 = 9.33×, and the EOD one is wrong. Fix = point `eod_debrief.py:606` at the live frac (`r_multiple.R_STOP_ATR_FRAC` / `orb_runner.RESTING_SL_FRAC`).
+
+**Cosmetic:** `truth_dashboard.py:12` has a stale comment ("R denominator locked 0.15xATR") although the code correctly uses 1.4.
+
+---
+**Close-out (Loop 179, 2026-06-29 04:42 ET):** SESSION_LOG.md:222 (Loop 179, re-read & saved) ✓ · coordination mirrored + pushed HEAD **`345ccb1`** (secret-scan clean) ✓ · READ-ONLY — diagnosed only, nothing changed, freeze intact · SYSTEM_FACTS regen **N/A**.
+
+---
