@@ -7842,3 +7842,22 @@ Recorded and pushed (coordination HEAD `91df02e`).
 **Close-out (Loop 177, 2026-06-29 04:19 ET):** SESSION_LOG.md:222 (Loop 177, re-read & saved) ✓ · coordination mirrored + pushed HEAD **`91df02e`** (secret-scan clean) ✓ · READ-ONLY — no orders/watched/config/restart, freeze intact · SYSTEM_FACTS regen **N/A**.
 
 ---
+
+
+## Turn — 2026-06-29 04:22:11 ET
+
+**Rhett:**
+
+did you write this to the session log?
+
+**Claude Code:**
+
+Yes — verified directly:
+Confirmed:
+
+- **Loop 177 (the full pre-open sweep) is in the live SESSION_LOG** at line 222 — the GO verdict, all 8 items, the 5%-kill-OFF flag, and the kill-switch one-liner.
+- **The coordination-repo mirror is byte-identical and pushed** (`main...origin/main`, in sync — current HEAD `c7f5c1b`, which includes the auto Stop-hook sync on top of my push).
+
+So Planning has it. The full GO/NOT-READY breakdown is durably recorded, not just in chat.
+
+---
