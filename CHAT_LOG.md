@@ -12363,3 +12363,81 @@ Done the disciplined way:
 This **stops the bleeding** — it doesn't manufacture an edge. Re-arm-only is ~breakeven (+$1.2/trade post-5/26, slightly negative post-6/19), not a proven winner. So the real next question is whether there's an actual edge to find in the re-arm path (the short side is the one bright spot: re-arm shorts are +$844 / +$8.3 per trade, 65% win). That's where I'd point the next study — but tonight's change removes the single biggest, most clear-cut drag on the system, and the SIM going forward is now the live test of it.
 
 ---
+
+
+## Turn — 2026-06-30 19:23:57 ET
+
+**Rhett:**
+
+this test should assure that we have no bugs and that we will be failuer free after the test. do you agree? If not rewrite it so we can you it after we make a chnage or do some seeriouse coding we can run it and make sure the sysytem is functioning properly and that everything is working and bug free. ALPHA QUANT — "DOES IT ACTUALLY WORK?" SELF-AUDIT
+
+ROLE: You've been told what Alpha Quant is (SIM-only ORB equity day-trader on TradeStation, acct SIM1623888M, root C:\AlphaQuant, + a Claude advisor writing ONE typed control file). Do NOT trust it. Try to prove it's broken. Assume a bug exists until a falsifiable check says otherwise. Cite the highest evidence (BROKER_TRUTH > BROKER_EXPORT > LOCAL_RECONSTRUCTION > BOT_LOG > ADVISORY). If you can't verify, mark UNKNOWN — never assume PASS.
+
+FAILURE CLASS TO HUNT (today's lesson): (1) a single gate that silently zeros all trades with no "alive but not trading" alert; (2) a diagnosis stated as fact without checking broker truth; (3) a fix that over-corrects (too-strict → too-loose) instead of side/context-aware; (4) a constant changed without sweeping every consumer; (5) something "deployed" not actually wired into the live path (shadow). Run the check that FALSIFIES each claim — don't answer "yes."
+
+1. ENTRY PIPELINE: List every filter from universe → submitted order. For each: what % does it drop on a normal day, and could it drop 100% on a plausible day? Chart submitted/candidates for 5 days — any 0 day, prove it was market vs malfunction. Confirm borrow/short gates are SIDE-AWARE (a long is never dropped for a borrow reason). Is there an alert for "scan ran but submitted=0 for N scans during RTH"? If not, that's the hole that hid today.
+
+2. 4x-MARGINABLE / BORROW GATE: Confirm HTB blocks BOTH sides in orb_runner AND orb_multiscan (show both lines). Verify IsHardToBorrow per-symbol vs the platform blotter (don't trust a past claim). Is the universe restricted to 4x-marginable names, and how is non-4x sourced (TS API exposes NO per-symbol margin)? Is the leveraged-ETF / Special-Margin exclusion present, dated, and consulted? If TODO, say so.
+
+3. ADVISOR→BOT CHANNEL: Force each rejection path (missing/bad-JSON/wrong-env/live_allowed/expired) and confirm the bot DEFAULTS TO ALLOW and never honors free-text. Confirm only the documented control vocabulary is acted on; advisor can't write config/risk/universe.
+
+4. RISK ENFORCEMENT: For DAILY_MAX_LOSS, 5% DD kill, MAX_POSITION_PCT, MAX_OPEN_POSITIONS, MAX_TOTAL_EXPOSURE, MAX_SECTOR_POSITIONS, $500 DOLLAR_STOP_CAP — find the ENFORCING line + proof it triggered/could. A constant with no consumer is a lie. Confirm which guards are OFF for SIM and that a written gate requires restoring them + a real-time intraday clamp before live; live sizing off $400k (4x) base, not SIM equity.
+
+5. EXITS & STOP COVERAGE: For every fill today, confirm a broker resting stop within N seconds — compute % coverage + max naked window for the 9:35 AND re-arm cohorts. Confirm $500 cap places sl_dist=min(1.4xATR,$500/qty) with a real example. Confirm EOD flatten leaves broker positions = 0 (daytrade-flat), proven by export.
+
+6. DATA / BROKER TRUTH: Confirm reconciliation reads broker truth, not the phantom journal; order-action reads Legs[0].BuyOrSell (EC704 gotcha). Re-derive today's P&L + ledger from broker export and reconcile. Any mismatch = bug.
+
+7. PROCESS SURVIVABILITY: List long-lived processes; each detached + watched by supervisor_guardian? subprocess calls carry CREATE_NO_WINDOW? Edited long-lived process actually RESTARTED (StartTime > mtime) + preflight green? Confirm orb_runner/orb_multiscan are fresh subprocesses each cycle.
+
+8. OBSERVABILITY: Inventory every alert channel; does the reliability DRILL still catch each injected fault (no deaf detectors)? Is there a detector for alive-but-not-trading, naked position, gate-failing-open, RTH loop-freeze, submitted=0 streak? Map each Section 1–7 failure to the alert that catches it. Gaps = build items.
+
+9. PROVE A NORMAL DAY end-to-end: universe → 9:35 scan → fills → stops → re-arm → exits → EOD flat → reconciliation → debrief; each handoff produced its artifact and numbers tie to broker truth. State the ONE thing most likely to break tomorrow + the check that catches it first.
+
+OUTPUT: per section PASS/FAIL/UNKNOWN + the exact command/file/query proving it + evidence tier; for FAIL/UNKNOWN, the smallest fix and whether it touches a WATCHED trading file (→ proposal + Rhett's go) or non-watched (→ fix now). End with a ranked bug list, today's-failure-class first. Don't declare "it works" unless Sections 1,2,4,5,8 are all PASS with evidence.
+
+**Claude Code:**
+
+Sharp question, and **no — I don't agree, and you're right to push on it.** Here's the honest engineering truth: **no test can prove the absence of bugs** (you can only prove their *presence*). And this particular audit is the *wrong tool* for "run after every change," for three concrete reasons:
+
+1. **It's a manual, interpretive prompt** — it needs a Claude agent to run it with judgment. Two runs can differ; a step can be skipped; "PASS" can be asserted wrongly. It's not deterministic.
+2. **It's point-in-time and already out of date** — it predates today's work, so it doesn't even check the things we just changed (the $500 cap, the 9:35 gate, the HTB/restricted exclusion, the before-live gate, the dashboard validator).
+3. **"Failure-free after the test" is impossible** — the system can still fail tomorrow from market conditions, a broker API change, or a new bug class this audit never imagined.
+
+**What you actually want — and what we've been building all week — is an automated gate.** We have the pieces scattered (regression suite REG-01..27, the reliability drill, the dashboard validator, preflight). The right move is to **wire them into ONE command** you run after any change that gives a single deterministic PASS/FAIL. That's the E1 harness from the remediation plan. Let me build it now and keep the prompt as a *separate, occasional* deep adversarial review.
+
+Let me check the entry points of the pieces I'll aggregate:
+All five have clean exit-code interfaces — so I can aggregate them deterministically. Building the **automated gate**:
+Now run it on the current system (which includes everything we changed today) to prove the gate works end-to-end:
+The gate works — and it **immediately did its job**: it caught 2 preflight FAILs and correctly returned an overall FAIL (4/5 green). That's exactly the point. Let me see what the 2 FAILs are:
+The gate just proved its worth on its first run — it caught a real **verify-load discipline** item: I edited `orb_runner.py` (7:12 PM) and `risk_config.py` (7:11 PM) today, but `run_bot` has been running since **7:14 AM**, so its StartTime predates the edits. Those changes *do* take effect anyway (orb_runner/orb_multiscan respawn each cycle), but per rule #13 a watched-file edit isn't "fully loaded" until the bot is restarted — and the gate correctly flags that before I'd call the work shipped. Market's closed and the bot's flat, so this is the safe moment. Let me check the processes before restarting:
+`watchdog_supervisor` (PID 2128) is alive and is exactly what respawns `run_bot` on death — so the clean restart is to stop `run_bot` and let the supervisor relaunch it with current code. Doing that now (flat, market closed), then verifying the respawn:
+Clean respawn — `run_bot` is back as **PID 388, StartTime 7:22 PM**, now *after* the file edits (7:11–7:12 PM). So the changes are fully loaded and the verify-load discipline is satisfied. Re-running the gate to confirm FAIL → PASS:
+**PASS — 5/5 green.** The full loop worked exactly as it should: build the gate → run it → it caught a real issue (verify-load) → fix (restart) → re-run → green. That's the proof the tool does its job.
+
+Now let me reframe the old prompt so the two tools aren't confused, then log it:
+Pushed (`0249924`). Here's where it lands.
+
+## No, I don't agree — and here's the honest version
+**No test can prove a system is bug-free.** You can only ever prove a bug *exists*, never that none do. So that audit can't "assure failure-free." And as a *run-after-every-change* tool it was the wrong shape anyway: it's a manual, interpretive prompt (a human/agent could skip a step or mark PASS wrongly), it's point-in-time, and it predated everything we built today.
+
+## So I built the right thing instead — an automated gate
+**`audit_does_it_work.py`** — one command, deterministic, ~1 minute, single PASS/FAIL. Run it after any change or serious coding. It aggregates everything we've been building all week into one verdict:
+
+| | Check | What it proves |
+|---|---|---|
+| A | regression suite (REG-01..27) | no known bug-class regressed |
+| B | reliability drill | every fault detector still fires (no deaf alarm) |
+| C | dashboard validate | pages tie to broker truth, caches fresh |
+| D | preflight | live processes up + survivable |
+| E | ORB preflight | entry-path gates green |
+
+**It proved itself on the first run.** It came back **FAIL** — and correctly caught a real verify-load issue: I'd edited `orb_runner`/`risk_config` today but `run_bot` had been up since 7:14 AM, so its StartTime predated the edits (rule #13). I restarted the bot (clean supervisor respawn, market closed, flat — PID 388, 7:22 PM), re-ran, and it went **PASS 5/5**. That FAIL→fix→PASS loop is exactly the behavior you want before calling a change "shipped."
+
+## What "PASS" honestly means
+**Not** "bug-free forever." It means: *no known failure-mode regressed, and every alarm still works.* When we hit a **new** bug, we add a lock for it (a regression test or drill case), and from then on the gate catches it. That's how the assurance compounds — each bug we've ever seen can never silently return.
+
+I also relabeled the old prompt so they're not confused: **the gate runs after every change; the prompt is the occasional deep adversarial hunt** for the *next* unknown bug class (which then becomes a new lock in the gate).
+
+So: run `audit_does_it_work.py` before you trust any change. It's green right now, with today's work (9:35 gate, $500 cap, B1, dashboard, HTB/restricted) fully loaded and verified.
+
+---
