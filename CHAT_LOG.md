@@ -10993,3 +10993,55 @@ pick up where the log leaves off.
 Want me to build the "alive-but-not-trading" alert next so a silent zero-trade morning pings you immediately instead of going unnoticed?
 
 ---
+
+
+## Turn — 2026-06-30 12:18:34 ET
+
+**Rhett:**
+
+yes
+
+**Claude Code:**
+
+Building it. Let me read `reliability_checks.py` to match the existing check pattern (CSHV runs these every 5 min and alerts), so the new detector is low-noise and uses the existing alert path:
+The file's own docstring names this exact failure: *"bot alive + data fresh, yet refused every trade."* Perfect home. Let me see the existing checks and how they're registered/read scan data:
+Let me find how checks are registered/run and whether scan data is already read anywhere:
+Let me read the scan-reading check + the registration block so my new check matches conventions:
+The structure is clear: checks are pure, registered in `CHECKS`, and the caller (CSHV) routes severity → notifications + SAFE_MODE. Two things I must verify before choosing severity: (1) does a CRIT engage SAFE_MODE (I must NOT block entries for "not trading"), and (2) what severity does CSHV actually ping on:
+SAFE_MODE only engages on a specific allowlist — `{phantom_deploy_book, exit_side, trading_is_thinking}` — so my new check's severity **won't block entries** regardless. Now, what does CSHV actually ping Rhett on?
+CSHV notifies on **FAIL and WARN** (deduped by notifier.py). Let me confirm how `reliability_checks` results flow into CSHV's notify path, so I pick a severity that actually pings:
+The bridge is clear: each reliability check is exposed to CSHV via a `@register("Reliability", "rel_<name>")` wrapper, and CSHV pings on WARN/FAIL. Both `reliability_checks.py` and `system_health_verifier.py` are **non-watched** (monitoring), so I can build this cleanly. Adding the detector:
+Now wire it into CSHV so it actually pings. Let me add the bridge next to the other reliability bridges:
+Now test it — both the live case (bot armed 16 today → must stay quiet) and a synthetic replay of this morning (0 armed, 56 candidates, 20 HTB → must WARN):
+All three cases are correct:
+- **Live:** OK — *"17 entry-arm(s) today — bot is trading"* (no false alarm).
+- **This morning replayed:** **WARN** — *"ALIVE but ARMED 0 ENTRIES as of 11:00 AM ET despite 56 candidates at 9:35 — a filter ate the whole book (the 6/30 HTB class). Dominant drop reason(s): HTB=20."* That's exactly the ping you'd have gotten by ~11 AM.
+- **Genuinely quiet day (0 candidates):** OK — no false alarm.
+
+Now confirm it's registered in CSHV and that CSHV picks it up (fresh process vs long-lived needing a restart):
+Registered (`_CHECKS` contains it) and **CSHV runs as a scheduled task** ("AlphaQuant CSHV", Ready) — a fresh process every 5 min, so it re-imports and picks up the new detector automatically, **no restart needed.** Let me just confirm a reliability WARN actually reaches the notifier (the whole point is that it pings):
+Full chain confirmed: reliability WARN → CSHV WARN → notifier ping (deduped). The detector is live-ready. Let me log it (Loop 204) and push:
+Built, tested, wired, and live-ready (logged as Loop 204, pushed).
+
+## The "alive-but-not-trading" alert — done
+It catches exactly this morning's failure: the bot running fine but a filter silently eating every entry.
+
+**It pings you (WARN, deduped, via CSHV → Discord/Telegram) only when all of these are true:**
+- It's RTH and past a **10:45 AM grace** (so the 9:35 scan *and* the first re-arm get their fair chance — no premature alarm),
+- the bot is **alive** (fresh heartbeat),
+- **zero entries armed today**,
+- but the scan **did find candidates** (setups existed), and
+- entries aren't **intentionally halted** (SAFE_MODE or an advisor block).
+
+And the alert **names the culprit** so you can triage in seconds — this morning it would have read:
+> *"ALIVE but ARMED 0 ENTRIES as of 11:00 AM ET despite 56 candidates at 9:35 — a filter ate the whole book (the 6/30 HTB class). Dominant drop reason(s): **HTB=20**."*
+
+**Tested three ways:** today (bot armed 17 → stays silent), this morning replayed (→ fires WARN naming HTB=20), and a genuinely quiet day with 0 candidates (→ stays silent). No false alarms either direction.
+
+**Two safety properties I deliberately built in:**
+- It's **not** in the SAFE_MODE allowlist, so the alarm can *never* block entries — an alert must not cause the very outage it's warning about.
+- CSHV runs as a fresh-process scheduled task every 5 min, so it picks this up automatically — **no restart**, live within ~5 minutes.
+
+One honest follow-up I left undone: adding a self-test case to the reliability *drill* so this new smoke-detector is itself periodically tested (so it can't silently go deaf). Want me to add that drill case next?
+
+---
