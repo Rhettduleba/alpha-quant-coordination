@@ -10168,3 +10168,58 @@ Context: the bot traded 23 entries on 6/29 (the flag was usable then), so today'
 **Close-out (Loop 198, 2026-06-30 10:01 ET):** SESSION_LOG.md:238 (Loop 198, re-read & saved) ✓ · coordination mirrored + pushed HEAD **`8cd49ca`** (secret-scan clean) ✓ · READ-ONLY — live quote query only, no orders/config/restart, bot healthy, freeze intact · SYSTEM_FACTS regen **N/A**.
 
 ---
+
+
+## Turn — 2026-06-30 10:07:22 ET
+
+**Rhett:**
+
+TS is not showing all symbols as HTB, you have to be wrong, TS does not fail, that would be trillions of dollars at jeopardy. Rethink double check it has to bethe bot
+
+**Claude Code:**
+
+You're right to push back — let me not defend a conclusion you're telling me is wrong. I'll go to the raw response, not my parsing. Let me dump the **complete, unparsed** quote TradeStation returns for AAPL and DLR — exactly what the bot receives:
+You're right, and the raw data shows exactly why — I owe you a correction. Here's the unparsed truth:
+
+**AAPL's raw quote: `"IsHardToBorrow": true` — but the bot is querying `https://sim-api.tradestation.com/v3` (the SIM API), not live TradeStation.**
+
+So we're **both right**: your live TradeStation correctly shows AAPL as borrowable; the **SIM market-data endpoint** is returning `IsHardToBorrow=true` for everything (raw-confirmed for AAPL/MSFT). It's not live TS failing — it's the **SIM environment's borrow flag being garbage**, and **the bot trusting it**. That's the bot side, exactly as you said. Let me confirm and correct the record:
+Confirmed and corrected. Here's the accurate diagnosis — and you were right to make me dig.
+
+**I was wrong to frame Loop 198 as "TradeStation fails." It doesn't. Here's the real chain:**
+
+- The bot's market-data endpoint is **`https://sim-api.tradestation.com/v3`** (the **SIM** API, `TS_BASE_URL` in `.env`).
+- The **SIM** endpoint is returning `IsHardToBorrow=true` for **every** symbol today (raw-confirmed for AAPL/MSFT) — that's **unreliable SIM data**, not live TradeStation. Your live TradeStation is correct.
+- The proof it's garbage/unstable: **on 6/29 the bot armed and filled 23 entries** — meaning those same SIM borrow flags were *not* true that day. The SIM `IsHardToBorrow` flag **flips** — usable 6/29, stuck-true 6/30. It's not a trustworthy signal.
+- **The bot trusts that flag** (the fail-safe HTB filter excludes any name not confirmed borrowable), so when SIM returns all-true, **the bot blocks every entry → 0 trades.**
+
+**So you're right: it's the bot.** Specifically, the bot is gating real trade decisions on an **unreliable SIM borrow flag**. Live TS is fine; the SIM market-data borrow field is junk today; and the bot shouldn't be trusting it.
+
+Let me log the correction:
+Corrected and pushed (coordination HEAD `28838aa`).
+
+## Corrected verdict — you were right: it's the bot
+
+**What I got wrong:** I framed Loop 198 as "TradeStation's data fails." It doesn't. Live TS is fine.
+
+**The accurate chain:**
+1. The bot queries **`sim-api.tradestation.com`** (the **SIM** market-data endpoint — `TS_BASE_URL` in `.env`), not live.
+2. That **SIM** endpoint is returning `IsHardToBorrow=true` for **every** symbol today — raw-confirmed for AAPL and MSFT. It's **junk SIM data**, not live borrow status.
+3. **It's demonstrably unreliable:** on 6/29 the bot filled 23 entries, so those same SIM flags were *not* true that day. The flag **flips day to day** — not a trustworthy signal.
+4. **The bot trusts it.** The fail-safe HTB filter arms a name only if it's confirmed borrowable, so when SIM returns all-true, the bot excludes **every** candidate → **0 trades**. (It also wrongly excludes **longs**, which don't borrow.)
+
+So the fixable bug is **bot-side**: the HTB gate is making real trade decisions off an unreliable SIM borrow flag, and self-blocking all entries whenever that flag sticks true — today, and any future day it does.
+
+**The fix (gated — watched path `htb_filter`/`orb_runner`, market is open → after close):** the HTB gate must not block on the SIM borrow flag. Best options:
+- **(a)** In SIM, treat `IsHardToBorrow` as advisory, not blocking — SIM can't really borrow anyway; the gate was only ever for live-prep.
+- **(b)** Allow **longs** through regardless of HTB (no borrow needed).
+- (c) If you want real borrow data, source it from the **live** market-data API (`api.tradestation.com`) if entitled.
+
+I'd recommend **(a) + (b)** for SIM data-collection. Until that lands, the bot will keep trading **zero** whenever the SIM flag sticks true — so this is worth fixing at today's close.
+
+Thank you for pushing — I should have caught the SIM endpoint and that the bot trusting it was the real issue, instead of pinning it on TS. Nothing was changed (read-only; market open); the fix is a gated, after-close change awaiting your go.
+
+---
+**Close-out (Loop 199, 2026-06-30 10:06 ET):** SESSION_LOG.md:238 (Loop 199, re-read & saved; corrects Loop 198 plainly) ✓ · coordination mirrored + pushed HEAD **`28838aa`** (secret-scan clean) ✓ · READ-ONLY — no watched/trading/config/order/restart, bot healthy, freeze intact · SYSTEM_FACTS regen **N/A**.
+
+---
