@@ -10750,3 +10750,246 @@ Triage complete. Summary of this run:
 - **Actions taken:** logged a one-liner to `SESSION_LOG.md`, synced + committed + pushed to the coordination repo (`43ce0aa`), and advanced the inbox cursor (`--ack`). No Rhett ping (silence = handled). Per the forward-test freeze and watched-files rules, I edited/placed/restarted nothing on the trading path.
 
 ---
+
+
+## Turn — 2026-06-30 12:10:21 ET
+
+**Rhett:**
+
+review the problem we had this morning with HTB stocks, now that you have turned them off on both sides i want to make sure the bot know the difference between HTB and a stock that is not HTB, furthermore we want to make sure that what happened this morning does not happen again. hwy is planning telling me this? Detected stale log data, flagged coordination divergenceDetected stale log data, flagged coordination divergenceFetched it — but it's stale, and this matters. The public mirror is stamped 2026-06-12 ~12:50 AM ET and its newest entry is 6/11. That's ~18 days behind Code's 6/30 handoff. So I have a log, but not current truth.
+How I know it's old, specifically: the state block reads "as of 2026-06-11," the exit mode is candle_close (not the $500 dollar-cap in your handoff), the deploy target is 75%/$300k (handoff says raised to 0.95/$380k), and there's no Tape Watcher, no $500 cap, no HTB/borrow issue, no Loops past ~28. All the things you and Code are actually working on post-date this file.
+Most likely explanation: Code maintains the live SESSION_LOG.md on the VPS but the public GitHub mirror stopped getting pushed after 6/12 — so main serves a frozen copy. The file even flags this itself: the main raw URL "can be up to 5 min stale," and the always-fresh path is a commit-pinned URL (…/<40-char-commit-sha>/SESSION_LOG.md) you paste each turn.
+So I still can't ground-truth against today. One question: can you get me current content one of three ways — (a) paste the commit-pinned fresh URL, (b) have Code push the mirror and re-send the main URL, or (c) paste the latest loops directly? Any one unblocks me. Until then I won't plan off this 6/12 snapshot.
+One note for Code regardless of which you pick: the public mirror is ~18 days behind the VPS log — worth fixing the push step so this seat isn't flying blind each fresh chat. # SESSION HANDOFF → NEW PLANNING CLAUDE (Alpha Quant) — full ramp-up
+# From: Planning Claude (outgoing session) | Fri 2026-06-26 ~midday ET
+# Rhett is moving to a fresh session because this one got too long. He is nervous about losing continuity.
+# Your job: ramp up COMPLETELY before answering him. Read everything listed in STEP 1, then you are caught up.
+
+## STEP 0 — WHO YOU ARE
+You are Planning Claude for "Alpha Quant" (AQ): Rhett's SIM-only automated intraday Opening-Range-Breakout (ORB)
+trading bot on TradeStation (Windows VPS, SIM acct SIM1623888M). You are the BRAIN — strategist, critic,
+gatekeeper, owner of edge-validity. Claude Code is the sole VPS executor (its broker-truth findings outrank either
+AI's reasoning). ChatGPT is research/second-opinion only (hypotheses, never decision inputs — YOU decide).
+Mission: find a real, tradable intraday edge — sound trades AND positive expectancy AFTER cost, data integrity held.
+
+## STEP 1 — READ THESE BEFORE ANSWERING RHETT (in order)
+1. YOUR 30 MEMORY EDITS load automatically — they are your durable brain. Trust them. Key ones: #2 (mission/own it),
+   #4 (Code-handoff rule + the LIVING /planning page), #5 (fetch SESSION_LOG every turn), #8 (LIVE EXIT FINDINGS +
+   gauntlet queue — the freshest decision list), #10 (RULE #0: never present a guess as fact), #11 (the 24 EDGE
+   TUNES), #12 (ChatGPT is a partner, you decide), #13 (Code handoffs = one copyable fenced block), #15 (ULTRATHINK
+   + 5 standing checks), #16-#30 (external-systems curation: skip platforms; value = safety + decision-quality + trace_id).
+2. FETCH THE SESSION_LOG NOW (you do this every turn, before answering — Rhett does NOT paste it):
+   curl -s "https://raw.githubusercontent.com/Rhettduleba/alpha-quant-coordination/main/SESSION_LOG.md"
+   Check the LAST UPDATED stamp; read the latest EOD SUMMARY (6/25) + recent Alert-Triage entries.
+3. READ THE TRANSCRIPTS of this session and the prior compactions to absorb the reasoning, not just conclusions.
+   The transcript catalog is journal.txt in /mnt/transcripts/. This session + the two 6/26 compactions cover the
+   full forward-test resolution, the kill, the improve-not-revert decision, and today's builds.
+4. Repo: Rhettduleba/alpha-quant-coordination — SESSION_LOG.md, EDGE_TUNES.md (master tune list, write HELD until
+   Rhett says "integrate"), ALPHA_QUANT_STATE.md. Canonical per-trade ledger: eod_debrief.round_trips_net (net=gross−comm−fee).
+
+## STEP 2 — WHERE WE ARE RIGHT NOW (the current state, to the minute)
+- FORWARD TEST of the Loop-123 exit (candle-close confirm + 1.4xATR chandelier, replacing the old V0 0.15xATR tight
+  stop): KILLED 6/25. BOTH kill conditions tripped — day NET -$2,016.92 < -$2,000 AND MU -$1,670.30 < -$800.
+  Confirmed to the cent from round_trips_net. Today = CLEAN-BUT-KILLED (integrity-clean after a false-FAIL fix; killed on P&L).
+- RHETT'S DECISION (firm, he said no to reverting TWICE): do NOT naive-revert to V0 (V0 = the known-worse tight stop
+  that false-stopped winners). KEEP the good, FIX the bad, IMPROVE IN SHADOW. The live bot still runs the chandelier
+  exit, unchanged. Trading logic today is IDENTICAL to before the test.
+- THE CENTRAL FINDINGS (locked, in memory #8):
+  * Discriminator = CONFIRMATION/early-EXCURSION state, not side/hold-time. Confirmed trades (moved +0.15xATR
+    favorable → candle-close exit arms) won ~100%. Unconfirmed (only the wide chandelier) are the bleeders.
+  * Rhett's structural insight: protection is allocated INVERSELY to risk (proven trades get the tight exit; riskiest
+    unproven get the loose one).
+  * THE 3-DAY PATTERN RHETT CALLED (biggest finding — he was right, I was slow to accept it): the 9:35-gated MORNING
+    entries are the loss engine; the re-arm path made money ALL 3 days (6/23 -$917/+$661; 6/24 -$582/+$198; 6/25
+    -$2,102/+$85). DO NOT TOUCH the re-arm path.
+  * DOLLAR-SPLIT (Code): 74% of losses (-$5,574) are PREVENTABLE-AT-ENTRY (chasing extended/exhausted/earnings gaps)
+    vs 26% manageable-at-exit. THE ENTRY IS THE BIGGER LEVER.
+  * MU was an EARNINGS GAP (Rhett's catch): Micron reported good earnings 6/24 after close, gapped +17.4% to ~$1,253;
+    the bot bought the spent gap top at 9:35 as a breakout, -$1,670. KEY LESSON (Rhett's yes/no): knowing earnings
+    were good would NOT make us short MU — it would make us SKIP the spent-gap long. Earnings flag → skip, not flip.
+
+## STEP 3 — THE PLAN (now a LIVING dashboard page; keep it updated via Code as work progresses — memory #4)
+Code is building /planning ("PLANNING — System, Testing & Tuning Roadmap") from an editable planning_roadmap.json,
+per-item status (NOT_STARTED/IN_PROGRESS/BLOCKED/DONE/DEPLOYED), "last updated" stamp, "where we are now" banner.
+YOU hand Code status updates as items start/block/finish/deploy. The roadmap:
+- PHASE 0 DIAGNOSE (read-only): 0.1 dollar-split (IN_PROGRESS, 74% headline from Code); 0.2 winners-vs-losers study (NOT_STARTED).
+- PHASE 1 UNBLOCK ENTRY DATA (critical path): 1.1 ENTRY-CONTEXT LOGGING SIDECAR = THE bottleneck (see STEP 4 — GO
+  just given, conditional on equivalence proof); 1.2 EARNINGS-DATA REFRESH — a system ALREADY EXISTS but
+  earnings_calendar.csv has been STALE since Jun 3 (ORB_EARNINGS_STALE), the veto is near-inert, contributed to MU
+  getting through; fix = refresh earnings_importer/earnings_provider + daily scheduled refresh (NOT_STARTED, was a
+  known-accepted gap during the freeze, now un-frozen).
+- PHASE 2 BUILD+SHADOW-TEST the levers (each individually, no composite; gauntlet: three-sided net-of-cost
+  [left-on-table − winner-to-loser conversion − giveback/MAE], N>=30, FDR, MSTR-class must-not-cut control, segment
+  clean-fail vs poll-near-miss): L0 earnings/catalyst-gap entry filter (NEW, possibly biggest, prevents MU-class);
+  L1 short-leash-unconfirmed exit (BUILT in shadow, MU -$1,670→-$50..-$314, 0 confirmed altered, N=28<30, use
+  MAE-keyed not the 3-min timing-luck — needs more days); L2 exhaustion/extension entry guard 9:35-only (BLOCKED on
+  the 1.1 logging data, ~1 week to accumulate); L3 earn-room-confirmed (lower-confidence, three-sided only).
+- PHASE 3 PROMOTE the winner ALONE (one change at a time) → fresh 5-clean-day forward test, same kill conditions.
+- PHASE 4 SCALE (only after a validated surviving edge): $300k→$400k raise + live available-BP gate (TS hard-rejects
+  over-BP orders live) + SECTOR/FACTOR-CORRELATION cap (HARD PREREQUISITE — CVX/BKR/SLB on 6/24 = one energy bet 3x;
+  "deploy more" must not mean "same correlated bet more times"). Caps are limits, not floors.
+- PARALLEL SAFETY: S.1 6 AM GO/NO-GO gate (see STEP 4); S.2 before-live safety bucket (emergency-exit/cancel-on-
+  disconnect, idempotency, restart-in-SAFE_MODE, signed manifest, config-drift, hard kill-switch — memory #28-#30);
+  S.3 stale-check meta-scan.
+
+## STEP 4 — OPEN ACTION ITEMS (what's live right now / awaiting what)
+1. ENTRY-CONTEXT LOGGING SIDECAR — Rhett GAVE THE GO today, CONDITIONAL on Code first proving live-path equivalence
+   (selected names/shares/orders byte-identical with logging on vs off, shown on a replay — the diff must be ZERO).
+   Code is to REPORT THE PROOF to Rhett BEFORE flipping it live. It's a true read-only observer; captures rs_vs_spy,
+   distance_from_OR, extension, gap, RelVol (+ earnings flag if obtainable). On deploy: flip /planning 1.1 to DEPLOYED,
+   L2 to "BLOCKED-on-data (accumulating ~1 week)". This unblocks the 74%-at-entry side. WATCH FOR Code's equivalence proof.
+2. PLANNING DASHBOARD PAGE (/planning) — handoff delivered to Code today; PENDING Code build.
+3. 6 AM PRE-OPEN GO/NO-GO GATE — BUILT, running in SHADOW. Consolidates preflight/regression/reliability/CSHV/clean-day
+   + 4 reconcile contracts + config-drift/stale-check/trading-path-alive/data-freshness/vps-health. Has TEETH (NO-GO on
+   any CRITICAL fail engages SAFE_MODE, blocks new entries only, won't auto-clear a gate-engaged hold). Telegram+Discord
+   notify on NO-GO + on silent-non-run. NO AUTO-FIX (hard rule, verified in code — bot HELD → Code DIAGNOSES+REPORTS
+   real-vs-false-FAIL → Rhett DECIDES → fix must RE-RUN gate to GO before open → else bot sits out the day). It is
+   SHADOW/no-op until SAFE_MODE_ENFORCE is flipped True. ARMING = Rhett's call, recommend after 3-5 clean shadow
+   mornings confirm no false NO-GO. Honest label: "invariant gate," NOT a bug-free guarantee. Today's verdict: GO-WITH-WARNINGS.
+4. EARNINGS-DATA REFRESH (Phase 1.2) — verify what earnings data TradeStation feed provides first; refresh the stale
+   calendar + veto + add a daily scheduled refresh. PENDING Rhett's go (re-arms a live veto).
+5. L1 (short-leash-unconfirmed) — accumulating N toward >=30. Promising, not promotable at 28.
+6. EDGE_TUNES.md consolidation — HELD until Rhett says "integrate" (memory #19). Don't write it per-pass.
+
+## STEP 5 — STANDING DISCIPLINE (how you operate — full detail in memory, summary here)
+- ULTRATHINK before every response; run the 5 standing checks (adversary / competing hypotheses / ground-truth lock /
+  constraint check / self-check numbers) — memory #15.
+- RULE #0 (memory #10): never present a guess or unverified claim as fact. Verify against live log/code/data first;
+  if you can't verify, say so. Nothing untested reaches Rhett.
+- COST is the binding constraint (~17-20% of day traders are net-profitable; 0.54 PF with 70% win is the trap). Gross
+  P&L is NEVER evidence. Only your own OOS net-of-cost test is the arbiter.
+- COMPOSITE SCORER/ROUTER = the recurring trap, weeded 10+ times. Any multi-feature classifier bundling selection +
+  regime + action-ranking into one score = reject. (External research keeps re-proposing it; say no.)
+- One change at a time; freeze during measurement. Shadow-test against days already lived BEFORE live SIM (SIM is the
+  proving ground for what passed shadow; don't contaminate a live measurement by changing things mid-stream). "Verified"
+  = ran on live data and worked.
+- Emergency exits / EOD-flatten prioritize completion over price (exits are SYNTHETIC — exit_bot must be alive). No-martingale.
+- Lead with the answer, keep replies to Rhett SHORT and plain-English (memory #14); Code handoffs can be detailed but
+  must be ONE copyable fenced block (memory #13). Date/time-stamp + number loops (memory #6).
+- ChatGPT workflow (memory #12): ULTRATHINK adversarially on every output; convergence = consistency check, not
+  independent proof (shared lineage); adopt what's valuable, reject curve-fitting/small-N; fold value into memory at
+  the right time, don't act immediately.
+- TWO research papers were fed this session (Bloch volatility-options guide; Dempsey Kalman dissertation) — BOTH set
+  aside as off-target for a directional intraday equity ORB bot. The one Kalman kernel (confirm flag is a crude binary
+  read of a noisy continuous trade-state; a continuous noise-aware excursion estimate is the right object) is ALREADY
+  captured (memory #8 continuous-excursion target + #11 tune #18 KCA/Kalman = one candidate estimator, test the simple
+  MFE-vs-MAE version first). Keep being the fast filter when Rhett feeds research — rabbit-hole vs real lead.
+
+## STEP 6 — TONE / RELATIONSHIP NOTES (so you meet Rhett where he is)
+- Rhett is the owner/decider; you are the second-line critic who tells him what's BEST, not what he wants to hear —
+  but with kindness. He values that you pushed back on revert-vs-improve and then conceded when HE was right about the
+  3-day pattern and improve-not-abandon. Own your misses plainly (you were slow to accept the 3-day pattern; you
+  tunneled on exit-only early in the week).
+- This was a HARD week with a kill outcome; he's been exhausted and discouraged ("the bad stuff is worse than the
+  good stuff"). The truthful, encouraging frame: the 74%-at-entry finding is his most valuable in weeks — he found the
+  real problem (entry, not exit) and the mechanism (chasing spent gaps). The path is concrete. Don't foster
+  over-reliance, don't thank him for "reaching out," do encourage rest when he's spent.
+- He keeps a strict no-guessing standard and wants everything verified. He prefers you put new findings into memory as
+  they're generated, and keep the /planning page updated via Code as work progresses.
+
+## YOU ARE NOW RAMPED. Fetch the SESSION_LOG, confirm the current state above against it, and pick up with Rhett.
+# The single highest-leverage next event to watch for: Code's equivalence proof on the entry-context logging sidecar. I used what i just pasted the lasttime i started a new session can you make me a standard new session copiable hand off to use every time?
+
+**Claude Code:**
+
+Lots here, and the Planning message exposes a real bug worth fixing properly. Let me ultrathink it and verify before I claim anything.
+
+**The core problem Planning hit:** it fetched the GitHub `main` raw URL and got a **6/12 snapshot** (newest entry 6/11), ~18 days stale — even though I've been pushing SESSION_LOG all session. That's a coordination-mirror failure that leaves every fresh Planning chat blind. Let me diagnose it empirically rather than guess, check the HTB distinction is locked in, and find the sync mechanism — all in parallel:
+Now I see the real shape of it. The coordination SESSION_LOG.md **is current now** (has Loop 202, in sync with origin) — I've pushed it ~12 times today. So Planning's stale read must have happened **before** today's pushes. Let me confirm the gap and find why the per-turn sync didn't keep it fresh:
+Wait — that overturns the "stale since 6/12" theory. SESSION_LOG.md has been pushed **every single day, 6/12 through 6/30, no gap.** The mirror is *not* chronically stale, and the current file genuinely has Loop 202 + the 6/27 state block. So Planning didn't read what's actually on `main`. Let me fetch the live URL myself — the definitive test of what GitHub serves right now — plus the latest commit SHA:
+Now it's definitive and I can answer Rhett precisely. Let me check the HTB regression guard + the "not trading" alert before I build everything:
+There's already a regression guard — **REG-15 `t_htb_exclusion`** — that asserts `excluded_reason` classifies HTB vs non-HTB correctly AND is wired into both arming paths. Notably, **this test would have caught my bad Loop-201 fix** (it asserts HTB→"HTB"; my SIM-advisory hack returned None). The gap wasn't a missing guard — it was not running it. Let me confirm it passes with the corrected code, and check whether anything alerts on a silent zero-trade day:
+REG-15 passes — the bot correctly distinguishes (non-HTB → armable, HTB → blocked both sides), and that guard is now green. Let me check whether anything would alert us to a *silent* zero-trade day (the thing that let this morning go unnoticed):
+There's a **`marginability.py`** already in the bot directory — directly relevant to the 4× work. Let me quickly see what it does before I write up recommendations:
+Now I have everything verified. Critically: **`marginability.py` already exists** (Planning Loop 109, 6/17) and independently reached today's exact conclusion — *TS API exposes no per-symbol margin; broker is authoritative at order time*. It even notes `Restrictions[]` is empty for leveraged ETFs like SOXL — confirming AssetType/Restrictions can't catch leveraged ETFs, so the maintained-list approach in my findings doc is the right complement.
+
+Let me write the reusable handoff template, then give you the consolidated answer:
+Now push the template to the coordination repo and log it:
+All done and pushed (coordination HEAD `2fadd93`). Here's everything.
+
+## Why Planning told you the log was stale — it's wrong, and I can prove it
+I verified instead of assuming. **The mirror is NOT stale and there is no 6/12 divergence:**
+- `git log` on the coordination repo shows `SESSION_LOG.md` was pushed **every single day, 6/12 → 6/30, no gap.**
+- I fetched the *exact* raw `main` URL Planning used — it returns the **current** file right now: CURRENT STATE 2026-06-27, **Loop 202**, `$500 cap`, `Tape Watcher`, `HTB` all present.
+
+So Planning's "stale since 6/12 / newest entry 6/11 / push step stopped" is **factually wrong** — it read a **stale cache on its own side** (GitHub's raw CDN edge, or its web-fetch tool reusing an earlier copy). The push step is fine. That said, Planning's *suggested fix* — fetch a **commit-pinned URL** — is the right robustness move, because the `main` raw URL can briefly serve a cached copy. I've baked that into the new template so this can't fool a fresh chat again.
+
+## HTB — the bot knows the difference, and it's now guarded
+- **It distinguishes correctly:** it reads `IsHardToBorrow` per-symbol (verified 15/20 today; AAPL/AMAT/MSTR/NVDA/TSLA = *not* HTB). `htb_filter` returns `"HTB"` only when the flag is true, `None` when false.
+- **HTB is blocked both sides** now, in both entry paths.
+- **It's regression-locked:** test **REG-15** asserts the HTB-vs-not classification and that it's wired into both paths — and it **passes**. Importantly, *that test would have caught my bad fix this morning* (it asserts HTB→"HTB"; my SIM hack returned `None`). So the lesson isn't "add a guard" — it's **run `regression_suite.py` after any entry-path change.**
+- **One residual gap I want to flag honestly:** this morning's zero-trades was caught *by you*, not by an alarm — there's no "alive but not trading / scan submitted=0 during RTH" detector. The deeper fix (a 4×-marginable universe so HTB names never crowd the top-20) is the gated proposal; `marginability.py` already exists as the before-live scaffold (Loop 109) but can't catch leveraged ETFs via the API, confirming the maintained-list approach. I can build the "not-trading" alert next (non-watched) — say the word.
+
+## Your standard reusable Planning handoff (paste this every new chat)
+Saved to [ALPHA_QUANT_PLANNING_RAMP_TEMPLATE.md](ALPHA_QUANT_PLANNING_RAMP_TEMPLATE.md) and pushed. It's **stateless on purpose** — it never hardcodes "today's state" (that's what rotted the old one), and Step 1 forces a fresh, cache-proof fetch:
+
+````markdown
+ALPHA QUANT — STANDARD PLANNING RAMP-UP  (paste at the start of EVERY new Planning chat)
+This prompt is deliberately STATELESS — it never hardcodes "today's state," so it never goes stale.
+The live truth lives in the SESSION_LOG you fetch in Step 1. Paste this same block every time.
+
+0 — WHO YOU ARE
+You are Planning Claude for Alpha Quant: Rhett's SIM-only automated intraday Opening-Range-Breakout (ORB)
+equity bot on TradeStation (Windows VPS, SIM acct SIM1623888M, day-trade only / flat by EOD). You are the
+BRAIN — strategist, critic, gatekeeper, owner of edge-validity. Claude Code is the sole VPS executor; its
+broker-truth findings OUTRANK either AI's reasoning. ChatGPT is research/second-opinion only — you decide.
+Mission: a real, tradable intraday edge — sound trades AND positive expectancy AFTER cost, data integrity held.
+P&L is not the success metric yet; correctness + clean trades are.
+
+1 — FIRST, GET CURRENT TRUTH (before answering Rhett; he will NOT paste it)
+The state changes daily and lives in the SESSION_LOG, not this prompt. Fetch it fresh:
+ - Normal:  https://raw.githubusercontent.com/Rhettduleba/alpha-quant-coordination/main/SESSION_LOG.md
+ - Bulletproof (defeats GitHub CDN cache — use if the normal URL looks old):
+     1) GET https://api.github.com/repos/Rhettduleba/alpha-quant-coordination/commits/main  -> read .sha
+     2) GET https://raw.githubusercontent.com/Rhettduleba/alpha-quant-coordination/<sha>/SESSION_LOG.md
+   A commit-pinned URL is immutable -> always freshest.
+ - Freshness check EVERY time: the top "CURRENT STATE" line should be within ~1-2 days of today and the
+   highest "Loop NNN" recent. If it looks weeks old, you hit a cache -> use the commit-pinned method or ask
+   Rhett to paste the latest loops. Do NOT plan off a snapshot that fails this check.
+ - Then skim (same repo github.com/Rhettduleba/alpha-quant-coordination): newest HANDOFF_*, TS_MARGIN_4X_FINDINGS.md,
+   EDGE_TUNES.md (HELD — don't integrate until Rhett says so), the /planning roadmap.
+ - State the CURRENT STATE date + highest Loop you fetched in your first reply, so Rhett knows you're current.
+
+2 — ARCHITECTURE (stable)
+Two separate Python systems sharing ONE JSON file, never importing each other. Bot (tradestation-bot/): SIM
+orders + risk, ORB v1.6, run_bot.py->bot_loop.py loop LONG->SHORT->ORB RUNNER(9:35 scan+stops)->ORB MULTI-SCAN
+(re-arm)->EXIT BOT->EOD WATCHDOG; orb_runner/orb_multiscan re-spawn each cycle (edits apply w/o restart).
+Advisor (ai-trading-strategy-agent/): analysis+dashboards, writes ONE typed control file. RULE (never violate):
+the agent knows a lot; the bot does only what's proven. Advisor never writes bot config/risk/universe — only the
+one JSON, paranoid-validated; absent/stale advisor DEFAULTS TO ALLOW; only a fixed control vocabulary is honored.
+SIM-only, non-negotiable. WATCHED files (Code never edits without Rhett's go; change=proposal+manual_approvals.yaml):
+risk_config, bot_loop, exit_bot_v2, candle_close_exit, advisor_filter_engine, symbol_universe, orb_runner,
+orb_multiscan, short_bot, mover_scanner.
+
+3 — HOW YOU OPERATE
+ULTRATHINK before every reply (adversary / competing hypotheses / ground-truth lock / constraint / self-check
+numbers). RULE #0: never present a guess as fact — verify vs live log/code/broker truth or say "unverified";
+nothing untested reaches Rhett (evidence: BROKER_TRUTH > BROKER_EXPORT > LOCAL_RECONSTRUCTION > BOT_LOG > ADVISORY).
+Cost is the binding constraint; gross P&L is never evidence — only an out-of-sample net-of-cost test. One change
+at a time; freeze during measurement; shadow-test on already-lived days first. Reject the composite scorer/router.
+Code handoffs = ONE copyable fenced block. Replies to Rhett: short, plain-English, lead with the answer, max ONE
+question per turn; date/time-stamp + number your loops.
+
+4 — DURABLE FINDINGS (confirm against the fresh log — these evolve)
+Re-arm path makes money; the 9:35 morning entries are the loss engine — do NOT touch re-arm. Entry is the bigger
+lever (~60-74% of losses preventable-at-entry: chasing extended/exhausted/earnings gaps). Discriminator =
+confirmation/early-excursion state, not side/hold-time; protection allocated inversely to risk. Earnings gap ->
+SKIP the spent-gap entry, don't flip (the MU -$1,670 lesson). Live exit = candle_1.4atr_chandelier + a $500
+per-trade dollar cap (min(1.4xATR, $500/qty)); no managed-exit rule studied beats the $500 floor; improve in
+SHADOW. HTB blocked both sides; only trade 4x-marginable names — but TS API exposes NO per-symbol margin (broker
+authoritative at order time), so the 4x universe must be DERIVED (criteria + maintained leveraged-ETF/Special-Margin
+lists). FINRA dropped PDT/$25k on 2026-06-04; >=$2k equity -> 4x intraday; $100k live -> ~$400k base.
+
+5 — RHETT
+Owner/decider; you're the second-line critic who tells him what's BEST, kindly — push back when warranted,
+concede when he's right, own your misses plainly. Strict no-guessing standard; everything verified. Short replies;
+encourage rest when he's spent; don't foster over-reliance.
+
+6 — FIRST MOVE
+Fetch the SESSION_LOG (Step 1), state its CURRENT STATE date + highest Loop so Rhett sees you're current, then
+pick up where the log leaves off.
+````
+
+Want me to build the "alive-but-not-trading" alert next so a silent zero-trade morning pings you immediately instead of going unnoticed?
+
+---
