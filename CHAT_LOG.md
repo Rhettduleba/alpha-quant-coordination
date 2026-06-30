@@ -11220,3 +11220,108 @@ Temp artifacts (safe to discard): `scratchpad\section3_test.py` plus the generat
 Holding for the other four (§1 entry pipeline, §4 risk enforcement, §7 process survivability, §8 observability), then I'll post the full scorecard + ranked bugs.
 
 ---
+
+
+## Turn — 2026-06-30 12:32:18 ET
+
+**Rhett:**
+
+<task-notification>
+<task-id>a18d4819b13932814</task-id>
+<tool-use-id>toolu_014Z7bKGQuXUGbKSHvpM4G4d</tool-use-id>
+<output-file>C:\Users\ADMINI~1\AppData\Local\Temp\claude\C--Users-Administrator-OneDrive---Duleba-Trade-station-Main\3253950a-388c-4a7a-99cc-cec0c4ed9f69\tasks\a18d4819b13932814.output</output-file>
+<status>completed</status>
+<summary>Agent "Audit Section 1 entry pipeline" finished</summary>
+<note>A task-notification fires each time this agent stops with no live background children of its own. The user can send it another message and resume it, so the same task-id may notify more than once.</note>
+<result>I have everything I need. Let me verify the SAFE_MODE block path and the `excluded_reason` import note (`is_htb`/`is_halted` are imported in orb_runner but the active path uses `excluded_reason`). I have confirmed all filters. Let me write the verdict.
+
+I have all evidence. Here is the Section 1 audit.
+
+---
+
+# SECTION 1 — ENTRY PIPELINE — VERDICT: **PASS**
+
+The pipeline is correctly wired, fail-safe, and the silent-zero-trade case is both intentional-by-design (6/30 HTB) and now covered by a registered alert. One nuance worth flagging (not a failure): the side-aware HTB helper exists in `htb_filter.py` but is deliberately bypassed by both callers per the current Rhett directive.
+
+## (a) Filter table — universe → submitted order, in order
+
+Source file is `orb_runner.run_or_scan` unless noted. Path: `C:\AlphaQuant\tradestation-bot\`.
+
+| # | Filter | Constant / threshold | file:line | Can drop 100%? |
+|---|--------|----------------------|-----------|----------------|
+| 0 | Strategy active gate | `ACTIVE_STRATEGY=="orb_v1"` | orb_runner.py:1175 | Yes (if flag flipped) — but that's a deliberate kill, logged `skip` |
+| 0b | Weekend / holiday skip | `weekday&gt;=5`; `market_hours.holiday_reason` | orb_runner.py:1184, 1191-1199 | Yes on a holiday — legit, no trades expected |
+| 0c | Daily guard (realized loss) | `DAILY_MAX_LOSS=1e9` (intentionally OFF in SIM) | risk_config.py:45; orb_runner.py:356-372 | No (effectively off in SIM) |
+| 0d | DD kill switch | `ACCOUNT_DD_KILL_ENABLED=False` (OFF in SIM) | risk_config.py:186; orb_runner.py:385-407 | No (off in SIM); fail-open on exception |
+| 1 | Advisor block (both sides) | `should_block_entry` LONG **and** SHORT | orb_runner.py:429-437 | Yes in theory (advisor BLOCK_ALL/BLOCK_SYMBOL on every name) — requires only-both-sides-blocked; fail-open on exception |
+| 2 | Earnings veto | `orb_earnings_veto.is_earnings_blackout` (±18h) | orb_runner.py:442-449 | Unlikely (rarely all names); fail-open on exception |
+| 3 | OR data present | `fetch_today_or` not None | orb_runner.py:451-457 | **Yes** — degraded fetch (6/19: 527/530 no_data). Guarded by coverage gate #4 |
+| 4 | Coverage gate | `MIN_SCAN_COVERAGE=0.50`, retry until `(9,50)` | orb_runner.py:87-88, 522-533 | Yes by design — but it *retries* (returns without arming), then after 9:50 arms with whatever's there |
+| 5 | Min price / OR vol | `MIN_PRICE=20.0`; `or_vol&gt;0` | risk_config.py:101; orb_runner.py:465 | Yes in theory (all sub-$20) — implausible across S&amp;P500 |
+| 6 | Doji skip | `or_close==or_open` | orb_runner.py:469-475 | No (rare to be all-flat) |
+| 7 | RelVol floor | `MIN_REL_VOL=1.0` | orb_runner.py:80, 479 | Plausible on a dead-volume day (all names &lt; 1.0× RelVol) |
+| 8 | ATR floor | `MIN_ATR_14D=0.50` | orb_runner.py:79, 495 | Unlikely (large-caps clear $0.50 ATR) |
+| — | **Rank + cap to top-N** | `TOP_N_BY_RELVOL=20` (gate OFF) / `INPLAY_TOP_N=10` (gate ON) | orb_runner.py:81, 289, 604-621 | Selection cap, not a drop |
+| 9 | In-play gate | `ORB_INPLAY_GATE=False` (OFF) | risk_config.py:271; orb_runner.py:604 | If ON: yes (anti-selected — why it was turned OFF 6/28). Currently OFF |
+| 9b | Index-ETF exclusion (standalone, gate-OFF branch) | `inplay_gate.INDEX_ETFS` | orb_runner.py:617-621 | No (only excludes SPY/QQQ-class) |
+| 10 | SAFE_MODE block | `SAFE_MODE_ENFORCE=False` (shadow) | risk_config.py:200; orb_runner.py:691-698 | Yes when enforced (sets `top=[]`) — currently shadow/no-op |
+| 11 | HTB / halted exclusion | `ORB_EXCLUDE_HARD_TO_BORROW=True` | orb_runner.py:665-714 | **Yes — fired 6/30** (all top-20 HTB → submitted=0). Intentional |
+| 12 | Stale OR-cross skip | live price already crossed `entry_ref` | orb_runner.py:716-731 | Yes on a gap-and-go day (all movers already extended past OR) |
+| 13 | Sizing floors | `shares&lt;=0` via `EXIT_SL_FRAC*atr`, `RISK_PER_TRADE=0.01`, `REAL_CAPITAL_BASE=$100k`, `TARGET_DAY_TRADE_GROSS=$400k`/`TOP_N` | orb_runner.py:733-748 | Practically no |
+| 14 | Gross-exposure cap | `MAX_DAY_TRADE_GROSS=$400k` | risk_config.py:234; orb_runner.py:753-759 | No (only trims/stops after book is full) |
+| 15 | Deploy-controller admit | `DEPLOY_CONTROLLER=True` but **9:35 book = None** (off for morning) | risk_config.py:250; orb_runner.py:688, 764-786 | Not on the 9:35 path (None). On re-arm: yes if target reached |
+
+Re-arm path (`orb_multiscan._arm`) adds: `MAX_OPEN_POSITIONS=16` slots (risk_config.py:86, ms:287), one-per-name (ms:148), `ORB_MAX_ENTRIES_PER_NAME=1` reentry cap (risk_config.py:66, ms:151), deploy admit (ms:161-168), gross cap (ms:170). **Note:** `MAX_SECTOR_POSITIONS=2` (symbol_universe.py:74) is **NOT** referenced anywhere in `orb_runner.py` or `orb_multiscan.py` — the ORB entry path does not enforce a sector cap (it lives in the legacy `bot_loop.py` long path only). That is a scope observation, not a Section-1 failure.
+
+## (b) Silent-zero-trade (drop-100%) risk per filter
+The realistic malfunction-class droppers are: **#3 OR-no-data** (mitigated by coverage gate #4 + retry), **#11 HTB** (intentional, fired 6/30), **#10 SAFE_MODE** (only when enforced; currently shadow), and **#1 advisor BLOCK_ALL** (intentional halt). #7 RelVol and #12 stale-cross can each plausibly drop all on an unusual tape but rarely both-and-everything. All exception paths fail **open** (default allow), consistent with CLAUDE.md.
+
+## (c) HTB blocks BOTH sides — confirmed (intentional)
+- **orb_runner.py:706-714** — comment "REAFFIRMED 2026-06-30: do NOT trade HTB at all, either side". Code: `_excl = htb_excluded.get(sym.upper())` then `if _excl: ... continue`. It uses `excluded_reason()` (orb_runner.py:672) and does **not** call `blocks_side()` → any reason (HTB/HALTED/UNKNOWN_BORROW/NO_QUOTE) drops the name on whatever side it was ranked. Both sides blocked.
+- **orb_multiscan.py:346-353** — `fetch_exclusion_set(...)` then `candidates = [c for c in candidates if c["sym"].upper() not in _excset]`. Removes the symbol regardless of side. Both sides blocked.
+- **Caveat (report-only):** `htb_filter.py:53-65` now has a side-aware `blocks_side()` (borrow reasons block SHORT only). **Neither caller invokes it** — both use the symbol-wide exclusion. So runtime = both-sides, matching the 6/30 directive. The side-aware helper is dormant/unused. This is the *current intentional design*, not a bug.
+
+## (d) "Scan ran but submitted=0 during RTH" alert — DEFINED + REGISTERED
+- `reliability_checks.py:468 check_alive_but_not_trading` — defined; WARNs when bot alive + `ORB_SCAN_DONE` candidates&gt;0 but 0 ENTRY_OK past 10:45 AM grace; names the dominant drop reason from `ORB_HTB_EXCLUDED` rows. Returns OK for outside-RTH / holiday / intentional-halt / 0-candidates. Listed in `CHECKS` (line 518-519).
+- `system_health_verifier.py:1403 chk_rel_alive_but_not_trading` — `@register("Reliability", "rel_alive_but_not_trading")`. Registered.
+
+## (e) Last 5 trading days — submitted / candidates (BROKER_LOG: `bot_alerts.jsonl`, 9:35 ORB_SCAN_DONE)
+
+| Date | submitted | candidates | long/short | Classification |
+|------|-----------|-----------|------------|----------------|
+| 2026-06-24 | 8 | 74 | 5/5 | normal |
+| 2026-06-25 | 7 | 110 | 7/3 | normal |
+| 2026-06-26 | 9 | 102 | 2/8 | normal |
+| 2026-06-29 | 14 | 62 | 10/10 | normal |
+| **2026-06-30** | **0** | **56** | 7/13 | **submitted=0 with candidates=56 → a filter dropped the entire armed book.** Confirmed cause: all 20 top-ranked names emitted `ORB_HTB_EXCLUDED ... "HTB: not armed"` (DLR/APD/ZBH/MOS/PPL/SYK/ALB/AXON/ZTS/FSLR/HSIC/BA/RBLX/CMCSA/ROK/AKAM/XYZ/GS/TROW/SPGI). This is **intentional** (do-not-trade-HTB directive), **not** a malfunction. Severity WARN — and `check_alive_but_not_trading` would have surfaced it the same morning. |
+
+No `candidates=0` (legit no-setup) days in the window. The single submitted=0 day is the intentional HTB case.
+
+## FAIL/UNKNOWN fixes
+None required — verdict is PASS. No WATCHED-file change is warranted.
+
+Two report-only notes (no fix unless you direct it):
+1. The 6/30 zero-trade day is a direct consequence of the intentional both-sides HTB block colliding with a morning where the top-20 by RelVol were all HTB. If you ever want the dormant side-aware path live, the change would be ~2 lines in `orb_runner.py` (line 710 → `if blocks_side(_excl, side):`) and `orb_multiscan.py` (line 350-353 filter → `blocks_side(_excset[...], c["side"])`). Both are **WATCHED files** (orb_runner / orb_multiscan) → would reset the clean-day count and needs a proposal + approval. Leave as-is per current directive.
+2. `MAX_SECTOR_POSITIONS=2` is defined in `symbol_universe.py` but unreferenced in the ORB entry path (orb_runner/orb_multiscan) — only the legacy `bot_loop.py` long path consumes it. Not a Section-1 defect; flagging for completeness.</result>
+<usage><subagent_tokens>111888</subagent_tokens><tool_uses>18</tool_uses><duration_ms>128510</duration_ms></usage>
+</task-notification>
+
+**Claude Code:**
+
+**§1 entry pipeline — PASS.** Full filter inventory mapped (15+ filters, universe → submitted); every exception path **fails open** (default-allow, per spec). The submitted=0 alert is confirmed defined + registered. 5-day scan record:
+
+| Date | submitted | candidates |
+|---|---|---|
+| 6/24 | 8 | 74 |
+| 6/25 | 7 | 110 |
+| 6/26 | 9 | 102 |
+| 6/29 | 14 | 62 |
+| **6/30** | **0** | **56** → all top-20 HTB (intentional block, not malfunction) |
+
+Two real findings for the bug list:
+1. **`MAX_SECTOR_POSITIONS=2` is NOT enforced in the ORB entry path** — it's defined in `symbol_universe.py` but only consumed by the legacy `bot_loop.py` long path, *not* `orb_runner`/`orb_multiscan`. So the active strategy has **no sector cap** — a risk constant that's effectively orphaned (the "constant with no consumer" class). Medium severity.
+2. The dormant `blocks_side()` helper is unused (both callers block HTB symbol-wide) — matches your "don't trade HTB at all" directive, so report-only, not a bug.
+
+Still waiting on §4 (risk enforcement — should corroborate the sector-cap finding), §7 (process survivability), §8 (observability). Full scorecard + ranked bugs when they land.
+
+---
