@@ -8665,3 +8665,98 @@ I held to diagnose-don't-fix, but given the same setup fires again at 09:25 tomo
 **Close-out (Loop 181, 2026-06-29 20:04 ET):** SESSION_LOG.md:236 (Loop 181 incident, re-read & saved) ✓ · coordination mirrored + pushed HEAD **`72f2bed`** (secret-scan clean) ✓ · READ-ONLY — diagnosed only, nothing changed, freeze intact · SYSTEM_FACTS regen **N/A**.
 
 ---
+
+
+## Turn — 2026-06-29 20:14:07 ET
+
+**Rhett:**
+
+# HANDOFF → CLAUDE CODE — FULL DAY-1 POST-MORTEM: find EVERY failure today, rank by severity, real-vs-false-alarm — read-only
+# From: Planning Claude | 2026-06-29 ET (Code: number + stamp; CLAIM→VERIFY→SHOW close-out per the standing protocol)
+# First live day of the exit rebuild + gate-off. Real problems surfaced. GOAL: ONE comprehensive inventory of EVERY
+# failure today so we fix them deliberately. Separate CONFIRMED failures from CLAIMED-benign (prove those), and REAL
+# bot failures from MONITORING false-alarms (different fixes). READ-ONLY: diagnose only, change nothing, freeze intact.
+# Prove against broker/tick/lease truth — Rhett's direct observations (50+ recon warnings, -$3k open, "TW missing 2min")
+# OUTRANK any tidy "false-positive/cosmetic" explanation.
+
+## INVESTIGATE EACH — confirm, root-cause, severity (broker truth, not assertion)
+A. MISSING RESTING-STOP BACKSTOP: open cohort had ZERO protective 1.4ATR StopMarket. WHY didn't _register_rearm_
+   resting_stops place them (Loop-177 said "in place")? Did it run / call submit / get rejected / never fire? Root cause.
+B. TW STREAM GAPS: confirm 613 / max 152s. Did any gap cause a LATE or MISSED exit on an open position? (cross-ref
+   tick gaps vs exits-needed). Worst no-protection window (no ticks AND no resting stop).
+C. POSITION RECON (50+ warnings): bot-tracked vs broker-held, side-by-side at multiple times. REAL desync or the
+   lease-aware artifact? PROVE with the table. Include the 10:08 retracted "3 positions no owner" — was it ever real?
+D. -$3,000 OPEN P&L: reconcile open/unrealized vs broker truth through the day. Attributable to a gap-delayed/missed
+   exit, or normal adverse movement?
+E. 160 MASS REJECTS (9:35:59 "markets closed" RTH): what path emitted a whole-universe day-order batch on Monday RTH?
+   Did it cost intended entries? Is orb_multiscan malformed?
+F. ACCESS OUTAGE: why did Rhett lose dashboard/app access all day? (tunnel died at his Ctrl+C last night? dashboard
+   down? PID?) Was trading ever affected, or monitoring-only?
+G. LOOP-STALL: did the recurring ~9:30 main-loop freeze happen today? (loop_stage_timing / stall dumps). 
+H. FALSE ALARMS AS FAILURES: the 9:10 "bot held all morning" (wrong), the rel_safe_mode "stuck 240min" (cosmetic),
+   any other monitoring that cried wolf. List them — a noisy monitor that masks real signals IS a failure to fix.
+I. DEAF SAFETY SELF-TEST: the gate_not_failing_open detector returned OK when a leak should've tripped CRITICAL — a
+   broken safety check. Confirm + scope.
+J. ANYTHING ELSE: scan bot_alerts / logs for any other FAIL/error today not listed above.
+
+## OUTPUT — THE MASTER FAILURE LIST (Rhett reads this)
+A single ranked table: Failure | CONFIRMED-real vs FALSE-ALARM vs UNPROVEN | severity (critical/serious/minor) |
+root cause | is it a TRADING-path bug, a SAFETY/backstop gap, a MONITORING false-alarm, or ACCESS | proposed fix
+(separate gated handoff each — do NOT fix here). End with the honest one-liner: was today a SUCCESS with gaps, or a
+NEAR-MISS that ended green by luck?
+
+## HARD CONSTRAINTS
+- READ-ONLY: no watched/trading file, orders, config, restart, no tw_abort.flag. Diagnose only. Freeze intact.
+- No "false-positive/cosmetic" verdict without the reconciliation that proves it. List false alarms AS failures too.
+
+**Claude Code:**
+
+This is a deep post-mortem and several items (especially A) may revise my Loop 181 read — Planning says the open cohort had **zero** working StopMarket, while I reported the SLs "were placed." I need to prove from **broker order status** whether those stops were *working* at the broker or *cancelled*. Let me pull the full 6/29 broker order lifecycle — statuses by type, the SL orders for the runaways, and the 160 rejects:
+The order data already complicates item A: I see **23 StopMarket orders, all status UROUT** (closed at ~19:50 UTC = **15:50 ET — the EOD flatten moment**), which suggests they were *working* until the flatten cancelled them, not missing. But Rhett's observation that the backstop was absent outranks that tidy read, so I must trace the full lifecycle. Let me dump COHR's complete order ledger and the 160-reject path:
+**Item A resolved by broker truth — and it refutes the "zero StopMarket" premise.** COHR's complete ledger (times UTC −4 = ET):
+- **10:35 ET** SellShort StopLimit entry FILLED
+- **10:47 ET** BuyToCover **StopMarket @402.37 placed — and it stayed WORKING until 15:50 ET** (UROUT = cancelled at the EOD flatten), exit Limit @387.65 at 15:50
+So the 1.4×ATR backstop **was live the entire time the position was open** (all 10 runaways show the same StopMarket-UROUT-at-flatten pattern). It was too *wide* to trigger, not missing. There's a ~12-min entry→stop gap, but the stop existed. **Item E confirmed:** 160 StopLimit DAY orders rejected "markets closed," ~16 distinct symbols not in the filled set (lost entries).
+
+Let me gather items B, C, F, H, I (TW gaps, recon warnings, access, false alarms, deaf self-test):
+Let me locate the actual sources for the contested items — the recon warnings (incl. the 10:08 "3 positions no owner"), the TW stream-gap stats (613/152s), the deaf detector, and the access outage:
+Found it on access (item F): **cloudflared is NOT running — the tunnel was down all day** (not restarted after last night's Ctrl+C); the dashboard itself is local-only, so this was monitoring-access loss, not a trading issue. Let me read the deaf-detector detail, the recon warnings, and the TW stream stats:
+Item I: 1 of 9 drills failed (deaf). Item C: the "50+ warnings" are dominated by **SAFE_MODE-active-Xmin spam every 5 min** (~168 today) + the rejection burst — I need to separate genuine recon desyncs from that noise. Let me read the failed drill, find the actual position-recon "no owner" events, and the TW stream stats:
+I now have all 10 items resolved. Two findings reframe the day: **item A's "missing backstop" premise is refuted by broker truth** (all 10 runaways had working 1.4×ATR StopMarkets until the flatten — the bot's *tracking* was desynced, not the broker's stops), and the deaf detector is **`gate_not_failing_open<-leak` (expected CRITICAL, got OK)** — a genuinely blind safety check. Let me record the master table:
+Recorded and pushed (coordination HEAD `e21888e`).
+
+## Full Day-1 post-mortem — master failure list (6/29)
+
+Every item proven against broker order truth (times converted UTC→ET). Where Rhett's observation and a "tidy explanation" disagreed, I led with the broker/order ledger.
+
+| # | Failure | Verdict | Severity | Type | Root cause (proven) |
+|---|---|---|---|---|---|
+| **A2** | Exit system let 10 positions run to the EOD flatten | **CONFIRMED-real** | 🔴 **Critical** | Trading + backstop gap | Unconfirmed-adverse positions had **only** the 1.4×ATR stop (candle-close trail arms *post-confirm*); TW never owned them (not in TW log) while exit_bot **deferred** to TW → −$5,035 |
+| **I** | Deaf safety self-test | **CONFIRMED-real** | 🟠 Serious | Safety/monitoring | `gate_not_failing_open<-leak` drill expected **CRITICAL**, got **OK** — the gate-fail-open leak detector is blind |
+| **C** | Position recon "50+ warnings" | **CONFIRMED-real** | 🟠 Serious | Trading/tracking | `rel_position_recon` FAIL ×75: "BROKER has 3-8 positions the bot is NOT tracking." Broker truth confirms they existed; the 10:08 "3 positions no owner" **was real** |
+| **E** | 160 mass rejects (9:35:59 "markets closed") | **CONFIRMED-real** | 🟠 Serious | Trading-path | 160 StopLimit **DAY** orders rejected "Only GTC… when markets closed"; ~16 distinct symbols not among the 23 filled = **lost intended entries**. A path emitted a whole-universe DAY batch — needs code trace |
+| **H** | False alarms as failures | **CONFIRMED** (noise) | 🟠 Serious | Monitoring | "PRE-OPEN NO-GO **BOT HELD**" (bot did *not* hold — SAFE_MODE toothless) + **164×** "SAFE_MODE active Nmin" spam + rel_safe_mode "stuck 240min" (cosmetic). The noise **masked the real recon FAILs** |
+| **A1** | "Missing 1.4×ATR backstop" | **FALSE-ALARM (refuted)** | — | Monitoring/tracking | Broker truth: **all 10 runaways had a working StopMarket** (COHR @402.37, live 10:47→15:50 flatten). Stops were correct 1.4×ATR but **too wide** (14%), not absent. Real sub-bug: ~12-min entry→stop gap |
+| **D** | −$3k open P&L | **CONFIRMED-real** | 🟡 Minor | Consequence | Real unrealized loss on the runaways — a *consequence* of A2, not a separate bug |
+| **B** | TW stream gaps (613/152s) | **UNPROVEN** | 🟡 Minor | Trading/data | Gaps exist in tw_shadow (max ~1082s) but **not tied to any specific missed exit**; runaways failed for A2, not a proven tick-gap |
+| **F** | Dashboard/app access outage | **CONFIRMED-real** | 🟡 Minor | **Access** | cloudflared not running — tunnel down all day (last night's Ctrl+C, never restarted). Dashboard is local-only → **monitoring loss, no trading impact** |
+| **G** | ~9:30 loop freeze | **Near non-event** | 🟡 Minor | Trading | The 9:30 freeze did **not** recur; 1 pre-market stall at 08:01 (ORB RUNNER 102s), caught by the instrumentation |
+| **J** | Misc | **CONFIRMED** | 🟡 Minor | Mixed | earnings_calendar.csv **25.8d stale** (veto may miss); 1 EC703 over-sell reject; report_integrity **8 WARN** (unclassified exits); deadman beacon stale ×2 |
+
+### Real bot failures vs monitoring false-alarms (different fixes)
+- **Real trading/safety bugs:** A2 (exit coverage), C (recon desync), E (mass rejects/lost entries), I (deaf safety check), and the A1 12-min stop gap.
+- **Monitoring false-alarms (fix the monitor, not the bot):** A1's "backstop missing" framing, H's "BOT HELD" + SAFE_MODE-stuck spam. These are dangerous because the 164 SAFE_MODE alerts buried the genuine 75 recon FAILs.
+
+### The honest one-liner
+**Neither "success with gaps" nor "ended green by luck" — it ended RED, −$3,493, on a confirmed structural exit failure.** The exit rebuild's core promise (protect open positions) failed for the unconfirmed cohort: 10 positions had only a 14%-wide backstop and no active exit owner, and ran to the EOD flatten for −$5,035. It would have been **far worse** — those 14% stops could have allowed a −$10k+ single-name loss — except the 15:50 flatten caught them and the SIM account is large. A deaf safety self-test and a real position-recon desync ran underneath it, hidden by monitoring noise. This was a **partial failure**, not a success.
+
+### Biggest correction to the morning's reads
+- My Loop 177 "GO" called re-arm resting-stop coverage "in place" — broker truth shows the stops **were** placed, but the morning sweep didn't catch that 1.4×ATR is a 14% catastrophe-only stop for high-ATR names with no tight exit for unconfirmed positions. That's the gap that cost the day.
+- Item A's "zero StopMarket" premise is **false** — but it pointed at a real adjacent bug (the recon desync made the bot *think* positions were untracked/unprotected).
+
+Each fix is its own gated handoff. I changed nothing — read-only, freeze intact.
+
+---
+**Close-out (Loop 182, 2026-06-29 20:12 ET):** SESSION_LOG.md:236 (Loop 182 master list, re-read & saved) ✓ · coordination mirrored + pushed HEAD **`e21888e`** (secret-scan clean) ✓ · READ-ONLY — nothing changed, freeze intact · SYSTEM_FACTS regen **N/A**.
+
+---
