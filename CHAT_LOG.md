@@ -9477,3 +9477,75 @@ One forward note: when the in-play gate is eventually turned **on**, the live de
 **Close-out (Loop 190, 2026-06-30 07:57 ET):** SESSION_LOG.md:236 (Loop 190, re-read & saved) ✓ · drill 10/10 verified ✓ · coordination mirrored + pushed HEAD **`1407361`** (secret-scan clean) ✓ · monitoring-only, no watched/trading file, $500 cap untouched, bot healthy, freeze intact · SYSTEM_FACTS regen **N/A**.
 
 ---
+
+
+## Turn — 2026-06-30 08:05:29 ET
+
+**Rhett:**
+
+# HANDOFF → CLAUDE CODE — BATCH B-2: the 160 mass order-rejects at 9:35:59 (lost intended entries) — diagnose then fix
+# From: Planning Claude | 2026-06-30 ET (Code: number + stamp; CLAIM→VERIFY→SHOW close-out per the standing protocol)
+# Post-mortem (Loop 182, item E): at 09:35:59 RTH Monday, ~160 orders (~90 BUY + 70 SELLSHORT, orb_v1_6) were
+# REJECTED "Only GTC/GTC+/GTD/GTD+ orders when markets are closed" — a whole-universe DAY-order batch TS rejected;
+# ~16 distinct symbols among them were NOT in the 23 that filled = LOST INTENDED ENTRIES. Looks like a malformed
+# batch from orb_multiscan. DIAGNOSE FIRST (read-only); the fix touches the entry path → GATED. 
+# ⚠️ This is the ENTRY path — careful. Diagnose before any change.
+
+## STEP 1 — DIAGNOSE (read-only)
+- Trace what emitted the 160-order batch at 09:35:59. WHY were they DAY orders rejected as "only GTC when markets
+  closed" during RTH (market WAS open)? Possibilities to confirm/rule out: wrong order TimeInForce on a code path,
+  a whole-universe submit that should've been filtered to candidates, a timing/race at the 9:35 boundary, a stale
+  "market closed" assumption. Show the exact path + the malformed field.
+- Quantify the cost: which of the ~16 lost-entry symbols would plausibly have traded, and did losing them matter
+  (missed winners? dodged losers? neutral)? Best-effort, labeled as estimate.
+- Is this a Monday-one-off (boundary timing) or does it recur every session? Check whether it'd fire again next open.
+
+## STEP 2 — PROPOSE THE FIX (gated — entry path, present for Rhett's go)
+- The fix so the entry batch is well-formed (correct TimeInForce for RTH / filtered to actual candidates, not the
+  whole universe). State exactly what changes. This is a WATCHED entry-path change → NOT applied without Rhett's go.
+- Validate off-market: the corrected path emits valid RTH orders for the candidate set only; no whole-universe DAY
+  batch; regression on the entries that DID work Monday (they still work).
+
+## HARD CONSTRAINTS
+- DIAGNOSE before fix. The fix is ENTRY-PATH (watched) → present GATED, do NOT apply live without Rhett's go.
+- Bot healthy; $500 cap + exits untouched; trading freeze intact until the gated go.
+
+## VERIFICATION TASKS TO CLOSE (plain English back to Planning)
+1. Root cause of the 160 rejects (the path + malformed field, file:line) + recurs-or-one-off.
+2. Cost estimate of the lost entries (labeled estimate).
+3. The proposed fix (gated) + off-market validation plan; confirm not applied without Rhett's go.
+4. Bot healthy, freeze intact.
+
+**Claude Code:**
+
+Batch B-2 — read-only diagnosis of the entry path (the fix will be gated). Let me pull the exact structure of a rejected order vs a filled one (to find the malformed field), the timestamps, and whether this recurs on other days:
+The reject is precise: **all 160 at exactly 09:35:59**, StopLimit/DAY, **90 Buy + 70 SellShort**, and notably the leg shows **qty=0**. The reject reason ("markets closed") is a TIF/session error, but qty=0 is suspicious. Let me nail it: the real OrderQuantity vs ExecQuantity, the Routing, the strategy tag, the filled-orders timing, unique symbols, and cross-day recurrence:
+Big clues: the rejects are **16 symbols × ~10 retries each = 160** (a retry loop hammering, all at 09:35:59), `QuantityOrdered=44` (well-formed, not a qty bug), same "Intelligent" routing as the fills. And the **recurrence is Monday-specific** (6/22 Mon: 140, 6/29 Mon: 160, but 6/23–26 Tue–Fri: 0). The 23 that filled came **later** (09:36–12:15), not in the 09:35:59 batch. Let me confirm the Monday pattern and find the submission code's TIF/Duration + retry logic:
+**Confirmed Monday-specific** (6/15, 6/22, 6/29 — all Mondays; Tue–Fri zero) and **exactly 10 retries per symbol** (a fixed retry loop hammering the same instant). Orders are `Duration: DAY` (orb_orders.py:63/222/357). The fills came at 09:36+ (proving the session WAS open shortly after). Let me find the retry loop and the submission path to pinpoint the fix location:
+`orb_multiscan.py:177` has a comment **already referencing this exact rejection** — "TradeStation REJECTS with 'Only GTC/GTD when markets are closed'". This is known territory. Let me read that context:
+The Loop-65 comment is key context: StopMarket DAY orders get this exact rejection, and the re-arm was fixed to use StopLimit — **but 6/29's rejects were already StopLimit and still got rejected**, so the order type isn't the root. It's the **DAY TimeInForce + TS thinking the market is closed at ~09:35:59 on Mondays**. Let me confirm the retry mechanism (submit_time vs logged_at) and check whether the lost symbols would have mattered:
+I have a complete, well-evidenced diagnosis — and it **corrects two of the handoff's hypotheses**. The submit_time is empty on rejects (they're logged from the broker's terminal-order list at 09:35:59), but the picture is clear: **16 candidates × ~10 resubmission records = 160**, all well-formed (`QuantityOrdered=44`, StopLimit, "Intelligent" routing — same as the fills). This is **not** a whole-universe batch (16 is a normal candidate count) and **not** a malformed field. Let me record the diagnosis and the gated fix:
+Recorded and pushed (coordination HEAD `bb2b05f`). Read-only diagnosis — nothing changed, bot healthy (PID 6824, loop_count 130).
+
+## The 160 mass-rejects — diagnosed (fix is gated)
+
+**1. Root cause + path.** At **~09:35:59 on Mondays**, TradeStation rejects the 9:35 entry batch's `Duration: DAY` orders with *"Only GTC/GTC+/GTD/GTD+ orders when markets are closed"* — TS briefly treats the session as **closed** at the week's very first submission; by 09:36 it accepts (proven — the 23 that filled came in at 09:36–12:15). Path: `orb_runner.py:798` → `orb_orders.submit_stop_limit_entry` (`Duration:DAY`, orb_orders.py:222).
+
+**Two of the handoff's hypotheses are wrong:**
+- **Not a malformed field** — the rejected orders are well-formed (`QuantityOrdered=44`, StopLimit, `Routing=Intelligent` — *identical* to the fills). The `qty=0` I first saw was `ExecQuantity` on a rejected order, not the order quantity.
+- **Not a whole-universe batch** — it's **16 distinct candidate symbols × ~10 resubmission records = 160**. The bot re-submits each transiently-rejected candidate ~10× *inside the same bad window*, then gives up → the 16 are lost.
+
+This is a known failure family: `orb_multiscan.py:176-180` (Loop-65) already hit this on the re-arm StopMarket and switched to StopLimit — but the 9:35 StopLimit DAY batch **still** hits it on Mondays. So order-type isn't the root; **DAY-TIF in the Monday closed-window** is.
+
+**2. Cost (labeled estimate, not a precise replay).** 16 lost-entry symbols (CAT, DDOG, GOOG, INTU, KO, LITE, LLY, MSFT, ON, PYPL, SNOW, SNPS, UBER, VRT, VRTX, WDC), zero overlap with the 23 fills. On 6/29 the system net **lost −$3,493** (48% win, −$152/trade), so 16 more entries at that day's negative expectancy would likely have *added* loss — meaning **losing them was probably net-neutral-to-slightly-helpful that day (~+$1–2k dodged)**. **Caveat:** the sign is day-dependent — on a *winning* Monday it's a real cost — and missing intended entries is a genuine defect regardless. The precise per-symbol breakout replay belongs in the fix validation.
+
+**3. Recurrence.** **Monday-only:** 6/15 (4), 6/22 (140), 6/29 (160); Tue–Fri all zero. **It will recur next Monday open unless fixed.**
+
+**4. Proposed fix (GATED — watched entry path, NOT applied).**
+Treat a "markets closed"/GTC-family reject as **transient**: re-queue the candidate for the next orb_runner cycle (a few seconds later, past the bad window) instead of hammering ~10× in the same instant and dropping it. Targeted to the specific reject reason; recovers the lost entries; doesn't delay the good 09:36+ submits; changes no order type/qty/routing. (Alternatives: a short backoff-resubmit, or gate the first opening submit to ≥09:36:05.)
+**Off-market validation plan:** unit-test the submit-result handling (markets-closed reject → re-queued not dropped; other rejects → unchanged; SUBMITTED → entered); confirm it stays candidate-filtered; regress the 23 that worked Monday; run the precise cost replay of the 16. **Not applied without your go.**
+
+---
+**Close-out (Loop 191, 2026-06-30 08:04 ET):** SESSION_LOG.md:236 (Loop 191, re-read & saved) ✓ · coordination mirrored + pushed HEAD **`bb2b05f`** (secret-scan clean) ✓ · READ-ONLY diagnosis — no code/watched/trading change, $500 cap + exits untouched, bot healthy, freeze intact · SYSTEM_FACTS regen **N/A** · awaiting your go on the gated fix.
+
+---
