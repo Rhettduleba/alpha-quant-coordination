@@ -9392,3 +9392,88 @@ Live calendar was 26.7 days stale / 6 rows. Ran the NASDAQ refresher (writes a s
 **Close-out (Loop 189, 2026-06-30 07:48 ET):** SESSION_LOG.md:236 (Loop 189, re-read & saved) ✓ · coordination mirrored + pushed HEAD **`3fc6914`** (secret-scan clean) ✓ · monitoring/data only, no watched trading file, $500 cap untouched, bot healthy, freeze intact · SYSTEM_FACTS regen **N/A**.
 
 ---
+
+
+## Turn — 2026-06-30 07:58:04 ET
+
+**Rhett:**
+
+# HANDOFF → CLAUDE CODE — BATCH B-1: the DEAF safety self-test (gate_not_failing_open returns OK when it should CRIT) — diagnose then fix
+# From: Planning Claude | 2026-06-30 ET (Code: number + stamp; CLAIM→VERIFY→SHOW close-out per the standing protocol)
+# Post-mortem (Loop 182, item I): the reliability drill's `gate_not_failing_open` detector was fed a LEAK (expected
+# CRITICAL) and returned OK — it is BLIND. A safety check that can't detect the failure it watches for is worse than
+# no check (false confidence). Ties to the 6/19 gate-fail-open + open-decision-5. DIAGNOSE FIRST (read-only), then a
+# GATED fix. Do NOT fix blind — understand WHY it's deaf before changing it.
+
+## STEP 1 — DIAGNOSE (read-only)
+- Find `gate_not_failing_open` (the reliability drill detector). What is it SUPPOSED to detect — i.e. what does
+  "gate failing open" mean (the gate letting names through when it should block / a safety filter silently bypassed)?
+- The drill fed it a synthetic leak and it returned OK. WHY? Trace it: is the detector checking the wrong signal /
+  a stale input / a condition that never evaluates true / comparing against the wrong source? Show the exact reason
+  it didn't fire on a real leak.
+- Is this detector's blindness limited to the drill, or would it ALSO miss a real gate-fail-open in production?
+  (i.e. is the LIVE safety coverage actually compromised, or just the self-test?)
+
+## STEP 2 — PROPOSE THE FIX (gated — present, don't apply yet if it touches a watched/trading file)
+- The fix that makes the detector actually catch a gate-fail-open leak (drill AND live). State whether it's a
+  monitoring-only change (non-watched → can apply + verify now) or touches the gate/trading path (→ gated, present
+  for Rhett's go).
+- The fix MUST be verified by RE-RUNNING the drill: feed it the leak → it now returns CRITICAL; feed it a clean
+  state → it returns OK. Prove both (no false-pass AND no false-alarm).
+
+## HARD CONSTRAINTS
+- DIAGNOSE before fix. If the fix is monitoring-only, apply + verify (re-run drill). If it touches a watched/trading
+  file, PRESENT it gated — Rhett's go before live. Don't make it blind-in-a-new-way to pass; prove it catches the real leak.
+- Bot stays healthy; $500 cap untouched; trading freeze intact.
+
+## VERIFICATION TASKS TO CLOSE (plain English back to Planning)
+1. WHY the detector was deaf (root cause, file:line).
+2. Whether LIVE gate-fail-open coverage was compromised or only the self-test.
+3. The fix + drill re-run proof: leak → CRITICAL, clean → OK (both shown).
+4. Monitoring-only (applied) or trading-path (gated for Rhett). Bot healthy, freeze intact.
+
+**Claude Code:**
+
+Batch B-1 — diagnose the deaf detector first. Let me find `gate_not_failing_open`, its check function, and the drill that feeds it the synthetic leak:
+Found it — and line 294 is the likely culprit (early-returns OK when the gate is off by config). Let me read the full detector and the drill that feeds it the leak:
+The early-return at line 294 is the smoking gun: when `ORB_INPLAY_GATE` is False (which it's been since Loop 158), the detector returns OK *immediately* — never reaching the leak-detection logic (lines 317-321). So the drill's synthetic leak can't ever trip it. Let me read the drill to see exactly how it injects the leak (does it enable the gate first?):
+Now the full diagnosis is clear. The drill (lines 121-138) writes a leak candidate (`selected:True, inplay_pass:False`) and monkeypatches `_now`/`BOT` — but it **does not enable the gate**. The detector reads the real `risk_config.ORB_INPLAY_GATE` (False since Loop 158) and early-returns OK at line 294, never reaching the leak logic. Let me prove this root cause and verify the fix (enabling the gate makes it catch the leak) — read-only first:
+**Diagnosis fully proven:**
+- **A) gate OFF + leak → OK** (reproduces the deafness — the line-294 early-return)
+- **B) gate ON + leak → CRITICAL** (the detector's leak logic is sound)
+- **C) gate ON + clean → OK** (no false-alarm)
+
+So the **root cause is the drill, not the detector**: `check_gate_not_failing_open` correctly early-returns OK when the gate is off (no gate → nothing can fail open), but the drill never enables the gate, so its synthetic leak hits the early-return. The fix is **monitoring-only** (`reliability_drill.py`): make the drill enable the gate in its sandbox. Applying it, with an added clean sub-test:
+Fix applied. Now re-run the drill to prove **leak → CRITICAL, clean → OK** (the drill self-restores state, but I'll verify SAFE_MODE is unchanged before/after):
+**Fix verified — the drill now catches the leak:**
+- `gate_not_failing_open<-leak`: expected CRITICAL, **got CRITICAL** ✓ (no longer deaf)
+- `gate_not_failing_open<-clean`: expected OK, **got OK** ✓ (no false-alarm)
+- State self-restored: SAFE_MODE unchanged, `ORB_INPLAY_GATE` back to False ✓
+
+Let me confirm the drill status file now shows all-passing (was 8/9) and stamp the close-out:
+**Drill now 10/10 (0 failed)** — was 8/9 with the deaf detector. This also clears the Loop-182 "1 deaf detector" beacon WARN. Bot healthy (PID 6824, loop_count 120). Recording the close-out:
+Recorded and pushed (coordination HEAD `1407361`). Batch B-1 complete.
+
+## Deaf safety self-test — diagnosed, then fixed (monitoring-only)
+
+**1. Why the detector was deaf (root cause).** `check_gate_not_failing_open` **early-returns OK when `ORB_INPLAY_GATE` is off** ([reliability_checks.py:293-294](tradestation-bot/reliability_checks.py:293)) — which is *correct* live behavior (no gate running ⇒ nothing can fail open). The gate has been off since Loop 158. The drill ([reliability_drill.py:121-138](tradestation-bot/reliability_drill.py:121)) fed a synthetic leak but **never enabled the gate**, so the leak hit that early-return and got OK while expecting CRITICAL → reported "deaf." Proven read-only:
+- A) gate OFF + leak → **OK** (reproduces the deafness)
+- B) gate ON + leak → **CRITICAL** (the leak logic is sound)
+- C) gate ON + clean → **OK** (no false-alarm)
+
+**2. Was live coverage compromised, or just the self-test? Only the self-test.** In the current config (gate off), the OK is correct — there's no gate enforcement to leak. The detector's leak-detection logic ([reliability_checks.py:317-321](tradestation-bot/reliability_checks.py:317)) is sound and **would** fire on a real fail-open if the gate were on (proven by B). The harm was *false confidence* — the drill never actually exercised the leak path, so we had no proof it worked.
+
+**3. The fix + drill re-run proof.** Monitoring-only change to `reliability_drill.py`: the gate drill now temporarily enables `ORB_INPLAY_GATE=True` (sandboxed — in-memory in the drill process only; orb_runner is a separate subprocess that re-reads the file as False; restored in `finally`) so the detector reaches its leak path, plus an added clean sub-test. Re-run:
+- `gate_not_failing_open<-leak`: expected CRITICAL → **got CRITICAL** ✓
+- `gate_not_failing_open<-clean`: expected OK → **got OK** ✓
+
+Both shown: catches the real leak **and** doesn't false-alarm. State self-restored (SAFE_MODE unchanged, `ORB_INPLAY_GATE` back to False). **The drill is now 10/10 (0 failed)**, up from 8/9 — which also clears the Loop-182 "1 deaf detector" beacon WARN.
+
+**4. Monitoring-only (applied, not gated).** Touched only `reliability_drill.py` (non-watched). No detector logic, gate, or trading-path change. Bot healthy (run_bot 6824, loop_count 120); `DOLLAR_STOP_CAP_ENABLED` still True; freeze intact.
+
+One forward note: when the in-play gate is eventually turned **on**, the live detector will actively guard against a real fail-open — the logic is already sound and now provably so. Batch-B's remaining item is the **160 mass-rejects** (separate handoff).
+
+---
+**Close-out (Loop 190, 2026-06-30 07:57 ET):** SESSION_LOG.md:236 (Loop 190, re-read & saved) ✓ · drill 10/10 verified ✓ · coordination mirrored + pushed HEAD **`1407361`** (secret-scan clean) ✓ · monitoring-only, no watched/trading file, $500 cap untouched, bot healthy, freeze intact · SYSTEM_FACTS regen **N/A**.
+
+---
