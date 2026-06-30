@@ -11124,3 +11124,99 @@ Today proves the full chain: 9:35 scan (HTB-blocked → 0) → **re-arm armed 17
 I'll post the consolidated PASS/FAIL/UNKNOWN scorecard with the ranked bugs once all five report back.
 
 ---
+
+
+## Turn — 2026-06-30 12:31:56 ET
+
+**Rhett:**
+
+<task-notification>
+<task-id>a2d639d29ebcdc3da</task-id>
+<tool-use-id>toolu_011dfu95rg8oA6aTae8j6r21</tool-use-id>
+<output-file>C:\Users\ADMINI~1\AppData\Local\Temp\claude\C--Users-Administrator-OneDrive---Duleba-Trade-station-Main\3253950a-388c-4a7a-99cc-cec0c4ed9f69\tasks\a2d639d29ebcdc3da.output</output-file>
+<status>completed</status>
+<summary>Agent "Audit Section 3 advisor channel" finished</summary>
+<note>A task-notification fires each time this agent stops with no live background children of its own. The user can send it another message and resume it, so the same task-id may notify more than once.</note>
+<result>The only write in the entire module is to its own audit log (`advisor_filter_engine.log`, append-mode, line 316). There is no code path that writes to bot config, risk_config, the universe, or the control file. All control-file access is `read_text` (line 52) and override file is `read_text` (line 148). 
+
+Let me note one discrepancy worth flagging: the engine handles three control types NOT in the documented vocabulary — `EXIT_PROFILE` (line 240), `VETO_CANDIDATE` (line 245). These are extensions beyond the 12 documented types. Let me confirm the documented set vs. what's actually dispatched.
+
+The audit is complete. Here is my Section 3 verdict.
+
+---
+
+## SECTION 3 — ADVISOR→BOT CHANNEL: **PASS**
+
+The advisor→bot channel in `C:\AlphaQuant\tradestation-bot\advisor_filter_engine.py` behaves exactly as the architectural rule requires: paranoid validation, **default-to-ALLOW** on every defect (a dead/bad/stale advisor never locks the bot out), a fixed vocabulary with silent ignore of anything else, and **read-only** access to the JSON (no path writes bot config/risk/universe). One non-blocking observation noted at the end.
+
+### (a) Rejection-path table (file:line)
+
+All rejection logic lives in `_load_control_file()`. Every path returns `(None, &lt;status&gt;)`, and the caller `should_block_entry()` (lines 348–352) converts `payload is None` into `AdvisorFilterResult(False, …)` — i.e. **block=False = ALLOW**.
+
+| # | Defect | File:line | Returned status |
+|---|--------|-----------|-----------------|
+| 1 | File missing | `advisor_filter_engine.py:48-49` | `CONTROL_FILE_MISSING` |
+| 2 | Bad JSON (parse error) | `advisor_filter_engine.py:51-54` | `CONTROL_FILE_INVALID:&lt;err&gt;` |
+| 2b | Parsed but not a dict | `advisor_filter_engine.py:56-57` | `CONTROL_FILE_INVALID:not_a_dict` |
+| 3 | `environment != "SIM_ONLY"` | `advisor_filter_engine.py:60-61` | `CONTROL_NOT_SIM_ONLY` |
+| 4 | `live_allowed is not False` | `advisor_filter_engine.py:62-63` | `CONTROL_LIVE_NOT_ALLOWED` |
+| 5 | `free_text_control_allowed is not False` | `advisor_filter_engine.py:64-65` | `CONTROL_FREE_TEXT_ALLOWED` |
+| 6 | `expiration_time` empty/missing | `advisor_filter_engine.py:68-70` | `CONTROL_EXPIRED_OR_MISSING` |
+| 6b | `expiration_time` unparseable | `advisor_filter_engine.py:72-75` | `CONTROL_EXPIRED_OR_MISSING` |
+| 6c | Past `expiration_time` | `advisor_filter_engine.py:77-81` | `CONTROL_EXPIRED_OR_MISSING` |
+| — | Default-to-ALLOW on any `None` payload | `advisor_filter_engine.py:349-352` | `block=False` |
+
+Note the strict identity checks: `is not False` (lines 62, 64) means a *missing* `live_allowed`/`free_text_control_allowed` key, or any truthy/non-False value, also rejects — fail-safe.
+
+### (b) FORCED-rejection results
+
+Harness: `scratchpad\section3_test.py` calls the real public entry `afe.should_block_entry(..., control_path=&lt;temp file&gt;)` — the function's own `control_path` parameter (line 327) lets me point it at temp files with **zero code edits** and **no touch of the real control file**. Run with `pythoncore-3.14-64\python.exe`.
+
+| Defect forced | Result | ALLOW (not lockout)? |
+|---|---|---|
+| file_missing | `block=False` / `CONTROL_FILE_MISSING` | **yes** |
+| bad_json | `block=False` / `CONTROL_FILE_INVALID:...` | **yes** |
+| not_a_dict | `block=False` / `CONTROL_FILE_INVALID:not_a_dict` | **yes** |
+| environment != SIM_ONLY | `block=False` / `CONTROL_NOT_SIM_ONLY` | **yes** |
+| live_allowed = true | `block=False` / `CONTROL_LIVE_NOT_ALLOWED` | **yes** |
+| free_text_control_allowed = true | `block=False` / `CONTROL_FREE_TEXT_ALLOWED` | **yes** |
+| expired (past) | `block=False` / `CONTROL_EXPIRED_OR_MISSING` | **yes** |
+| expiration missing | `block=False` / `CONTROL_EXPIRED_OR_MISSING` | **yes** |
+| expiration malformed | `block=False` / `CONTROL_EXPIRED_OR_MISSING` | **yes** |
+
+**Harness validity control:** a *valid* SIM_ONLY file carrying `BLOCK_ALL_NEW_ENTRIES` returned `block=True / CONTROL_VALID` → **BLOCKED**. This proves the nine ALLOW results above are genuine rejections, not a harness that always returns ALLOW. (Confirmed `override_advisor_halt.json` is not present on disk, so the block wasn't suppressed by an override.)
+
+### (c) Dispatch acts only on the documented vocabulary
+
+Dispatch is the `if/elif` chain in `_evaluate_control()` (`advisor_filter_engine.py:126-273`), terminating in a catch-all `return False, f"UNKNOWN_CONTROL_TYPE:{ct}"` at **line 273**. Unknown types fall to that line → `block=False` → ignored.
+
+- Through `should_block_entry()`, unknown types `BLOCK_EVERYTHING_LOL`, `RAISE_RISK_LIMIT`, `EXECUTE_FREE_TEXT`, `SET_DAILY_MAX_LOSS`, and `""` all returned `block=False, reason=ALL_CONTROLS_PASSED` → **silently ignored**.
+- Direct `_evaluate_control({"control_type":"TOTALLY_MADE_UP"}, ...)` → `(False, "UNKNOWN_CONTROL_TYPE:TOTALLY_MADE_UP")`.
+- All 12 documented vocabulary types are handled (none fall through to the unknown branch).
+
+### (d) Engine only READS the JSON
+
+`grep` for every write/open/dump/mkdir in the module returns exactly **three lines, all the audit log** (`advisor_filter_engine.log`):
+- `315: LOG_PATH.parent.mkdir(...)`, `316: LOG_PATH.open("a", ...)`, `317: f.write(json.dumps(entry)+"\n")`.
+
+Control-file access is `read_text` only (line 52); the override file is `read_text` only (line 148). **No code path writes bot config, `risk_config`, the symbol universe, or the control file.** The advisor side cannot be written by this module either. The one-way valve holds.
+
+---
+
+### Non-blocking observation (NOT a FAIL — flagging for awareness)
+
+The dispatcher in `_evaluate_control` handles **two control types beyond the 12 documented in CLAUDE.md**: `EXIT_PROFILE` (line 240) and `VETO_CANDIDATE` (line 245). Neither loosens the channel — `EXIT_PROFILE` is hint-only (consumed by `get_exit_profile()` for exit-bot thresholds, never blocks entries) and `VETO_CANDIDATE` only *adds* a time-bounded BLOCK on `(symbol, side)` (strictly more conservative). So they don't violate the architectural rule. But the documented vocabulary in CLAUDE.md / the channel spec is now stale relative to the code. Since `advisor_filter_engine.py` is a WATCHED trading-path file, **any reconciliation here is a proposal item for Rhett's go, not an inline edit** — and the cleaner fix is likely a one-line doc update to the vocabulary list rather than a code change. Recommended smallest action: add `EXIT_PROFILE` and `VETO_CANDIDATE` to the documented control-type list (or, if they're meant to be parked, gate them behind the same review). No bot behavior change required.
+
+**Evidence tier:** BOT_LOG / LOCAL_RECONSTRUCTION (direct execution of the real module against temp inputs; real control file and `.py` untouched).
+
+Temp artifacts (safe to discard): `scratchpad\section3_test.py` plus the generated temp control JSONs in the scratchpad.</result>
+<usage><subagent_tokens>56952</subagent_tokens><tool_uses>6</tool_uses><duration_ms>112240</duration_ms></usage>
+</task-notification>
+
+**Claude Code:**
+
+**§3 advisor channel — PASS.** The investigator forced all nine rejection paths (missing/bad-JSON/not-dict/wrong-env/live_allowed/free_text/expired×3) and every one **defaults to ALLOW** — a dead/bad/stale advisor can never lock the bot out; a valid `BLOCK_ALL_NEW_ENTRIES` correctly blocked (proving the harness isn't rigged). Unknown control types are silently ignored; the module only **reads** the JSON (only writes are to its own audit log). One real finding: the dispatcher also handles **`EXIT_PROFILE` and `VETO_CANDIDATE`**, two control types *not* in CLAUDE.md's documented vocabulary — both strictly conservative (hint-only / adds-a-block), so not a channel violation, but the **docs are stale** vs the code. That goes in the bug list as a low-severity doc-reconciliation item (watched file → proposal, likely just a doc update).
+
+Holding for the other four (§1 entry pipeline, §4 risk enforcement, §7 process survivability, §8 observability), then I'll post the full scorecard + ranked bugs.
+
+---
