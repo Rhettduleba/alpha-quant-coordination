@@ -9295,3 +9295,100 @@ High AUC (statistical *ranking* of losers above winners) ≠ a profitable *thres
 **Close-out (Loop 188, 2026-06-30 07:30 ET):** SESSION_LOG.md:236 (Loop 188, re-read & saved) ✓ · report at `outputs/reports/early_exit_study.md` ✓ · coordination mirrored + pushed HEAD **`76569da`** (secret-scan clean) ✓ · READ-ONLY — no watched/trading/config change, freeze intact · SYSTEM_FACTS regen **N/A**.
 
 ---
+
+
+## Turn — 2026-06-30 07:49:44 ET
+
+**Rhett:**
+
+# HANDOFF → CLAUDE CODE — BATCH A CLEANUP: silence the false alarms + refresh stale data (low-risk, non-trading-path)
+# From: Planning Claude | 2026-06-30 ET (Code: number + stamp; CLAIM→VERIFY→SHOW close-out per the standing protocol)
+# Post-mortem (Loop 182) found monitoring false-alarms + stale data that buried real signals Monday. Fix the LOW-RISK
+# ones now (monitoring/data only — NO trading-path change). The trading-path bugs (160 rejects, deaf safety check) are
+# SEPARATE careful handoffs (Batch B) — do NOT touch those here. Verify each fix; bot stays healthy; freeze intact.
+
+## FIX 1 — LEASE-AWARE POSITION-RECON CHECKER (kills the 50+ false CRITs)
+- check_position_recon (reliability_checks.py:316) compares broker positions ONLY vs highs.json/lows.json, which are
+  EMPTY because exit_bot_v2 defers TW-owned names → false "bot has untracked positions" every 5 min (proven artifact,
+  Loop 186). FIX: make it lease + resting-stop aware — a position counts as TRACKED if it's in the TW lease OR in
+  entries_submitted OR has a broker resting stop (sl_orders_placed), not just highs/lows.
+- VERIFY: replay Monday's positions through the fixed checker → the symbols that false-FAILed (EW/HON/NKE/BIIB/etc.)
+  now PASS; AND confirm it still FAILs on a GENUINELY untracked position (don't make it blind — preserve the real
+  alarm). Non-watched file (reliability_checks.py).
+
+## FIX 2 — REFRESH THE STALE EARNINGS CALENDAR (25.8 days old)
+- earnings_calendar.csv is 25.8 days stale → the earnings veto can false-negative (this is what let MU through). 
+  Refresh it from the NASDAQ free source. Confirm it's current + the veto reads the fresh file. Add a freshness check/
+  alert so it can't silently rot again (it should WARN if the calendar is > N days old).
+
+## FIX 3 — SILENCE THE COSMETIC FALSE ALARMS
+- The "PRE-OPEN NO-GO — BOT HELD ALL MORNING" alert fired when the bot did NOT hold (SAFE_MODE_ENFORCE=False, no
+  teeth) — make that alert aware of whether ENFORCE is actually on, so it doesn't claim the bot held when it didn't.
+- The 164 "SAFE_MODE active N min" spam + rel_safe_mode "stuck" CRIT when ENFORCE=off → downgrade/suppress when
+  SAFE_MODE has no teeth (cosmetic, not actionable). Keep the alarm REAL when ENFORCE is on.
+- Goal: the alert feed should reflect REALITY — no "bot held" when it traded, no CRIT spam for a toothless flag.
+
+## HARD CONSTRAINTS
+- MONITORING/DATA ONLY: reliability_checks.py, earnings calendar, alert logic. NO watched trading file, no orders, no
+  gate/exit/sizing/config change. The $500 cap + bot stay exactly as-is. Freeze (trading) intact.
+- DON'T make any checker BLIND to fix noise — each fix must still catch the REAL condition (prove the true-positive
+  still fires). A silenced real alarm is worse than a false one.
+
+## VERIFICATION TASKS TO CLOSE (plain English back to Planning)
+1. Recon checker lease-aware: Monday's false-FAILs now pass + a genuinely-untracked position still FAILs (shown).
+2. Earnings calendar refreshed + current + freshness alarm added.
+3. False alarms fixed: "bot held" + SAFE_MODE spam now reflect reality (ENFORCE-aware); real alarms preserved.
+4. Confirm monitoring/data only, no trading-path touch, bot healthy, freeze intact.
+
+**Claude Code:**
+
+Batch A — 3 low-risk monitoring/data fixes, all non-watched. The key discipline: don't make any checker blind. Let me gather the context for all three — the recon checker's imports, the earnings refresh mechanism, and the SAFE_MODE/BOT-HELD alert sources:
+Context gathered. Let me read the exact recon-checker block to edit it precisely (FIX 1):
+FIX 1 applied. Let me verify it — Monday's false-FAILed symbols now pass, but a genuinely-foreign position still CRITs (monkeypatching `BOT` to a temp dir so I don't touch live state):
+The test exposed a real flaw in my first cut — using the broad set for **both** directions makes closed entries (in `entries_submitted`) trigger the `bot_only` "phantom" WARN. The fix must be **asymmetric**: broad set for the `broker_only` CRIT (is the bot aware?), but keep the narrow highs/lows for the `bot_only` WARN (active phantom state). Let me correct it:
+**FIX 1 verified — all three cases pass:** Monday's false-FAILs → **OK** (50+ false CRITs killed), genuine foreign position → **CRITICAL** (real alarm preserved), and no new phantom WARN from closed entries. 
+
+**FIX 2 — refresh the stale earnings calendar** (the staleness WARN already exists at `orb_earnings_veto.py:139`; the gap is the stale data). Running the NASDAQ refresher:
+The refresher wrote a fresh candidate (242 rows, window 6/27–7/16) but **"live_untouched": true** — it didn't update the live file, and `earnings_calendar.csv` is **missing** in tradestation-bot/. So the veto reads from a different path. Let me find the live path the veto actually uses and how to promote the fresh data:
+The live earnings file exists at the **advisor data path** (`ai-trading-strategy-agent/data/intelligence/earnings/earnings_calendar.csv`) — my earlier check was in the wrong dir. The refresher **deliberately refuses to write live** (safety: writes `_fresh.csv`); promoting is the intended deliberate step. Let me check the live file's age and validate the fresh file's schema before promoting:
+Schema matches exactly; the fresh file has **242 current rows** (window 6/27–7/16) vs the live's **6 stale rows** (26.7 days old). Promoting fresh → live atomically with a backup, then verifying the veto reads it:
+**FIX 2 done:** live calendar now 242 current rows (age 0.001d, no stale WARN), veto loads it. (The staleness WARN already exists at 3 days; I'll flag that the refresher→live *promotion* isn't automated — the real root of the 26-day rot.)
+
+**FIX 3 — ENFORCE-aware alerts.** Let me find the exact "BOT HELD" + SAFE_MODE-stuck alert logic to make them reflect reality:
+FIX 3b is in `check_safe_mode_not_stuck` (reliability_checks.py:249). Let me read it and find the "BOT HELD" alert emitter:
+Let me make FIX 3b ENFORCE-aware — downgrade to WARN when SAFE_MODE has no teeth, keep CRIT when ENFORCE is on:
+Now FIX 3a — find the "BOT HELD" alert emitter:
+FIX 3a is at pre_open_gate.py:606. Let me read that block to make the "BOT HELD" wording ENFORCE-aware:
+FIX 3a — make the "BOT HELD" alert tell the truth: it only holds when ENFORCE is on (the docstring confirms a NO-GO is a shadow when ENFORCE=off):
+Let me also fix the CSHV `pre_open_gate_ran` message (system_health_verifier.py:1720) which also says "bot HELD":
+Now verify FIX 3 — test `check_safe_mode_not_stuck` is ENFORCE-aware (WARN when off, CRIT when on) and confirm all three edited files import cleanly:
+FIX 3 ENFORCE-aware logic verified (OFF→WARN, ON→CRITICAL). The pre_open_gate parse "error" was just my test reading with Windows cp1252 instead of UTF-8 (the file has emojis). Let me re-verify it properly with UTF-8 and confirm it compiles:
+All three fixes verified. Let me confirm the hard constraints — no watched trading file touched, bot healthy, freeze intact:
+The "WATCHED FILE CHANGED" flag is a false positive — `git diff` compares against the old backup commit, so it shows the **prior** Loop 185/187 `$500-cap` work (risk_config/orb_runner), not this batch. **This batch (Loop 189) edited only:** `reliability_checks.py`, `pre_open_gate.py`, `system_health_verifier.py` (all non-watched monitoring) + `earnings_calendar.csv` (data). The $500 cap is confirmed untouched (still `True`), bot healthy (PID 6824, loop_count 95). Recording the close-out:
+Recorded and pushed (coordination HEAD `3fc6914`). Batch A complete — three low-risk monitoring/data fixes, each proven to keep the real alarm.
+
+## Batch A cleanup — done
+
+**FIX 1 — lease-aware recon checker** (`reliability_checks.check_position_recon`)
+The `broker_only` CRIT now counts a position as *known* if it's in highs/lows **OR** `entries_submitted` **OR** `sl_orders_placed` **OR** the TW lease — not just exit_bot's (empty) highs/lows. Made **asymmetric** on purpose: the `bot_only` phantom-WARN stays on the narrow highs/lows so closed entries don't create *new* false WARNs.
+- ✅ TEST1: Monday's false-FAILs (EW/HON/NKE/BIIB) → **OK**
+- ✅ TEST2: genuinely-foreign position → **CRITICAL** (real desync preserved)
+- ✅ TEST3: broker-subset w/ closed entries → **OK** (no new phantom WARN)
+
+**FIX 2 — earnings calendar refreshed**
+Live calendar was 26.7 days stale / 6 rows. Ran the NASDAQ refresher (writes a separate `_fresh.csv` by safety design — 242 rows, schema-validated, window 6/27–7/16), then **promoted fresh → live atomically** with a backup. Veto now loads 242 rows, age 0.001d, no stale WARN. The freshness alarm (3-day threshold) already exists.
+- ⚠️ **Flagged follow-up:** the refresher deliberately *doesn't* auto-promote to live — that's the actual root of the 26-day rot. The durable fix is a validated-promote step in the `AlphaQuant_EarningsRefresh` task; I didn't auto-build it here because earnings data feeds the entry veto (a deliberate decision, not a low-risk cleanup). FIX 3 un-buries the WARN so it's no longer silent.
+
+**FIX 3 — ENFORCE-aware alerts** (reflect reality, not noise)
+- **"BOT HELD"** (`pre_open_gate.py`) + the CSHV `pre_open_gate_ran` message now say "BOT HELD"/CRITICAL **only when `SAFE_MODE_ENFORCE=True`**; when off (today) they say *"NO-GO (SHADOW — bot NOT held, trades anyway)"*/WARNING — true to what actually happened 6/29.
+- **`check_safe_mode_not_stuck`** downgrades the >30-min CRIT to WARN when ENFORCE is off (the 164-alert "stuck" spam was cosmetic), and **keeps the CRIT when ENFORCE is on**.
+- ✅ Verified: ENFORCE=OFF+active → **WARN**; ENFORCE=ON+active → **CRITICAL**.
+
+**FIX 4 — constraints honored.** This batch edited only `reliability_checks.py`, `pre_open_gate.py`, `system_health_verifier.py` (non-watched monitoring) + `earnings_calendar.csv` (data). The watched `risk_config`/`orb_runner` in `git diff` are the prior Loop 185/187 $500-cap work — **`DOLLAR_STOP_CAP_ENABLED` still True, untouched**. Bot healthy (run_bot 6824, loop_count 95). All edited files compile; they're loaded by CSHV/gate as fresh scheduled processes, so the quieter, accurate alerts take effect on the next run. **Batch-B trading-path bugs (160 rejects, deaf `gate_not_failing_open` self-test) were NOT touched** — separate careful handoffs as instructed.
+
+**Net effect for Monday-style days:** the alert feed will show ~3 honest signals (real recon desync if any, an earnings-stale WARN if it rots, a truthful NO-GO-shadow note) instead of 200+ false CRITs burying them.
+
+---
+**Close-out (Loop 189, 2026-06-30 07:48 ET):** SESSION_LOG.md:236 (Loop 189, re-read & saved) ✓ · coordination mirrored + pushed HEAD **`3fc6914`** (secret-scan clean) ✓ · monitoring/data only, no watched trading file, $500 cap untouched, bot healthy, freeze intact · SYSTEM_FACTS regen **N/A**.
+
+---
