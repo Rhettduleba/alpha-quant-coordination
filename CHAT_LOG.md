@@ -10517,3 +10517,105 @@ Triage run complete.
 **Actions:** per the forward-test freeze, edited/placed/restarted nothing. No Rhett ping (silence = handled). Logged to `SESSION_LOG.md`, synced + committed + pushed to the coordination repo (`5bb36f4`), inbox cursor `--ack`'d.
 
 ---
+
+
+## Turn — 2026-06-30 11:24:04 ET
+
+**Rhett:**
+
+i need for you to create a handoff for a new planning session chat. Planning current chat to long andi cant get it to write the handoff to a new chat. Make sure the handoff to the new chat gets the new chat to read all the importnat loggs and cos, make sure you give it a historical view of the project and where we currently are.
+
+**Claude Code:**
+
+This is an important deliverable — a self-contained handoff that ramps a fresh Planning Claude. Before writing it I'll verify current state from the live sources (not memory), including whether the HTB fix actually armed names at the 10:35 re-arm.
+The HTB fix **worked in production** — at 10:35:19–22 the bot armed **9 ORB entries** (`ORB_V16_ENTRY_OK`) and placed stop-losses (`ORB_SL_OK`) right after. The bot went from 0 → trading the moment the re-arm cycle ran the new logic. Let me pull a bit more detail and the current-state block for the handoff:
+Production-proven: 16 entries armed today (after the 10:35 re-arm), 11 stops placed, **0 FAIL/CRIT**. Advisor control is valid (`NO_CONTROLS`, `SIM_ONLY`, expires 7/1). Let me read the current-state header and open-items from the live log so the handoff matches it exactly:
+The HTB fix is production-proven (16 entries at the 10:35 re-arm, 0 FAIL/CRIT). I now have a fully verified picture. Writing the handoff to a file and giving you the copy-paste block.
+Now mirror it to the coordination repo (so the new Planning chat can also reach it via GitHub), then I'll give you the copy-paste block:
+Done. Handoff written to [`HANDOFF_2026-06-30_PLANNING-NEW-CHAT.md`](HANDOFF_2026-06-30_PLANNING-NEW-CHAT.md), mirrored to the coordination repo (HEAD `e33884b`, pushed), and verified against live truth (not memory). **Paste the block below into the new Planning chat:**
+
+---
+
+# ALPHA QUANT — PLANNING SESSION HANDOFF (new chat ramp-up)
+**Written 2026-06-30 ~11:25 AM ET by Claude Code (Opus 4.8, the VPS empirical node) for a fresh Planning Claude chat.** The prior Planning chat got too long to continue. This ramps you (new Planning Claude) from cold.
+
+## 0. WHO YOU ARE & HOW THIS PROJECT IS STAFFED
+- **You are "Planning Claude"** — the strategy/architecture brain. You run in Rhett's Claude app (NOT a terminal). You think, design, propose, and decide what work to hand to Claude Code. You do NOT touch the VPS directly.
+- **"Claude Code"** = the agent on the VPS (`WIN-FIBSSOQKI7K`, live root `C:\AlphaQuant`). It reads/writes real files, runs the bot, verifies against broker truth, reports back, and pushes back on plans that don't survive live data.
+- **Rhett (Duleba)** = owner/operator (not a day-trading expert by trade; this is OUR project). He owns every gate that changes live behavior, risk, or universe, and relays handoffs between you and Code.
+- **Split:** You propose → Code verifies/stress-tests/builds → Rhett approves anything changing live trading. Code will tell you when a plan's premise is wrong (happened 3× this week — see §6).
+
+## 1. READ THESE FIRST (in order) — do not plan from memory
+All under `C:\AlphaQuant\`. Ask Rhett to have Code paste any you need.
+1. **`CLAUDE.md`** — operational primer + architectural rules + the typed advisor→bot control vocabulary. **Most important file.**
+2. **`ALPHA_QUANT_HANDOFF.md`** — deep architecture write-up (the "why").
+3. **`SESSION_LOG.md`** — living turn-by-turn log + crash-recovery brief. Top "CURRENT STATE" = today's posture; "FINDINGS & TEST RESULTS LEDGER" = what recent studies found; "VERIFIED LEDGER" (newest first) = per-loop work. Canonical handoff surface; Code updates it every turn.
+4. **`CSHV_FINDINGS.md`** — health verifier (every 5 min). Any FAIL/WARN outranks other work.
+5. **`bot_alerts.jsonl`** — critical bot events. `python C:\AlphaQuant\tradestation-bot\alerts_bridge.py` for a 24h summary.
+6. **`ai-trading-strategy-agent/V1_SCOPE.md`** — ACTIVE vs PARKED in the advisor repo.
+7. **`ai-trading-strategy-agent/outputs/advisor_guidance/advisor_control_latest.json`** — what the bot obeys today.
+8. **`tradestation-bot/advisor_filter_engine.py`** + **`bot_loop.py`** + **`risk_config.py`** — the only advisor interpreter, the single bot cycle, the hard risk floor.
+9. **Coordination repo** `C:\repos\alpha-quant-coordination` (public GitHub Rhettduleba/alpha-quant-coordination) — gets the SESSION_LOG mirror + this handoff + CHAT_LOG each turn. How you see Code's latest work without copy-paste.
+
+## 2. WHAT THE SYSTEM IS (60-second architecture)
+Two **separate** Python systems sharing ONE JSON file, never importing each other:
+- **The Bot** (`tradestation-bot/`) — places SIM equity orders on TradeStation, enforces risk. Narrow, dumb, reviewable. Strategy = **ORB (Opening Range Breakout) v1.6**. `run_bot.py` → `bot_loop.py`, a single sequential subprocess loop: LONG → SHORT → ORB RUNNER (9:35 scan + stop placement) → ORB MULTI-SCAN (re-arm) → EXIT BOT → EOD WATCHDOG. `orb_runner`/`orb_multiscan` spawn fresh each cycle (pick up edits immediately, no restart).
+- **The Advisor** (`ai-trading-strategy-agent/`) — Claude-driven daily analysis + research/dashboards. Smart, opinionated. Writes ONE typed JSON control file the bot validates paranoidly.
+- **THE ARCHITECTURAL RULE (do not violate):** *The agent should know a lot. The bot should do only what has been proven.* The advisor never reaches into bot config; it writes one typed file; the bot interprets ONLY a fixed vocabulary and **defaults to ALLOW** if the file is missing/stale (a dead advisor must never lock the bot out).
+
+## 3. SIM-ONLY — NON-NEGOTIABLE
+Account `SIM1623888M` (bot refuses to start if the ID doesn't begin with `SIM`). Advisor stamps every control file `environment: SIM_ONLY`, `live_allowed: false`. Never edit those guards or bypass them. We are NOWHERE NEAR live.
+
+## 4. WHERE WE ARE — STAGED RAMP (6 stages)
+1. Verify env ✓  2. Reporting & reconciliation ✓  3. **SIM testing with full logs ← HERE**  4. **AI advisor layer ← shipping, not yet trusted to graduate**  5. Controlled strategy improvements (gated)  6. Live trading (explicit human approval only).
+**Nothing quietly advances past where Rhett approved.** P&L is NOT the success metric now — diverse, correct, well-logged trades are. SIM resets when a winning + bug-free system is confirmed.
+
+## 5. HISTORICAL ARC (how we got here)
+- **Strategy rebuilt on evidence.** Old backtested strategy was −99.92%. Rebuilt around **ORB** (H1). Universe is **criteria-based / whole-exchange**, not a hardcoded list.
+- **Central finding (3-day dollar split, real broker fields):** the **9:35 AM entries are the loss engine**; the **re-arm path made money all 3 days → DO NOT TOUCH re-arm.** Preventable-at-ENTRY 60% vs manageable-at-EXIT 40%. Entry lever = **extension magnitude**, not relative strength.
+- **Exit experiments.** A "Loop-123" aggressive exit was **KILLED 6/25** (day −$2,016 < −$2k; one name −$1,670). Rhett's FINAL call: do NOT revert — **keep the live `candle_1.4atr_chandelier` exit, improve in SHADOW only.** Shadow L1/L2 guards cut 3-day red −81%, 0 winners cut, but N<30 → DIRECTIONAL only, not promoted.
+- **$500 per-trade dollar-cap exit — LIVE (Loop 187).** `DOLLAR_STOP_CAP=500`, enabled; placed as `sl_dist = min(1.4×ATR, $500/qty)`. Replay: recovers ~+$1,672 across bad days, and **no managed-exit rule studied beats the flat $500 floor.**
+- **6/29 incident.** Re-arm fills had **0% resting-stop coverage**; TW (Tape Watcher) live-exit was sole protection with day-1 stream gaps (max 152s). Exposed a BEFORE-LIVE gap; partly fixed (Loop 177 `_register_rearm_resting_stops`), coverage now materially improved (11 stops placed today).
+- **Capital deployment raised 6/29:** `DEPLOY_TARGET_PCT` 0.75→0.95 ($300k→$380k of $400k base), approved. Only lifts the re-arm admit ceiling (winning path); 9:35 unaffected. Per-position $25k / per-side $200k caps unchanged.
+- **TODAY (6/30) — HTB/SIM-borrow bug, found + FIXED.** Bot traded ZERO this morning: the Hard-To-Borrow gate (`htb_filter.py`) trusts TradeStation's **SIM** `IsHardToBorrow` flag, which is **unreliable** — on 6/30 it returned `true` for ALL symbols (incl. AAPL/MSFT), excluding every candidate (it armed 23 fills on 6/29 → flips day-to-day = junk SIM data). Rhett correctly pushed back when Code first over-stated "TradeStation fails" — it's the **bot trusting an unreliable SIM endpoint**, not live TS. **FIX (Loop 201, Rhett-approved, non-watched file):** `htb_filter` is now SIM-aware — in SIM borrow flags are **advisory (don't block)**; `HALTED` + `NO_QUOTE` still block; on the live API the original fail-safe gate is 100% intact. **Production-proven:** at the 10:35 re-arm the bot armed 16 ORB entries + 11 stops, 0 FAIL/CRIT. Trading again.
+
+## 6. WHAT PLANNING GOT WRONG THIS WEEK (don't repeat)
+- The "160 mass-reject" alarm was diagnosed as a Monday-open transient needing a code fix. It was actually **weekend re-arm submissions** (separate known bug). Code pushed back twice with broker truth before building the wrong fix.
+- The HTB 0-trades was first framed as "TradeStation data anomaly." Rhett corrected it: TS live is fine; it's the **SIM endpoint flag + the bot trusting it.** Now a standing rule: **verify every warning against live/broker truth before acting; Rhett's direct observation outranks a tidy explanation.**
+
+## 7. OPEN DECISIONS / CARRIED ITEMS AWAITING RHETT (your queue)
+1. **PROP-REARM-TRADINGDAY-GATE** (approved, NOT deployed) — `orb_multiscan.py:261` gates re-arm on holidays only, not trading-day, so it submits orders on **weekends**. Deploy after close (WATCHED file).
+2. **Restore live risk guards BEFORE live:** `DAILY_MAX_LOSS` ($2k) and the 5% account-DD kill are **DISABLED in SIM**. Must restore + add a real-time intraday clamp before live. (Real-time available-BP gate + sector/correlation cap also required.)
+3. **Advisor per-symbol-P&L prompt leak** — per-symbol P&L must NEVER feed the advisor (strategy, not symbols). Audit the advisor prompt.
+4. **Pre-open GO/NO-GO gate arming** — flip `SAFE_MODE_ENFORCE` (currently shadow); ~3-5 clean shadow mornings first.
+5. **9:30 AM open-window loop-stall** — recurring main-loop freeze >4 min at open (self-recovers). Fix = non-blocking open-window processing / open-time watchdog (WATCHED → proposal). Ties to clean-day count.
+6. **Clean-day test bar** — need 5 clean days on post-6/19 config before Phase 4 scale. **OPEN (Rhett, 6/25): does a kill-stop day count toward the 5?** Currently `consecutive_clean=0` (honest).
+7. **Post-test exit gauntlet (PROP-CONFIRM-KEYED-EXIT)** — GATED, DO NOT BUILD. Key exit aggressiveness on confirmation state; 3-sided net-of-cost + N≥30 + must-not-cut. Largely superseded by the $500-cap finding.
+8. **Re-arm vs 9:35 expectancy** — track both ORB paths; REVISIT at N≥30/path. First read: re-arm winning, 9:35 losing.
+
+## 8. STANDING RULES (apply to every plan)
+- **Preserve the one-way valve** — advisor never writes bot config; bot never executes free-text; never loosen the typed-schema gate in `advisor_filter_engine.py`. Control types are a FIXED list (CLAUDE.md); anything else is silently ignored.
+- **WATCHED trading files — never auto-edit mid-session or without Rhett's go:** `risk_config.py, bot_loop.py, exit_bot_v2.py, candle_close_exit.py, advisor_filter_engine.py, symbol_universe.py, orb_runner.py, orb_multiscan.py, short_bot.py, mover_scanner.py`. Changes go through a proposal under `outputs/proposals/` + approval in `config/manual_approvals.yaml`. (`htb_filter.py` and monitoring/dashboard files are NON-watched.)
+- **VERIFY BEFORE YOU STATE** — never present a guess as fact; verify against live data / real code / broker truth, or label "unverified."
+- **Evidence hierarchy:** BROKER_TRUTH > BROKER_EXPORT > LOCAL_RECONSTRUCTION > BOT_LOG_CONTEXT > ADVISORY_RESEARCH.
+- **Symbol-agnostic logic** — no hardcoded symbol branches; watchlists are config, not code.
+- **Warning-triage protocol** — every warning: verify vs live truth → classify (false / real-non-watched / real-WATCHED / ambiguous) → fix-safe or ESCALATE-gated → LOG. A warning is not automatically a fix.
+- **Token discipline** — TS access tokens last ~20 min, reused; never refresh per call/cycle (can disable the API key).
+- **Copiable handoffs / one question per turn** — hand Code self-contained blocks (paths + cold-start detail); ask Rhett one question at a time.
+
+## 9. CURRENT STATE SNAPSHOT (verified live, 2026-06-30 ~11:20 AM ET)
+- **Bot:** ALIVE (`run_bot` PID 6824), trading normally. Today: 16 ORB entries, 11 resting stops, **0 FAIL/CRIT**. HTB fix live + proven.
+- **Live exit:** `candle_1.4atr_chandelier` + the $500 per-trade dollar cap. TW (Tape Watcher) owns re-arm-fill exits.
+- **Advisor control:** `NO_CONTROLS`, `SIM_ONLY`, `live_allowed=false`, valid to 2026-07-01 08:04 ET.
+- **Health:** CSHV ~45 OK / few benign WARN / 0 FAIL. `SAFE_MODE_ENFORCE`=OFF (gate shadow). No naked-position / order-reject / auth / crash-loop alerts.
+- **Last loop:** Code Loop 201 (HTB fix). Coordination HEAD `cfafcfc`+ (handoff `e33884b`), in sync.
+- **H5/futures stack:** sidelined today — separate sub-project (Gao @MES on SIM1623889F), not the equity bot.
+
+## 10. SUGGESTED FIRST MOVE
+Acknowledge you've read §1–9, then ask Rhett (one question) which thread to pick up — the §7 queue (most pressing pre-live = #1 weekend re-arm gate + #2 restore risk guards) or a new direction. Relay anything you need Code to read/paste/verify; Code has the live files and broker truth.
+
+---
+
+That's the full ramp. It's also saved on the VPS and pushed to GitHub, so if the chat ever drops it, the new Planning chat can be pointed at the coordination repo's `HANDOFF_2026-06-30_PLANNING-NEW-CHAT.md`.
+
+---
