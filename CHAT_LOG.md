@@ -8592,3 +8592,76 @@ Triage complete. Cursor advanced, 3 alerts marked processed.
 **Actions taken:** appended SESSION_LOG entry → synced to coordination repo → committed + pushed ([582cf5f](https://github.com/Rhettduleba/alpha-quant-coordination/commit/582cf5f)) → `--ack` advanced cursor (3 processed). No code edited, no orders/positions/SAFE_MODE touched.
 
 ---
+
+
+## Turn — 2026-06-29 20:05:15 ET
+
+**Rhett:**
+
+major failure all day today, check all failuers and report to planning check all sysytems
+
+**Claude Code:**
+
+Urgent — going wide and fast. Let me pull the highest-signal failure evidence across all systems in parallel: process state, did today's tasks run, heartbeat, CSHV findings, bot alerts, loop-stall dumps, and today's broker activity.
+The headline is already visible: **SAFE_MODE has been active since 06:00 ET (835 min) — blocking new entries ALL DAY** — triggered by a **pre-open gate NO-GO** (preflight 2 FAILs + a reliability-drill detector that didn't fire). And only **one** alert fired all day (an earnings-staleness WARN), with no entry/exit alerts — strongly implying the bot took no trades. Also `run_bot` shows `loop_count: 6` (it restarted recently). Let me get the root cause + confirm whether anything traded:
+Critical nuance: **the bot DID trade today** — 46 fills / 23 round trips on 6/29 — because SAFE_MODE has no teeth (`SAFE_MODE_ENFORCE=False`, so it logged but didn't block). So the "failure" isn't an entry-block. Let me find what actually went wrong: the 2 preflight FAILs (root of the NO-GO), today's P&L, why run_bot is on loop_count 6 (restart loop?), and how the new TW live-exit behaved:
+Now the real failures surface: **6/29 was a −$3,493 net losing day**, dominated by **COHR short −$1,974.88** (a single ~$2k loss) — on the very day the **TW live-exit** went live as exit owner. Plus a **102-second loop stall on ORB RUNNER at 08:01**, and run_bot restarted (loop_count 6564→6). The biggest question: did the new exit system fail to contain COHR? Let me examine the TW live-exit log, the COHR trade, and the 2 preflight FAILs:
+**Smoking gun on COHR:** short entered **10:35** (a re-arm-window entry), and exited at **15:50:38 — the EOD flatten time**. It was never stopped out — it bled from 352→387 (10% adverse) over 5h15m and was only closed by the end-of-day flatten. TW's live-exit fired candle-close exits on 9 other names but **not COHR**. This points straight at the **re-arm resting-stop coverage (Change 1, launched today)** failing to protect the 10:35 entry. Let me check if this is systemic — how many positions ran to the EOD flatten unprotected, and whether re-arm entries got resting stops:
+**This is systemic, not just COHR: 10 of 23 positions ran ALL DAY to the 15:50 EOD flatten with no stop — net −$5,035** (the other 13 that actually exited early were +$1,542). Seven of the ten were 10:35 re-arm entries; three were 9:35 entries. So the **1.4×ATR resting stops were not protecting positions** — a 1.4×ATR stop on COHR would have fired ~$1,000 earlier, not let it run to −$1,975. 
+
+This connects to my Loop 180 finding that `orb_daily_state.json` `entries_submitted` was **empty** (0 symbols). If that list is empty, the SL monitor has nothing to place stops for. Let me confirm the root cause — the entries_submitted state and whether any resting stops were placed today:
+Key data: `orb_daily_state.json` has **25 entries today** (not empty like the back-days), and alerts show **25 entries / 23 SL_OK** — so resting stops *were* placed. Yet 10 positions still ran to the EOD flatten. That means stops were **placed then defeated** (cancelled and not re-placed, or the new TW-ownership handoff left a gap). Let me run the stop-coverage audit and check whether TW "owned" but failed to fire the runaway names:
+**Root cause found — a two-part exit failure, both from today's launch:**
+
+1. **The resting stop was placed far too wide.** bot_log: *"10:47:22 ORB SL placed: COHR short @ 402.37 (entry 352.42, sl_dist 49.949)"* — the stop sat **49.95 points (14%) above entry**, ~6×ATR, not 1.4×ATR. COHR ran to 387.65 and **never reached the 402.37 stop** → it never triggered.
+2. **exit_bot_v2 deferred COHR to the Tape Watcher, but TW never fired it.** bot_log repeats *"[TW-OWNED] COHR: deferring exit to live Tape Watcher"* — yet COHR is **"not in TW log at all."** The position fell through the gap between the two exit owners and ran to the 15:50 EOD flatten.
+
+This is exactly the "TW-as-sole-owner unproven" risk flagged before the cutover. Let me confirm the wide-stop bug is systemic across the 10 runaways:
+The stop distances are actually **correct at 1.4×ATR** — the problem is what that means: COHR's ATR is **35.68** (a $352 stock with ~10% ATR), so 1.4×ATR = a **49.95-point / 14% stop**. That's a catastrophe-only backstop, not a protective stop. The design relies on TW's **candle-close trail to exit before** that wide stop — but the trail only arms **after confirmation**, and these positions went adverse immediately (never confirmed). So they had *only* the 14%-wide stop, which several never even hit → EOD flatten. This is the known "protection allocated inversely to risk" issue (MU 6/25) — now a −$5k day. Let me confirm run_bot's restart situation and finalize:
+I have the complete root cause. run_bot is healthy now (loop_count 6→23 over 7 min, looping normally; the low count means it restarted earlier today — secondary, and `orb_daily_state.json` persists the 25 entries across restarts so it didn't cause the runaways). Let me record the incident and report:
+Recorded and pushed (coordination HEAD `72f2bed`). Here's the full picture.
+
+## 🔴 6/29 incident report — the day the exit cutover went live
+
+**Headline:** the day ended **net −$3,493**, and the cause is concentrated and structural: **10 of 23 positions ran all day to the 15:50 EOD flatten with no effective exit — net −$5,035 on those 10.** The 13 that exited normally were **+$1,542**. So the system's "exits that worked" were profitable; the loss is entirely the positions that fell through the exit system.
+
+### What failed (the money)
+| Symbol | Side | Entered | Exited | Net |
+|---|---|---|---|---|
+| COHR | short | 10:35 | **15:50 flatten** | **−$1,975** |
+| MARA | short | 10:35 | 15:50 flatten | −$719 |
+| Q | short | 10:35 | 15:50 flatten | −$478 |
+| S | long | 10:35 | 15:50 flatten | −$391 |
+| EW | long | 09:35 | 15:50 flatten | −$369 |
+| BIIB | long | 09:35 | 15:50 flatten | −$342 |
+| CRWD | long | 10:35 | 15:50 flatten | −$311 |
+| APP, NKE, WMB | — | — | 15:50 flatten | −$211/−$195/−$43 |
+
+7 of the 10 were **10:35 re-arm entries**.
+
+### Root cause — three layers, all from today's launch
+1. **The resting stops were placed correctly at 1.4×ATR — but 1.4×ATR is a *catastrophe* backstop, not a protective stop.** COHR's ATR is 35.68, so its stop sat at 402.37 — **14% above entry**. COHR ran 352→387 and **never reached the stop**, so it rode to the EOD flatten.
+2. **The tight exit (candle-close trail) only arms *after* confirmation** (a 0.15×ATR favorable move first). These 10 went adverse from the moment of entry → **never confirmed → no tight exit ever existed** — only the 14%-wide stop.
+3. **TW, the new live-exit owner, never fired these names.** The log shows exit_bot_v2 repeatedly *"[TW-OWNED] COHR: deferring exit to live Tape Watcher"* — but COHR is **"not in TW's log at all."** exit_bot handed exit responsibility to TW (Change 2), but TW's actual monitored set didn't include them, so they fell through the ownership gap. TW *did* correctly fire 9 confirmed names (T, ORLY, V, HON, ROL, CHTR, CLSK, MSTR, HII).
+
+This is the **same "unconfirmed positions only have the wide chandelier" failure as MU on 6/25 (−$1,668)** — except today it hit 10 positions at once for −$5,035. It's also precisely the **"TW-unproven-sole-owner" risk that was flagged before you approved the full cutover.** No kill fired because DAILY_MAX_LOSS and the 5% account-DD kill are both intentionally off in SIM.
+
+### Secondary failures (none caused the loss, but all real)
+- **Pre-open gate went NO-GO** (preflight **2 FAILs** + a reliability-drill detector that didn't fire) → **SAFE_MODE engaged at 06:00 and stuck for 835 min** (CSHV FAIL). It did **not** block trading — `SAFE_MODE_ENFORCE=False`, no teeth. *(I have not yet pulled which 2 preflight checks failed — that's the next thing to chase if you want it.)*
+- **102-second loop stall on ORB RUNNER at 08:01** (the instrumentation caught it).
+- **run_bot restarted** today (loop_count reset; healthy now, and `orb_daily_state.json` persisted the 25 entries so no state was lost).
+- **earnings_calendar.csv is 25.8 days stale** → the earnings veto can miss.
+- **report_integrity: 8 trades with unclassified exit reasons**; clean-day streak reset.
+
+### What worked
+23 of 25 resting stops placed, TW fired 9 confirmed names correctly, 13 trades exited normally (+$1,542), bot stayed alive all day.
+
+### ⚠️ Tomorrow-risk + recommendation
+**The identical config is live for 6/30** — an unconfirmed-adverse cohort can repeat. There is **no clean one-button fix**: `tw_abort.flag` stands TW down but doesn't add tight protection for unconfirmed names (that's the bot's wide resting stop, not TW). The real fix is the **confirmation-keyed exit gauntlet** already specced (`PROP-CONFIRM-KEYED-EXIT-2026-06-25`) — tightening protection for *unconfirmed* positions instead of giving them only the 14%-wide stop. That's a Planning/Rhett config-or-design decision; I did **not** change anything (read-only, freeze intact).
+
+I held to diagnose-don't-fix, but given the same setup fires again at 09:25 tomorrow, **the one decision worth making tonight is whether to trade 6/30 on this config at all.** Want me to (a) pull the exact 2 preflight FAILs behind the gate NO-GO, or (b) draft the specific protective change for your approval?
+
+---
+**Close-out (Loop 181, 2026-06-29 20:04 ET):** SESSION_LOG.md:236 (Loop 181 incident, re-read & saved) ✓ · coordination mirrored + pushed HEAD **`72f2bed`** (secret-scan clean) ✓ · READ-ONLY — diagnosed only, nothing changed, freeze intact · SYSTEM_FACTS regen **N/A**.
+
+---
