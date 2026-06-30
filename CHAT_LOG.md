@@ -10279,3 +10279,77 @@ Triage run complete. Summary:
 **Per forward-test freeze + watched-files rule:** edited, placed, restarted nothing.
 
 ---
+
+
+## Turn — 2026-06-30 10:14:58 ET
+
+**Rhett:**
+
+# HANDOFF → CLAUDE CODE — STANDING PROTOCOL: triage EVERY warning — read, classify, fix-if-safe, escalate-if-risky, always log
+# From: Planning Claude | 2026-06-30 ET (Code: number + stamp; CLAIM→VERIFY→SHOW close-out per the standing protocol)
+# Rhett's standing instruction: every warning/alert he gets, Code READS it, RESOLVES it, and UPDATES the session — no
+# warning ignored. This makes that a STANDING RULE (governs how Code handles every alert, not a one-off). The ONE
+# adjustment: "resolve" ≠ "auto-fix everything" — because most of this week's warnings were FALSE ALARMS and the real
+# ones often touch the WATCHED TRADING PATH (auto-editing those mid-session = how 6/29 happened). So: fix what's safe,
+# escalate what's risky, log EVERYTHING.
+
+## THE STANDING TRIAGE (every warning, every time)
+1. READ + VERIFY vs broker/lease/live truth — never dismiss OR act on a warning without checking it's real. Rhett's
+   direct observation (e.g. AAPL not HTB on his screen) OUTRANKS a tidy explanation.
+2. CLASSIFY: (a) FALSE ALARM (monitoring artifact/cosmetic), (b) REAL — monitoring/data/non-watched, (c) REAL —
+   WATCHED trading path, or (d) AMBIGUOUS.
+3. ACT by class:
+   - FALSE ALARM → fix the alarm logic so it stops crying wolf (non-watched), OR document why it's benign. Log it.
+   - REAL non-watched (monitoring/data/dashboard) → FIX IT NOW, validate (keep the real alarm), log it.
+   - REAL watched-trading-path → do NOT auto-apply. Diagnose, propose the gated fix, ESCALATE to Rhett. Never edit the
+     live trading path mid-session or without his go.
+   - AMBIGUOUS → diagnose read-only, escalate with the evidence; default to NOT touching live code.
+4. UPDATE THE SESSION every time: log each warning + its classification + what was done (fixed / escalated / benign),
+   so Rhett sees nothing was ignored. Silence is only OK for an already-diagnosed-identical repeat (note it as such).
+
+## HARD CONSTRAINTS (what keeps this safe)
+- A WARNING IS NOT AUTOMATICALLY A FIX. Most are false alarms; auto-"fixing" noise changes code that isn't broken.
+- NEVER auto-edit the watched trading path on a warning — escalate, gated. (This is the 6/29 lesson.)
+- Don't make an alarm BLIND to silence it — a fixed false-alarm must still catch the REAL condition.
+- Market open → read-only triage; watched fixes wait for close + Rhett's go.
+- Log every warning's disposition — "read it, fix it, update the session" means VISIBLE in SESSION_LOG, every time.
+
+## VERIFICATION TASKS TO CLOSE (plain English back to Planning)
+1. Confirm the standing triage is adopted (it governs every future alert run).
+2. For the CURRENT open warnings (incl. the AAPL-HTB discrepancy): read, classify, fix-if-safe/escalate-if-risky, log.
+3. Confirm each warning's disposition is in SESSION_LOG so nothing's silently dropped.
+
+**Claude Code:**
+
+Two parts: adopt the standing triage rule (save to memory), and run the current open warnings through it. Let me first pull the current warning surfaces (CSHV, bot alerts, code inbox) while I record the standing rule:
+CSHV is clean (FAIL=0, WARN=2). The warnings to triage: `clean_day_certified`, `pre_open_gate_ran`, and the `ORB_SCAN_DONE submitted=0` (= the HTB item). Let me read the two CSHV WARN details:
+CSHV is FAIL=0 (clean). The 2 WARNs partly reflect **this morning's pre-fix state** (the `pre_open_gate_ran` shows "bot NOT held" — proof my Loop-189 ENFORCE-aware fix is live; the NO-GO and the "8/9 detector" are from the 6 AM gate run, before my Loop-190 deaf-detector fix). Let me ID the `clean_day_certified` critical incident before classifying, and save the standing rule to memory:
+The safe_mode.json path differs from earlier reads — let me find it and get the **current** state (the pre_open_gate WARN cites "SAFE_MODE active 1440min" from the 6 AM gate, but Loop 198 read active=False — I need to reconcile which is current):
+**Reconciled: SAFE_MODE is currently CLEAR** (`active=False`, "reliability technical-integrity checks all clean") — it auto-cleared after the 6 AM gate. So the `pre_open_gate_ran` WARN cites a **stale 6 AM** "SAFE_MODE active" snapshot; the current state is clean, and the "bot NOT held" wording confirms my Loop-189 fix is live. No new critical incident today. Now I can adopt the standing rule (memory) and log the triage. Saving the rule:
+Adding the index pointer to MEMORY.md:
+The hook flags MEMORY.md needs compaction. Let me read it fully and tighten each entry to a true one-liner:
+MEMORY.md is verbose (19.7KB). Compacting to tight one-liners (detail stays in the topic files), keeping every entry's link + core fact:
+Let me verify the size and then complete the triage log:
+MEMORY.md compacted to **12.1KB** (was 19.7KB; under the 17.1KB target), all 54 entries preserved. Now the triage log (Loop 200) — adopting the rule + dispositioning the 3 current warnings:
+Adopted and triaged — pushed (coordination HEAD `1d494a2`).
+
+## Standing warning-triage protocol — adopted + current warnings dispositioned
+
+**1. Standing rule adopted.** Saved to memory (`feedback_warning_triage_protocol.md` + MEMORY.md index): every warning → **read + verify** vs live truth → **classify** (false-alarm / real-non-watched / real-WATCHED / ambiguous) → **act** (fix the alarm logic, fix-now if safe, or **escalate gated**) → **log the disposition**. Never auto-edit the watched trading path mid-session (the 6/29 lesson); never blind an alarm to silence it; market-open ⇒ read-only triage. *(Also compacted MEMORY.md 19.7KB→12.1KB per the read-limit hook — all 54 entries kept.)*
+
+**2. Current warnings triaged** (CSHV 10:05: OK=47, **WARN=2, FAIL=0**):
+
+| Warning | Verified | Class | Disposition |
+|---|---|---|---|
+| `clean_day_certified` ("no_critical_incident failing") | No new critical incident in incidents.jsonl today; SAFE_MODE now **clear** (`active=False`) | **FALSE-ALARM / benign** | Residue of this morning's pre-fix SAFE_MODE window — will clear on a clean CSHV run. No action. |
+| `pre_open_gate_ran` (6 AM NO-GO) | Gate ran once at 06:00 (pre my fixes); CSHV reports it all day. Current text reads **"bot NOT held (ENFORCE off → shadow)"** | **FALSE-ALARM (stale; root already fixed)** | The "8/9 deaf detector" was **fixed Loop 190** (drill now 10/10); the "SAFE_MODE stuck" wording was **fixed Loop 189** (ENFORCE-aware). Self-resolves at tomorrow's gate (expect GO). No action. |
+| `ORB_SCAN_DONE submitted=0` (0 trades today) | Confirmed = the HTB / SIM-borrow-flag bug | **REAL — WATCHED trading path** | Already diagnosed + **escalated Loop 199**; gated fix after close (stop trusting SIM `IsHardToBorrow` / allow longs). No mid-session edit. |
+
+**3. Everything logged.** All three dispositions are in SESSION_LOG (Loop 200) — nothing silently dropped. Net: **2 false alarms** (their roots were already fixed in Loops 189/190 and they're self-clearing) and **1 real watched-path bug** (escalated, gated). The two false alarms are the *good* kind of evidence here — they confirm my Loop 189/190 fixes are live and the alert feed is converging on reality instead of crying wolf.
+
+The one genuinely actionable item — the SIM-borrow-flag HTB block — remains the after-close gated fix awaiting your go.
+
+---
+**Close-out (Loop 200, 2026-06-30 10:13 ET):** SESSION_LOG.md:240 (Loop 200, re-read & saved) ✓ · memory rule saved + MEMORY.md compacted to 12.1KB ✓ · coordination mirrored + pushed HEAD **`1d494a2`** (secret-scan clean) ✓ · READ-ONLY — no watched/trading/config/order/restart, bot healthy, freeze intact · SYSTEM_FACTS regen **N/A**.
+
+---
