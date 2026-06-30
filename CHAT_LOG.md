@@ -9609,3 +9609,96 @@ Every group verified against live truth before classifying:
 One note for the record: `code_alert_inbox.py --ack` crashed on the first try with a `UnicodeEncodeError` (the 🚨 emoji in a subject vs cp1252 stdout) — succeeded with `PYTHONUTF8=1`. That's an observability bug in the inbox tool's stdout encoding, not a trading-path issue; I did not edit it (freeze). Flagging it as a low-priority safe-fix candidate for when auto-fix re-enables.
 
 ---
+
+
+## Turn — 2026-06-30 09:11:51 ET
+
+**Rhett:**
+
+# HANDOFF → CLAUDE CODE — BATCH B-2 BUILD: re-queue transient Monday-open "markets closed" rejects (entry path) — build + validate, GATED to live
+# From: Planning Claude | 2026-06-30 ET (Code: number + stamp; CLAIM→VERIFY→SHOW close-out per the standing protocol)
+# DECISION (Rhett): build the B-2 fix (Loop 191 diagnosis). ROOT CAUSE confirmed: Monday-open transient — TS rejects
+# the first DAY-order batch ~09:35:59 ("only GTC when markets closed"), accepts by 09:36; the bot hammers each rejected
+# candidate ~10x in the same bad second then DROPS it → 16 intended entries lost (160 = 16 symbols × ~10 retries).
+# Monday-only, recurring (6/15:4, 6/22:140, 6/29:160). FIX: treat that specific reject as TRANSIENT, re-queue for the
+# next cycle instead of hammer-and-drop.
+# ⚠️ WATCHED ENTRY PATH. Build + off-market validate now; do NOT live-enable without the validation passing + Rhett's
+# final go. CAREFUL-CODING: narrowest possible change, reuse existing submit path, re-read diff vs safety checklist.
+
+## BUILD (narrow, targeted)
+1. In the 9:35 entry submit-result handling: detect the SPECIFIC reject reason (the "Only GTC/GTC+/GTD/GTD+ orders
+   when markets are closed" / GTC-family message). On THAT reason only: re-queue the candidate for the NEXT orb_runner
+   cycle (a few seconds later, past the transient window) instead of immediately re-submitting ~10x and dropping.
+2. Bound it: a small max-retry / max-age so a candidate that keeps failing past the open window is eventually dropped
+   cleanly (no infinite re-queue, no chasing a stale breakout late into the session — cap how long past 9:35 it'll
+   still try). Don't re-queue forever.
+3. Do NOT change: order type (StopLimit), qty, routing (Intelligent), Duration for the NORMAL path, or the timing of
+   the good 09:36+ submits. Other reject reasons → unchanged behavior. This touches ONLY the transient-reject handling.
+
+## OFF-MARKET VALIDATION (must pass before any live-enable)
+- Unit-test the submit-result handler: "markets closed" reject → RE-QUEUED (not dropped, not hammered 10x); a
+  DIFFERENT reject reason → unchanged; SUBMITTED → enters normally; retry budget/age cap → eventually drops cleanly.
+- Confirm still CANDIDATE-FILTERED (no whole-universe submit introduced).
+- REGRESSION: the 23 entries that worked Monday still submit/fill exactly as before (no delay, no behavior change).
+- PRECISE COST REPLAY of the 16 lost symbols (CAT/DDOG/GOOG/INTU/KO/LITE/LLY/MSFT/ON/PYPL/SNOW/SNPS/UBER/VRT/VRTX/WDC):
+  had they entered ~09:36, what would the day's net effect have been? (Replaces the rough estimate — shows the real
+  sign/magnitude so we know what recovering them actually does.)
+
+## GATED TO LIVE (per rule 13)
+- Build + validate ONLY. Disabled/not-live until validation passes AND Rhett gives the final go. If it goes live:
+  restart so the running process loads it, preflight, governance log, SYSTEM_FACTS regen, confirm bot healthy.
+- HONEST LIMIT: off-market + replay prove the LOGIC; the real proof is next Monday's open (the only time the transient
+  fires). State that.
+
+## HARD CONSTRAINTS
+- WATCHED entry path: narrowest change, only the transient-reject handling. $500 cap + exits + gate-off all untouched.
+  Bot stays healthy. Don't re-queue forever (bounded). Trading freeze otherwise intact.
+
+## VERIFICATION TASKS TO CLOSE (plain English back to Planning)
+1. The fix (file:line) + that it triggers ONLY on the GTC-family/markets-closed reject, re-queues bounded, drops cleanly.
+2. Off-market validation: re-queue test, other-reject-unchanged, 23-that-worked regression clean, candidate-filtered.
+3. Precise cost replay of the 16 lost symbols (real sign/magnitude).
+4. Confirm NOT live until validation + Rhett's go; $500 cap/exits untouched; bot healthy. State the next-Monday live limit.
+
+**Claude Code:**
+
+Batch B-2 build — watched entry path, narrowest change, gated. First I must understand the exact arming/submit/retry model before touching it. Let me read the 9:35 submit loop and result handling:
+Let me read the submit call and result handling (the change point):
+Key finding: **on reject, line 821's `if SUBMITTED` simply doesn't append — the candidate is silently dropped** (no else branch). I need to understand where the ~10× comes from and where the per-cycle entry point is, plus confirm the submit result carries the reject-reason text. Let me read the submit function's reject return and orb_runner's cycle flow:
+I need to know whether the reject surfaces **synchronously** (in the submit result) or **async** (caught later by the monitor) — that determines where the fix goes. Let me read the full submit function's response handling:
+A deeper finding while reading the submit path: `submit_stop_limit_entry` **always returns `status:"SUBMITTED"`** (orb_orders.py:317) even when TS rejects — so orb_runner can't currently see the reject synchronously; it's caught async by the broker logger. This changes where the fix must go. Before I build, I must nail whether it's 16 real orders logged 10× or 160 real submissions, and whether the submit sees the reject:
+Two findings that **materially change the fix**: (1) the 160 are **genuinely distinct, sequential order IDs** (10 real orders/symbol, not logging dups), and (2) `submit_stop_limit_entry` **always returns `SUBMITTED`** (orb_orders.py:316) — it never surfaces the TS reject, so the handoff's "orb_runner detects the reject and re-queues" approach **cannot work as specced**; the reject is async (TS accepts then rejects). Before I touch this watched entry path, I must pin how it submits ~10×. Let me read the cycle gating:
+The cycle gating (line 1238: scan runs only while `scan_completed` is False) plus the always-SUBMITTED return + the earlier facts (6/29 `entries_submitted` had **25**, not 39 = the 16 rejected were apparently **not** tracked there) are **contradicting my static read**. I won't build a watched entry-path change on a mechanism with unresolved contradictions. Let me resolve the last piece — were the 16 in 6/29's tracked entries, and is state persisted after the scan:
+There's an archived 6/29 state — the decisive evidence. Let me check whether the 16 rejected symbols were tracked in `entries_submitted` (tells me if they came from the main submit loop or elsewhere):
+**Decisive: 0 of the 16 rejected symbols are in 6/29's `entries_submitted`** (which has 25 *different* symbols). So the 160 rejected orders did **not** come from the main 9:35 entry submit loop the handoff assumed — they come from a **different, unidentified path**. Building the re-queue in that loop would fix nothing. Let me identify the real submitting path before concluding:
+Now it's definitive: the 160 rejects are a **separate, earlier order-id block** (959477719–959495944) submitted **before** the 9:35 entries (959560858+), **not** in `entries_submitted`, and the **90-Buy/70-SellShort split** looks like a whole-watchlist batch — not orb_runner's candidate sizing. The most likely emitter is the composite path at `bot_loop.py:1027`. Let me confirm before concluding:
+`bot_loop.py:1027` is **ruled out** — it submits a single **Limit** order (not StopLimit) for the best composite candidate, and it's the disabled path. So the 160 StopLimit orders come from a caller of `submit_stop_limit_entry` that fires at the open, produces a whole-watchlist batch, and **isn't tracked in `entries_submitted`** — and static analysis + the (tail-capped) alert log yield contradictions I can't fully resolve from here.
+
+**I'm stopping the build.** The handoff's premise — fix the 9:35 submit-result handling — targets a path the 160 rejects don't come from. Building there would change nothing and would touch the live entry path for no benefit. Recording this honestly:
+The file shifted. Let me find the current VERIFIED ledger anchor:
+Recorded and pushed (coordination HEAD `304129b`). Bot healthy (run_bot 6824, loop 311). **I stopped the build and applied nothing** — here's why that's the right call.
+
+## Batch B-2 build — stopped: the planned fix targets the wrong path
+
+Before touching the watched entry path, the pre-build trace **overturned the Loop-191 diagnosis** (mine), so building as specced would have been building on a false premise:
+
+1. **The 160 are 160 distinct real orders** (sequential IDs `959477719…959495944`), a **separate contiguous block submitted *earlier*** than the 23 main-entry orders (`959560858+`).
+2. **0 of the 16 rejected symbols are in 6/29's archived `entries_submitted`** (which holds 25 *different* symbols). The orb_runner 9:35 submit loop appends every submitted candidate — so **these 160 did not come from that loop.** The handoff's fix location is wrong.
+3. **`submit_stop_limit_entry` always returns `SUBMITTED`** (orb_orders.py:316) even when TS rejects — it *swallows* the reject (which is async, caught later by the broker logger). So "orb_runner detects the reject and re-queues" **can't work as specced** either.
+4. **Ruled out:** `bot_loop.py:1027` (submits a single **Limit**, not StopLimit; disabled composite path) and the warmup (data-only, no orders). The **90-Buy/70-SellShort** split looks like a whole-watchlist batch, not orb_runner's candidate sizing.
+
+**Net:** the real emitter is some caller of `submit_stop_limit_entry` that fires at the Monday open, produces a whole-watchlist StopLimit batch, and isn't tracked in `entries_submitted` — **unidentified.** Static analysis plus the tail-capped `bot_alerts.jsonl` (8 MB cap from Loop 166) give contradictory signals, and a Monday-only emitter can't be pinned from a non-Monday log.
+
+I will not ship a watched entry-path change on a contradictory, mis-located mechanism — that's the careful-coding mandate working as intended.
+
+### Recommended next step (gated — present, not applied)
+Add **safe caller-trace instrumentation** to `submit_stop_limit_entry` (`orb_orders.py`, non-watched): a try/except-wrapped log capturing the **calling function (via traceback) + tag + symbol** on every submit — **zero behavior change**. Next Monday's open then definitively reveals the emitter, and we fix at the right place (likely: stop the whole-watchlist batch from firing pre-9:35, or make that path reject-aware + bounded). I held off applying even this because it touches the live entry-submission function while the bot is trading-ready — your call whether to add it now or wait.
+
+Separately worth fixing regardless: **`submit_stop_limit_entry` swallowing rejects** (always returning SUBMITTED) is a real latent observability bug.
+
+**Nothing applied this loop.** $500 cap + exits + gate-off untouched; bot healthy; freeze intact.
+
+---
+**Close-out (Loop 192, 2026-06-30 09:10 ET):** SESSION_LOG.md:238 (Loop 192, re-read & saved) ✓ · coordination mirrored + pushed HEAD **`304129b`** (secret-scan clean) ✓ · **no code applied** — live entry path untouched, $500 cap/exits/gate-off untouched, bot healthy, freeze intact · SYSTEM_FACTS regen **N/A** · awaiting your go on the instrumentation step.
+
+---
