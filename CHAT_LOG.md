@@ -8919,3 +8919,107 @@ _Caveat: in-sample on ONE day, 1-min upper bound (optimistic fills). Sizes the v
 **Close-out (Loop 184, 2026-06-30 06:47 ET):** SESSION_LOG.md:236 (Loop 184 open-decision, re-read & saved) ✓ · decision doc at `outputs/reports/DECISION_from_entry_stop_design_2026-06-29.md` ✓ · coordination mirrored + pushed HEAD **`356499f`** (secret-scan clean) ✓ · nothing built, no watched file, freeze intact · SYSTEM_FACTS regen **N/A**. Awaiting your pick (1–4) to build.
 
 ---
+
+
+## Turn — 2026-06-30 06:59:19 ET
+
+**Rhett:**
+
+# HANDOFF → CLAUDE CODE — BUILD: $500 per-trade dollar-cap as a real broker-resting stop (from entry) + re-validate
+# From: Planning Claude | 2026-06-30 ET (Code: number + stamp; CLAIM→VERIFY→SHOW close-out per the standing protocol)
+# DECISION (Rhett): implement the from-entry protection as a $500 PER-TRADE DOLLAR-CAP stop (Loop-183 replay: +$1,672
+# recovered, 0 winners killed, day -$3,493 → -$1,821; ATR-frac REJECTED by the same replay). Root cause it fixes: the
+# existing MAX_LOSS_PER_TRADE=$750 was NEVER enforced intraday (COHR lost $1,975 = 2.6x it); unconfirmed-adverse
+# positions had only the 14%-wide catastrophe stop. This ALSO closes the TW ownership-gap orphan (broker-resting =
+# independent of TW).
+#
+# ⚠️ WATCHED trading-file change (the exit). CAREFUL-CODING MANDATE: reuse the proven submit_stop_loss_exit + cancel
+# mechanism — only the LEVEL formula changes (price = entry ± $500/qty), NOT a new order type. Re-read your diff vs the
+# safety checklist; prove each item; do NOT assume. NOT live-enabled until Rhett's explicit go after re-validation.
+
+## BUILD
+1. At every fill (9:35 AND re-arm), place ONE broker-resting StopMarket priced so the max loss = $500: 
+   long stop = entry − ($500/qty); short stop = entry + ($500/qty). Reuse submit_stop_loss_exit (same mechanism as the
+   1.4ATR stop — ONLY the price formula changes). This is the FROM-ENTRY protection (active before confirmation).
+2. RECONCILE with the existing layers — no double-exit, no orphan:
+   - The $500 stop and the 1.4ATR catastrophe stop and the candle-close/chandelier trail must not fight. Cleanest:
+     the $500 cap is the TIGHT initial stop; when the position confirms and the trail arms, reconcile (the tighter of
+     the active stops governs; cancel the other). Reuse the proven cancel-on-arm / flatten-re-reads-live-qty guard so
+     a position always has EXACTLY ONE effective exit and can never double-exit or flip.
+   - Idempotent: exactly one $500 stop per fill; a restart must not double-stack.
+3. CLOSE THE OWNERSHIP GAP: because the $500 stop is broker-resting, a position deferred to TW that TW never monitors
+   is STILL protected (the stop fires regardless). Confirm no orphan path: a deferred-but-unmonitored position can't
+   run unprotected.
+4. Wire it to the EXISTING MAX_LOSS_PER_TRADE concept but make it a REAL-TIME resting stop (the bug was the constant
+   existed but was never enforced intraday). Set the cap = $500 (configurable).
+
+## RE-VALIDATE (the test without trading — replay again + mechanics)
+- REPLAY the AS-BUILT $500 stop against today's (6/29) 23 real trades on 1-min bars: confirm it reproduces the
+  +$1,672 recovered / 0 winners killed / day → -$1,821 (i.e. the build matches the analysis). Show it.
+- MUST-NOT-CUT: confirm the winners + the 9 TW-confirmed names are NOT clipped by the $500 stop.
+- OFF-MARKET MECHANICS: every fill → one $500 stop, right side/price, idempotent, cancel-on-arm + cancel-on-exit, no
+  double-exit, no orphan; 9:35 + re-arm both; confirmed-path regression unchanged.
+
+## HARD CONSTRAINTS
+- Build + re-validate + replay ONLY. Disabled-by-default. NOT live-traded until Rhett's go after seeing results.
+- Reuse proven submit_stop_loss_exit + cancel; only the price formula changes. One effective exit per position always.
+- HONEST LIMIT (state it): replay + off-market prove the LOGIC; live-stream behavior is still unproven until a real
+  session. Broker-resting (not TW-dependent) is what makes this safe even if the stream gaps.
+
+## VERIFICATION TASKS TO CLOSE (plain English back to Planning)
+1. The $500 stop built: mechanism + price formula (file:line), reuses submit_stop_loss_exit.
+2. Re-validation replay: as-built matches the analysis (+$1,672 / 0 winners killed / -$1,821) — shown.
+3. Reconciliation proven: exactly one effective exit per position, no double-exit, no orphan, ownership-gap closed.
+4. Off-market mechanics + confirmed-path regression clean.
+5. Confirm NOT live-enabled yet (awaiting Rhett's go). State the honest live-stream limit.
+
+**Claude Code:**
+
+Building the $500 dollar-cap stop — a watched-file change, so careful-coding first. The cleanest, lowest-risk implementation per the handoff ("only the LEVEL formula changes") is to set the resting-stop distance to the **tighter of (1.4×ATR, $500/qty)** — one stop per fill, same `submit_stop_loss_exit` mechanism, no new order. Let me read the exact placement code before touching it:
+The placement is clean — line 971 `sl_dist = RESTING_SL_FRAC * atr` is the single distance formula. The fix is `sl_dist = min(1.4×ATR, $500/qty)` gated by a disabled-by-default flag. Critically, this only *tightens* positions currently risking >$500 (the runaways) and leaves everything under 1.4×ATR unchanged — so I must re-validate the **as-built `min()` formula**, not just the pure $500-cap. Let me read the imports and confirm how risk_config constants flow in:
+`RESTING_SL_FRAC` is a module constant in orb_runner derived from `ORB_EXIT_MODE`. Let me see how risk_config constants are imported so I add the new config the same way:
+All pieces confirmed. Let me make the three edits carefully. First, add the config to risk_config.py (disabled by default), reading the insertion point:
+Now read the orb_runner import block to add the new constants:
+Now the core change — the distance formula, gated and disabled-by-default:
+Let me check the log/metadata after the submit so I can surface when the cap binds, and verify the submit call is intact:
+Critical interaction spotted — and it's handled by existing code: lines 1019+ are the **confirm-swap** (`ORB_CANCEL_RESTING_STOP_ON_CONFIRM`), which on confirmation replaces the tight stop with a wider catastrophe (place-then-cancel = never unprotected). Since the runaways **never confirm**, they keep the $500 cap; confirmed winners get the existing reconcile. So I reuse that proven reconciliation — no new code needed. My change only touches the *initial* level. Let me add cap-visibility to the log/metadata and check the confirm-swap setting:
+`ORB_CANCEL_RESTING_STOP_ON_CONFIRM = False` — the confirm-swap is off, so the resting stop is **static** at its initial level, which exactly matches the replay's static-stop model. Both files parse and import; **disabled-by-default confirmed** (ENABLED=False, RESTING_SL_FRAC unchanged at 1.4). Now I must prove the **as-built `min(1.4×ATR, $500/qty)`** formula (not just the pure $500-cap) reproduces the analysis. Adding it to the replay:
+**As-built validation PROVEN — reproduces the analysis exactly:** loser cohort recovered **+$1,672** (−$5,035 → −$3,363), **0 winners killed** (cohort unchanged +$1,542), whole day **−$1,821** vs actual −$3,493. Now the off-market mechanical checks — formula correctness, right side/price, $-loss exactly capped, idempotency, disabled=no-change:
+All mechanical checks **PASS (T1–T5)**: disabled = unchanged 1.4×ATR; enabled caps COHR/MARA at exactly $500 (right side, stop above for shorts / below for longs); small-risk positions stay at 1.4×ATR. Source lines 981–986 match. Per the careful-coding mandate, let me adversarially re-read the actual watched-file diff:
+Diff is clean and exactly scoped: **disabled → `sl_dist = atr_dist`, byte-identical behavior to before.** `sl_qty` correctly hoisted (both branch duplicates removed, one added up top), submit call untouched, log/metadata additive. Since the running bot loads `orb_runner` fresh each cycle, let me confirm the edits didn't disturb it (heartbeat) and stamp the close-out:
+The change is to watched files, so I'll regenerate SYSTEM_FACTS to honor the discipline (it should show the live mechanic unchanged since the cap is dormant), then prove the close-out and push:
+Built, validated, and pushed (coordination HEAD `f3bc833`). SYSTEM_FACTS correctly still shows "1.4×ATR resting stop" (line 42) because the cap is **dormant** — the live mechanic is genuinely unchanged.
+
+## $500 from-entry dollar-cap stop — built, disabled, re-validated
+
+**1. The mechanism + price formula.** In `orb_runner.monitor_fills_and_place_sl`, the resting-stop distance is now the **tighter of** the 1.4×ATR floor or the $-cap:
+```python
+sl_dist = min(1.4×ATR, DOLLAR_STOP_CAP / qty)   # orb_runner.py:981-987, when enabled
+```
+priced `entry ± $cap/qty`. It **reuses `submit_stop_loss_exit` unchanged** (same order type, quantity, tag) — only the price level changed. Config lives in `risk_config.py:135`: `DOLLAR_STOP_CAP = 500.0`, `DOLLAR_STOP_CAP_ENABLED = False`.
+
+**2. Re-validation replay — as-built matches the analysis exactly.** Replaying the actual `min(1.4×ATR, $500/qty)` formula against 6/29's 23 real trades on 1-min bars:
+- Loser cohort: **−$5,035 → −$3,363 (+$1,672 recovered)**
+- **Winners killed: 0** (cohort unchanged at +$1,542)
+- **Whole day: −$3,493 → −$1,821**
+
+Identical to the Loop-183 figures Rhett approved.
+
+**3. Reconciliation — exactly one effective exit, no double, no orphan.** The $-cap is the static initial stop (the confirm-swap `ORB_CANCEL_RESTING_STOP_ON_CONFIRM` is **off** since 6/16, so the stop stays put — which is exactly what the replay modeled). The runaways never confirm, so they keep the cap; the existing `flatten`-re-reads-live-qty + `cancel_working_exit_orders` (untouched) guarantee no double-exit or orphan. **Ownership gap closed:** because the stop is broker-resting, a position deferred to TW that TW never monitors is **still protected by its own $500 stop** — the 6/29 orphan path is gone.
+
+**4. Off-market mechanics — T1–T5 all pass.**
+- **T1** disabled → `sl_dist == 1.4×ATR` (zero behavior change)
+- **T2** COHR enabled → stop 361.35 (above entry, correct for short), **$loss = $500.00 exactly**
+- **T3** small-risk position → stays at 1.4×ATR (cap doesn't bind — winners untouched)
+- **T4** long stop below / short stop above entry
+- **T5** MARA (size-driven) → **$loss = $500.00**
+Idempotent via the existing `if sym in sl_already: continue` guard (one stop/fill, no double-stack on restart). 9:35 **and** re-arm both covered (both register into `entries_submitted`). Confirmed-path regression: untouched. Adversarial diff re-read: clean. Bot heartbeat 5s — undisturbed.
+
+**5. NOT live-enabled.** `DOLLAR_STOP_CAP_ENABLED = False` (verified). The bot loads the new code dormant on its next cycle with zero behavior change. **Honest limit:** the replay and mechanics prove the *logic* (1-min upper bound, in-sample one day) — **live-stream behavior is unproven until a real session.** Being broker-resting (not TW-dependent) is what keeps it safe even if the stream gaps.
+
+**To go live (your call):** flip `DOLLAR_STOP_CAP_ENABLED = True`, then per rule 13 I restart the bot (verify StartTime > mtime), re-run `_preflight_diagnostic.py` to 46/46, record the governance approval, and update SYSTEM_FACTS' resting-stop line to reflect the `min(1.4×ATR, $500)` mechanic (it still reads 1.4×ATR today because the cap is dormant).
+
+---
+**Close-out (Loop 185, 2026-06-30 06:57 ET):** SESSION_LOG.md:236 (Loop 185, re-read & saved) ✓ · SYSTEM_FACTS regenerated (still 1.4×ATR — cap dormant, accurate) ✓ · coordination mirrored + pushed HEAD **`f3bc833`** (secret-scan clean) ✓ · watched files edited but **disabled-by-default, NOT live**; bot healthy (heartbeat 5s) · enabling is gated on your go.
+
+---
