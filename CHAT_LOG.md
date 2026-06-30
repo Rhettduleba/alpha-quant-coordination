@@ -12020,3 +12020,34 @@ All four touched files compile; **REG-15/24/25/26 all pass**; the SAFE_MODE test
 **Where the whole cleanup stands now:** 4/9 audit bugs (B1, B4, B8, B9) + **3/3 EOD flags** + 3 regression locks (REG-24/25/26) + drill 12/12. Still on the remediation queue: **E1 audit harness**, then the watched/shadow-first **B3 sector cap · B5 intraday clamp · B2 4× universe**. I'll keep moving through those — E1 next.
 
 ---
+
+
+## Turn — 2026-06-30 18:43:21 ET
+
+**Rhett:**
+
+make sure the dashboard is complety update. write yourself a prompt to add udated and validating the dashboard at each EOD, i want to make sure all the information on the dashboard is completely upto date and acuarate.
+
+**Claude Code:**
+
+Two deliverables here: (1) verify the dashboard is fully current now, and (2) bake a dashboard update-and-validate step into the EOD routine so it stays accurate every day. Let me first map the dashboard — where it lives, whether it's running, and how each page gets its data:
+The dashboard is **not running** (nothing on 8765), and it's large — `local_dashboard.py` alone is 717KB plus ~50 page modules. The key question for "is it up to date" is whether pages **recompute live from broker truth** on each load or serve **cached snapshots**. Let me map that properly with a dedicated investigator while I check the launcher and data-currency:
+Investigator launched. While it maps the pages, let me check the launch side (non-overlapping): the launcher, whether a task/supervisor keeps it alive, and any dashboard snapshot files' freshness:
+Dashboard is **on-demand** (Start_Dashboard.bat launches `trade-review-ui` manually; no persistent service/supervisor). So "up to date" hinges on whether it recomputes live or from regenerated snapshots when launched. There's an **"AlphaQuant Daily Review"** scheduled task — let me see what it regenerates, and confirm the underlying data is current:
+Good — data is **current** (broker fills 3:50 PM, advisor control 4:31 PM, EOD debrief 4:50 PM), and there's already an **"AlphaQuant Daily Review" task that ran at 4:10 PM** via `run_daily_review.bat`. Let me see what that regenerates, so the EOD step I write extends it rather than duplicates:
+Good — that's the key: the dashboard has **cached** pages. `generate_daily_review.py` (the 4:10 PM "AlphaQuant Daily Review" task) "generate[s] + cache[s] the broker-truth daily review... so the dashboard `/daily-review-v2` is ready." So at least one major page is a **snapshot**, not live — and notably it regenerates at **4:10 PM, before** the 4:50 EOD debrief, and before today's eod_debrief code fixes. That's exactly the staleness risk your EOD step needs to close.
+
+Here's what I've established so far:
+- **Dashboard is on-demand** (Start_Dashboard.bat → `trade-review-ui`); no persistent service. Not running now.
+- **Underlying data is current** — broker fills 3:50 PM, advisor control 4:31 PM, EOD debrief 4:50 PM (all today).
+- **At least one page is a cached snapshot** (daily-review), regenerated daily — and on a *worse* schedule (4:10, before the EOD debrief).
+
+The investigator is mapping **every** page's data source and, critically, **which are cached vs live-recompute** — that's the list the EOD update+validate step must cover. I don't want to write the routine against a guessed page list, so I'll fold in its map when it lands, then:
+
+1. **Refresh** the cached pages now (with today's post-fix code) so the dashboard is fully current.
+2. **Validate** every page's headline numbers tie to broker truth (`eod_debrief.round_trips_net` = +$899.60 / 15 trades canonical).
+3. **Ship the standing EOD routine** — a `validate_dashboard.py` (regenerate caches → assert each page ties to broker truth → PASS/FAIL report) plus the reusable EOD prompt, wired to run **after** the EOD debrief (fixing the 4:10-before-4:50 ordering).
+
+I'll post all three the moment the dashboard map comes back.
+
+---
