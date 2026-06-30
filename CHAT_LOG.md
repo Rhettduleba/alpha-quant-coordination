@@ -9953,3 +9953,85 @@ Recorded and pushed (coordination HEAD `5e309e0`).
 **Close-out (Loop 195, 2026-06-30 09:42 ET):** SESSION_LOG.md:238 (Loop 195, re-read & saved) ✓ · coordination mirrored + pushed HEAD **`5e309e0`** (secret-scan clean) ✓ · READ-ONLY — nothing changed, $500 cap + exits untouched, bot healthy, freeze intact · SYSTEM_FACTS regen **N/A**.
 
 ---
+
+
+## Turn — 2026-06-30 09:49:02 ET
+
+**Rhett:**
+
+# HANDOFF → CLAUDE CODE — DESIGN STUDY: the best achievable EXIT for unconfirmed-adverse positions (read-only, replay-driven)
+# From: Planning Claude | 2026-06-30 ET (Code: number + stamp; CLAIM→VERIFY→SHOW close-out per the standing protocol)
+# GOAL (Rhett): replace the dumb $500 floor with a REAL managed exit for unconfirmed-adverse positions — every trade
+# actively exited, not just floored. CONSTRAINT (proven, Loop 188): there is NO reliable EARLY PREDICTION of which
+# unconfirmed trades recover (shallow early dips recover 56-67%; the deep loser-signal is too rare to act on early).
+# So DON'T chase prediction — find the best MANAGEMENT rule: a tighter-than-catastrophe, smarter-than-$500 exit that
+# caps losers WITHOUT clipping the dip-then-recover winners. Settle it against REAL data. READ-ONLY: study only, no
+# watched file, no live change, freeze intact. Across ALL test days, 1-min bars (state the proxy + intrabar-ordering limit).
+
+## THE CANDIDATE EXIT RULES TO REPLAY (for the unconfirmed window — pre-confirmation)
+Replay each against EVERY day's trades, scoring losers-saved vs winners-clipped (net $), win%, PF:
+1. BASELINE (current): $500 dollar-cap only. (the floor to beat)
+2. TIME-STOP: if still unconfirmed AND adverse at minute N (sweep N=3,5,8,10,15), exit. (does "give it N minutes then
+   cut if not working" beat the floor?)
+3. TIGHTER FROM-ENTRY ATR STOP: an initial stop at a FRACTION of ATR active from entry (sweep 0.75 / 1.0 / 1.25 ×ATR —
+   includes the old L1 "MIN-SAFE 0.75"), tighter than the 1.4 catastrophe, replacing/under the $500.
+3b. HYBRID: min($500, K×ATR, time-stop@N) — the tightest of a dollar cap + an ATR stop + a time stop. (likely the
+    real answer — combine the floor with a time-box and an ATR tighten.)
+4. STRUCTURE STOP: exit if price breaks the opening-range low/high (or VWAP) by X while unconfirmed.
+- For the rule that wins: also test it does NOT degrade the CONFIRMED trades (must-not-cut the 9 TW-confirmed winners).
+
+## THE CONTROLS (the traps that killed every prior exit rule — mandatory)
+- MU-in / MU-out / LEAVE-ONE-OUT: report each rule 3 ways; a rule that needs one big trade is NOT real.
+- MUST-NOT-CUT winners: count confirmed + dip-then-recover winners each rule clips, and the $ given back.
+- PER-DAY robustness: the winner must hold on EACH day, not just aggregate (one day carrying it).
+- vs the $500 BASELINE: every rule reported as DELTA vs the current $500 floor — does it actually beat the floor, net?
+
+## OUTPUT (plain English)
+- The ranked rules: each one's losers-saved, winners-clipped, net delta vs $500, MU-out, per-day. 
+- The WINNER: the best achievable managed exit for unconfirmed positions — and HOW MUCH better than $500 it actually
+  is (be honest if it's only marginally better, or if $500 is hard to beat).
+- The honest verdict: is there a real improvement over the $500 floor, or is the floor close to the best achievable
+  given there's no early predictive signal? Either answer is valid — we want the truth, not a forced "better" rule.
+- If a winner emerges: propose it as a SEPARATE gated BUILD handoff (replay-proven first, then build, then validate).
+
+## HARD CONSTRAINTS
+- READ-ONLY study: no watched/trading file, no orders, no config, no live change. Freeze intact.
+- Replay against REAL trades. No rule promoted on an aggregate/one-trade/one-day edge. State the 1-min proxy +
+  intrabar-ordering caveat (a stop-vs-recover that flips on tick ordering must be flagged).
+
+**Claude Code:**
+
+This is a substantial replay study building on my existing 15-day infrastructure (`early_exit_study.py`'s bar-fetch + confirmation logic). The key framing: each rule is an **addition on top of the $500 floor** that fires only *while unconfirmed* and *releases on confirmation* (so confirmed winners are never clipped) — scored as a **delta vs the $500 baseline**. Let me build it:
+Running the study (256 cached bar-fetches — a few minutes):
+The study delivers a **decisive, honest answer: the $500 floor is essentially unbeatable — no managed exit rule improves on it.** Recording the verdict:
+Recorded and pushed (coordination HEAD `40320a0`). Full report at `outputs/reports/exit_design_study.md`.
+
+## Exit design study — the honest verdict: **the $500 floor is near-optimal; nothing beats it**
+
+305 ORB-equity trades, 6/08–6/29 (15 days), 1-min, gross. Each rule = the $500 floor **plus** a pre-confirm rule that **releases on confirmation** (so confirmed winners can't be clipped), scored as a delta vs the $500 baseline with MU-out and drop-biggest controls.
+
+| Rule (added on top of $500) | Δ vs $500 | Winners clipped | Holds MU-out / drop-biggest? |
+|---|---|---|---|
+| **+ATR @ 1.25×** | **+$126** | 0 | yes — but it's **1 day (6/10), within noise** |
+| +ATR @ 1.0× | −$1,258 | 2 | — |
+| +ATR @ 0.75× | −$2,196 | 3 | — |
+| +time-stop @ 3/5/8/10/15 | **−$3,041 to −$6,974** | **87–138** | — |
+| +structure (VWAP-break) | −$3,716 | 141 | — |
+| +HYBRID min($500, 1.0ATR, time@5) | −$4,733 | 127 | — |
+
+**Every time-stop, structure, and hybrid rule destroys value** — they save losers but clip the dip-then-recover winners far more (each cuts 87–141 winners, giving back $20–29k to save $17–25k). Tighter ATR stops (<1.25) hurt; ATR@1.25 only *ties* the floor (+$126, from a single day, 0 winners clipped → noise, not promotable).
+
+### Why the floor wins
+This directly confirms **Loop 188**: shallow early dips recover 56–67%, and there's no early predictive signal for which unconfirmed trades fail. So **any rule that cuts unconfirmed positions clips the majority that recover.** The $500 floor is the right design precisely *because* it caps the catastrophic **dollar** loss **without** acting on a predictor that doesn't exist.
+
+### The honest answer
+**The $500 floor isn't just hard to beat — it's near the best achievable** for unconfirmed positions in a no-early-signal regime. There is **no real improvement**, so I'm **not** proposing a build handoff (no winner emerged). The "active management" goal is a dead end here: the data says floor-and-let-it-resolve beats cut-on-an-unreliable-signal every way I sliced it.
+
+**Note on the 1-min proxy:** intrabar high-vs-low order is unresolved, and I assumed the *tighter* level is hit first — which **flatters the exit rules** (gives them the best-case fill). They still lose. So the conclusion is robust to that caveat, not dependent on it.
+
+**Recommendation:** keep the $500 floor as the exit for unconfirmed positions; close out the "build a managed exit" thread. The only place left to gain on these trades is upstream (entry selection / sizing / the confirmed-trade trail) — not the unconfirmed-exit rule.
+
+---
+**Close-out (Loop 196, 2026-06-30 09:48 ET):** SESSION_LOG.md:238 (Loop 196, re-read & saved) ✓ · report at `outputs/reports/exit_design_study.md` ✓ · coordination mirrored + pushed HEAD **`40320a0`** (secret-scan clean) ✓ · READ-ONLY — no watched/trading/config change, $500 cap + exits untouched, bot healthy, freeze intact · SYSTEM_FACTS regen **N/A**.
+
+---
