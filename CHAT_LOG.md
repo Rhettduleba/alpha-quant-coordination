@@ -9702,3 +9702,93 @@ Separately worth fixing regardless: **`submit_stop_limit_entry` swallowing rejec
 **Close-out (Loop 192, 2026-06-30 09:10 ET):** SESSION_LOG.md:238 (Loop 192, re-read & saved) ✓ · coordination mirrored + pushed HEAD **`304129b`** (secret-scan clean) ✓ · **no code applied** — live entry path untouched, $500 cap/exits/gate-off untouched, bot healthy, freeze intact · SYSTEM_FACTS regen **N/A** · awaiting your go on the instrumentation step.
 
 ---
+
+
+## Turn — 2026-06-30 09:26:29 ET
+
+**Rhett:**
+
+# HANDOFF → CLAUDE CODE — BATCH B-2 BUILD: re-queue transient Monday-open "markets closed" rejects (entry path) — build + validate, GATED to live
+# From: Planning Claude | 2026-06-30 ET (Code: number + stamp; CLAIM→VERIFY→SHOW close-out per the standing protocol)
+# DECISION (Rhett): build the B-2 fix (Loop 191 diagnosis). ROOT CAUSE confirmed: Monday-open transient — TS rejects
+# the first DAY-order batch ~09:35:59 ("only GTC when markets closed"), accepts by 09:36; the bot hammers each rejected
+# candidate ~10x in the same bad second then DROPS it → 16 intended entries lost (160 = 16 symbols × ~10 retries).
+# Monday-only, recurring (6/15:4, 6/22:140, 6/29:160). FIX: treat that specific reject as TRANSIENT, re-queue for the
+# next cycle instead of hammer-and-drop.
+# ⚠️ WATCHED ENTRY PATH. Build + off-market validate now; do NOT live-enable without the validation passing + Rhett's
+# final go. CAREFUL-CODING: narrowest possible change, reuse existing submit path, re-read diff vs safety checklist.
+
+## BUILD (narrow, targeted)
+1. In the 9:35 entry submit-result handling: detect the SPECIFIC reject reason (the "Only GTC/GTC+/GTD/GTD+ orders
+   when markets are closed" / GTC-family message). On THAT reason only: re-queue the candidate for the NEXT orb_runner
+   cycle (a few seconds later, past the transient window) instead of immediately re-submitting ~10x and dropping.
+2. Bound it: a small max-retry / max-age so a candidate that keeps failing past the open window is eventually dropped
+   cleanly (no infinite re-queue, no chasing a stale breakout late into the session — cap how long past 9:35 it'll
+   still try). Don't re-queue forever.
+3. Do NOT change: order type (StopLimit), qty, routing (Intelligent), Duration for the NORMAL path, or the timing of
+   the good 09:36+ submits. Other reject reasons → unchanged behavior. This touches ONLY the transient-reject handling.
+
+## OFF-MARKET VALIDATION (must pass before any live-enable)
+- Unit-test the submit-result handler: "markets closed" reject → RE-QUEUED (not dropped, not hammered 10x); a
+  DIFFERENT reject reason → unchanged; SUBMITTED → enters normally; retry budget/age cap → eventually drops cleanly.
+- Confirm still CANDIDATE-FILTERED (no whole-universe submit introduced).
+- REGRESSION: the 23 entries that worked Monday still submit/fill exactly as before (no delay, no behavior change).
+- PRECISE COST REPLAY of the 16 lost symbols (CAT/DDOG/GOOG/INTU/KO/LITE/LLY/MSFT/ON/PYPL/SNOW/SNPS/UBER/VRT/VRTX/WDC):
+  had they entered ~09:36, what would the day's net effect have been? (Replaces the rough estimate — shows the real
+  sign/magnitude so we know what recovering them actually does.)
+
+## GATED TO LIVE (per rule 13)
+- Build + validate ONLY. Disabled/not-live until validation passes AND Rhett gives the final go. If it goes live:
+  restart so the running process loads it, preflight, governance log, SYSTEM_FACTS regen, confirm bot healthy.
+- HONEST LIMIT: off-market + replay prove the LOGIC; the real proof is next Monday's open (the only time the transient
+  fires). State that.
+
+## HARD CONSTRAINTS
+- WATCHED entry path: narrowest change, only the transient-reject handling. $500 cap + exits + gate-off all untouched.
+  Bot stays healthy. Don't re-queue forever (bounded). Trading freeze otherwise intact.
+
+## VERIFICATION TASKS TO CLOSE (plain English back to Planning)
+1. The fix (file:line) + that it triggers ONLY on the GTC-family/markets-closed reject, re-queues bounded, drops cleanly.
+2. Off-market validation: re-queue test, other-reject-unchanged, 23-that-worked regression clean, candidate-filtered.
+3. Precise cost replay of the 16 lost symbols (real sign/magnitude).
+4. Confirm NOT live until validation + Rhett's go; $500 cap/exits untouched; bot healthy. State the next-Monday live limit.
+
+**Claude Code:**
+
+This handoff re-sends the same build, but my **Loop 192 investigation (pushed at 09:10) proved its core premise is wrong** — the 160 rejects don't come from the 9:35 submit loop, so re-queuing there recovers nothing. The handoff likely predates or didn't incorporate that finding. Before I either comply or push back, let me re-verify my load-bearing evidence is airtight — including whether `entries_submitted` could be pruned (which would let the 16 have been there then removed):
+All three load-bearing facts re-verified **airtight**:
+1. **0/16** rejected symbols in 6/29's `entries_submitted` (the 25 there are all different names) — confirmed.
+2. `entries_submitted` is **never pruned** (append + read only) — so the 16 were never there, not there-then-removed.
+3. `submit_stop_limit_entry` **always returns `SUBMITTED`** on the real path (orb_orders.py:161/317/420) — no reject detection.
+
+This is conclusive: the 9:35 loop appends *every* submitted candidate, the 16 aren't there, so they **never went through that loop** — re-queuing there fixes nothing. I won't build the mis-located fix. Let me check the time (near market open matters) and log the held position:
+**It's 09:25 ET Tuesday — 5 minutes before the open.** I will not touch the live entry-submission path now, and critically: **the bug is Monday-only, so it cannot even fire today.** There's no urgency justifying a risky edit before a Tuesday open. Let me record the held position and report:
+Recorded and pushed (coordination HEAD `7bbb908`).
+
+## I'm holding the build again — with airtight proof the premise is wrong
+
+This handoff re-sends the same build, but it conflicts with **Loop 192** (pushed 09:10, which the handoff likely predates). I re-verified the three load-bearing facts and they're conclusive:
+
+1. **0 of the 16 rejected symbols are in 6/29's `entries_submitted`** — the 25 tracked there (AEE, APP, BIIB, COHR, CRWD, EW, HON, MARA, MSTR, NKE, ORLY, Q, ROL, S, T, V, … ) are all *different* names.
+2. **`entries_submitted` is never pruned** (append + read only) — so the 16 were never there, not removed.
+3. **`submit_stop_limit_entry` always returns `SUBMITTED`** (orb_orders.py:161/317/420) — so the 9:35 loop appends *every* submitted candidate.
+
+Together: if the 16 had gone through the 9:35 submit loop, they'd be in `entries_submitted`. They're not. **Therefore re-queuing in the 9:35 submit-result handler recovers nothing** — the 160 don't originate there. Building it would be a watched entry-path change with zero benefit.
+
+**Two more reasons not to build right now:**
+- It's **09:25 ET Tuesday — 5 minutes before the open.** Editing the live entry-submission path now is exactly what the careful-coding mandate forbids.
+- **The bug is Monday-only** (6/15, 6/22, 6/29 — never Tue–Fri). It **cannot fire today.** Next occurrence is next Monday (7/06). Zero urgency.
+
+I'm not refusing the work — I'm refusing to ship a fix that the evidence proves does nothing, at the riskiest possible moment, for a bug that can't fire today.
+
+### The path forward (proposed)
+**After today's close** (safe window, and live in time for next Monday), add the safe caller-trace instrumentation to `submit_stop_limit_entry` (non-watched, try/except-wrapped, behavior-neutral) capturing the calling function. Next Monday's open then definitively identifies the real emitter, and I build the fix at the **right** location (likely: stop the whole-watchlist batch from firing pre-9:35, or make that path reject-aware + bounded).
+
+**One thing I need from you:** confirm that path — **or**, if Planning has evidence the 160 *do* come from the 9:35 loop that I'm missing, show it and I'll build immediately. I'd rather be corrected than ship the wrong change.
+
+Nothing applied; $500 cap + exits + gate-off untouched; bot healthy (run_bot 6824, loop 350); freeze intact.
+
+---
+**Close-out (Loop 193, 2026-06-30 09:25 ET):** SESSION_LOG.md:238 (Loop 193, re-read & saved) ✓ · coordination mirrored + pushed HEAD **`7bbb908`** (secret-scan clean) ✓ · **no code applied** — live entry path untouched 5 min pre-open, Monday-only bug can't fire today, freeze intact · SYSTEM_FACTS regen **N/A** · awaiting your confirm on the after-close instrumentation path (or contrary evidence).
+
+---
