@@ -12203,3 +12203,67 @@ The map showed **most pages recompute live** from broker truth (always current o
 So from now on, every EOD the dashboard gets checked against broker truth and any stale page is flagged the same evening — and today's is confirmed clean. Remediation queue still open (E1 harness, B3/B5/B2); I'll pick those back up next.
 
 ---
+
+
+## Turn — 2026-06-30 19:02:12 ET
+
+**Rhett:**
+
+winners are great, did we leave anything on the tabel do you see anything that would ahve made winners better. Losers suck, tell me why you think we had those losers and what we could have done to make the loosers less or better. Planning is syaing it cant read the EOD. the lasy chat could idont know why this one cant. Push the EOD to the session log and write a prompt to your self to always add the EOD to the session log. can you read the notifications i get from telegram? If so read today notifications, validate that they were real. If they were on bad information fix. let run a study like with did with ATR, but with dollar anoumts. We settled on $500 with out a study. how many winners would we have killed at $400, $300, $200, $100, new a P&L for each exit path and show me the data
+
+**Claude Code:**
+
+This is a lot, and the dollar-stop study is the centerpiece. Let me start by investigating the pieces I need — the EOD-in-session-log status (Planning's blocker), my Telegram read access, and the existing exit-study harness + data for the dollar sweep:
+Good — three key facts: (1) the EOD block **is** in both the local and coordination SESSION_LOG, but the file is **585KB**, so Planning's fetch is almost certainly truncating it; (2) I have the exit-study harnesses (`exit_k_sweep.py`, `from_entry_stop_replay.py`, `excursion_study.py`) to build the dollar sweep; (3) Telegram token is present — but the bot-API only returns *inbound* messages, so to validate what was *sent* I read the local notifier record.
+
+Let me knock out the EOD/Planning fix first — push the **standalone** EOD file (small, directly fetchable) and write the standing prompt:
+Standalone EOD pushed — Planning can now fetch the small `EOD_LATEST.md` directly. Writing the standing prompt:
+Now the centerpiece — the **dollar-stop study**. Let me read the existing K-sweep harness to reuse its replay mechanics for a dollar-cap sweep:
+This harness is exactly right — it pulls every post-5/26 ORB trade and replays on 1-min bars. I'll build the **dollar-cap version**: compute each trade's $ max-adverse-excursion (MAE), then for each cap level determine if the cap stop would've fired (MAE ≥ cap → exit at −$cap) or the trade keeps its actual outcome — giving winners-killed + P&L per cap. Writing it:
+Running the dollar-cap sweep (it replays every post-5/26 ORB trade on 1-min bars — may take a couple minutes for the bar fetches):
+The study ran on **320 trades** and the answer is decisive. Before I present it, let me close the last ask — find what the bot actually sent to your Telegram today so I can validate it:
+The notifier appends **exactly what reaches Telegram/Discord** to `code_inbox.jsonl` (notifier.py:259-262) — so that's effectively your notification feed. Let me read today's and validate each against broker truth:
+Now I can validate today's notifications. Let me check the one that looks misleading — the 6 AM "BOT HELD" (the bot wasn't actually held; it traded 15 times, ENFORCE is off):
+The code IS already ENFORCE-aware (pre_open_gate.py:606-622 — it says "SHADOW — bot NOT held" when ENFORCE is off). So the 6 AM "BOT HELD" was a pre-fix artifact. Let me confirm the current state so I can validate cleanly:
+Everything's validated. Let me log it and push the study + EOD prompt to coordination, then give you the full picture:
+All five done and pushed (`93eef2e`). Here's the full picture.
+
+## 5. The dollar-cap study — and it settles it: **$500 is right; tighter is strictly worse**
+Replayed all **320 post-5/26 ORB trades** on 1-min bars (MAE-based: a $cap stop fires when the position's max drawdown reaches the cap).
+
+| $ cap | NET total | win% | **winners KILLED** | trades that hit the cap |
+|---|---|---|---|---|
+| $100 | **−$18,645** | 21% | **116** | 215 |
+| $200 | −$19,521 | 38% | 64 | 133 |
+| $300 | −$15,153 | 48% | 31 | 73 |
+| $400 | −$11,015 | 52% | 16 | 43 |
+| **$500 (LIVE)** | **−$4,726** | 56% | **4** | 20 |
+
+**$500 is the best of every level tested.** Each tightening kills more winners than it saves on losers, and net P&L gets monotonically worse. Concretely, winners a tighter cap would have killed:
+- **$400** kills 16 winners (~$1,698 of real wins given up) — e.g. MSTR +$365 (dipped $461 first), ACN +$364 (dipped $421).
+- **$300** kills 31 (~$4,149). **$200** kills 64 (~$8,173). **$100** kills 116 (~$15,758).
+
+So the hand-picked $500 is **validated — do not tighten.** (The trend hints *looser* than $500 might even help, but we can't observe past $500 since the live stop already cuts there — that'd be a separate "raise-the-cap" study if you want it.)
+
+## 1. Winners — did we leave money on the table?
+A little, but **not where you'd fix it.** Today's "left on table" (MSTR $682, MRVL $642, MRNA $575…) is **post-exit continuation** — the name kept going after a clean exit. The earlier ATR/K-sweep already proved the recoverable dollars are in **execution timing** (the bot's ~5–7-min exit poll vs 1-min/tick), **not the exit rule** — re-tuning the exit just lands on a flat plateau. Winners are being captured well (80% win today). The real upside is faster exit execution (the Tape Watcher tick path), not a different stop.
+
+## 2. Losers — why, and how to make them less
+Today's three: **MRNA −$507, MRVL −$507** (both **unconfirmed longs that reversed immediately** and hit the $500 cap), **AKAM −$59** (slow bleeder to EOD). The cap **did its job** — it contained both to ~$500. And the sweep just proved a tighter cap would make things *worse*, not better. So the lever for fewer/smaller losers is **not the exit — it's the entry.** These were the failing extended/unconfirmed breakouts; the project's central finding (74% of losses are preventable at entry) is the answer: better entry filtering skips them. Tightening stops is the wrong knob.
+
+## 3. EOD → Planning (fixed) + standing prompt
+The EOD **is** in the session log and pushed — both copies are 585KB. **That's why Planning can't read it: the 585KB file truncates on fetch and the EOD block is at the bottom.** Fixed two ways:
+- Pushed a **standalone `EOD_LATEST.md`** — Planning fetches `https://raw.githubusercontent.com/Rhettduleba/alpha-quant-coordination/main/EOD_LATEST.md` (small, not truncated).
+- Wrote **`EOD_TO_SESSIONLOG_PROMPT.md`** (the standing routine) and flagged that the SESSION_LOG should be **trimmed/archived** (it's too big now).
+
+## 4. Your Telegram notifications — read and validated (you were right to ask)
+I can read exactly what reached your Telegram/Discord (the notifier logs it to `code_inbox.jsonl`). **31 today, and almost all were noise or misleading — now fixed:**
+- **28–29 × "CSHV FAIL: SAFE_MODE stuck"** = **false alarm** (cosmetic; ENFORCE is off so it never blocked anything). Verified it now returns **WARN, not CRITICAL** — won't spam your Telegram again.
+- **1 × "reliability drill deaf detector"** = **real at 6 AM, already fixed** (drill is 12/12 now).
+- **1 × "PRE-OPEN NO-GO — BOT HELD"** = **misleading** — the bot wasn't held (it traded 15 times; ENFORCE is off). The code now says "SHADOW — bot NOT held"; the 6 AM message was pre-fix.
+
+Net: today's alerts were bad/cosmetic information, and the root fixes all landed during today's work.
+
+One thing I'd flag back to you: the **320-trade net is −$3,470** over the post-5/26 window — the exit cap is doing its job, but that confirms the edge is still at the **entry**, which is where the next real work should go.
+
+---
