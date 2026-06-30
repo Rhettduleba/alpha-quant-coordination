@@ -11421,3 +11421,77 @@ Add one synthetic case to `reliability_drill.py run_drill()`: on a weekday, monk
 Two of five still out: **§4 (risk enforcement)** and **§7 (process survivability)**. Posting the full scorecard + ranked bug list the moment they land.
 
 ---
+
+
+## Turn — 2026-06-30 12:32:49 ET
+
+**Rhett:**
+
+<task-notification>
+<task-id>a413b52d32699041c</task-id>
+<tool-use-id>toolu_01M8cZsSjhWtKUVLDQb7HEFC</tool-use-id>
+<output-file>C:\Users\ADMINI~1\AppData\Local\Temp\claude\C--Users-Administrator-OneDrive---Duleba-Trade-station-Main\3253950a-388c-4a7a-99cc-cec0c4ed9f69\tasks\a413b52d32699041c.output</output-file>
+<status>completed</status>
+<summary>Agent "Audit Section 7 process survivability" finished</summary>
+<note>A task-notification fires each time this agent stops with no live background children of its own. The user can send it another message and resume it, so the same task-id may notify more than once.</note>
+<result>tape_watcher is launched via a .bat (scheduled task / launcher), self-terminates after ~7.16h (`--max-seconds 25800`), and is a daily one-shot rather than a permanent supervised process. That's consistent with not being on the guardian's watch list. I have everything needed for the verdict.
+
+## SECTION 7 — PROCESS SURVIVABILITY: **PASS** (with 3 low-severity NON-watched lint findings)
+
+### (a) + (b) Running AQ processes — name | PID | started | watched-by-guardian?
+
+| Process | PID | StartTime | Watched-by-guardian? |
+|---|---|---|---|
+| `watchdog_supervisor.py` (pythonw) | 2128 | 6/29 11:54 PM | **YES** — directly watched + respawned |
+| `run_bot.py` (pythonw) | 6824 | 6/30 7:14 AM | Indirect — watched by `watchdog_supervisor.py` (guardian kills orphaned run_bot before relaunching supervisor) |
+| `h5_supervisor.py` (pythonw) | 9508 | 6/29 7:56 PM | **YES** — directly watched + respawned |
+| `run_h5.py` (pythonw) | 9460 | 6/29 7:56 PM | Indirect — watched by `h5_supervisor.py` |
+| `tape_watcher.py` (python, strategy-research) | 8844 | 6/30 9:25 AM | **NO** — see note below |
+
+**Guardian watch list (`supervisor_guardian.py`, run by a Windows Scheduled Task every 2 min):** it calls `_recover_supervisor` twice — for `watchdog_supervisor.py` (kills orphaned `run_bot.py`, relaunches) and `h5_supervisor.py` (kills orphaned `run_h5.py`, relaunches). Both relaunches are DETACHED (`DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP`) so they survive the guardian/Claude-Code session exit. The recursion correctly terminates at the OS (Task Scheduler keeps the guardian alive). Chain: `child scripts ← run_bot ← watchdog_supervisor ← guardian ← Task Scheduler`.
+
+**Not on the watch list: `tape_watcher.py` (PID 8844).** This is NOT a survivability gap: it's a self-terminating daily one-shot (`--max-seconds 25800` ≈ 7.16h, so it exits ~4:35 PM ET), launched independently via `strategy-research/run_tw_live.bat` (scheduled task), not a permanently-resident supervised process. `exit_bot_v2.py` only *reads* its ownership lease and fails open if the lease is absent. CSHV is the appropriate monitor for it, not the guardian. No dashboards or a standalone CSHV python process were resident at scan time (CSHV runs as a scheduled task, not a persistent process).
+
+### (c) `subprocess.run` / `subprocess.Popen` — CREATE_NO_WINDOW (0x08000000) findings
+
+All long-lived / per-cycle / scheduled production paths carry the flag:
+- `run_bot.py` — all 6 callsites (lines 187, 284, 300, 407, 423, 596, 618, 640, 654) carry `_NO_WINDOW`. ✓
+- `watchdog_supervisor.py:236, :372` ✓ ; `h5_supervisor.py:102` ✓ ; `supervisor_guardian.py:77, :124, :139` ✓
+- `system_health_verifier.py` (CSHV) :134, :151, :172 ✓ ; `eod_watchdog.py:265` ✓ ; `eod_debrief.py:1256` ✓ ; `pre_open_gate.py:184` ✓ ; `run_eod_shadow_score.py:49` ✓ ; `_flatten_h5_stuck.py:37` ✓
+
+**Missing the flag (all in manual/diagnostic tools, none in the per-cycle bot path, none WATCHED):**
+- `_preflight_diagnostic.py:57` — `subprocess.run(["powershell", ...])` for "h5 process alive" has no `creationflags` (note line 46, the sibling "bot process alive" check, DOES use `_NO_WIN` — inconsistency/oversight).
+- `orb_preflight_check.py:200, :205, :339` — three `subprocess.run` calls (spawns `bot_loop.py`, `short_bot.py`, and a powershell process-check) with no `creationflags`.
+- `setup_autostart.py:33` — `_run()` helper `subprocess.run` with no `creationflags` (runs `schtasks`).
+
+These pop a brief console window when invoked under `pythonw.exe` (the 6/02 bug class), but all three are operator-run/preflight tools, not part of the 15-second `run_bot` loop or any resident supervisor, so they do not cause the recurring every-N-seconds popup flashing.
+
+### (d) orb_runner / orb_multiscan fresh-subprocess proof
+
+Confirmed in `run_bot.py`'s main `while True:` loop — both run as a FRESH `subprocess.Popen` every cycle via `_run_step_with_heartbeat`:
+
+- `run_bot.py:714` → `_run_step_with_heartbeat("ORB RUNNER", [_bot_dir / "orb_runner.py"])`
+- `run_bot.py:727` → `_run_step_with_heartbeat("ORB MULTI-SCAN", [_bot_dir / "orb_multiscan.py", "--arm"])` (gated on `risk_config.ORB_MULTISCAN`)
+
+`_run_step_with_heartbeat` (line 640) does `subprocess.Popen([PYTHON_EXE] + args, cwd=_bot_dir, creationflags=_NO_WINDOW)` and waits with per-step heartbeat. Because each is a brand-new Python interpreter process per cycle, **edits to `orb_runner.py` / `orb_multiscan.py` take effect on the very next cycle (~15s) with NO `run_bot.py` restart required.** Same is true for the other per-cycle steps: `bot_loop.py` (702), `short_bot.py` (707), `exit_bot_v2.py` (732), `eod_watchdog.py` (737) — all fresh subprocesses. Only `run_bot.py` itself (the loop body, advisor scheduler constants) and the supervisors require a restart to pick up edits.
+
+### Smallest fixes for the 3 lint findings (all NON-watched files — safe to fix outside the trading-path gate)
+1. `_preflight_diagnostic.py:57` — add `creationflags=_NO_WIN` to match line 46. (NOT watched.)
+2. `orb_preflight_check.py:200/205/339` — add `creationflags=getattr(subprocess,"CREATE_NO_WINDOW",0)` to all three. (NOT watched — note: this is the ORB *preflight checker*, distinct from the watched `orb_runner.py`.)
+3. `setup_autostart.py:33` — add the same flag in the `_run()` helper. (NOT watched.)
+
+None of these touch a WATCHED file (risk_config / bot_loop / exit_bot_v2 / candle_close_exit / advisor_filter_engine / symbol_universe / orb_runner / orb_multiscan / short_bot / mover_scanner). Per the standing rule I made no edits — READ-ONLY audit, broker API not called.
+
+**Net verdict: PASS.** Every resident production process is either directly guardian-watched, watched by a guardian-watched supervisor, or a self-terminating daily one-shot by design. The orb_runner/orb_multiscan hot-reload-by-fresh-subprocess contract holds. The only defects are cosmetic CREATE_NO_WINDOW omissions in three non-watched operator tools.</result>
+<usage><subagent_tokens>75184</subagent_tokens><tool_uses>21</tool_uses><duration_ms>104879</duration_ms></usage>
+</task-notification>
+
+**Claude Code:**
+
+**§7 process survivability — PASS.** Every resident process is supervised: `run_bot` ← `watchdog_supervisor` ← `supervisor_guardian` ← Task Scheduler (and the h5 chain in parallel), with **detached** relaunches that survive a Claude Code exit. Confirmed `orb_runner`/`orb_multiscan` run as **fresh subprocesses each cycle** ([run_bot.py:714,727](tradestation-bot/run_bot.py:714)) → edits apply next ~15s cycle, no restart (validates what I've claimed all session). `tape_watcher` isn't guardian-watched but is a self-terminating daily one-shot by design — not a gap.
+
+Bug-list adds (all **low severity, non-watched**): 3 `subprocess` calls missing `CREATE_NO_WINDOW` in operator/diagnostic tools (`_preflight_diagnostic.py:57`, `orb_preflight_check.py:200/205/339`, `setup_autostart.py:33`) — brief console-window pop, never in the per-cycle path.
+
+**Only §4 (risk enforcement) remains.** As soon as it lands I'll post the consolidated scorecard + ranked bug list across all nine sections.
+
+---
