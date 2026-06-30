@@ -10103,3 +10103,68 @@ I can re-run this exact broker reconciliation the instant positions exist — af
 **Close-out (Loop 197, 2026-06-30 09:56 ET):** SESSION_LOG.md:238 (Loop 197, re-read & saved) ✓ · coordination mirrored + pushed HEAD **`c123be1`** (secret-scan clean) ✓ · READ-ONLY — live broker query only (no orders/config/restart), $500 cap + exits untouched, bot healthy, freeze intact · SYSTEM_FACTS regen **N/A**.
 
 ---
+
+
+## Turn — 2026-06-30 10:02:34 ET
+
+**Rhett:**
+
+# HANDOFF → CLAUDE CODE — URGENT LIVE CHECK: 0 executed orders at 09:56 ET — is the bot working or broken? (read-only)
+# From: Planning Claude | 2026-06-30 ET (Code: number + stamp; CLAIM→VERIFY→SHOW close-out per the standing protocol)
+# Rhett is on TradeStation at 09:56 ET and sees ZERO executed orders today. Determine FAST: is this NORMAL (orders
+# placed, waiting for breakout) or a REAL FAILURE (bot didn't submit / is down / NO-GO). READ-ONLY: diagnose only,
+# change nothing, no restart unless a core process is DEAD (then report first). Market is OPEN — touch nothing live.
+
+## ANSWER THESE NOW (broker truth + bot state)
+1. IS THE BOT ALIVE? watchdog_supervisor + run_bot (pythonw) running? heartbeat fresh (<60s)? loop advancing? TS auth
+   live (token_cache fresh)? Or is it down/stalled?
+2. DID IT SUBMIT ENTRY ORDERS TODAY? Check the broker for WORKING/PENDING orders (not just fills): are there StopLimit
+   entry orders sitting at the broker waiting for breakout? How many, which symbols? OR did it submit nothing?
+3. IF orders ARE placed + just unfilled → that's NORMAL (waiting for opening-range breakout); say so plainly.
+   IF NO orders were submitted → WHY: NO-GO / SAFE_MODE engaged? gate? candidate scan empty? a crash/stall at 9:35?
+   the loop-stall recurred? Check pre_open_gate result + SAFE_MODE state + the 9:35 entry submit path + loop_stage_timing.
+4. Did the ~9:30 loop-stall fire today (loop_stage_timing / stall dumps)? Did the 9:35 entry batch run at all?
+5. Any broker rejects today (like Monday's batch)? Any error in bot_log around 9:35?
+
+## OUTPUT (plain English, fast)
+- Bot alive? Y/N. Orders submitted today? Y/N + count + working-vs-filled.
+- VERDICT: NORMAL (orders placed, waiting for breakouts) OR FAILURE (what failed + why). 
+- If FAILURE: root cause + is it fixable now (read-only diagnosis; any fix = gated, market's open).
+
+## HARD CONSTRAINTS
+- READ-ONLY: no watched/trading file, orders, config. No restart unless a CORE process is DEAD (report before acting).
+  Market open — diagnose, don't disrupt. Freeze intact.
+
+**Claude Code:**
+
+Urgent — going fast. I already know from Loop 197: bot alive (loop 437), 9:35 scan **completed** but armed **0 entries**, 0 broker orders. So there are no working orders waiting either — the bot submitted nothing. The question is *why* 0 entries. Let me pull the scan funnel, SAFE_MODE, loop-stall, and bot_log around 9:35:
+**Bot is ALIVE and healthy** (heartbeat 13s, loop advancing 437→441, TS auth live). The decisive line: **`ORB_SCAN_DONE: submitted=0 candidates=56 long=7 short=13`** — the 9:35 scan ran fine (31s, completed 09:36:14) and found 56 candidates / 20 directional, but **armed 0**. SAFE_MODE is off (not blocking), 0 rejects. So it's not a crash or a block — something filtered all 20 directional candidates pre-submission. Plus **2 loop-stall dumps today**. Let me get the skip reasons and the stalls — fast:
+**Found it: all 20 directional candidates were excluded as Hard-To-Borrow (`20 ORB_HTB_EXCLUDED`)** — DLR, APD, ZBH, MOS, PPL, SYK, ALB, AXON, ZTS… These are normal large-caps, and **some are LONGs (ALB, AXON)** — which can't be HTB (you don't borrow to buy). 20/20 HTB is implausible. The 2 loop-stalls were at **08:01/08:06 pre-market** (not the 9:35 scan, which ran clean). This smells like an HTB-data/filter failure. Let me get the exclusion reason and the filter logic — is it failing *closed*?
+The HTB filter is **fail-safe by design** (htb_filter.py:23,47): a name is armed *only* if its borrow status is **confirmed borrowable** — absent/null `IsHardToBorrow`, or a fetch failure, → **excluded**. All 20 got "HTB: not armed." Since 20/20 (including longs that don't borrow) is implausible as genuine HTB, this points to the borrow-status data being unavailable today. Let me confirm which reason fired (genuine HTB vs unknown/fetch-fail) — the key distinction:
+Precise: `excluded_reason` returns **"HTB" only when `IsHardToBorrow is True`** — so TS explicitly flagged all 20 (including the liquid large-caps and even the **longs**) as hard-to-borrow. That's almost certainly a TS borrow-data anomaly, not genuine. Let me confirm with a live quote check right now (read-only):
+**Definitive — it's a TradeStation data anomaly, not a bot failure.** Live quotes right now show **`IsHardToBorrow=True` for EVERYTHING — including AAPL and MSFT**, the two most-borrowable stocks on earth. The TS borrow flag is stuck `True` for all symbols today. The bot's fail-safe HTB filter correctly refuses to arm any HTB name → every candidate excluded → 0 entries. The bot is working exactly as designed. Recording + reporting:
+Pushed (coordination HEAD `8cd49ca`).
+
+## URGENT verdict: the bot is **WORKING** — 0 orders is a TradeStation data glitch, not a failure
+
+**1. Bot alive?** ✅ **YES.** watchdog + run_bot (PID 6824) alive, heartbeat 13s, loop advancing (437→441), TS auth live (token 10 min).
+
+**2. Orders submitted today?** ❌ **Zero — and there are no working orders waiting either.** The 9:35 scan ran cleanly (09:35:43 → 09:36:14, found **56 candidates / 20 directional**) but armed **0**. So it's *not* "orders placed, waiting for breakout" — nothing was submitted.
+
+**3. Why 0?** All 20 directional candidates were excluded as **Hard-To-Borrow**. I checked live quotes right now: **`IsHardToBorrow=True` for every symbol — DLR, ALB, SYK, AXON, MOS, and even AAPL and MSFT** (the two most-borrowable stocks on the planet). **TradeStation's borrow flag is stuck `True` for all symbols today** — a clear broker data anomaly. The bot's fail-safe HTB filter (Planning Loop 86: only arm names confirmed borrowable) correctly refused to arm any of them → 0 entries.
+
+**Ruled out:** not SAFE_MODE (off, no teeth), not NO-GO, not a crash. The 2 loop-stalls today were at **08:01/08:06 pre-market** and didn't touch the clean 9:35 scan.
+
+### VERDICT: **NORMAL bot behavior, abnormal broker data.**
+The bot is functioning exactly as designed — it won't arm hard-to-borrow names, and TradeStation is (wrongly) reporting *everything* as hard-to-borrow today. **This is broker-side, not a bot fault.** The safe outcome is no trades on bad borrow data.
+
+**What Rhett can check:** on his TradeStation, pull a quote on AAPL and look at the borrow/HTB flag — if AAPL shows hard-to-borrow there too, it confirms the feed is glitched (and likely self-resolves when TS fixes it).
+
+**Fixable now?** No — and I changed nothing (read-only, market open, watched path). The fix is broker-side. If we later want to trade *through* such glitches, two **gated, after-close** options: (a) allow **longs** regardless of HTB (a long doesn't borrow shares — and the filter currently over-excludes them), or (b) detect "all candidates HTB" as an unreliable-feed signal. Until then, the conservative behavior is correct.
+
+Context: the bot traded 23 entries on 6/29 (the flag was usable then), so today's all-`True` is a **today** anomaly — may self-resolve or persist through the session.
+
+---
+**Close-out (Loop 198, 2026-06-30 10:01 ET):** SESSION_LOG.md:238 (Loop 198, re-read & saved) ✓ · coordination mirrored + pushed HEAD **`8cd49ca`** (secret-scan clean) ✓ · READ-ONLY — live quote query only, no orders/config/restart, bot healthy, freeze intact · SYSTEM_FACTS regen **N/A**.
+
+---
