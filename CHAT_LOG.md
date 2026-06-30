@@ -9792,3 +9792,100 @@ Nothing applied; $500 cap + exits + gate-off untouched; bot healthy (run_bot 682
 **Close-out (Loop 193, 2026-06-30 09:25 ET):** SESSION_LOG.md:238 (Loop 193, re-read & saved) ✓ · coordination mirrored + pushed HEAD **`7bbb908`** (secret-scan clean) ✓ · **no code applied** — live entry path untouched 5 min pre-open, Monday-only bug can't fire today, freeze intact · SYSTEM_FACTS regen **N/A** · awaiting your confirm on the after-close instrumentation path (or contrary evidence).
 
 ---
+
+
+## Turn — 2026-06-30 09:36:21 ET
+
+**Rhett:**
+
+# HANDOFF → CLAUDE CODE — BATCH B-2 BUILD: TIMING-GATE the Monday-open entry batch past the broker's transient closed-window
+# From: Planning Claude | 2026-06-30 ET (Code: number + stamp; CLAIM→VERIFY→SHOW close-out per the standing protocol)
+# DECISION (Rhett): the ROOT-CAUSE fix = TIMING-GATE (not the re-queue band-aid, not DAY→GTC which adds overnight risk).
+# ROOT CAUSE (Loop 191): TS rejects the first DAY-order batch in a brief Monday-open "closed" window (~09:35:59),
+# accepts by 09:36 (the 23 fills came 09:36+). FIX: don't submit the opening entry batch until the window has passed,
+# so every order goes out CLEAN the first time — no reject, no retry loop, no order-type change, no overnight risk.
+# ⚠️ WATCHED ENTRY PATH → build + off-market validate; GATED, not live without validation + Rhett's final go.
+# CAREFUL-CODING: narrowest change, reuse existing submit path, re-read diff vs safety checklist.
+
+## STEP 0 — PIN THE WINDOW (so the gate is set on evidence, not a guess)
+- From 6/15, 6/22, 6/29 reject timestamps + the first ACCEPTED submit each Monday: when exactly does TS start
+  accepting? Is it always < 09:36:00, or variable? Set the gate to a SMALL safe margin past the latest-observed
+  transient (candidate ~09:36:05) — justified by the data, not arbitrary.
+
+## BUILD (narrow, targeted)
+1. Gate the FIRST opening entry submission so it fires at/after the pinned time (e.g. ~09:36:05) instead of ~09:35:59.
+   Scope it as tightly as possible: ideally only the opening batch / only when the transient applies — do NOT delay
+   re-arm or any later-cycle submits, and don't add latency to the normal path.
+2. Do NOT change order type (StopLimit), Duration (stays DAY — no GTC, no overnight risk), qty, routing, or
+   candidate filtering. ONLY the submit TIME of the opening batch shifts by a few seconds.
+3. Confirm the gate doesn't push entries so late it chases a stale opening-range breakout — a few seconds is fine;
+   verify it's seconds, not minutes, and that the opening-range logic still holds at the gated time.
+
+## OFF-MARKET VALIDATION (must pass before live-enable)
+- The opening batch now submits at the gated time → NO "markets closed" rejects (simulate/confirm against the Monday
+  transient). The retry-hammer (16×~10) no longer happens because nothing gets rejected.
+- REGRESSION: the 23 entries that worked Monday still submit/fill (a few seconds later is acceptable — confirm fills
+  still occur, opening-range still valid). Non-Monday days UNCHANGED (gate only affects the transient window).
+- Candidate-filtered intact (no whole-universe). Duration still DAY (prove no overnight-order risk introduced).
+- PRECISE COST REPLAY of the 16 previously-lost symbols (CAT/DDOG/GOOG/INTU/KO/LITE/LLY/MSFT/ON/PYPL/SNOW/SNPS/UBER/
+  VRT/VRTX/WDC): with the gate, they'd now enter ~09:36 — real sign/magnitude of recovering them.
+
+## GATED TO LIVE (rule 13)
+- Build + validate ONLY. NOT live until validation passes + Rhett's final go. If live: restart-loads-it, preflight,
+  governance log, SYSTEM_FACTS regen, bot healthy.
+- HONEST LIMIT: off-market proves the logic; the real proof is NEXT MONDAY's open (only time the transient fires).
+
+## HARD CONSTRAINTS
+- WATCHED entry path: narrowest change — ONLY the opening-batch submit time. Duration stays DAY (no overnight risk).
+  $500 cap + exits + gate-off untouched. Bot healthy. No late stale-breakout chase. Freeze otherwise intact.
+
+## VERIFICATION TASKS TO CLOSE (plain English back to Planning)
+1. The pinned window (when TS starts accepting, from the 3 Mondays' data) + the gate time set from it.
+2. The fix (file:line): opening batch gated to that time, Duration still DAY, nothing else changed.
+3. Off-market validation: clean Monday submit (no rejects), 23-regression fills, non-Monday unchanged, no overnight risk.
+4. Precise cost replay of the 16 lost symbols.
+5. NOT live until validation + Rhett's go; $500/exits/gate untouched; bot healthy. State next-Monday live limit.
+
+**Claude Code:**
+
+Planning has revised to a **timing-gate** — a genuinely better fix than the re-queue. But it has the same prerequisite my Loop 192 surfaced: I must know **which path emits the opening batch** to gate it. And it's now market-open hours (≥9:30), so I won't edit the live entry path regardless — the build belongs after close. Let me do **Step 0 (pin the window — read-only, requested, evidence-based)** and make a final targeted attempt to identify the emitter (the ~10× per symbol strongly suggests an HTTP-client retry):
+**Major reconciliation needed — Step 0 just overturned the timing premise.** The rejects' `OpenedDateTime` is **14:35 UTC = 10:35 ET** on all three Mondays — that's the **10:35 re-arm window**, NOT the 09:35 open! The accepted entries open at 13:35 UTC = 09:35 ET (the real opening scan). This means the 160 rejects are likely **re-arm orders (orb_multiscan)**, which also explains why they're not in orb_runner's `entries_submitted`. Let me nail the timezone definitively with all time fields together:
+**This overturns the premise entirely — third time.** The reject `OpenedDateTime` is **2026-06-28T18:35:24Z = Sunday 6/28, 2:35 PM ET.** These orders were submitted on the **WEEKEND** (a 14:35 re-arm-window *time* firing on a non-trading day), correctly rejected by TS as "markets closed" (the market really *was* closed), and just **logged Monday 09:35:59** when the first scan read the broker list. It's not a Monday-open transient at all — and there's already an approved fix for exactly this (`PROP-REARM-TRADINGDAY-GATE-2026-06-22`). Let me verify rigorously and check whether that gate is actually working:
+**Definitive — and it overturns the entire Batch B-2 premise (including my own Loop 191):**
+- 6/15 rejects opened **Sat 6/13**; 6/22 opened **Sat 6/20 + Sun 6/21**; 6/29 opened **Sat 6/27 + Sun 6/28**.
+
+These are **weekend re-arm submissions** — orb_multiscan's time-of-day windows (e.g. 14:35) fire on Saturdays/Sundays because `run_multiscan` only skips **holidays**, not **weekends** (line 258). The orders are correctly rejected by TS (market really closed) and just surface in Monday's log. **There are no "lost Monday entries" — the 16 symbols were weekend candidates that should never have been submitted.** And there's already an approved-but-undeployed fix for exactly this. Let me confirm the gate is genuinely absent:
+Now it's airtight. **`is_regular_trading_day` exists** (market_hours.py:111, with a `weekday() >= 5` weekend check) and is used in eod_watchdog + market_hours — **but orb_multiscan gates on `holiday_reason()` (holidays only, line 261), not `is_regular_trading_day()`.** So the approved `PROP-REARM-TRADINGDAY-GATE` (6/22) is **not actually in the live re-arm path**. Let me confirm `holiday_reason` doesn't catch weekends, then report:
+Airtight: `is_regular_trading_day` (line 115) returns False on weekends; `holiday_reason` (line 133) does **not** check weekdays — so orb_multiscan's gate lets weekend re-arm orders through. I have the definitive root cause and the real (already-approved) fix. Recording it — and I will **not** build mid-session (market is open; the bug only fires on weekends anyway):
+Recorded and pushed (coordination HEAD `416db84`).
+
+## Root cause nailed — and it overturns all of Batch B-2 (including my own Loop 191)
+
+Step 0 (pin the window) cracked it. **Every reject's `OpenedDateTime` is a weekend:**
+- 6/15 (Mon) rejects opened **Sat 6/13**
+- 6/22 (Mon) opened **Sat 6/20 + Sun 6/21**
+- 6/29 (Mon) opened **Sat 6/27 + Sun 6/28** (e.g. `2026-06-28T18:35:24Z` = Sunday 2:35 PM ET)
+
+The `logged_at 09:35:59` was just when Monday's first broker-logger pass *discovered* the weekend-rejected orders — not when they were submitted.
+
+**Mechanism:** `orb_multiscan.run_multiscan` gates re-arm on `holiday_reason()`, which checks **only holidays/early-close, not weekends** (confirmed market_hours.py:133-141). `is_regular_trading_day()` *does* check `weekday() >= 5`, but orb_multiscan doesn't call it. run_bot is supervised 24/7, so the re-arm **time**-windows (10:35–14:35) fire on Saturdays/Sundays → DAY orders submitted into a closed market → TS **correctly** rejects "markets closed" → they pile up over the weekend and surface in Monday's log. That's the entire "Monday-only" pattern.
+
+### This corrects all three B-2 handoffs and my Loop 191:
+- **Not** a 09:35:59 Monday-open transient (no race).
+- **Not** "16 lost intended entries" — the 16 are *weekend* candidates that **correctly never executed**. **Zero trading cost.**
+- **Not** fixable by the re-queue *or* the timing-gate — both target a path/time that isn't where the rejects come from.
+
+**Actual cost: ~zero.** The harm is log noise + the CSHV "abnormal rejection burst" alert + wasted weekend API calls.
+
+### The fix already exists and is already approved
+**`PROP-REARM-TRADINGDAY-GATE-2026-06-22`** (approved 6/22, deploy-held to 6/26 post-close) was meant to add `is_regular_trading_day` to the re-arm gate — but the **live orb_multiscan still uses holiday-only**, so it was **never actually deployed.** The real fix is the narrow, watched-file change that proposal already specced: gate re-arm on `is_regular_trading_day(now)` (the primitive exists) so it skips weekends, plus the run_bot defense-in-depth guard.
+
+### Why I'm not building it this turn
+It's **09:35 ET Tuesday — market is open and the bot is actively trading.** I won't edit the watched re-arm path mid-session. And the bug **only fires on weekends** (next: Sat 7/04), so there's no urgency. **Deploy after today's close (or any time before Saturday).** Governance is pre-cleared by the existing PROP — I just want your go and the after-close window.
+
+Net: three handoffs chased a Monday-open phantom; the truth is a weekend re-arm submitting into a closed market, and the fix was already approved months ago and simply never landed. I'd rather have caught that than shipped a re-queue or a timing-gate that would've done nothing.
+
+---
+**Close-out (Loop 194, 2026-06-30 09:35 ET):** SESSION_LOG.md:238 (Loop 194, re-read & saved) ✓ · coordination mirrored + pushed HEAD **`416db84`** (secret-scan clean) ✓ · read-only — no code applied, watched re-arm path untouched during market hours, $500 cap/exits/gate-off untouched, bot healthy, freeze intact · SYSTEM_FACTS regen **N/A** · awaiting your go to deploy the approved weekend gate after close.
+
+---
