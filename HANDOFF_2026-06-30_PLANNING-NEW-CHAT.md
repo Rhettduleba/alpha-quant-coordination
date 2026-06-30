@@ -20,7 +20,12 @@ On the VPS these live under `C:\AlphaQuant\`. Ask Rhett to have me paste any you
 6. **`ai-trading-strategy-agent/V1_SCOPE.md`** — what's ACTIVE vs PARKED in the advisor repo (don't assume "in repo" = "in the live path").
 7. **`ai-trading-strategy-agent/outputs/advisor_guidance/advisor_control_latest.json`** — what the bot will actually obey today.
 8. **`tradestation-bot/advisor_filter_engine.py`** + **`bot_loop.py`** + **`risk_config.py`** — the only advisor interpreter, the single bot cycle, and the hard risk floor.
-9. **Coordination repo** `C:\repos\alpha-quant-coordination` (public GitHub Rhettduleba/alpha-quant-coordination) — gets the SESSION_LOG mirror + CHAT_LOG each turn. This is how you can see my latest work without Rhett copy-pasting.
+9. **Coordination repo (PUBLIC GitHub — THIS is how you, Planning Claude, READ the live state without copy-paste):** https://github.com/Rhettduleba/alpha-quant-coordination
+   - **SESSION_LOG (read this first):** https://raw.githubusercontent.com/Rhettduleba/alpha-quant-coordination/main/SESSION_LOG.md
+   - This handoff: https://raw.githubusercontent.com/Rhettduleba/alpha-quant-coordination/main/HANDOFF_2026-06-30_PLANNING-NEW-CHAT.md
+   - Chat log: https://raw.githubusercontent.com/Rhettduleba/alpha-quant-coordination/main/CHAT_LOG.md
+   - Margin findings: https://raw.githubusercontent.com/Rhettduleba/alpha-quant-coordination/main/TS_MARGIN_4X_FINDINGS.md
+   Mirrors the SESSION_LOG + handoff + CHAT_LOG every turn. Fetch the SESSION_LOG raw URL to see Code's latest loops. (VPS local path: `C:\repos\alpha-quant-coordination`.)
 
 ## 2. WHAT THE SYSTEM IS (60-second architecture)
 Two **separate** Python systems that share ONE JSON file and never import each other:
