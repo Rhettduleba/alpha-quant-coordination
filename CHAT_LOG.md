@@ -11325,3 +11325,99 @@ Two real findings for the bug list:
 Still waiting on §4 (risk enforcement — should corroborate the sector-cap finding), §7 (process survivability), §8 (observability). Full scorecard + ranked bugs when they land.
 
 ---
+
+
+## Turn — 2026-06-30 12:32:31 ET
+
+**Rhett:**
+
+<task-notification>
+<task-id>a4847def5eb4e8dee</task-id>
+<tool-use-id>toolu_014WnJPRjSLBp5ZkrGZTHH2L</tool-use-id>
+<output-file>C:\Users\ADMINI~1\AppData\Local\Temp\claude\C--Users-Administrator-OneDrive---Duleba-Trade-station-Main\3253950a-388c-4a7a-99cc-cec0c4ed9f69\tasks\a4847def5eb4e8dee.output</output-file>
+<status>completed</status>
+<summary>Agent "Audit Section 8 observability" finished</summary>
+<note>A task-notification fires each time this agent stops with no live background children of its own. The user can send it another message and resume it, so the same task-id may notify more than once.</note>
+<result>All confirmed. The drill has zero coverage of `alive_but_not_trading` (the new detector). I have everything needed.
+
+## SECTION 8 — OBSERVABILITY — VERDICT: PASS
+
+Read-only audit. The reliability drill (sandbox-safe, state-preserving) was run; broker API never called.
+
+### (a) Channel inventory
+
+| Channel | Covers | Notifies via |
+|---|---|---|
+| **CSHV** (`system_health_verifier.py`) | 30+ correctness checks across 8 categories (liveness, gate, exits, recon, universe, EOD, meta) — "is the process doing the right thing," not just "is it alive." Runs every 5 min RTH / hourly off-hours. | `notifier.send_notification` (Discord + Telegram, deduped) on FAIL/WARN; append-only `outputs/logs/cshv_status.jsonl` |
+| **bot_alerts.jsonl** (`alerts_bridge.py`) | Append-only JSONL of important bot events (ORB scan start/done/fail, entry OK/fail, SL OK/fail, EOD flatten, account-wrong, auth-fail). Source of truth read at session start. | File (`C:\AlphaQuant\bot_alerts.jsonl`); caller may also push to Discord/Telegram via notifier |
+| **reliability_checks.py** | The 9 reliability detectors themselves (6 no-arg `CHECKS`, 3 broker-truth `TRUTH_CHECKS`). Not a notifier — it is the detector library consumed by CSHV. | None directly; bridged into CSHV which notifies |
+| **reliability_drill.py** | Synthetic-fault DRILL ("test the smoke detector") — injects each known fault and asserts the detector still fires CRITICAL/UNKNOWN. A deaf detector is itself CRITICAL. | Writes `reliability_drill_status.json`; sends CRITICAL via notifier (Discord/Telegram) only on failure; `--with-alert` sends a daily alert-path heartbeat |
+| **code_alert_inbox.py** | Read side of `outputs/alerts/code_inbox.jsonl` — mirrors the same alerts the human gets on Discord so a Claude Code session can triage/fix. Classifies + cursors. | File (read-only); does not itself notify |
+
+### (b) Drill result
+
+**DRILL: 10/10 detectors fired as expected. No deaf detector.**
+
+```
+[OK] exit_side&lt;-monitor_missing          expected=CRITICAL got=CRITICAL
+[OK] exit_side&lt;-broker_outage            expected=UNKNOWN  got=UNKNOWN
+[OK] phantom_book&lt;-broker_outage         expected=UNKNOWN  got=UNKNOWN
+[OK] phantom_book&lt;-active_$341k          expected=CRITICAL got=CRITICAL
+[OK] trading_is_thinking&lt;-frozen_loop    expected=CRITICAL got=CRITICAL
+[OK] position_recon&lt;-broker_blind        expected=CRITICAL got=CRITICAL
+[OK] gate_not_failing_open&lt;-leak         expected=CRITICAL got=CRITICAL
+[OK] gate_not_failing_open&lt;-clean        expected=OK       got=OK
+[OK] safe_mode&lt;-engage_on_tech_crit      expected=True     got=True
+[OK] safe_mode&lt;-autoclear_when_clean     expected=False    got=False
+```
+
+### (c) Detector registration table
+
+All defined in `reliability_checks.py` and bridged into `system_health_verifier.py` (lines 1363–1407, each via `@register("Reliability", "rel_*")` → `_rel_result(...)`). Bridge is fail-closed: UNKNOWN/broken-bridge → FAIL.
+
+| Detector | Defined (reliability_checks.py) | In CHECKS / TRUTH_CHECKS | Bridged into CSHV |
+|---|---|---|---|
+| **alive-but-not-trading** `check_alive_but_not_trading` | L468 | `CHECKS` (L518) ✓ | `rel_alive_but_not_trading` L1403 ✓ |
+| **naked-position** `check_exit_side` | L154 | `TRUTH_CHECKS` (L520) ✓ | `rel_exit_side` L1373 ✓ |
+| naked-position `check_position_recon` | L329 | `TRUTH_CHECKS` (L520) ✓ | `rel_position_recon` L1393 ✓ |
+| **gate-failing-open** `check_gate_not_failing_open` | L287 | `CHECKS` (L518) ✓ | `rel_gate_not_failing_open` L1388 ✓ |
+| **RTH loop-freeze** `check_trading_is_thinking` | L217 | `CHECKS` (L518) ✓ | `rel_trading_is_thinking` L1363 ✓ |
+| **phantom deploy book** `check_phantom_deploy_book` | L98 | `TRUTH_CHECKS` (L520) ✓ | `rel_phantom_deploy_book` L1368 ✓ |
+
+The newly-added (today, 6/30) `check_alive_but_not_trading` is confirmed present in the `CHECKS` list and bridged. PASS.
+
+### (d) Failure-class → detector map
+
+| Failure class | Detector | Status |
+|---|---|---|
+| Silent zero-trades | `check_alive_but_not_trading` (WARN, names dominant drop reason) | MAPPED |
+| Naked / unmonitored position | `check_exit_side` + `check_position_recon` | MAPPED |
+| Gate failing open | `check_gate_not_failing_open` | MAPPED |
+| RTH loop freeze | `check_trading_is_thinking` | MAPPED |
+| Over-exposure / phantom book | `check_phantom_deploy_book` | MAPPED |
+| Universe silently shrunk | `check_universe_not_shrunk` (in CHECKS, bridged `rel_universe_not_shrunk`) | MAPPED |
+| EOD review not written | `check_eod_review_written` (in CHECKS, bridged `rel_eod_review_written`) | MAPPED |
+
+**No unmapped failure class.** Every class in the prompt has a dedicated detector that is both registered and bridged. (Bonus coverage: `check_safe_mode_not_stuck` guards against SAFE_MODE getting stuck-on.)
+
+### (e) Drill coverage of the NEW detector — GAP CONFIRMED
+
+`grep` of `reliability_drill.py` for `alive_but_not_trading` / `alive` returns **0 matches**. The drill exercises 7 fault scenarios (exit_side ×2, phantom_book ×2, trading_is_thinking, position_recon, gate ×2, safe_mode ×2) but has **no injection case for `check_alive_but_not_trading`**. The new smoke detector is registered and bridged, but is **not itself drill-tested** — so a future regression that makes it go deaf would NOT be caught by the drill. This is a real (small) observability gap, exactly as flagged.
+
+### Smallest fix for the (e) gap
+
+Add one synthetic case to `reliability_drill.py run_drill()`: on a weekday, monkeypatch `rc._now` to ~11:00 AM ET and point `rc.BOT` at a temp dir seeded with a synthetic `bot_alerts` set — an `ORB_SCAN_DONE` with `candidates&gt;0`, a fresh heartbeat (alive), zero `ENTRY_OK` rows, and no SAFE_MODE/advisor halt — then assert `rc.check_alive_but_not_trading()["severity"] == "WARN"`, plus a clean companion case (≥1 `ENTRY_OK` → `OK`). Restore patched globals in `finally`, matching the existing gate/recon cases.
+
+**WATCHED-file check: NO.** `reliability_drill.py`, `reliability_checks.py`, and `system_health_verifier.py` are observability/monitoring files — none are on the watched trading/risk/strategy path. Per workspace governance this fix is auto-fix-safe (no proposal / manual_approval gate). It is a 1-block, ~15-minute edit. I did not apply it (this task is strictly read-only) — flagging it for the next session or for spawn.
+
+**Net:** Section 8 PASS. All channels inventoried, drill 10/10 with zero deaf detectors, all six requested detectors defined + registered + bridged, no unmapped failure class. One non-blocking gap: the new alive-but-not-trading detector lacks its own drill case (does not lower the verdict, since the detector itself is verified live-registered).</result>
+<usage><subagent_tokens>57309</subagent_tokens><tool_uses>10</tool_uses><duration_ms>71317</duration_ms></usage>
+</task-notification>
+
+**Claude Code:**
+
+**§8 observability — PASS.** All five alert channels inventoried; **reliability drill ran 10/10 with zero deaf detectors**; every failure class maps to a registered+bridged detector (including the new alive-but-not-trading one). One confirmed gap — exactly the follow-up I flagged: **the new detector has no drill case** (`grep` → 0 matches), so it isn't itself smoke-tested. Non-watched, ~15-min fix (add one synthetic WARN case + a clean companion). That's the drill-coverage item I offered to build.
+
+Two of five still out: **§4 (risk enforcement)** and **§7 (process survivability)**. Posting the full scorecard + ranked bug list the moment they land.
+
+---
