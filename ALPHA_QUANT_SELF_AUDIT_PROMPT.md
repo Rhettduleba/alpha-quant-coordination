@@ -1,4 +1,13 @@
-# ALPHA QUANT — "DOES IT ACTUALLY WORK?" SELF-AUDIT PROMPT
+> ⚠️ TWO DIFFERENT TOOLS — don't confuse them (Rhett 2026-06-30):
+> - **After EVERY change / serious coding → run the AUTOMATED gate:** `python C:\AlphaQuant\tradestation-bot\audit_does_it_work.py`.
+>   Deterministic, ~1 min, ONE PASS/FAIL. It re-runs every regression lock, every fault drill, the dashboard
+>   validator, preflight, and the ORB gates. THAT is the "did my change break anything" check.
+> - **This PROMPT below is the OCCASIONAL DEEP adversarial review** — a human/agent pass that hunts for NEW,
+>   never-seen bug classes the automated gate can't know about yet. Run it periodically, not after every edit.
+> NEITHER proves "bug-free" — that's unprovable. The gate proves "no KNOWN failure-mode regressed + alarms work";
+> this prompt tries to FIND the next unknown one (which then becomes a new lock in the gate).
+
+# ALPHA QUANT — "DOES IT ACTUALLY WORK?" SELF-AUDIT PROMPT (the deep, occasional review)
 *Written 2026-06-30 after the HTB zero-trades malfunction. Paste this to a fresh Claude Code session to make it prove — with broker truth and live code, not vibes — that Alpha Quant is bug-free and won't malfunction the way it did today.*
 
 ---
