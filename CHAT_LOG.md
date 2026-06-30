@@ -11607,3 +11607,58 @@ The big takeaway: the **exit/stop/observability/valve/process** machinery is gen
 Want me to **fix the three non-watched items now** and **draft the proposal for the #1 daily-guard bug** (the 1-line live-safety fix) for your approval?
 
 ---
+
+
+## Turn — 2026-06-30 12:46:30 ET
+
+**Rhett:**
+
+ok, lets start fixing the bugs one by one, make a comprehensive plann to address bugs and any thing else to make this validation test crystal clan the next time we run the test
+
+**Claude Code:**
+
+This is the right way to do it — a plan that doesn't just fix the nine findings but makes the audit **repeatable and self-locking**, so "crystal clean" is something we can re-prove on demand, not just assert once. Let me write the comprehensive plan, then start at bug #1.
+Plan written. Now per "start fixing one by one," I'll begin Phase 0 with the safe non-watched fixes (no approval needed) — starting with **B9 (CREATE_NO_WINDOW)**. Let me read the four callsites:
+B9 confirmed — line 57 is missing `creationflags=_NO_WIN` that its sibling at line 46 has. Fixing:
+B9 done — all four callsites fixed. Verifying they compile:
+B9 done and compiling (first bug fixed). Let me log progress and push the plan, then present:
+Plan written and pushed ([AUDIT_REMEDIATION_PLAN.md](AUDIT_REMEDIATION_PLAN.md), HEAD `5dfeebc`), and **first bug already fixed.**
+
+## The plan in one screen
+The goal isn't just "fix nine things" — it's that **re-running the audit returns all-PASS, repeatably**. So the backbone is two infrastructure pieces built alongside the fixes:
+- **E1 — a one-command audit harness** (`audit_does_it_work.py`) so "crystal clean" is re-provable on demand, not a one-time agent fan-out.
+- **E2 — a regression lock per bug** (a test/drill case) so a fixed bug can't silently come back.
+
+**Execution order (one at a time, re-run the harness after each):**
+
+| Phase | Items | Gate |
+|---|---|---|
+| **0 — now, non-watched** | B9 subprocess flags ✅ · B8 drill case · E1 harness · E2 locks · B4 before-live assertion · B6 doc | no approval |
+| **1 — watched, 1-line** | **B1 daily-guard fix** | your go |
+| **2 — watched, behavior** | B3 sector cap (shadow-first) | your go |
+| **3 — build** | B5 real-time intraday clamp | your go |
+| **4 — watched, biggest** | B2 4× universe (shadow-first) | your go |
+| **5 — cleanup** | B7 doc vocab · SYSTEM_FACTS/CLAUDE.md sync · final audit re-run | — |
+
+Key point: most fixes are **inert in SIM** — they make the machinery correct for *when* guards are enabled for live. Only **B3 (sector cap)** and **B2 (4× universe)** change SIM trading behavior, so those get a shadow-first option.
+
+## Done this turn — B9 ✅ (first bug, one-by-one)
+Added `creationflags=CREATE_NO_WINDOW` to the four unflagged `subprocess` callsites (`_preflight_diagnostic.py:57`, `orb_preflight_check.py:200/205/339`, `setup_autostart.py:33`). All three files compile. Non-watched, no behavior change.
+
+I'm continuing the rest of Phase 0 (B8 drill case, then the E1 harness) — those need no approval, so I'll just work through them.
+
+## One thing that needs your go — B1, the live-safety bug
+This is the only HIGH-severity one I can knock out immediately, and it's a **1-line fix to a watched file**, so I won't touch it without your word. Exact change at [orb_runner.py:364](tradestation-bot/orb_runner.py:364):
+
+```python
+# now (dead — these keys are never returned):
+if guard.get("should_halt", False) or guard.get("halt", False):
+# fix (the key evaluate_daily_guard actually returns):
+if guard.get("should_trigger_shutdown", False):
+```
+
+It's **inert in SIM** (DAILY_MAX_LOSS is the $1e9 sentinel, so nothing triggers either way) and makes the daily-loss halt actually work when a real cap is set for live. I'll apply it, then add the B1 regression lock (a contract test that orb_runner reads a key the guard truly returns) so it can't regress.
+
+**Go to apply B1?**
+
+---
