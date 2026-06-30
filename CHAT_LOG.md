@@ -11495,3 +11495,115 @@ Bug-list adds (all **low severity, non-watched**): 3 `subprocess` calls missing 
 **Only §4 (risk enforcement) remains.** As soon as it lands I'll post the consolidated scorecard + ranked bug list across all nine sections.
 
 ---
+
+
+## Turn — 2026-06-30 12:35:36 ET
+
+**Rhett:**
+
+<task-notification>
+<task-id>ad05d8ff4407cb9e3</task-id>
+<tool-use-id>toolu_01Q9teQdryr7yu9GM8N27eDU</tool-use-id>
+<output-file>C:\Users\ADMINI~1\AppData\Local\Temp\claude\C--Users-Administrator-OneDrive---Duleba-Trade-station-Main\3253950a-388c-4a7a-99cc-cec0c4ed9f69\tasks\ad05d8ff4407cb9e3.output</output-file>
+<status>completed</status>
+<summary>Agent "Audit Section 4 risk enforcement" finished</summary>
+<note>A task-notification fires each time this agent stops with no live background children of its own. The user can send it another message and resume it, so the same task-id may notify more than once.</note>
+<result>Confirmed. The bug is real: `evaluate_daily_guard` only ever returns `should_trigger_shutdown`/`state`, never `should_halt` or `halt`. orb_runner.py:364 checks the wrong keys, so the 09:35 ORB scan's daily-loss halt is dead code — it can never fire regardless of DAILY_MAX_LOSS value. Currently masked by the $1e9 SIM sentinel, but it would silently fail to protect once a real value is restored for live.
+
+Here is the Section 4 audit.
+
+---
+
+# SECTION 4 — RISK ENFORCEMENT — VERDICT: **FAIL**
+
+Two defined-but-unenforced ("constant is a lie") findings, both load-bearing for live:
+1. **DAILY_MAX_LOSS in the live ORB path (`orb_runner.py:364`) reads non-existent dict keys** — the halt is dead code, masked today only by the SIM sentinel.
+2. **The `*_MUST_SET_BEFORE_LIVE` "hard gates" have no code-level consumer** — they are surfaced only on a human-review advisor dashboard, not enforced as a launch blocker.
+
+## Control enforcement table
+
+| Control | Defined (file:line) | Enforced (file:line) | WIRED / ORPHANED | SIM on/off |
+|---|---|---|---|---|
+| **DAILY_MAX_LOSS** | risk_config.py:45 | bot_loop.py:374-434 (legacy long path) WIRED; short_bot.py:368-? WIRED; **orb_runner.py:356-372 BROKEN** (reads `should_halt`/`halt`, keys that don't exist) | **PARTIAL/FAIL** — wired in bot_loop/short_bot, **dead in the live ORB scan** | **OFF** (=1e9 sentinel; `DAILY_MAX_LOSS_INTENTIONAL_SIM_OFF=True`) |
+| **5% account-DD kill** | risk_config.py:178 (`ACCOUNT_DD_KILL_PCT`), gated by `ACCOUNT_DD_KILL_ENABLED` :186 | risk_kill_switch.py:125-181 `evaluate_account` → consumed bot_loop.py:459-483 + orb_runner.py:385-404 (both check `_kv.halted`, correct) | **WIRED** (but neutered by the disable flag) | **OFF** (`ACCOUNT_DD_KILL_ENABLED=False`; risk_kill_switch.py:141-149 returns OK) |
+| **MAX_POSITION_PCT** | risk_config.py:84 | bot_loop.py:228-237, 944 + short_bot.py:227-236, 859 (sizing). **Not used in orb_runner** (ORB sizes off $-notional caps) | **WIRED** (legacy paths) | ON |
+| **MAX_OPEN_POSITIONS** | risk_config.py:86 (=16) | orb_multiscan.py:287 (re-arm slot cap) WIRED; bot_loop.py:504 + short_bot.py:443 WIRED; mover_trader.py:80 (own =5). **Imported orb_runner.py:46 but NOT consumed** in the 09:35 scan | **WIRED** (re-arm + legacy); **ORPHANED import in orb_runner** | ON |
+| **MAX_TOTAL_EXPOSURE** | risk_config.py:87 | bot_loop.py:231-233, 521, 964 + short_bot.py:230-232, 459, 879. **Not used in orb_runner** (ORB uses MAX_DAY_TRADE_GROSS) | **WIRED** (legacy paths) | ON |
+| **MAX_SECTOR_POSITIONS** | symbol_universe.py:74 (=2) | bot_loop.py:916-923 + short_bot.py:830-837. **No sector cap in the live ORB path** (orb_runner/orb_multiscan) | **WIRED** (legacy paths only) | ON (legacy) / absent in ORB |
+| **MAX_DAY_TRADE_GROSS** (the actual ORB exposure cap) | risk_config.py:234 | orb_runner.py:753-758 (trims/stops entries at $400k cumulative) | **WIRED** (this is the live ORB exposure limiter, not MAX_TOTAL_EXPOSURE) | ON |
+| **DOLLAR_STOP_CAP + _ENABLED** | risk_config.py:143-144 | orb_runner.py:986-995 (resting stop = tighter of 1.4×ATR or $cap/qty) | **WIRED** | **ON** (ENABLED=True as of 2026-06-30 Loop 187) |
+| **MAX_LOSS_PER_TRADE** (=$750, related per-trade breaker) | risk_config.py:133 | exit_bot_v2.py:392/487/536/626 via `record_realized_pl(...)` (latches daily breaker) | **WIRED** | ON |
+
+Note on the live path: the bot's active strategy is ORB (orb_runner + orb_multiscan). `bot_loop.py`/`short_bot.py` are the older composite long/short paths and hold most of the PCT/EXPOSURE/SECTOR enforcement. In the live ORB path, exposure is governed by `MAX_DAY_TRADE_GROSS` ($400k), not `MAX_TOTAL_EXPOSURE`, and there is **no sector cap**.
+
+## SIM ON/OFF state (verified in code)
+- **DAILY_MAX_LOSS = 1_000_000_000.0** (risk_config.py:45) → effectively OFF. `DAILY_MAX_LOSS_INTENTIONAL_SIM_OFF=True`, `DAILY_MAX_LOSS_MUST_SET_BEFORE_LIVE=True`. Matches the known-expected disable.
+- **5% account-DD kill: OFF.** `ACCOUNT_DD_KILL_ENABLED=False` (risk_config.py:186); risk_kill_switch.py:141-149 short-circuits to `RiskState.OK` ("must re-enable before live"). `ACCOUNT_DD_KILL_INTENTIONAL_SIM_OFF=True`, `MUST_SET_BEFORE_LIVE=True`. Matches known-expected disable.
+
+Both disabled exactly as the brief said they should be.
+
+## Before-live restoration gate finding
+A written before-live gate **exists but is advisory-only, not a code launch-blocker:**
+- `ai-trading-strategy-agent/src/advisor/system_validation_page.py:48-77` `_before_live_gates()` enumerates four REQUIRED-BEFORE-LIVE rows with `live_ready` flags and a blocking banner: **Daily-loss clamp** ("set a real $ value + harden to a real-time intraday clamp"), **5% account-DD kill** ("re-enable + verify it halts"), **Malfunction breaker** ("build + wire"), **Per-symbol marginability gate** ("flip MARGIN_GATE_ENFORCE=True"). This is the "validation board" the risk_config comments reference. It is a human-review dashboard surface.
+- The risk_config flags themselves — `DAILY_MAX_LOSS_MUST_SET_BEFORE_LIVE`, `ACCOUNT_DD_KILL_MUST_SET_BEFORE_LIVE`, `MARGIN_GATE_MUST_SET_BEFORE_LIVE`, `MALFUNCTION_BREAKER_MUST_BUILD_BEFORE_LIVE` (risk_config.py:48, 188, 208, 193) — **have ZERO consumers in the bot's startup/run path.** Nothing in run_bot/bot_loop/orb_runner refuses to start live if they're unsatisfied. They are declarative tags read only by the advisor dashboard and `strategy-research/foundation_map.py`.
+- **Live sizing off $400k (not SIM equity): present and correct.** `REAL_CAPITAL_BASE=100_000`, `MAX_DAY_TRADE_GROSS=400_000` (risk_config.py:233-235); orb_runner.py:743-746 sizes off `TARGET_DAY_TRADE_GROSS`/`REAL_CAPITAL_BASE`, not SIM equity. This gate is already satisfied in the ORB path. (Caveat: the DD-kill, when re-enabled, evaluates against `fetch_account_equity()` = real SIM equity ~$993k, not the $400k base — so the 5% kill would be measured on a different base than sizing. Worth noting but out of scope for the WIRED/ORPHANED question.)
+- **Real-time intraday clamp: NOT present.** Both the daily guard (bot_loop) and orb_runner's guard are **scan-time / cycle-time gates**, not a real-time intraday clamp. risk_config.py:42 explicitly flags this as a before-live hardening item. The 6/29 incident comment (risk_config.py:138) documents the consequence: MAX_LOSS_PER_TRADE "existed but was NEVER enforced intraday."
+
+## Smallest fixes for the FAIL/UNKNOWN items
+
+**FIX 1 (real bug) — orb_runner daily_guard key mismatch. Touches a WATCHED file (orb_runner.py).**
+- orb_runner.py:364 reads `guard.get("should_halt")` / `guard.get("halt")`, but `evaluate_daily_guard` only ever returns `should_trigger_shutdown` (bool) and `state=="TRIGGERED"` (daily_guard.py:99-107). The condition is permanently False → the ORB scan's daily-loss halt is **dead code**. Currently harmless only because DAILY_MAX_LOSS is the $1e9 sentinel; the moment a real value is restored for live, the live ORB path will **not** honor the daily stop.
+- Smallest fix: change line 364 to `if guard.get("should_trigger_shutdown", False):` (and the reason already falls through fine). One line.
+
+**FIX 2 (structural gate) — before-live flags have no enforcement. Touches WATCHED files (run path: run_bot/bot_loop or orb_runner) if you want a true launch-blocker.**
+- The four `*_MUST_SET_BEFORE_LIVE` / `MUST_BUILD_BEFORE_LIVE` flags are read only by the advisor dashboard. Smallest fix: add a startup assertion in the bot's launch path that, when the account is NOT a `SIM` account, raises/refuses to start if any `*_MUST_SET_BEFORE_LIVE` flag is still True and its paired protection is still disabled. This makes the documented "hard gate" actually hard. (Lower-effort alternative that touches no watched file: add the check to `_preflight_diagnostic.py`, which currently only checks DAILY_MAX_LOSS is `2000 or SIM-sentinel` at line 141 and does not assert the before-live flags.)
+
+**UNKNOWN/gap (not a regression, but a documented before-live requirement) — no real-time intraday clamp.** Both daily guards are cycle/scan-time only. This is a build item (medium effort, would touch exit_bot_v2 or a new monitor), not a one-line fix; flagging it because the brief asked specifically whether the intraday clamp exists. It does not.</result>
+<usage><subagent_tokens>84575</subagent_tokens><tool_uses>20</tool_uses><duration_ms>141823</duration_ms></usage>
+</task-notification>
+
+**Claude Code:**
+
+All five investigators are back. **§4 is a FAIL with a real latent bug** — and because it's a load-bearing claim on a watched file, I'm verifying it myself before it headlines the report (RULE #0 — never relay a subagent's claim on the trading path unchecked):
+**Confirmed — the bug is real, and it's the headline.** `evaluate_daily_guard` returns `should_trigger_shutdown` (daily_guard.py:101), but [orb_runner.py:364](tradestation-bot/orb_runner.py:364) checks `guard.get("should_halt")` / `guard.get("halt")` — **keys that don't exist.** So the 9:35 ORB scan's daily-loss halt is **dead code**: it can never fire. Today it's harmless (DAILY_MAX_LOSS = $1e9 SIM sentinel), but the moment a real cap is set for live, **the live ORB path would silently fail to honor the daily stop.** That's exactly the failure class this audit hunts.
+
+All nine sections are in. Let me persist the result and post the scorecard:
+All nine sections are done, verified, and pushed ([AUDIT_2026-06-30_DOES-IT-WORK.md](AUDIT_2026-06-30_DOES-IT-WORK.md), coordination HEAD `ba0ff03`).
+
+## Verdict: **SIM is sound and trading correctly. LIVE is not safe yet** — blocked on §4 and §2.
+By the audit's own rule (don't declare "it works" unless §1/2/4/5/8 all PASS), it **does not pass** — §4 is a FAIL and §2 is incomplete. So the honest answer is: *it works in SIM, it's not live-ready,* with a short concrete fix list. Critically, **none of the live-blockers break SIM today** — SIM correctness is proven (100% stop coverage, $500 cap binding to the dollar, broker-reconciled P&L).
+
+## Scorecard
+| § | Area | Verdict |
+|---|---|---|
+| 1 | Entry pipeline | **PASS** |
+| 2 | Borrow / 4× gate | **PARTIAL** — HTB both-sides PASS; 4× universe not built |
+| 3 | Advisor→bot channel | **PASS** (9 rejection paths forced → all default-to-ALLOW) |
+| 4 | Risk enforcement | **FAIL** |
+| 5 | Exits & stop coverage | **PASS** (5 open / 5 stops / 0 naked; $500 cap to the dollar) |
+| 6 | Data / broker truth | **PASS** |
+| 7 | Process survivability | **PASS** |
+| 8 | Observability | **PASS** (drill 10/10, no deaf detectors) |
+| 9 | Normal day end-to-end | **PASS** |
+
+## Ranked bugs (today's-failure-class first)
+1. **🔴 HIGH · live-blocker · WATCHED — Dead daily-loss halt in the live ORB path.** `orb_runner.py:364` checks `should_halt`/`halt`; the guard returns `should_trigger_shutdown`. The 9:35 daily stop **can never fire**. Masked today by the $1e9 SIM sentinel — but once you set a real DAILY_MAX_LOSS for live, **the bot would silently fail to honor its daily stop.** 1-line fix. *(I re-verified this myself against the watched file — it's real.)*
+2. **🔴 HIGH · live-blocker — 4× universe not implemented.** HTB is blocked, but leveraged-ETF/Special-Margin exclusion is still shadow-only.
+3. **🟠 MED · live-blocker — No sector cap on the ORB path.** `MAX_SECTOR_POSITIONS=2` is enforced only in the legacy paths, not `orb_runner`/`orb_multiscan` — so the 6/24 energy-cluster correlation risk is unmitigated for ORB.
+4. **🟠 MED · live-blocker — The before-live "hard gates" aren't hard.** The `*_MUST_SET_BEFORE_LIVE` flags + the 4 disabled protections have **no code consumer** that blocks a live launch — only an advisory dashboard. Nothing actually stops the bot starting live with guards off.
+5. **🟠 MED · live-blocker — No real-time intraday loss clamp** (both guards are scan/cycle-time only).
+6. 🟡 LOW — DD-kill base mismatch (measures vs ~$993k SIM equity, not the $400k base) when re-enabled.
+7. 🟡 LOW — CLAUDE.md control vocabulary stale (`EXIT_PROFILE`/`VETO_CANDIDATE`, both conservative).
+8. 🟡 LOW — new alive-but-not-trading detector lacks a drill case.
+9. 🟡 LOW — 3 `subprocess` calls missing `CREATE_NO_WINDOW` (operator tools only).
+
+## What I can do now vs needs your go
+- **Fix now (non-watched, safe):** #8 (drill case), #9 (`CREATE_NO_WINDOW`), and add the before-live assertion to `_preflight_diagnostic.py` (#4).
+- **Needs your go (WATCHED → proposal):** #1 the daily-guard fix (1 line, most urgent for live), #2 universe, #3 sector cap, #7 doc.
+- **Build items:** #5 intraday clamp, #6 base reconcile.
+
+The big takeaway: the **exit/stop/observability/valve/process** machinery is genuinely solid, and today's HTB lesson is now both fixed and alarmed. The gap is **risk enforcement for live** — led by that dead daily-loss halt, which is exactly the "constant not swept to every consumer" class this audit was built to catch.
+
+Want me to **fix the three non-watched items now** and **draft the proposal for the #1 daily-guard bug** (the 1-line live-safety fix) for your approval?
+
+---
