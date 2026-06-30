@@ -9023,3 +9023,86 @@ Idempotent via the existing `if sym in sl_already: continue` guard (one stop/fil
 **Close-out (Loop 185, 2026-06-30 06:57 ET):** SESSION_LOG.md:236 (Loop 185, re-read & saved) ✓ · SYSTEM_FACTS regenerated (still 1.4×ATR — cap dormant, accurate) ✓ · coordination mirrored + pushed HEAD **`f3bc833`** (secret-scan clean) ✓ · watched files edited but **disabled-by-default, NOT live**; bot healthy (heartbeat 5s) · enabling is gated on your go.
 
 ---
+
+
+## Turn — 2026-06-30 07:07:40 ET
+
+**Rhett:**
+
+# HANDOFF → CLAUDE CODE — TW DIAGNOSIS: confirm which of TW's 3 issues are REAL bugs vs monitoring artifacts (read-only)
+# From: Planning Claude | 2026-06-30 ET (Code: number + stamp; CLAIM→VERIFY→SHOW close-out per the standing protocol)
+# CONTEXT: the $500 from-entry stop (Loop 183/184 decision) fixes the COSTLY TW failure (no exit for always-adverse
+# positions). Before fixing TW's OTHER issues, DIAGNOSE them — the day's hourly triages showed TW DID own all 11
+# positions (lease fresh, 14 exits fired), so some "TW failures" may be MONITORING artifacts, not trading bugs. Find
+# the truth per issue, then we fix from root cause. READ-ONLY: diagnose only, change nothing. Freeze intact. Prove
+# against broker/lease/tick truth — don't assert.
+
+## ISSUE 1 — THE EXIT-COVERAGE GAP (the costly one — confirm the $500 stop fully closes it)
+- Confirm the root cause: TW's only exit trigger (candle-close reversal) fires only on CONFIRMED positions, so an
+  always-adverse (never-confirmed) position had NO TW exit rule at all — TW owned it but had nothing to fire. 
+- Confirm the $500 from-entry broker-resting stop (being built) fully covers this: an always-adverse position now
+  hits the $500 stop regardless of TW. Is there ANY remaining path where a position has no effective exit? 
+- VERDICT: is this fully fixed by the $500 stop, or is residual TW exit-logic work needed?
+
+## ISSUE 2 — THE POSITION-RECON DESYNC (real bug, or lease-unaware MONITOR?)
+- The post-mortem called rel_position_recon "confirmed real desync"; the hourly triages said TW OWNED all positions
+  (lease 1:1 with the recon list) → "false positive, checker not lease-aware." THESE CONFLICT. Resolve it definitively:
+- Reconcile, at several timestamps today, the BOT's tracked positions (incl. the TW lease) vs the actual BROKER
+  holdings. Did the bot (via TW lease) actually KNOW about every broker position, or were there genuinely positions
+  NO part of the bot tracked? 
+- VERDICT (pick one with evidence): (a) MONITORING bug — bot tracked everything, rel_position_recon just isn't
+  lease-aware → fix is to make the checker lease-aware (low-risk, non-watched); OR (b) REAL desync — the bot truly
+  lost track of broker positions → that's a trading-path bug needing its own fix. Prove which.
+
+## ISSUE 3 — THE STREAM GAPS (real risk, or contained?)
+- Confirm the gap stats (613 events / max 152s) and whether ANY gap was tied to a SPECIFIC missed/late exit today
+  (post-mortem said UNPROVEN). 
+- Now that the $500 broker-resting stop covers positions independent of TW's stream, quantify: does a stream gap
+  still create real exposure, or is it now contained by the broker stop? VERDICT: harden TW reconnect now, or is it
+  lower-priority given the broker-stop backstop?
+
+## OUTPUT (plain English)
+- Per issue: REAL TRADING BUG / MONITORING ARTIFACT / CONTAINED-BY-$500-STOP, with the evidence.
+- The honest TW status: with the $500 stop in place, what's actually still broken in TW that needs its own fix, ranked.
+- For each real bug: proposed fix as a SEPARATE gated handoff (do NOT fix here).
+
+## HARD CONSTRAINTS
+- READ-ONLY: no watched/trading file, orders, config, restart. Diagnose only. Freeze intact. Broker/lease truth, not
+  assertion. Where the post-mortem and the hourly triages CONFLICT, reconcile against raw broker data — don't pick
+  the tidier story.
+
+**Claude Code:**
+
+Read-only TW diagnosis. Issue 1 I largely confirmed in Loops 181/182; the contested one is **Issue 2** (post-mortem said "real desync," triages said "lease-aware false positive" — these conflict and I must reconcile against raw data). Let me pull what `rel_position_recon` actually compares, the recon FAIL details (which symbols), the TW lease, and the stream-gap stats:
+Let me read `check_position_recon` to see exactly what "the bot is tracking" compares against:
+**This resolves Issue 2's conflict.** `check_position_recon` compares broker positions only against the **exit_bot water-mark tracker (`highs.json`/`lows.json` keys)** — it is **not lease-aware**. Since Change 2 made exit_bot_v2 **defer** TW-owned symbols (`continue` → never adds them to highs/lows), TW-owned positions would be flagged "broker has it, bot NOT tracking" even though TW + the broker resting stops are managing them. Let me prove it: cross-ref the flagged symbols against the TW lease, `entries_submitted`, and the resting stops:
+**Issue 2 is definitively a MONITORING ARTIFACT.** The flagged symbols (EW, HON, NKE, BIIB, ROL, CMCSA, ORLY, T) are **all in `entries_submitted` (25 tracked) AND all had broker resting stops placed (`sl_orders_placed`, 23)**. The recon checker compares only against `highs.json`/`lows.json` — which is **empty (0 keys)** because exit_bot_v2 defers TW-owned names and never populates them. So "the bot is blind to a real fill" is **false** — the bot tracked every position via entries_submitted + 23 broker stops. This **corrects my Loop 182 over-statement** ("confirmed real desync"). Let me confirm Issue 3's gap stats and Issue 1's residuals:
+Let me confirm whether the 2 stop-less entries (AEE, INTC) actually filled — to avoid over-claiming a residual:
+Confirmed: AEE/INTC were **UROUT (unfilled)** entries — never positions, so no stop needed. SL coverage was actually **23/23 filled positions (100%)** today, not a gap. I have everything. Recording the diagnosis:
+Recorded and pushed (coordination HEAD `e0f2cc6`).
+
+## TW diagnosis — the 3 issues, classified against broker/lease truth
+
+### Issue 1 — exit-coverage gap → **REAL TRADING BUG, fully closed by the $500 stop**
+Root cause confirmed: TW fires only through `cce.chandelier_decision`, whose tight candle-close trail **arms only after confirmation**. An always-adverse (never-confirmed) position had **no TW exit at all** — only the wide 1.4×ATR chandelier it never reached. The $500 broker-resting stop fires **regardless of TW/confirm/stream**, so once it's enabled there is **no remaining "no-effective-exit" path** for a filled position (every fill gets `min(1.4×ATR, $500)`). Today's SL coverage was actually **23/23 filled positions** — the 2 stop-less entries (AEE, INTC) were **UROUT/unfilled**, not a gap.
+**Verdict: fixed by the $500 stop. No residual TW exit-logic work needed for the costly case.** One minor separate residual: the ~12-min entry→stop placement window isn't atomic.
+
+### Issue 2 — position-recon "desync" → **MONITORING ARTIFACT (this corrects my Loop 182 over-statement)**
+`check_position_recon` (reliability_checks.py:316) compares broker positions **only against `highs.json`/`lows.json`** — exit_bot's water-mark tracker — which is **empty (0 keys)** because Change-2 made exit_bot_v2 *defer* TW-owned names and never populate them. **Proof:** the flagged symbols (EW, HON, NKE, BIIB, ROL, CMCSA, ORLY, T) are **all in `entries_submitted` (25) and all had broker resting stops placed (23)**. The bot was **not** "blind to a real fill" — it tracked every position via entries_submitted + 23 broker stops + the TW lease. The checker just isn't lease/resting-stop-aware. **The hourly triages were right; my post-mortem's "confirmed real desync" was wrong, and I've corrected it.**
+**Verdict: monitoring bug. Fix = make `check_position_recon` lease + resting-stop-aware (low-risk, non-watched).**
+
+### Issue 3 — stream gaps → **downside CONTAINED by the $500 stop**
+Gaps are real (tw_shadow 6/29: ~5,298 gap fields, max ~1,082s; the handoff's 613/152s is the live TW). **No specific gap → missed-exit was provable today** (the post-mortem's UNPROVEN stands). Because the $500 stop is **broker-resting (server-side, stream-independent)**, a gap **cannot** leave a position with uncapped loss. **Honest residual:** a gap can still cause a missed *favorable* exit (TW not firing a candle-close to lock a winner mid-gap) — that's **winner give-back, not catastrophic loss**.
+**Verdict: contained on the downside once the $500 stop is live. TW reconnect hardening is a nice-to-have, lower priority.**
+
+## Honest TW status (with the $500 stop in place) — what's still broken, ranked
+1. **(do soon, low-risk)** Make `rel_position_recon` lease + resting-stop-aware — it cried CRIT all day on tracked positions and **buried the real signals** in the noise. Non-watched file.
+2. **(lower)** TW reconnect/gap hardening — only the winner-give-back residual remains once the $500 stop covers the downside. Gated on the $500 stop being live.
+3. **(minor)** Entry→stop atomicity (~12-min placement window).
+
+Each is its own gated handoff. The costly failure (the −$5,035 always-adverse gap) is the only one the $500 stop *had* to fix — and it does. The other two are a noisy monitor and a contained risk, not money-losing trading bugs.
+
+---
+**Close-out (Loop 186, 2026-06-30 07:06 ET):** SESSION_LOG.md:236 (Loop 186, re-read & saved; includes the Loop-182 correction) ✓ · coordination mirrored + pushed HEAD **`e0f2cc6`** (secret-scan clean) ✓ · READ-ONLY — nothing changed, freeze intact · SYSTEM_FACTS regen **N/A**.
+
+---
