@@ -1,6 +1,6 @@
 # SYSTEM_FACTS — live mechanics, machine-generated from the running code/config/broker-truth
 
-> **Generated:** 2026-06-30 16:50:26 Eastern Daylight Time · **coordination-repo HEAD:** `12be0a7` · by `strategy-research/system_facts.py` (read-only).
+> **Generated:** 2026-06-30 19:14:12 Eastern Daylight Time · **coordination-repo HEAD:** `35474d8` · by `strategy-research/system_facts.py` (read-only).
 > Every value below is READ from a real source (the live import for the VALUE; a fresh file scan for the SOURCE file:line). Nothing is hand-typed. A field that can't be derived says `UNVERIFIED`.
 > If this contradicts memory, THIS wins — regenerate it (re-run the script) rather than trusting recall.
 
@@ -25,7 +25,7 @@
 | Strategy / breakout trigger | Zarattini 5-min Opening-Range Breakout: long on break of OR high, short on break of OR low | `tradestation-bot/orb_runner.py:459-460 (or_high/or_low) + :4 docstring` |
 | Opening-range window | first 5 min (09:30->09:35 ET); scan/arm at 09:35:30 | `tradestation-bot/orb_runner.py:9-12 (timeline)` |
 | In-play gate (RelVol/move/$-vol) | False  (OFF) | `tradestation-bot/risk_config.py:271` |
-| HTB/halted exclusion | True  (ON) | `tradestation-bot/risk_config.py:305` |
+| HTB/halted exclusion | True  (ON) | `tradestation-bot/risk_config.py:315` |
 | Earnings veto | live-invoked in 9:35 path; fails OPEN on stale/missing calendar | `tradestation-bot/orb_runner.py:441 (is_earnings_blackout call) + orb_earnings_veto.py` |
 | Deploy-controller scope | True -- governs the RE-ARM/multiscan admit ceiling only; 9:35 ORB sizes by its own constants | `tradestation-bot/risk_config.py:250` |
 | Deploy base | $400,000 | `tradestation-bot/risk_config.py:249` |
@@ -38,7 +38,7 @@
 ## EXIT
 | Fact | Live value | Source |
 |---|---|---|
-| Resting broker stop distance | min(1.4 x ATR, $500/qty)  (StopMarket; from-entry $-CAP ACTIVE, Loop 187 -- caps single-position loss at $500 from fill, broker-resting/stream-independent) | `tradestation-bot/orb_runner.py:100` |
+| Resting broker stop distance | min(1.4 x ATR, $500/qty)  (StopMarket; from-entry $-CAP ACTIVE, Loop 187 -- caps single-position loss at $500 from fill, broker-resting/stream-independent) | `tradestation-bot/orb_runner.py:101` |
 | Resting stop -- WHEN placed | post-fill monitor on the shared entries_submitted list. 9:35 AND -- since Loop 155 (LIVE Mon 6/29) -- RE-ARM fills both register, so the proven monitor places ONE 1.4xATR resting stop per fill (re-arm coverage 0% -> ~100%). Not atomic with entry; cancel-on-flatten inherited. | `tradestation-bot/orb_runner.py:931-992 + orb_multiscan._register_rearm_resting_stops (Loop 155)` |
 | Confirmation threshold | 0.15 x ATR favorable | `tradestation-bot/candle_close_exit.py:24` |
 | Chandelier trail multiple | 1.4 x ATR (ratchet-favorable-only floor) | `tradestation-bot/candle_close_exit.py:60` |
