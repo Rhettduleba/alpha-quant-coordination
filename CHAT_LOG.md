@@ -12267,3 +12267,41 @@ Net: today's alerts were bad/cosmetic information, and the root fixes all landed
 One thing I'd flag back to you: the **320-trade net is −$3,470** over the post-5/26 window — the exit cap is doing its job, but that confirms the edge is still at the **entry**, which is where the next real work should go.
 
 ---
+
+
+## Turn — 2026-06-30 19:04:43 ET
+
+**Rhett:**
+
+what work would you do?
+
+**Claude Code:**
+
+If it were my call, I'd stop polishing the machinery and go **straight at the entry** — that's where the money is, and today's work cleared the way to prove it.
+
+## Why the entry, specifically
+Everything we did this week points the same direction:
+- The dollar study just **closed the exit question** — $500 is validated, tighter is worse. So the exit is tuned.
+- The −$3,470 over 320 trades is therefore **not an exit problem**. It's entry quality — the 74%-preventable-at-entry finding.
+- And we already know the shape: **the re-arm path makes money; the 9:35 morning entries are the loss engine.** Today is the cleanest possible proof — 0 trades from 9:35, all 15 from re-arm, +$899. We've now seen that pattern repeatedly.
+
+So the highest-value work is figuring out **how much of the 9:35 path to cut, and on what signal.**
+
+## What I'd actually do, in order
+
+**1. One read-only study first (this is the dollar study, but for entries).** Across the 320 trades, split two ways:
+- **Path:** 9:35 vs re-arm expectancy at N≥30 each (net of cost). If 9:35 is reliably negative and re-arm reliably positive, the simplest, highest-impact change isn't a clever filter — it's **trade the 9:35 path far more selectively (or not at all)**. That's a one-line, one-variable change with a huge effect, and the data may already support it.
+- **Signature (within the 9:35 losers):** which characteristic separates the winners from the losers — **extension magnitude** (the MU lesson: chasing a spent gap), confirmation state, RelVol, earnings-gap. The harness exists (`entry_signature_study.py`, the entry-context sidecar). This ranks the *one* lever to build.
+
+I'd run this read-only — same as the dollar sweep — so we *measure before we build*, not guess.
+
+**2. Build exactly one entry filter from the winner, shadow-test it.** Whatever the study ranks #1 (likely "skip extended/unconfirmed 9:35 entries"), build it shadow-first, run it through the gauntlet (net-of-cost, N≥30, must-not-cut-winners), and only then propose it live. One change at a time, re-arm path untouched.
+
+## What I would *not* prioritize right now
+The remaining live-blockers (B3 sector cap, B5 intraday clamp, B2 4× universe, E1 harness) are **necessary plumbing, not edge** — and we're not going live soon. I'd keep them shadow-first/background and rank them below the entry work. The one I'd still finish is the **E1 audit harness**, only because it lets us re-prove the system clean on demand cheaply.
+
+**The honest version:** the system is now clean enough that continuing to harden it is lower-value than answering the actual question — *does the 9:35 entry path deserve to exist, and if so on what signal.* That's the work.
+
+Want me to run that entry study now (read-only, like the dollar one) so we have the 9:35-vs-re-arm and the winner/loser signature data in front of us?
+
+---
