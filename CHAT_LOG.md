@@ -10035,3 +10035,71 @@ This directly confirms **Loop 188**: shallow early dips recover 56–67%, and th
 **Close-out (Loop 196, 2026-06-30 09:48 ET):** SESSION_LOG.md:238 (Loop 196, re-read & saved) ✓ · report at `outputs/reports/exit_design_study.md` ✓ · coordination mirrored + pushed HEAD **`40320a0`** (secret-scan clean) ✓ · READ-ONLY — no watched/trading/config change, $500 cap + exits untouched, bot healthy, freeze intact · SYSTEM_FACTS regen **N/A**.
 
 ---
+
+
+## Turn — 2026-06-30 09:57:28 ET
+
+**Rhett:**
+
+# HANDOFF → CLAUDE CODE — VERIFY (read-only): does the $500 cap now give EVERY fill a broker stop — incl. the re-arm cohort?
+# From: Planning Claude | 2026-06-30 ET (Code: number + stamp; CLAIM→VERIFY→SHOW close-out per the standing protocol)
+# Bot is LIVE-TRADING now → READ-ONLY only, no watched/trading file, no orders, no config, no restart. Verify, don't fix.
+# THE QUESTION: pre-$500, broker-stop coverage was 37.9% — 9:35 cohort 96% (~7-12 min late), RE-ARM cohort 0%
+# (orb_multiscan never called submit_stop_loss_exit; orb_runner.py:969 keyed only on 9:35 entries_submitted). The $500
+# cap (Loop 187, live) places min(1.4ATR,$500/qty) on every fill via monitor_fills_and_place_sl. DID THAT CLOSE THE
+# RE-ARM GAP, or does the $500 placement share the SAME 9:35-only keying that left re-arm at 0%? This is the crux.
+
+## VERIFY (broker truth + code trace)
+1. CODE PATH: trace where the $500 cap's stop gets placed (monitor_fills_and_place_sl) and WHICH fills it iterates —
+   does it cover re-arm fills, or the same 9:35-only entries_submitted keying that left re-arm uncovered? Plainly:
+   does the $500 mechanism place a stop for a RE-ARM fill?
+2. BROKER TRUTH (today, live): of the positions filled today (9:35 cohort AND any re-arm fills), how many currently
+   have a broker resting stop? Reconcile open positions vs resting StopMarket/StopLimit orders at the broker. Report
+   coverage % by cohort WITH $500 live — is it now ~100%, or is re-arm still uncovered?
+3. TIMING: how long after a fill does the stop appear now (fill → broker stop live)? Per cohort. Is the naked window
+   tighter than the old ~7-12 min, or the same?
+
+## OUTPUT (plain English)
+- Does the $500 cap cover re-arm fills? (the code answer + the broker-truth answer — do they agree?)
+- Current coverage % by cohort (9:35 vs re-arm) with $500 live.
+- Current naked window (fill→stop) per cohort.
+- VERDICT: is the entry→stop coverage gap CLOSED by $500, PARTIALLY closed (which cohort still exposed), or still open?
+  If a real gap remains (e.g. re-arm still 0%), name it precisely — the FIX is a watched-path change → AFTER close,
+  separate gated handoff (do NOT fix now, bot is trading).
+
+## HARD CONSTRAINTS
+- READ-ONLY: verify only, no watched/trading file, no orders, no config, no restart. $500 cap + exits untouched.
+  Bot is live-trading — touch nothing. Freeze intact.
+
+**Claude Code:**
+
+Planning wants the **live broker-truth** version (today, $500 live) — Loop 195 used 6/29 archived data. It's ~9:48 AM (market open since 9:30), so there may be 9:35 fills today, but re-arm fills won't exist until 10:35+. Let me re-confirm the code path and do a **read-only live broker reconciliation** of today's positions vs resting stops:
+Code path confirmed: re-arm **registers into the same `entries_submitted`** (orb_multiscan.py:241, `"source":"rearm"`), and the $500 cap line (orb_runner.py:981-983) places a stop for *every* entry in that list — so the keying is **not** 9:35-only; it covers re-arm. But the live broker shows **0 positions / 0 working orders** right now (09:48). Let me check whether the bot armed/filled anything today, and confirm re-arm timing (10:35+):
+Clear picture. **Today the bot armed 0 entries at the 9:35 scan** (scan_completed=True, 0 entries, 0 orders — a quiet open with no qualifying breakouts), and the first re-arm window is **10:35** (47 min out). So there are no live positions to reconcile yet. The answer rests on the code path + the most recent measurable day. Recording:
+Recorded and pushed (coordination HEAD `c123be1`). Bot healthy (run_bot 6824, loop 437) — touched nothing.
+
+## Does the $500 cap cover re-arm fills? — Verdict: **yes (code-confirmed); live-empirical confirmation pending the next fill**
+
+**Q1 — Code path (definitive).** The $500 cap's stop is placed in `monitor_fills_and_place_sl`, which iterates `daily_state["entries_submitted"]`. **Re-arm fills register into that same list** via `orb_multiscan._register_rearm_resting_stops` (orb_multiscan.py:241, tagged `"source":"rearm"`), so the monitor places `min(1.4×ATR, $500/qty)` (orb_runner.py:981-987) for re-arm fills too. **The keying is not 9:35-only** — the handoff's specific concern (the old orb_runner.py:969 9:35-only keying) is resolved by the Loop-155 registration. The $500 cap changed only the *level*, not *which* fills get a stop.
+
+**Q2 — Live broker truth (right now).** Read-only query of SIM1623888M: **0 open positions, 0 working orders.** The 9:35 scan ran and completed but **armed 0 entries today** (quiet open — no qualifying breakouts; 0 broker rows for 6/30). The first re-arm window is **10:35** (`ORB_SCAN_WINDOWS = 1035/1135/1235/1335/1435`), so any re-arm fills appear after that. With 0 positions, there's nothing to reconcile live yet.
+
+**Q3 — Most recent measurable (6/29, same mechanism the $500 rides).** **23/23 filled positions covered = 100%**, including all 9 re-arm fills, naked window **~12–24s** (from Loop 195).
+
+**Code answer and broker-truth agree:** re-arm **is** covered.
+
+### Coverage by cohort (current state)
+| Cohort | Coverage | Naked window |
+|---|---|---|
+| 9:35 open | ~100% | ~12–24s |
+| Re-arm | ~100% (was 0% pre-Loop-155) | ~12–24s |
+
+### Verdict
+**The entry→stop coverage gap is CLOSED.** Re-arm went from 0% (pre-Loop-155, because orb_multiscan never registered fills) to ~100% (Loop 155 registers them into the shared list the monitor reads), and the $500 cap rides that same path. The only thing not yet *empirically* confirmed is the $500 **level** on a **live** re-arm fill — because today produced 0 entries so far. **No remaining gap to fix.**
+
+I can re-run this exact broker reconciliation the instant positions exist — after 10:35 today if re-arm arms, otherwise the next session's EOD debrief will show the `$CAP=500` SL placements directly. Want me to re-check after 10:35, or is the code + 6/29 proof sufficient?
+
+---
+**Close-out (Loop 197, 2026-06-30 09:56 ET):** SESSION_LOG.md:238 (Loop 197, re-read & saved) ✓ · coordination mirrored + pushed HEAD **`c123be1`** (secret-scan clean) ✓ · READ-ONLY — live broker query only (no orders/config/restart), $500 cap + exits untouched, bot healthy, freeze intact · SYSTEM_FACTS regen **N/A**.
+
+---
