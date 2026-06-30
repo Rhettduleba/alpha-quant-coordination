@@ -1,6 +1,6 @@
 # SYSTEM_FACTS — live mechanics, machine-generated from the running code/config/broker-truth
 
-> **Generated:** 2026-06-29 16:50:26 Eastern Daylight Time · **coordination-repo HEAD:** `f884e91` · by `strategy-research/system_facts.py` (read-only).
+> **Generated:** 2026-06-30 06:58:46 Eastern Daylight Time · **coordination-repo HEAD:** `19d068d` · by `strategy-research/system_facts.py` (read-only).
 > Every value below is READ from a real source (the live import for the VALUE; a fresh file scan for the SOURCE file:line). Nothing is hand-typed. A field that can't be derived says `UNVERIFIED`.
 > If this contradicts memory, THIS wins — regenerate it (re-run the script) rather than trusting recall.
 
@@ -8,7 +8,7 @@
 | Fact | Live value | Source |
 |---|---|---|
 | Live exit mode | candle_1.4atr_chandelier | `tradestation-bot/risk_config.py:60` |
-| SAFE_MODE_ENFORCE (gate teeth) | False | `tradestation-bot/risk_config.py:188` |
+| SAFE_MODE_ENFORCE (gate teeth) | False | `tradestation-bot/risk_config.py:199` |
 | consecutive_clean streak | 0 | `validation/clean_day_certifier.py:consecutive_clean()` |
 | Posture / freeze + last forward-test | human-maintained record (not a code constant) -- read the CURRENT STATE block | `SESSION_LOG.md (FINDINGS & TEST RESULTS LEDGER + CURRENT STATE)` |
 
@@ -24,21 +24,21 @@
 | 9:35 open scan | the once-a-day Zarattini 5-min ORB (orb_runner owns it; NOT a re-arm window) | `tradestation-bot/orb_runner.py:4 (module docstring)` |
 | Strategy / breakout trigger | Zarattini 5-min Opening-Range Breakout: long on break of OR high, short on break of OR low | `tradestation-bot/orb_runner.py:459-460 (or_high/or_low) + :4 docstring` |
 | Opening-range window | first 5 min (09:30->09:35 ET); scan/arm at 09:35:30 | `tradestation-bot/orb_runner.py:9-12 (timeline)` |
-| In-play gate (RelVol/move/$-vol) | False  (OFF) | `tradestation-bot/risk_config.py:259` |
-| HTB/halted exclusion | True  (ON) | `tradestation-bot/risk_config.py:293` |
+| In-play gate (RelVol/move/$-vol) | False  (OFF) | `tradestation-bot/risk_config.py:270` |
+| HTB/halted exclusion | True  (ON) | `tradestation-bot/risk_config.py:304` |
 | Earnings veto | live-invoked in 9:35 path; fails OPEN on stale/missing calendar | `tradestation-bot/orb_runner.py:441 (is_earnings_blackout call) + orb_earnings_veto.py` |
-| Deploy-controller scope | True -- governs the RE-ARM/multiscan admit ceiling only; 9:35 ORB sizes by its own constants | `tradestation-bot/risk_config.py:238` |
-| Deploy base | $400,000 | `tradestation-bot/risk_config.py:237` |
-| Deploy target % | 0.95 | `tradestation-bot/risk_config.py:241` |
+| Deploy-controller scope | True -- governs the RE-ARM/multiscan admit ceiling only; 9:35 ORB sizes by its own constants | `tradestation-bot/risk_config.py:249` |
+| Deploy base | $400,000 | `tradestation-bot/risk_config.py:248` |
+| Deploy target % | 0.95 | `tradestation-bot/risk_config.py:252` |
 | Deploy target $ (computed live) | $380,000 | `deploy_controller.deploy_target() = DEPLOY_BASE * DEPLOY_TARGET_PCT` |
-| Per-position notional cap | $25,000 | `tradestation-bot/risk_config.py:242` |
-| Per-side cap | 0.50 ($200,000/side) | `tradestation-bot/risk_config.py:243` |
+| Per-position notional cap | $25,000 | `tradestation-bot/risk_config.py:253` |
+| Per-side cap | 0.50 ($200,000/side) | `tradestation-bot/risk_config.py:254` |
 | Max open positions (count backstop) | 16 | `tradestation-bot/risk_config.py:86` |
 
 ## EXIT
 | Fact | Live value | Source |
 |---|---|---|
-| Resting broker stop distance | 1.4 x ATR  (StopMarket) | `tradestation-bot/orb_runner.py:98` |
+| Resting broker stop distance | 1.4 x ATR  (StopMarket) | `tradestation-bot/orb_runner.py:100` |
 | Resting stop -- WHEN placed | post-fill monitor on the shared entries_submitted list. 9:35 AND -- since Loop 155 (LIVE Mon 6/29) -- RE-ARM fills both register, so the proven monitor places ONE 1.4xATR resting stop per fill (re-arm coverage 0% -> ~100%). Not atomic with entry; cancel-on-flatten inherited. | `tradestation-bot/orb_runner.py:931-992 + orb_multiscan._register_rearm_resting_stops (Loop 155)` |
 | Confirmation threshold | 0.15 x ATR favorable | `tradestation-bot/candle_close_exit.py:24` |
 | Chandelier trail multiple | 1.4 x ATR (ratchet-favorable-only floor) | `tradestation-bot/candle_close_exit.py:60` |
