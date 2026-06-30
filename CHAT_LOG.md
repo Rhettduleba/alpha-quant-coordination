@@ -9200,3 +9200,98 @@ What I'll watch at the open: the first `ORB SL placed … $CAP=500` log lines co
 **Close-out (Loop 187, 2026-06-30 07:19 ET):** SESSION_LOG.md:236 (Loop 187, re-read & saved) ✓ · strategy-change logged (`AQ-20260630-ORBV1-DOLLARCAP500-001`, approved_by Rhett, active) + manual_approvals updated ✓ · SYSTEM_FACTS regenerated (shows $500 cap active) ✓ · coordination mirrored + pushed HEAD **`c7e376a`** (secret-scan clean) ✓ · bot healthy post-restart (PID 6824, StartTime > mtime), kill-switch ready, 1.4×ATR floor intact · **LIVE in SIM** — rollback is one line.
 
 ---
+
+
+## Turn — 2026-06-30 07:31:37 ET
+
+**Rhett:**
+
+# HANDOFF → CLAUDE CODE — STUDY: confirmation timing + early-adverse recovery → find the early-exit sweet spot (read-only)
+# From: Planning Claude | 2026-06-30 ET (Code: number + stamp; CLAIM→VERIFY→SHOW close-out per the standing protocol)
+# PHASE 2 research sprint (Rhett). PRIOR ART: a diagnostic found 5-min MAE predicts loss at AUC 0.82 (vs 0.64 at
+# entry) — the discriminator lives in EARLY post-entry excursion. The L1 early-MAE exit was DEMOTED then for 2 reasons
+# now CHANGED: (a) MU-dominated → re-test on MORE days; (b) bot couldn't act early (poll 5.2min) → TW now watches from
+# ~15s. So re-run the study with more data + the capability now existing. GOAL: the sweet-spot early-exit that cuts
+# early-adverse losers WITHOUT clipping dip-then-recover winners. READ-ONLY: analysis only, no watched file, no live
+# change. Across ALL available test days (not one), on 1-min bars (state the proxy limit).
+
+## THE THREE QUESTIONS (quantify each, winners vs losers separately)
+1. WHEN DO TRADES CONFIRM? Distribution of time-to-confirmation (first +0.15ATR favorable) for WINNERS vs LOSERS.
+   Do winners confirm fast? Do losers mostly NEVER confirm? Median/percentiles. This tells us if "still unconfirmed
+   by minute N" is itself a sell signal.
+2. EARLY-ADVERSE RECOVERY CURVE: for trades that are ADVERSE at minute 1, 2, 3, 4, 5 (by various MAE thresholds),
+   what fraction still end as WINNERS? Build the table: "down X by minute N → P(winner)". Confirm/quantify the
+   "early-adverse rarely recovers" claim BY MINUTE and BY DEPTH. Flag single-trade (MU-class) domination in any cell.
+3. THE SWEET SPOT: sweep candidate early-exit rules — "exit if adverse by ≥ D (in ATR or $) at/by minute N, and not
+   yet confirmed" — across N∈{1,2,3,4,5} and a range of D (include the 0.75ATR "MIN-SAFE" from the old L1 study).
+   For each rule, on ALL days: $ saved on losers, $ given up on clipped winners (MUST-NOT-CUT), net effect, win% /
+   PF. Find the (N, D) that maximizes net WITHOUT clipping confirmed winners.
+
+## CRITICAL CONTROLS (the traps that killed L1 — don't repeat)
+- MU/single-trade dominance: report every result BOTH with and WITHOUT the single biggest trade; if the edge needs
+  one trade, it's NOT real. Flag it.
+- Must-not-cut: explicitly count how many CONFIRMED WINNERS each rule would clip, and the $ given back. A rule that
+  saves losers but clips winners net-negative is rejected.
+- Across-day robustness: does the sweet spot hold on EACH day, or only in aggregate (one day carrying it)? Per-day breakdown.
+- 1-min-bar proxy: state it; intrabar ordering (did it hit the exit before recovering?) is unresolvable at 1-min —
+  flag any rule whose result would flip on ordering.
+
+## OUTPUT (plain English)
+- Q1: when winners vs losers confirm (the distributions) — is "unconfirmed by minute N" a usable signal?
+- Q2: the early-adverse → P(winner) table by minute & depth (MU-in vs MU-out).
+- Q3: the sweet-spot (N, D) rule + its net effect, winners-clipped, per-day robustness, MU-out result.
+- The honest verdict: is there a real early-exit edge across days (not one-trade), and what's the candidate rule to
+  then build+replay+forward-test? Or does the data say no reliable early-exit exists (a valid answer)?
+
+## HARD CONSTRAINTS
+- READ-ONLY: analysis only, no watched/trading file, no orders, no config. Freeze intact.
+- Every result MU-in AND MU-out + per-day. No promoting an aggregate edge that's one trade or one day. State the proxy limit.
+
+**Claude Code:**
+
+Phase-2 read-only study. I have the building blocks (`tw.minute_bars_for_day`, `tw.atr14_asof`, `round_trips_net_all`, the bar-replay pattern). Let me first gauge the trade universe size to plan the bar-fetch, then build the study:
+305 trades / 15 days / 256 bar-fetches (MU is only 2 trades — its "dominance" was $-magnitude). Good per-day robustness. Building the study:
+Running the study (256 bar-fetches — may take a few minutes):
+The study ran fully (305 trades, 0 skipped, 15 days) and delivered a clean, important **negative result**. Let me record it:
+Recorded and pushed (coordination HEAD `76569da`). Full report at `outputs/reports/early_exit_study.md`.
+
+## Early-exit study — the honest verdict: **no reliable early-exit edge exists**
+
+305 ORB-equity trades, 6/08–6/29 (15 days, 0 skipped), 1-min bars, gross, every result MU-in / MU-out / biggest-trade-out. This is a **valid negative answer** — and it re-confirms the L1 demotion now *with* more days *and* the TW-can-act-early capability that supposedly changed the picture.
+
+### Q1 — When do trades confirm? "Unconfirmed early" is **not** a sell signal.
+| cohort | n | median confirm | NEVER-confirm |
+|---|---|---|---|
+| Winners | 172 | **29 min** (p75 = 75) | 1% |
+| Losers | 133 | 44 min | **61%** |
+
+Winners confirm **slowly** (median 29 min) — so being unconfirmed in the first 1–5 minutes describes ~93% of *all* trades. `P(loser | unconfirmed by minute N)` = **43–44%**, essentially the 44% base rate. No early discrimination.
+
+### Q2 — Early-adverse → P(winner): the signal is either too rare or it recovers.
+| down ≥ (×ATR) | by min 1 | min 3 | min 5 |
+|---|---|---|---|
+| **0.5** | 56% [9] | 64% [14] | 67% [15] |
+| **0.75** | 0% [2] | 25% [4] | 25% [4] |
+| **1.0** | — | — | 100% [1] |
+
+A **shallow** early dip (0.5×ATR) **mostly recovers** (56–67% win) → cutting it clips winners. A **deep** early dip (≥0.75×ATR) rarely recovers but **only 2–4 trades** ever hit it in the first 5 minutes → nothing to act on. The damaging losses don't crash in minutes 1–5; they bleed later.
+
+### Q3 — Sweep (N∈1–5 × D∈0.5–1.25): **every rule is net-negative or zero.**
+- D=0.5: fires 9–14×, **clips 5–10 winners** → net **−$1,480 to −$3,103**
+- D=0.75: net **−$655 to −$838**
+- D≥1.0: fires 0–1× → ~$0
+
+**No (N,D) is net-positive, and none survives MU-out or biggest-trade-out.** Removing the biggest trade (COHR −$1,973) or MU (only 2 trades) doesn't change it — this isn't a one-trade or one-day artifact.
+
+### Reconciling with the prior "5-min MAE AUC 0.82"
+High AUC (statistical *ranking* of losers above winners) ≠ a profitable *threshold rule*. The depth that actually catches losers is **rare early**, and the depth with enough volume **clips winners** — the classic ML-discrimination-vs-tradeable-edge gap. The AUC isn't wrong; it just isn't actionable as an early-minute cut.
+
+### Verdict + recommendation
+**There is no reliable early-exit edge to build.** Don't pursue a minute-N early-MAE exit — the study now shows *why* across 15 days. The **$500 dollar-cap stop (enabled Loop 187) is the correct tool**: the real damage develops **late and is $-sized** (COHR's big move was well after minute 5), so a from-fill *dollar* cap catches it where an early-*timing* cut cannot. Forward-test the $500 cap; consider this L1 thread closed unless a different (non-early-timing) discriminator emerges.
+
+**Caveats:** 1-min intrabar order is unresolved (shallow-dip cells are optimistic for the exit); in-sample 15 days, gross.
+
+---
+**Close-out (Loop 188, 2026-06-30 07:30 ET):** SESSION_LOG.md:236 (Loop 188, re-read & saved) ✓ · report at `outputs/reports/early_exit_study.md` ✓ · coordination mirrored + pushed HEAD **`76569da`** (secret-scan clean) ✓ · READ-ONLY — no watched/trading/config change, freeze intact · SYSTEM_FACTS regen **N/A**.
+
+---
