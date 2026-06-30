@@ -12305,3 +12305,61 @@ The remaining live-blockers (B3 sector cap, B5 intraday clamp, B2 4× universe, 
 Want me to run that entry study now (read-only, like the dollar one) so we have the 9:35-vs-re-arm and the winner/loser signature data in front of us?
 
 ---
+
+
+## Turn — 2026-06-30 19:14:57 ET
+
+**Rhett:**
+
+run the study, promot the best.and leave the live blockers in shadow
+
+**Claude Code:**
+
+On it — run the entry study, promote the winner properly (through the watched-path channel, with the regression lock), and B3/B5/B2 stay shadow. First let me see how the EOD debrief classifies the 9:35 vs re-arm path so my study uses the same definition:
+The EOD uses a clean definition: **entry before 10:00 ET = 9:35-gated, else re-arm** (eod_debrief.py:747). Let me run the path-expectancy study on that — it's fast (reads the broker CSV, no bar fetches):
+The data is decisive and exactly what we suspected:
+
+| Path | N | Net | Per-trade | Win% | PF |
+|---|---|---|---|---|---|
+| **9:35-gated** | 124 | **−$3,715** | **−$30** | 55% | 0.65 |
+| **re-arm** | 196 | **+$245** | +$1.2 | 59% | 1.02 |
+
+**The entire −$3,470 loss is the 9:35 path. Re-arm is net positive.** Post-6/19 it's even starker (9:35 = −$70/trade). Notably 9:35's win rate is *fine* (55–64%) — it's the **loser size** (avg −$190 to −$410) that sinks it: the spent-gap chases. So **the best promotion is to gate the 9:35 entry path and keep re-arm.** That swings the book from −$3,470 to roughly breakeven (+$245) — the single biggest, most mechanism-backed change available, and not a curve-fit (it removes a structurally-losing path).
+
+Let me implement it cleanly. First, finding where 9:35 entries submit (to gate them) while preserving the candidate logging for measurement:
+Let me read the candidate-logging + submit section so the gate preserves measurement (the candidate log) and only stops submission:
+The gate location is clean: candidate logging (line 632-636) runs **before** the submit loop (703), so gating `top` after the SAFE_MODE block preserves measurement and only stops 9:35 entries — re-arm (separate process) is untouched. Let me wire the promotion. First the flag in risk_config:
+Adding the flag with full provenance:
+Now import the flag in orb_runner and add the gate after the SAFE_MODE block. Finding the risk_config import:
+Now the regression lock (REG-27) so the gate can't be silently removed:
+Verifying the promotion — compile, confirm re-arm is untouched, and run REG-27:
+Promotion verified: **9:35 entries OFF, re-arm untouched, REG-27 green**, takes effect at tomorrow's open (orb_runner respawns each cycle; market's closed now). Let me record the governance (proposal + approval) and regen SYSTEM_FACTS. Finding the approval files:
+Adding the approval record (matching the existing style):
+Now regen SYSTEM_FACTS (watched-config change) and log it:
+SYSTEM_FACTS regenerated (local + coordination). Logging the promotion and pushing:
+Done — the study is run and the best change is promoted live (pushed `8e33427`).
+
+## What the study found
+The whole loss is one path:
+
+| Path | N | Net | Per-trade | Win% |
+|---|---|---|---|---|
+| **9:35-gated** | 124 | **−$3,715** | **−$30** | 55% |
+| **re-arm** | 196 | **+$245** | +$1.2 | 59% |
+
+The 9:35 path's win rate is fine — it's the **loser size** (spent-gap chases) that bleeds. Post-6/19 it's even worse (−$70/trade). Re-arm carries the book.
+
+## What I promoted
+**Gated the 9:35 entry path** — `ORB_935_ENTRIES_ENABLED = False`. The 9:35 scan still runs and logs candidates (so we keep scoring its hypothetical book for the forward test), but it **submits nothing**; the **re-arm path is fully intact** (verified — it doesn't touch the flag). This swings the book from −$3,470 to roughly breakeven.
+
+Done the disciplined way:
+- **Verified:** compiles, flag off, re-arm unaffected.
+- **Regression-locked:** REG-27 — a silent re-enable of the loss-engine path fails the suite.
+- **Governance:** `PROP-935-GATE-2026-06-30` written + approved in `manual_approvals.yaml`; SYSTEM_FACTS regenerated.
+- **Timing:** takes effect at tomorrow's 9:35 open (orb_runner respawns each cycle, market's closed — no restart), and it's reversible with one flag.
+- **B3/B5/B2 stay in shadow** as you said.
+
+## The honest part
+This **stops the bleeding** — it doesn't manufacture an edge. Re-arm-only is ~breakeven (+$1.2/trade post-5/26, slightly negative post-6/19), not a proven winner. So the real next question is whether there's an actual edge to find in the re-arm path (the short side is the one bright spot: re-arm shorts are +$844 / +$8.3 per trade, 65% win). That's where I'd point the next study — but tonight's change removes the single biggest, most clear-cut drag on the system, and the SIM going forward is now the live test of it.
+
+---
