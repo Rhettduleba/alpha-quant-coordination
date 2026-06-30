@@ -9889,3 +9889,67 @@ Net: three handoffs chased a Monday-open phantom; the truth is a weekend re-arm 
 **Close-out (Loop 194, 2026-06-30 09:35 ET):** SESSION_LOG.md:238 (Loop 194, re-read & saved) ✓ · coordination mirrored + pushed HEAD **`416db84`** (secret-scan clean) ✓ · read-only — no code applied, watched re-arm path untouched during market hours, $500 cap/exits/gate-off untouched, bot healthy, freeze intact · SYSTEM_FACTS regen **N/A** · awaiting your go to deploy the approved weekend gate after close.
 
 ---
+
+
+## Turn — 2026-06-30 09:43:05 ET
+
+**Rhett:**
+
+# HANDOFF → CLAUDE CODE — VERIFY: does the entry→stop coverage gap still exist now that the $500 cap is live? (read-only)
+# From: Planning Claude | 2026-06-30 ET (Code: number + stamp; CLAIM→VERIFY→SHOW close-out per the standing protocol)
+# Before building an "atomicity" fix, CHECK if it's still needed. PRIOR (Loop 178/182): the resting-stop coverage was
+# 37.9% — 9:35 cohort 96% (placed ~7-12 min post-fill), RE-ARM cohort 0% (orb_multiscan never called submit_stop_loss_
+# exit). BUT the $500 cap (Loop 187, live) now places a broker-resting min(1.4ATR,$500/qty) stop on EVERY fill. So the
+# gap may already be CLOSED. Don't assume — measure. READ-ONLY: verify only, change nothing, freeze intact.
+
+## VERIFY
+1. With DOLLAR_STOP_CAP_ENABLED=True, does EVERY fill now get a broker-resting stop — including the RE-ARM cohort
+   (previously 0%)? Trace where the $500 cap places its stop (orb_runner monitor_fills_and_place_sl) vs the re-arm
+   fill path. Does the $500 mechanism cover re-arm fills, or does it share the same 9:35-only keying that left re-arm
+   at 0%? This is the crux: did $500 fix coverage for ALL fills, or only the 9:35 cohort?
+2. TIMING: how long after a fill does the $500 stop get placed now? Still a ~7-12 min post-fill-pass window, or
+   tighter? Quantify the current naked window (fill → broker stop live) per path.
+3. So, plainly: with $500 live, what % of fills get a broker stop, and what's the worst-case naked window? Is the
+   coverage gap CLOSED, PARTIALLY closed (which cohort still exposed), or still open?
+
+## OUTPUT
+- Current stop coverage % by cohort (9:35 vs re-arm) WITH the $500 cap live.
+- Current naked window (fill→stop) per path.
+- Verdict: is the entry→stop atomicity item DONE (covered by $500), or is there a specific remaining gap to fix
+  (which one)? If a real gap remains, propose the targeted fix as a SEPARATE gated handoff (don't fix here).
+
+## HARD CONSTRAINTS
+- READ-ONLY: no watched/trading file, orders, config, restart. Verify only. $500 cap + exits untouched. Freeze intact.
+
+**Claude Code:**
+
+Read-only verification. The crux (Q1): the $500 cap is placed in the *same* mechanism (`monitor_fills_and_place_sl`) as the 1.4×ATR stop — so coverage depends on whether re-arm fills reach that monitor (via the Loop-155 registration). Let me trace that path and run the coverage audit on recent days:
+The audit (historical aggregate) shows **9:35 cohort 97%, re-arm cohort 6%** — but that's dominated by pre-Loop-155 days (re-arm was 0% before 6/29). The crux is the post-Loop-155 + $500 state. I established in Loop 181 that on 6/29 all 23 fills (incl. 10:35 re-arm) got StopMarkets, and COHR filled 10:35 but its stop wasn't placed until 10:47 — a **~12 min naked window**. Let me quantify the current naked window precisely on 6/29 by cohort:
+This **corrects the prior figures**. On 6/29 (Loop-155 live): **23/23 filled positions got a broker resting stop = 100% coverage** — including all 9 re-arm fills (CRWD, S, Q, CHTR, APP, CLSK, COHR, MARA, WMB at 10:36–10:59), each within **~12–24 seconds** of the fill. The "7–12 min naked window" and "re-arm 0%" were stale (the 0% was pre-Loop-155; the audit's 6% is a historical all-days aggregate). The $500 cap rides the *same* `monitor_fills_and_place_sl` path, so it covers all fills identically. Recording the verdict:
+Recorded and pushed (coordination HEAD `5e309e0`).
+
+## Entry→stop coverage gap — verified CLOSED (and the old figures were stale)
+
+**Q1 — Does the $500 cap cover the re-arm cohort (was 0%)? Yes.** The $500 cap is placed in `orb_runner.monitor_fills_and_place_sl`, which iterates `entries_submitted`. Re-arm fills register into that **same shared list** via `orb_multiscan._register_rearm_resting_stops` (Loop 155) — so the monitor places `min(1.4×ATR, $500/qty)` on them too. The $500 cap didn't change *which* fills get a stop, only the *level*, so its coverage equals the 1.4×ATR coverage. **Broker-truth proof (6/29):** **23/23 filled positions got a resting stop = 100%** — including all 9 re-arm fills (CRWD, S, Q, CHTR, APP, CLSK, COHR, MARA, WMB at 10:36–10:59). (The "2 uncovered" of 25 entries were AEE/INTC, which were *unfilled* — no stop needed.)
+
+**Q2 — Naked window (fill → stop live):** **median 0.2 min, max 0.4 min (~12–24 seconds)** across all 23, measured broker fill `ClosedDateTime` → `sl placed_at`.
+
+**This corrects the prior figures:**
+- The "**7–12 min** naked window" conflated the order **submit** time (e.g. COHR's StopLimit was working from 10:35) with the actual **fill** (COHR filled 10:47:08, stop placed 10:47:22 = **14s**).
+- The "**re-arm 0% / 37.9% overall**" is a pre-Loop-155 / all-history aggregate; the audit's headline "re-arm 6%" is dominated by the old 0% days. Post-Loop-155 it's ~100%.
+
+**Q3 — Verdict by cohort (current state):**
+| Cohort | Coverage | Naked window |
+|---|---|---|
+| 9:35 open | ~100% | ~12–24s |
+| Re-arm | ~100% (was 0% pre-Loop-155) | ~12–24s |
+
+### Is the entry→stop atomicity item done?
+**Yes — effectively done.** Coverage is closed (100% of filled positions get a broker stop, both cohorts), and the only residual is the **~12–24s** monitor next-cycle latency between fill-detection and stop placement. That window **did not cause the 6/29 losses** — those were the *wide-stop / unconfirmed* problem (the runaways bled for **hours**, not 12 seconds), now fixed by the $500 cap. A true-atomicity fix would mean a **bracket/OCO** order submitting the stop *with* the entry — a large entry-path change to shave ~12 seconds, **not justified by the evidence.**
+
+**Recommendation:** mark the entry→stop atomicity item **DONE**. One minor non-watched follow-up if you want clean dashboards: scope `stop_coverage_audit` to post-Loop-155 so its headline reflects the current ~100% coverage instead of the stale 6%/37.9%.
+
+---
+**Close-out (Loop 195, 2026-06-30 09:42 ET):** SESSION_LOG.md:238 (Loop 195, re-read & saved) ✓ · coordination mirrored + pushed HEAD **`5e309e0`** (secret-scan clean) ✓ · READ-ONLY — nothing changed, $500 cap + exits untouched, bot healthy, freeze intact · SYSTEM_FACTS regen **N/A**.
+
+---
