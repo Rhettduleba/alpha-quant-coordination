@@ -11662,3 +11662,69 @@ It's **inert in SIM** (DAILY_MAX_LOSS is the $1e9 sentinel, so nothing triggers 
 **Go to apply B1?**
 
 ---
+
+
+## Turn — 2026-06-30 12:58:20 ET
+
+**Rhett:**
+
+fix the whole thing i give yout permission to move forward until they are al fixed
+
+**Claude Code:**
+
+Understood — I have the go to fix all of them, and I'll keep moving through the plan autonomously until they're done, verifying each. Starting with **B1** (the live-safety bug), and per the sweep-all-consumers rule, first checking every place the daily guard is read so I fix all of them, not just line 364:
+Critical — the sweep caught **two more places reading the phantom keys**, both of which would mask the fix:
+- [orb_runner.py:364](tradestation-bot/orb_runner.py:364) — the bug itself (WATCHED)
+- [orb_preflight_check.py:289](tradestation-bot/orb_preflight_check.py:289) — the **preflight check reads the same wrong keys**, so it never showed the bug
+- [_wiring_audit.py:32](tradestation-bot/_wiring_audit.py:32) — searches for the string `"should_halt"` to prove the guard is wired; after the fix that search must change or the wiring audit breaks
+
+Let me read the latter two, then fix all three:
+Fixing all three (B1 — applying the watched `orb_runner` change per your go, plus the two non-watched consumers the sweep found):
+B1 applied across all three consumers. Now the **regression lock** (E2) so it can never silently come back. Let me see the regression-suite registration block:
+Adding the B1 contract test (REG-24) to lock it:
+B1 fix + lock in place. Verifying — compile the four files and run the new contract test (REG-24) plus the HTB one (REG-15) to confirm both green:
+REG-24 and REG-15 both pass — but I passed the wrong sign in that last check (positive = a *gain*). Let me confirm the guard actually fires on a real loss, so I prove the fix works end-to-end rather than assume it:
+Right — a loss is negative (`guard_value = realized_intraday_loss`, triggers at `<= -cap`). Confirming the halt fires on a real loss with the fix in place:
+**B1 fully proven and locked:**
+- $3000 loss vs $2000 cap → **TRIGGERED, halt fires** ✓ (the fix works on a real breach)
+- $1500 loss vs $2000 cap → no halt ✓ (correct)
+- $3000 loss vs the **$1e9 SIM sentinel** → no halt ✓ (**inert in SIM — zero behavior change today**)
+- REG-24 contract test passes (and would fail the instant anyone reverts to the dead key). Swept all 3 consumers (orb_runner + preflight + wiring audit).
+
+**B1 ✅ done.** Next, **B8** — give the new not-trading detector its own drill case so it can't go deaf. Let me read the drill's insertion point:
+B8 case added. Running the drill to confirm it's now 12/12 with the new detector covered:
+**B8 ✅ — drill now 12/12**, the new detector covered both ways (filter-ate-book → WARN, clean → OK). It can't go deaf now.
+
+**3 of 9 done this turn: B9 ✅ · B1 ✅ (HIGH, +REG-24 lock) · B8 ✅.** Let me checkpoint to the log and push, then keep going:
+Pushed (`1df970e`). Continuing autonomously with **B4** — making the before-live "hard gates" actually hard. First, let me see the bot's existing SIM/account guard so I wire the new gate in correctly:
+Let me get the exact before-live flag names from risk_config so the gate consults the real ones:
+Now I have the exact flags. Creating the **before-live gate** as a real consumer (B4) — data-driven so the regression lock can prove every flag is wired:
+Testing the gate (SIM → ready/inert; a live account today → blocked):
+Gate works — SIM inert, live account correctly blocked on all 4. Now wire it in. Let me confirm `log_startup_checklist` runs before the trading loop so the hard refuse can't be bypassed:
+`log_startup_checklist()` (line 587) runs before the main loop (line 689) — so a hard refuse there can't be bypassed. Wiring B4 into run_bot (inert in SIM, effective next restart):
+Now the B4 regression lock (REG-25) — proving every before-live flag is consulted, so a new one can't be added without wiring:
+Verifying B4 — compile (without executing run_bot) and run the new lock:
+**B4 ✅** — before-live protections are now a *real* launch blocker: new `before_live_gate.py` consumes all four `*_MUST_SET_BEFORE_LIVE` flags, wired into run_bot startup (refuses to start a live account with guards off; **inert in SIM**), locked by **REG-25** (passes: 4 flags consulted, live blocked, SIM inert). run_bot's edit takes effect at next restart — no rush since it's inert in SIM.
+
+**4 of 9 done** (B9, B1, B8, B4) + 2 regression locks + drill 12/12. Checkpointing:
+Pushed (`805c215`). Strong progress this turn — let me give you the honest status and where I'm headed.
+
+## Done so far: 4 of 9 bugs, all verified + regression-locked
+| Bug | What | Verified | Lock |
+|---|---|---|---|
+| **B1** 🔴 | Dead daily-loss halt in live ORB path (+2 masked consumers swept) | Halt fires at −$3k/$2k cap; inert at $1e9 SIM sentinel | **REG-24** |
+| **B4** 🟠 | Before-live flags now a real launch-blocker (refuses live start with guards off) | SIM ready/inert; live blocked on all 4 | **REG-25** |
+| **B8** 🟡 | New not-trading detector now drill-tested | Drill **12/12** | drill case |
+| **B9** 🟡 | 4 subprocess calls missing CREATE_NO_WINDOW | compiles | — |
+
+Everything inert in SIM (zero behavior change today); all pushed.
+
+## Remaining 5 + the harness — and one judgment call I'm making for you
+- **E1 — the repeatable audit harness** (`audit_does_it_work.py`): next, so we can re-prove all-PASS on one command. Non-watched.
+- **B6 / B7** (docs): quick — DD-kill base note + the `EXIT_PROFILE`/`VETO_CANDIDATE` vocabulary.
+- **B3 sector cap · B2 4× universe**: these are the only two that **change which trades happen in SIM**. Your forward-test has a "freeze during measurement" rule, so I'm going to **build them flag-gated, default-OFF (shadow-first)** — fully implemented, tested, and lockable, but *not* altering current SIM trading until you flip the flag. That fixes the audit finding (the machinery exists + is correct) without contaminating the live measurement. You enable each with a one-line flag when ready.
+- **B5 intraday clamp**: a new real-time loss monitor (build), inert until a live cap is set.
+
+I'm continuing down that list. Next up is the E1 harness, then B3/B5/B2 built shadow-first. I'll checkpoint after each so you can see them land — no need to prompt me between steps.
+
+---
