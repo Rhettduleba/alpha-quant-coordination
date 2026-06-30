@@ -11925,3 +11925,47 @@ Triage complete — clean run, nothing needed Rhett.
 - SESSION_LOG appended, synced to coordination repo (commit `e79834f`, pushed), inbox `--ack`'d.
 
 ---
+
+
+## Turn — 2026-06-30 18:25:45 ET
+
+**Rhett:**
+
+lets read the eod and update session
+
+**Claude Code:**
+
+Let me check the current time and pull today's EOD state — broker truth, the debrief, and whether the EOD reconciliation task has run:
+Market's closed (6:23 PM ET) and the 4:50 EOD task already ran — today's debrief exists and a block is in SESSION_LOG. Let me read the full debrief:
+Read the full debrief. Strong day — but one number (96 incidents) I won't gloss over without checking. Let me verify what those are before I report:
+Read it and verified the one scary number — the **96 incidents are noise, not trading defects**: 94 × `rel_safe_mode_not_stuck` (cosmetic — SAFE_MODE shows "stuck active" overnight but `SAFE_MODE_ENFORCE` is OFF so it never blocked anything), 1 × the known 9:30 loop-stall (self-recovered), 1 × the clean-day-cert it broke. The bot traded fine. Here's the day.
+
+## EOD — 2026-06-30: **+$899.60 net** (gross $957.32) · 15 trades · **80% win (12W/3L)** · PF 1.84 · **flat at close** ✓
+
+**The headline: the HTB fix saved the day.** The 9:35 path armed **0** (the HTB-blocked morning) — every one of the 15 trades came from the **re-arm path** (14 at 10:35, right after the 10:31 fix; 1 at 11:35). The proven money-maker did all the work.
+
+**The $500 cap did exactly its job** — both stop-out losers were contained at ~$500 + commission, and the day's loss was a 3-way cluster (top loser only 47% of it), no MU-class blowup.
+
+**Trades, best → worst (net):**
+| Winners | | Losers |
+|---|---|---|
+| SNDK +$345 · INTC +$285 · MSTR +$264 | | MRVL **−$507** |
+| AMD +$180 · COIN +$178 · AMAT +$158 | | MRNA **−$507** |
+| TTD +$152 · LRCX +$144 · APH +$88 | | AKAM −$59 |
+| SYK +$70 · DLR +$65 · ZBH +$41 | | |
+
+**My read:** a clean, healthy day and a direct payoff from this morning's work — the re-arm engine carried it, the $500 cap contained both losers to the dollar, flat at close. The two stop-outs (MRNA/MRVL, both unconfirmed longs) then ran favorably after the stop (left ~$575/$642 on the table) — the known false-stopout tradeoff, but loss-containment is the cap's job and it did it. Cost stayed tiny (1.94 bps, slippage 0.9 better than trailing).
+
+**Three flags worth noting (none are trading defects):**
+1. **The 94/day SAFE_MODE-stuck noise** — cosmetic (ENFORCE off), but it pollutes the incident count overnight and breaks the clean-day cert. Worth clearing the stuck flag so it stops crying wolf.
+2. **TTD traded today (+$152) is flagged `Restrictions=['ToBeDelisted']`** — exactly the kind of special-handling name the **B2 4×-universe** should exclude. Good live confirmation for that fix.
+3. **Exit-reason labeling gap** — 11/15 exits show "EXIT_UNCLASSIFIED," so the compliance line reads a misleading "1/15"; it's a logging-join gap, not 14 rule violations.
+
+Now updating the session log:
+Session updated and pushed (Loop 209, coordination HEAD `a98c2cf`). The EOD block was already auto-written by the 4:50 task; I've added the day-narrative + the three verified flags on top of it.
+
+**Bottom line for today:** +$899.60 net, flat at close, and it's a clean cause-and-effect story — the HTB fix at 10:31 turned a 0-trade morning into a +$900 day via the re-arm path, and the $500 cap contained both losers to the dollar.
+
+The one actually-actionable EOD item is the **94/day SAFE_MODE-stuck noise** — it's cosmetic (ENFORCE is off, it never blocked a trade), but it's flooding the incident log overnight and it's what's breaking the clean-day cert. Bot's flat and the market's closed, so it's a safe moment to clear the stuck flag. Want me to clear it now so tomorrow starts clean — then I'll get back on the remediation queue (E1 harness next)?
+
+---
