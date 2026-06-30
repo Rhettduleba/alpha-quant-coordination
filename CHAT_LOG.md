@@ -11969,3 +11969,54 @@ Session updated and pushed (Loop 209, coordination HEAD `a98c2cf`). The EOD bloc
 The one actually-actionable EOD item is the **94/day SAFE_MODE-stuck noise** — it's cosmetic (ENFORCE is off, it never blocked a trade), but it's flooding the incident log overnight and it's what's breaking the clean-day cert. Bot's flat and the market's closed, so it's a safe moment to clear the stuck flag. Want me to clear it now so tomorrow starts clean — then I'll get back on the remediation queue (E1 harness next)?
 
 ---
+
+
+## Turn — 2026-06-30 18:40:12 ET
+
+**Rhett:**
+
+fix all three flags, what was the P&L for the day?
+
+**Claude Code:**
+
+**P&L for the day: +$899.60 net** (gross $957.32, commission $57.72) — 15 round-trips, 80% win, broker-confirmed flat at close.
+
+Now fixing all three flags. They're all in non-watched code, so I can do them properly. Let me investigate each before touching it — starting with the SAFE_MODE state, the TTD restriction, and how exits get labeled:
+The auto-clear only fires when `triggered_by == "reliability_monitor"` — so if it was engaged another way, it stays stuck. Let me see the actual stuck state + investigate the other two flags:
+Key correction: **SAFE_MODE is already clear** (`active: false` since 9:35 AM auto-clear) — the 94 incidents were the *overnight* accumulation before it cleared. So there's nothing to clear; the real fix is stopping the **FAIL-noise recurrence**. And TTD confirmed `Restrictions=['ToBeDelisted']`; exits are logged as `ORB_SL_OK` but not joined. Let me read the two checks I need to change:
+`check_safe_mode_not_stuck` already returns **WARN** (not CRIT) when ENFORCE is off — yet the incidents logged as **FAIL**. That contradiction means a different writer set the severity. Let me find what writes incidents.jsonl and why it recorded FAIL:
+There's a known incident-bloat note at [system_health_verifier.py:2098](tradestation-bot/system_health_verifier.py:2098). Let me confirm the recording threshold — if only CRITICAL/UNKNOWN is logged, the existing WARN-downgrade already prevents recurrence:
+Confirmed: incidents are logged **only for FAIL** (line 2099); WARN isn't recorded. So the Loop-189 WARN-downgrade (now live in the check) already prevents the 94/night recurrence — those incidents predate the fix taking effect. Flag 1 mostly needs a regression lock + a belt-and-suspenders EOD clear. Let me knock out the cleanest one first — **Flag 2 (restricted names)**. Reading the current filter:
+**Flag 2** — exclude broker-restricted names (the TTD `ToBeDelisted` class) at the pre-trade gate. This auto-applies via the existing callers (they skip on any reason) and blocks both sides via the fail-safe in `blocks_side`:
+Making `blocks_side` handle `RESTRICTED` explicitly (both sides), then verifying live against TTD:
+**Flag 2 ✅** — TTD now excluded as `RESTRICTED:ToBeDelisted` (both sides), clean names unaffected, REG-15 still green; auto-applies next cycle. 
+
+**Flag 1** — the WARN-downgrade is already live (prevents the FAIL-noise). Adding its regression lock so it can't regress:
+Now **Flag 3** — the exit-reason join. Let me find where `eod_debrief` classifies exits (the `EXIT_UNCLASSIFIED` source):
+Exit reasons are joined from `trade_journal.csv`, but the re-arm exits (resting-stop fills) aren't journaled with a reason → "EXIT_UNCLASSIFIED." The robust fix is to fall back to the **broker exit-order type**. Let me see the round-trip structure to wire that fallback:
+Let me see `_fills`/`_round_trips` to find where the exit order type lives, so the fallback is broker-truth, not a guess:
+`_fills` already carries `order_type` per fill (line 99), so the exit order type is available on each round-trip — a broker-truth fallback, not a guess. Let me see how exits get classified into codes so I map the fallback correctly:
+`exit_reason_codes.py` isn't in the bot dir but `eod_debrief` imports it (in a try/except) and produced codes — so it's resolving from somewhere. Let me locate the real one in the live tree before I touch the classification:
+Found it — `exit_reason_codes.py` lives in `C:\AlphaQuant\validation\` (the EOD task runs with that on its path). Let me read it + the `_section_b` exit logic so I wire the broker-order-type fallback + its code mapping correctly:
+Now I see the path: `_section_b` iterates the raw round-trips (which carry `ex["order_type"]` from broker truth), and `classify_exit_reason` maps by substring. So a **single-file fallback in eod_debrief** (no change to the codes module) fixes it — derive the reason from the exit order type (Stop = resting protective stop; Market mid-day = the deployed candle/chandelier monitor; Market late = EOD). Let me read the two exact anchor points:
+Both anchor points found. The autopsy uses `round_trips_net` rows (no order_type), so I'll add `exit_order_type` to that ledger too — one helper covers both. Adding the helper:
+Now wire it into both ledgers — Section B (has `ex`), `round_trips_net` (add the field), and the autopsy:
+All wired. Verifying Flag 3 — recompute today's exit classification with the fallback (validation/ on path so `exit_reason_codes` resolves) and confirm the unclassified count drops:
+**Flag 3 verified: 11 → 0 EXIT_UNCLASSIFIED** — all 15 exits now classified via broker-truth order type (10 candle-close/chandelier monitor exits, 3 resting protective stops, 2 EOD flattens). Now run the Flag-1 lock and a final compile check across everything touched:
+All three flags fixed, verified, and the two new ones regression-locked (REG-26 passes; it cleanly saved/restored SAFE_MODE state). Let me log and push:
+All three flags fixed, verified, and pushed (`7615848`).
+
+## P&L for the day: **+$899.60 net** (gross $957.32, commission $57.72)
+
+## The three flags — all fixed (non-watched, verified)
+| Flag | Fix | Verified |
+|---|---|---|
+| **1 · SAFE_MODE 94/night noise** | Root confirmed: incidents log only FAIL, and the check already returns **WARN** when ENFORCE is off — so the 94 were a pre-fix overnight artifact (SAFE_MODE's already clear). Locked it so it can't regress. | **REG-26** passes (synthesizes active+ENFORCE-off → WARN) |
+| **2 · TTD `ToBeDelisted`** | Any name with a broker `Restrictions` flag is now excluded **both sides** at the pre-trade gate (auto-applies via existing callers). | Live: `fetch_exclusion_set([TTD,AMAT])` → `{TTD: RESTRICTED:ToBeDelisted}`, AMAT clear; REG-15 still green |
+| **3 · 11/15 EXIT_UNCLASSIFIED** | Broker-truth fallback by exit order type (Stop → resting ATR/$500 stop; Market-late → EOD; Market-intraday → deployed candle/chandelier monitor) — derived, never fabricated. | Recomputed on today's 15 trades: **11 → 0 unclassified** |
+
+All four touched files compile; **REG-15/24/25/26 all pass**; the SAFE_MODE test cleanly restored live state.
+
+**Where the whole cleanup stands now:** 4/9 audit bugs (B1, B4, B8, B9) + **3/3 EOD flags** + 3 regression locks (REG-24/25/26) + drill 12/12. Still on the remediation queue: **E1 audit harness**, then the watched/shadow-first **B3 sector cap · B5 intraday clamp · B2 4× universe**. I'll keep moving through those — E1 next.
+
+---
