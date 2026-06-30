@@ -10619,3 +10619,84 @@ Acknowledge you've read §1–9, then ask Rhett (one question) which thread to p
 That's the full ramp. It's also saved on the VPS and pushed to GitHub, so if the chat ever drops it, the new Planning chat can be pointed at the coordination repo's `HANDOFF_2026-06-30_PLANNING-NEW-CHAT.md`.
 
 ---
+
+
+## Turn — 2026-06-30 11:57:51 ET
+
+**Rhett:**
+
+are you working?
+
+**Claude Code:**
+
+Yes — working. I let the last turn lapse without executing (my fault), so let me get straight to it. First, an important catch in what you just said:
+
+**Your new directive reverses the fix you approved two turns ago.** That side-aware fix *allowed* HTB **longs**. You're now saying **don't trade HTB at all** — and beyond that, only trade **4×-marginable** names. That's a cleaner, stricter rule, so I'm switching to: **block all HTB (both sides)** now, and make the real gate a **4×-marginable universe**. Let me lock down HTB first (revert my own side-aware edit so the bot blocks HTB entirely), then dig into TS margin.
+Now verify both entry paths compile and confirm HTB is fully blocked (both sides):
+HTB is now **fully blocked, both sides**, in both entry paths (`orb_runner` + `orb_multiscan`), files compile, and it auto-applies next cycle (no restart). htb_filter is back to honest fail-safe reporting.
+
+Now the substantive ask — **TS margin / 4×-marginable universe.** Let me dig into what the TradeStation API actually exposes for marginability per symbol:
+Key finding: the TS symbol-details endpoint exposes **no margin fields at all** (just asset type, exchange, price format). So per-symbol marginability isn't in market data. The real source is **account balances (day-trade buying power)** and the **order-confirmation preview** (returns margin required for a hypothetical order → notional ÷ margin = the leverage multiple). Let me probe both, and see what methods the client already has:
+The account is confirmed **Margin / PDT**: `BuyingPower $3.74M` on `Equity $986k` ≈ **4:1 day-trade buying power**, `OvernightBuyingPower` ≈ 2:1, `DayTrades: 33`. So 4× intraday is the account default. Now the per-symbol question — which symbols actually *get* 4× vs reduced margin (leveraged ETFs, volatile/HTB names get house requirements). The **order-confirmation preview** returns the margin for a hypothetical order without placing it. Let me read it across a standard name, a 3× ETF, and an HTB name:
+The order-confirm preview returns **notional and commission but no margin field** either. That's a significant finding: **the TS v3 API does not expose per-symbol margin multiples anywhere** (not in symbol details, not in order-confirm). So a "4×-marginable list" can't simply be pulled from the API — it has to be *derived* from criteria + TS's published rules. Let me confirm that's true for a leveraged ETF and a short, and pull TS's actual margin documentation:
+Definitive: the order-confirm returns only notional + commission for **every** symbol type — standard, leveraged ETF (TQQQ/SOXL), and shorts. **TS's v3 API does not expose per-symbol margin/leverage anywhere.** So the 4×-marginable universe must be *derived*, not pulled. Now let me read TS's actual published margin rules:
+Big and timely finding for the live plan: **FINRA changed the rules effective June 4, 2026** — the Pattern Day Trader framework and $25k minimum are **gone**, replaced by an "Intraday Margin" standard. Now any margin account ≥ **$2,000 equity gets 4× intraday buying power** (2× overnight). Your **$100k live account → $400k intraday buying power** (matches the project's existing $400k base). Crucially: *"TradeStation may impose a higher margin requirement and/or restrict trading to less than 4× for certain securities."* That "certain securities" set is exactly what we must exclude. Let me pull the specifics:
+This is the crux. There's a **TS Special Margin Requirements list** in the HUB (`my.tradestation.com/lists/borrow-special-margin`): the default day-trade rate is **25% = 4×**, and symbols with low liquidity/volatility get **50%/75%/etc. (= 2×/1.33×)** — *those* are the non-4× names. That list is login-only (HUB) and **not exposed in the API** (MarketFlags only has HTB/halted, no margin flag). So the buildable answer is a *derived* 4× universe. Let me grab the coordination URL for Planner, then I'll deliver everything:
+Public repo confirmed: **github.com/Rhettduleba/alpha-quant-coordination** — and both `SESSION_LOG.md` and the handoff are pushed there. I'll wire those URLs into the handoff so Planner can actually read them. Let me write the two deliverables (the self-audit prompt + the margin findings) and patch the handoff:
+Now patch the handoff so Planner has the actual URLs, then push everything:
+Now log it to SESSION_LOG and push everything (SESSION_LOG mirror + the two new docs + updated handoff) to the coordination repo so Planner can read it all:
+All done and pushed (coordination HEAD `8ce3f9b`). Here's everything, point by point.
+
+## 1. Planner can now read the log — here's the URL
+The handoff had no link, so Planning had nothing to fetch. Fixed. **Give the new Planning chat this raw URL — it can fetch it directly:**
+```
+https://raw.githubusercontent.com/Rhettduleba/alpha-quant-coordination/main/SESSION_LOG.md
+```
+Repo (browsable): https://github.com/Rhettduleba/alpha-quant-coordination — the SESSION_LOG, handoff, margin findings, and self-audit prompt are all there and re-mirror every turn.
+
+## 2. HTB — now blocked entirely (both sides), and I own being wrong
+You were right twice. I verified against the API: TS borrow flags are **per-symbol and match your blotter exactly** — 15/20 HTB, with **AAPL/AMAT/MSTR/NVDA/TSLA = false**. My earlier "everything's HTB including AAPL, it's garbage" was wrong, and the "ignore HTB in SIM" fix it led to was wrong (it had the bot *shorting* real HTB names — COIN/SYK/ZBH/DLR/TTD in your log). 
+
+**Root cause of the morning zero-trades (broker truth):** the 9:35 top-20 ranked candidates were *all* HTB, so all got excluded → `submitted=0` — and 7 of them were longs. Now corrected to your directive: **HTB blocks both sides in both entry paths** (`orb_runner` + `orb_multiscan`), all files compile, auto-applies next cycle. No more HTB trading.
+
+## 3. TS margin — the real answer (full doc: [TS_MARGIN_4X_FINDINGS.md](TS_MARGIN_4X_FINDINGS.md))
+- **Account is Margin / 4×:** balances show `BuyingPower $3.74M` on `Equity $986k` ≈ 4× intraday, 2× overnight. **$100k live → ~$400k intraday buying power** (matches the project's $400k base). Day-trade-flat never touches the 2× overnight tier.
+- **Rule change you'll want to know:** FINRA amended Rule 4210 **effective June 4, 2026** — Pattern Day Trader and the $25k minimum are **gone**; now any margin account **≥ $2,000 equity gets 4× intraday**. Your $100k is far clear of that.
+- **The hard part:** **the TS API exposes no per-symbol margin anywhere** — I checked symbol-details, quote MarketFlags, *and* the order-confirm dry-run (returns only notional + commission for standard names, leveraged ETFs, and shorts alike). So we **cannot pull a "4× list" from the API.**
+- **Non-4× names** come from TS's **Special Margin Requirements list** (`my.tradestation.com/lists/borrow-special-margin`, HUB login-only — 50%/75% = 2×/1.33×) + leveraged/inverse ETFs + HTB/halted.
+- **So the 4× universe must be *derived*:** liquid common stock ≥ $20, minus HTB (done), minus a maintained leveraged-ETF list, minus the Special-Margin list (you export it from the HUB periodically; we load it as dated config). That's a **WATCHED universe change → proposal + your go**, not an inline edit.
+
+## 4. The self-audit prompt you asked for (full file: [ALPHA_QUANT_SELF_AUDIT_PROMPT.md](ALPHA_QUANT_SELF_AUDIT_PROMPT.md))
+Built to hunt exactly today's failure class — *a single gate silently zeroing trades, a diagnosis stated without broker truth, a fix that over-corrects.* Copiable:
+
+````markdown
+ALPHA QUANT — "DOES IT ACTUALLY WORK?" SELF-AUDIT
+
+ROLE: You've been told what Alpha Quant is (SIM-only ORB equity day-trader on TradeStation, acct SIM1623888M, root C:\AlphaQuant, + a Claude advisor writing ONE typed control file). Do NOT trust it. Try to prove it's broken. Assume a bug exists until a falsifiable check says otherwise. Cite the highest evidence (BROKER_TRUTH > BROKER_EXPORT > LOCAL_RECONSTRUCTION > BOT_LOG > ADVISORY). If you can't verify, mark UNKNOWN — never assume PASS.
+
+FAILURE CLASS TO HUNT (today's lesson): (1) a single gate that silently zeros all trades with no "alive but not trading" alert; (2) a diagnosis stated as fact without checking broker truth; (3) a fix that over-corrects (too-strict → too-loose) instead of side/context-aware; (4) a constant changed without sweeping every consumer; (5) something "deployed" not actually wired into the live path (shadow). Run the check that FALSIFIES each claim — don't answer "yes."
+
+1. ENTRY PIPELINE: List every filter from universe → submitted order. For each: what % does it drop on a normal day, and could it drop 100% on a plausible day? Chart submitted/candidates for 5 days — any 0 day, prove it was market vs malfunction. Confirm borrow/short gates are SIDE-AWARE (a long is never dropped for a borrow reason). Is there an alert for "scan ran but submitted=0 for N scans during RTH"? If not, that's the hole that hid today.
+
+2. 4x-MARGINABLE / BORROW GATE: Confirm HTB blocks BOTH sides in orb_runner AND orb_multiscan (show both lines). Verify IsHardToBorrow per-symbol vs the platform blotter (don't trust a past claim). Is the universe restricted to 4x-marginable names, and how is non-4x sourced (TS API exposes NO per-symbol margin)? Is the leveraged-ETF / Special-Margin exclusion present, dated, and consulted? If TODO, say so.
+
+3. ADVISOR→BOT CHANNEL: Force each rejection path (missing/bad-JSON/wrong-env/live_allowed/expired) and confirm the bot DEFAULTS TO ALLOW and never honors free-text. Confirm only the documented control vocabulary is acted on; advisor can't write config/risk/universe.
+
+4. RISK ENFORCEMENT: For DAILY_MAX_LOSS, 5% DD kill, MAX_POSITION_PCT, MAX_OPEN_POSITIONS, MAX_TOTAL_EXPOSURE, MAX_SECTOR_POSITIONS, $500 DOLLAR_STOP_CAP — find the ENFORCING line + proof it triggered/could. A constant with no consumer is a lie. Confirm which guards are OFF for SIM and that a written gate requires restoring them + a real-time intraday clamp before live; live sizing off $400k (4x) base, not SIM equity.
+
+5. EXITS & STOP COVERAGE: For every fill today, confirm a broker resting stop within N seconds — compute % coverage + max naked window for the 9:35 AND re-arm cohorts. Confirm $500 cap places sl_dist=min(1.4xATR,$500/qty) with a real example. Confirm EOD flatten leaves broker positions = 0 (daytrade-flat), proven by export.
+
+6. DATA / BROKER TRUTH: Confirm reconciliation reads broker truth, not the phantom journal; order-action reads Legs[0].BuyOrSell (EC704 gotcha). Re-derive today's P&L + ledger from broker export and reconcile. Any mismatch = bug.
+
+7. PROCESS SURVIVABILITY: List long-lived processes; each detached + watched by supervisor_guardian? subprocess calls carry CREATE_NO_WINDOW? Edited long-lived process actually RESTARTED (StartTime > mtime) + preflight green? Confirm orb_runner/orb_multiscan are fresh subprocesses each cycle.
+
+8. OBSERVABILITY: Inventory every alert channel; does the reliability DRILL still catch each injected fault (no deaf detectors)? Is there a detector for alive-but-not-trading, naked position, gate-failing-open, RTH loop-freeze, submitted=0 streak? Map each Section 1–7 failure to the alert that catches it. Gaps = build items.
+
+9. PROVE A NORMAL DAY end-to-end: universe → 9:35 scan → fills → stops → re-arm → exits → EOD flat → reconciliation → debrief; each handoff produced its artifact and numbers tie to broker truth. State the ONE thing most likely to break tomorrow + the check that catches it first.
+
+OUTPUT: per section PASS/FAIL/UNKNOWN + the exact command/file/query proving it + evidence tier; for FAIL/UNKNOWN, the smallest fix and whether it touches a WATCHED trading file (→ proposal + Rhett's go) or non-watched (→ fix now). End with a ranked bug list, today's-failure-class first. Don't declare "it works" unless Sections 1,2,4,5,8 are all PASS with evidence.
+````
+
+One decision needed to build the 4× universe: should the leveraged-ETF + Special-Margin exclusion be a **hard universe filter** (those names never enter the candidate set) or a **final pre-arm gate** (they can rank but get dropped before an order)?
+
+---
