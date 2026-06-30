@@ -8760,3 +8760,162 @@ Each fix is its own gated handoff. I changed nothing — read-only, freeze intac
 **Close-out (Loop 182, 2026-06-29 20:12 ET):** SESSION_LOG.md:236 (Loop 182 master list, re-read & saved) ✓ · coordination mirrored + pushed HEAD **`e21888e`** (secret-scan clean) ✓ · READ-ONLY — nothing changed, freeze intact · SYSTEM_FACTS regen **N/A**.
 
 ---
+
+
+## Turn — 2026-06-30 06:48:01 ET
+
+**Rhett:**
+
+# HANDOFF → CLAUDE CODE — FIX: from-entry tight protective stop for UNCONFIRMED-adverse positions + PROVE via replay
+# From: Planning Claude | 2026-06-29 ET (Code: number + stamp; CLAIM→VERIFY→SHOW close-out per the standing protocol)
+# ROOT CAUSE (Loop 181, broker-verified): positions that go adverse from entry NEVER confirm (need +0.15ATR first) →
+# the tight/candle-close exit never arms → their ONLY stop is the 1.4ATR catastrophe backstop, which for high-ATR
+# names sits 10-14% away → 10 names ran to the 15:50 EOD flatten = -$5,035 (COHR -$1,975, etc.). SAME wound as MU 6/25.
+# FIX: every position gets a REAL protective stop active FROM ENTRY (not waiting for confirmation), tighter than the
+# 14%-wide catastrophe stop. Then PROVE it by replaying against TODAY'S 10 real losers.
+#
+# ⚠️ This is a WATCHED trading-file change (the exit). Build + validate OFF-MARKET + REPLAY tonight, but it does NOT
+# go live-traded until Rhett's explicit go — off-market validation is what failed us today. CAREFUL-CODING MANDATE:
+# reuse proven mechanisms, re-read your own diff against the safety checklist, prove don't assume.
+
+## THE FIX (design: from-entry protection for the unconfirmed window)
+- Today a position has NO tight protection until it confirms (+0.15ATR favorable). Close that gap: from the moment a
+  position fills, it must have a protective stop that is MEANINGFUL (not the 14%-wide catastrophe-only level) and
+  ACTIVE BEFORE confirmation. Rhett's choice: a tight stop active from ENTRY for all positions.
+- Implement as a real broker-resting StopMarket placed at fill at a TIGHT distance (Planning to set the exact frac
+  with Code — candidate: a fraction tied to ATR that's tight enough to cap an always-adverse runner but wide enough
+  not to whipsaw normal entries; the K-sweep plateau said don't go below ~1.0ATR for the TRAILING stop, but this is a
+  FROM-ENTRY initial stop — propose a value and we'll set it from the replay evidence, NOT guess).
+- It must be a BROKER-resting order (independent of TW/stream reliability — so a stream gap or an ownership-handoff
+  miss can't leave it unprotected). When the position confirms and the tight trailing exit arms, reconcile the two so
+  there's no double-exit (reuse the proven cancel-on-arm / flatten-re-reads-live-qty mechanism).
+
+## ⚠️ ALSO FIX THE OWNERSHIP GAP (today's compounding bug)
+- exit_bot_v2 logged "[TW-OWNED] deferring to Tape Watcher" for names TW never actually monitored → orphaned. Close
+  it: a position deferred to TW that is NOT in TW's live monitored set must NOT be left unmanaged — either exit_bot_v2
+  keeps managing until TW confirms ownership, or the from-entry broker stop (above) covers it regardless. No position
+  can fall in the crack between the two owners. Prove no orphan path remains.
+
+## PROVE IT — REPLAY AGAINST TODAY'S 10 REAL LOSERS (this is the test without trading)
+- Replay the new from-entry stop against TODAY'S actual tick data for the 10 runaways (COHR/MARA/Q/S/EW/BIIB/CRWD/
+  APP/NKE/WMB). For each: when would the from-entry stop have fired, at what price, for what loss — vs the actual
+  EOD-flatten loss? Show the before/after P&L. Did it cut the -$5,035 materially?
+- Also replay against the 13 trades that WORKED today + the 9 TW-confirmed exits — confirm the from-entry stop does
+  NOT prematurely kill the winners (the must-not-cut check). Net effect on the whole day.
+
+## OFF-MARKET MECHANICAL VALIDATION
+- Every fill → one from-entry broker stop, right side/price, idempotent, cancel-on-exit/on-arm, no double-exit, no
+  orphan. 9:35 + re-arm both covered. Regression: confirmed-path behavior unchanged.
+
+## HARD CONSTRAINTS
+- Build + validate + replay ONLY. Do NOT enable it for live trading — Rhett decides go-live after seeing the replay.
+- CAREFUL-CODING: reuse the proven submit_stop_loss_exit + cancel mechanisms; re-read the diff; prove each safety item.
+- No double-exit, no orphan, must-not-cut winners. Freeze stays broken (we're fixing the broken core), one change.
+
+## VERIFICATION TASKS TO CLOSE (plain English back to Planning)
+1. The from-entry stop: mechanism + the distance proposed (with the replay evidence behind the number).
+2. REPLAY RESULT: today's 10 losers before/after (the -$5,035 → ?), AND the winners must-not-cut check (did it hurt them?).
+3. The ownership-gap fix: no orphan path remains (shown).
+4. Off-market mechanical validation (one stop/fill, cancel, no double-exit/orphan, confirmed-path regression clean).
+5. Confirm it is NOT live-enabled yet — awaiting Rhett's go after the replay. The honest limit: live-stream behavior
+   still unproven until a real session.
+
+**Claude Code:**
+
+This is a watched trading-file change with a careful-coding mandate, and the handoff is explicit: **set the stop distance from replay evidence, not a guess.** So I'll build the replay first — that's the gating deliverable that determines the number and proves the value — then implement carefully behind a disabled-by-default flag. Let me start by locating the intraday bar-fetch mechanism and confirming today's data is available:
+I have the reusable pieces: the 1-min barchart fetch (`/marketdata/barcharts/{sym}?interval=1&unit=Minute` with firstdate/lastdate), my existing `exit_k_sweep.py` replay harness, and the proven `submit_stop_loss_exit` for the eventual implementation. Let me read my k-sweep harness to reuse its data layer for the from-entry-stop replay:
+Excellent — `exit_k_sweep.py` gives me the exact reusable data layer (`tw.minute_bars_for_day`, `tw.atr14_asof`) and replay pattern. The from-entry stop is simpler (a fixed level from fill, no confirm/trail). Let me build the replay that answers the gating question — sweep candidate distances against today's 10 real losers (loss reduction) **and** the winners (must-not-cut), using the bot's actual logged ATR:
+Now run the replay (fetches today's 1-min bars for all 23 names — may take a minute):
+Format-string bug in the table header (old-style `%` doesn't support the `,` flag). Quick fix:
+This is a **critical, surprising result I must report honestly** — and it contradicts the handoff's premise. The from-entry **ATR-frac** stop barely helps: best case **+$499** recovered (D=0.5) of the −$5,035, and at D=0.75–0.9 it's net **negative** (whipsaw). The per-loser detail shows why: only COHR was a true big-adverse-move runaway a tight stop catches; the others lost on **modest moves × large size** (MARA: −$719 on a 0.49/sh move the stop never reaches) or got **whipsawed worse** (WMB −$43 → −$285). 
+
+The losses are **dollar-driven, not ATR-driven** — and `MAX_LOSS_PER_TRADE=$750` was never enforced intraday (COHR lost $1,975, 2.6× the cap). Let me test the obvious better fix — a **$-based per-position cap** — before reporting:
+Let me remove the dead scaffolding I left in (the no-op loops):
+This redirects the fix, and I need to report it straight. **The losses are dollar-driven, not ATR-driven — so the proposed ATR-frac stop barely works, but a $-cap does:**
+
+- **ATR-frac stop (the proposed fix):** best case +$499 recovered, whipsaws worse at D≥0.75.
+- **$500 per-position $-cap:** **+$1,672 recovered, 0 winners killed**, day −$3,493 → **−$1,821**.
+
+And the kicker: `MAX_LOSS_PER_TRADE=$750` already exists in risk_config but **was never enforced intraday** (COHR lost $1,975, 2.6× the cap). So I will **not** implement the disproven ATR-frac design into the watched exit file — that would violate "prove don't assume." Let me record the evidence and the redirect:
+Confirmed: **no watched trading file modified, freeze intact**, pushed (coordination HEAD `9e4707a`).
+
+## From-entry stop — the replay redirected the fix
+
+I built the replay first (the gating step) and it overturned the proposed design. Reporting straight, because building the proposed fix would have been building the wrong thing.
+
+**1. The proposed ATR-frac from-entry stop does NOT work.** Replayed against today's 23 actual trades on 1-min bars:
+
+| D (×ATR) | loser cohort (was −$5,035) | recovered | winners killed |
+|---|---|---|---|
+| 0.5 | −$4,536 | **+$499** | 0 |
+| 0.75 | −$5,237 | **−$202** (whipsaw) | 0 |
+| 1.0 | −$4,991 | +$44 | 0 |
+
+Best case +$499 of −$5,035, and it goes *negative* at D≥0.75. The per-loser detail shows why: **only COHR was a true big-adverse runaway** a tight ATR stop catches. The rest lost on **modest moves × large size** (MARA −$719 on a 0.49/sh move a 0.6×ATR stop never reaches) or got **whipsawed worse** (WMB −$43→−$285, Q −$478→−$656). **The losses are dollar-driven, not ATR-driven** — so an ATR-scaled stop is the wrong tool.
+
+**2. A per-position $-cap is the real fix:**
+
+| $ cap | loser cohort | recovered | winners killed | whole day |
+|---|---|---|---|---|
+| $400 | −$3,129 | +$1,906 | **1** | −$2,352 |
+| **$500** | −$3,363 | **+$1,672** | **0** | **−$1,821** |
+| $750 | −$4,113 | +$922 | 0 | −$2,571 |
+
+**$500/position recovers +$1,672 of the −$5,035, kills 0 winners (winner cohort unchanged at +$1,542), and turns the day from −$3,493 to −$1,821.** $400 recovers more but starts clipping a winner; $500 is the sweet spot. The must-not-cut check is clean at $500.
+
+**The smoking gun:** `MAX_LOSS_PER_TRADE = $750` already exists in `risk_config` but **was never enforced as a real-time intraday stop** (COHR lost $1,975 = 2.6× it). The fix is to make that existing cap a from-fill broker-resting StopMarket.
+
+**3. The mechanism (same as proposed, only the level formula changes).** A broker-resting StopMarket placed at fill, priced at `entry ± cap/qty` instead of `entry ± D×ATR`. Same proven `submit_stop_loss_exit` path, same cancel-on-arm/flatten-re-reads-qty reconcile, same broker-resting independence from TW/stream — so it **also closes the ownership-gap orphan path** (a position is protected by its own broker stop regardless of whether TW ever monitors it).
+
+**4 & 5. What I did NOT do (deliberately):** I have **not** implemented the watched-exit change, the ownership-gap code, or mechanical validation — because the evidence contradicts the specified ATR-frac design, and the handoff itself says "propose a value, we'll set it from the replay evidence." Implementing a disproven design would violate the careful-coding mandate. Nothing is live-enabled; no watched file was touched; freeze intact.
+
+### The one decision I need before building
+Confirm the design + value and I'll implement it carefully (mechanism + ownership-gap fix + full mechanical validation, behind a disabled-by-default flag, not live):
+Understood — documenting the decision as a copy-paste markdown and logging it as a pending decision (not deciding for you). Writing the decision doc + SESSION_LOG entry:
+Done — logged to SESSION_LOG (Loop 184) and saved as a decision doc. Here's the copy-paste markdown:
+
+---
+
+# DECISION NEEDED — from-entry protective-stop design (post day-1 incident, 6/29)
+
+**Status:** OPEN — awaiting your pick. Nothing built yet; no watched file touched; freeze intact.
+**Evidence:** replay of today's 23 real trades on 1-min bars (`outputs/reports/from_entry_stop_replay_2026-06-29.md`).
+
+## Why we're here
+6/29: 10 positions ran to the 15:50 EOD flatten = **−$5,035** because unconfirmed-adverse positions had only the 14%-wide 1.4×ATR catastrophe stop and TW never owned them. The proposed fix was a from-entry **ATR-frac** tight stop. The replay says that's the wrong tool.
+
+## ATR-frac from-entry stop — WEAK (losses aren't ATR-driven)
+| D (×ATR) | loser cohort (was −$5,035) | recovered | winners killed |
+|---|---|---|---|
+| 0.5 | −$4,536 | +$499 | 0 |
+| 0.75 | −$5,237 | −$202 (whipsaw) | 0 |
+| 1.0 | −$4,991 | +$44 | 0 |
+
+Only COHR was a true big-adverse runaway a tight ATR stop catches. The rest lost on **modest moves × large size** (MARA −$719 on a 0.49/sh move) or got **whipsawed worse** (WMB −$43→−$285).
+
+## Per-position $-CAP — the real fix (losses are $-driven)
+| $ cap | loser cohort (was −$5,035) | recovered | winners killed | whole-day net |
+|---|---|---|---|---|
+| $400 | −$3,129 | +$1,906 | **1** | −$2,352 |
+| **$500** | −$3,363 | **+$1,672** | **0** | **−$1,821** |
+| $750 | −$4,113 | +$922 | 0 | −$2,571 |
+
+`MAX_LOSS_PER_TRADE = $750` already exists in `risk_config` but was **never enforced as a real-time intraday stop** (COHR lost $1,975 = 2.6× it).
+
+## The options
+| # | Option | Replay result | Note |
+|---|---|---|---|
+| 1 | **$-cap at $500 (recommended)** | +$1,672 recovered, 0 winners killed, day → −$1,821 | best evidence |
+| 2 | $-cap at $750 | +$922, 0 winners killed | reuses existing constant, less protection |
+| 3 | ATR-frac (original proposal) | +$499 best, whipsaws at D≥0.75 | not supported by evidence |
+| 4 | $-cap + ATR-frac, whichever tighter | (would replay the combo first) | belt-and-suspenders, more complex |
+
+**Recommendation: Option 1 ($-cap $500).** Mechanism (any option): broker-resting StopMarket placed at fill, priced `entry ± cap/qty`, reusing `submit_stop_loss_exit` + cancel-on-arm — which also closes the TW ownership-gap orphan path. Build = validate + replay only, disabled-by-default, NOT live until your explicit go.
+
+_Caveat: in-sample on ONE day, 1-min upper bound (optimistic fills). Sizes the value; doesn't prove forward edge._
+
+---
+
+**Close-out (Loop 184, 2026-06-30 06:47 ET):** SESSION_LOG.md:236 (Loop 184 open-decision, re-read & saved) ✓ · decision doc at `outputs/reports/DECISION_from_entry_stop_design_2026-06-29.md` ✓ · coordination mirrored + pushed HEAD **`356499f`** (secret-scan clean) ✓ · nothing built, no watched file, freeze intact · SYSTEM_FACTS regen **N/A**. Awaiting your pick (1–4) to build.
+
+---
