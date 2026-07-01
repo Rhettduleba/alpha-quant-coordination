@@ -3945,3 +3945,6 @@ _Pinned-bar real-time method (l1_mustnotcut_audit), K pinned at 0.75 (never tigh
 _Diagnostic, in-sample. These days are in-sample for any un-promoted rule; a streak of confirming days accumulates N toward >=30 but does not promote anything -- promotion still requires a locked rule + fresh OOS forward test + the gauntlet._
 
 ---
+
+### 2026-07-01 ~12:02 PM ET — Autonomous alert-triage run (scheduled)
+Inbox clean: `code_alert_inbox.py --json` → n_total=0, n_actionable=0, n_critical=0. CSHV (12:00:19 ET regen): OK=48 WARN=1 FAIL=0. Sole WARN = `rel_exit_side` (7 positions BB/HOOD/KHC/LITE/MU/PLTR not yet in exit tracker, monitor 0.2m fresh — known transient "just filled, verify next cycle" pattern, Bucket A known-noise; WARN not CRITICAL so not in the severity-gated feed). No escalation. Advanced cursor (--ack).
