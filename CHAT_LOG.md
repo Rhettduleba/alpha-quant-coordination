@@ -13071,3 +13071,52 @@ Verified live: it triggers at 9:45 (and stays out at 9:35), run_bot loaded it (P
 Tomorrow the bot trades from 9:45 on the re-arm signal, 9:35 stays gated, and I'll watch the 9:45 window's numbers specifically and bring them to you at EOD.
 
 ---
+
+
+## Turn — 2026-07-01 19:26:50 ET
+
+**Rhett:**
+
+ok now lets run a test on time we are in a trade. What im trying to find out is. How long should we stay in a losing trade with out killing winners. So look at all the winning trades that went against us early and then came back, how long did we stay on thos etrades. Then lookat the losers the all day bleeders how much money would we have saved if we put a 30 minute, 1 hour exit on them, would we have killed evenutual winners if we put a time constraint on the exit. We would only put a time constaint on unconfirmed trades, the study should just be on unconfirmened.
+
+**Claude Code:**
+
+This is a substantive, correctness-critical study Rhett will act on, so I'll do it thoroughly: understand the existing tooling, build a time-resolved replay myself (controlling the bar-fetch and the confirmed/unconfirmed logic), then adversarially verify the findings with a workflow. First, let me see how "confirmed vs unconfirmed" is defined and what bar-replay infrastructure already exists:
+This is a major find — `l1_unconfirmed_leash.py` **already does exactly this study**: `A_time_X` exits **unconfirmed-only** trades at entry+X minutes, with a three-sided net decomposition (saved − winners-killed) and a must-not-cut control. "Confirmed" = favorable excursion crossed +0.15×ATR; confirmed trades are never touched — precisely your constraint. It just caps X at 30 min; you want 30 **and** 60+. Let me read its full mechanism so I can extend the thresholds and run it correctly:
+The methodology is exactly right — leash applies only to `confirmed=NO`, confirmed and NA are never touched (the must-not-cut control asserts `altered_confirmed == 0`). Now I need the time-threshold list to extend, the scoring, and which days have the poll data:
+The tool is essentially ready — I just extend `TIME_SWEEP_MIN` (currently `[3,5,10,15,20,30]`) to include 60/90/120, and run it on every day that has the poll data. Let me check the data coverage and extend the thresholds:
+Key data limitation, and I need to be honest about it: the poll data (exit_decisions.jsonl) is dense for **6/18–6/26** but essentially empty for 6/29–7/1 (the exit monitoring moved to TW around then). So the high-fidelity leash study runs on 6/18–6/26. That's fine for the *mechanism* (unconfirmed bleeders vs recovering winners is path-independent), and I'll build a bar-based check for the re-arm cohort separately. Let me extend the time thresholds and run the established tool first:
+It ran — 39 unconfirmed of 138 round-trips. But the headline "A_time_3m +$9,366" is almost certainly inflated by the early-poll caveat (the live monitor is blind the first ~5 min, so a 3-min stop is an unachievable ceiling). The realistic answer is at the 30/60-min marks you asked about. Let me read the full report to get the three-sided net at each threshold and the must-not-cut:
+The results are striking — and clean. Here's the three-sided picture for an **unconfirmed-only** time-stop (confirmed trades untouched by construction):
+
+| Time-stop | Δnet | bleed saved | **winners killed** | giveback |
+|---|---|---|---|---|
+| 30 min | **+$5,386** | $5,836 | **2 ($197)** | −$450 |
+| 60 min | +$3,083 | $4,083 | 2 ($343) | −$1,000 |
+| 90 min | +$1,597 | $2,916 | 2 ($493) | −$1,319 |
+
+The standout: **at every threshold only ~2 unconfirmed winners get cut** — because winners that recover almost always *confirm* first (cross +0.15×ATR), and the leash never touches confirmed trades. MU 6/25 goes from −$1,670 to −$50. But this is in-sample, 9:35-heavy (6/18–6/26), N=39, and the tight end is inflated by the early-poll caveat. That's exactly the kind of finding I should **adversarially verify before you act on it**, not just report. Let me run that verification as a workflow:
+The adversarial verification is running in the background (four independent checks + synthesis — I'll bring you the verdict when it lands). Here's the substantive preliminary answer to each of your questions, with the caveats stated plainly.
+
+## How long to stay in an unconfirmed losing trade — the data
+A time-stop on **unconfirmed-only** trades (confirmed trades never touched) is net-positive at every threshold, and **30 minutes is the sweet spot**:
+
+- **30-min stop: +$5,386** (saves **$5,836** of bleeder losses, kills **2 winners for $197**, gives back $450 to trades that would've recovered).
+- **60-min stop: +$3,083** (saves less — it lets the bleeders run an extra half hour).
+- Tighter than 30 min looks even better on paper, but that's **not real** — the live monitor is blind the first ~5 minutes, so the 3–10 min numbers are an unachievable ceiling. 30 min is the tightest *defensible* stop.
+
+## Your specific questions, answered
+1. **"Winners that went adverse early then came back — how long did we stay?"** The elegant part: the time-stop **barely touches them** — only **2 unconfirmed winners** get cut across the *entire* sample, at any threshold. Why? Because a winner that recovers almost always **confirms first** (its price crosses +0.15×ATR), and the leash **only fires on trades that never confirmed.** The confirm signal *is* the "this one earned more time" filter — better than a clock.
+
+2. **"How much would a 30-min / 1-hour stop have saved the bleeders?"** 30 min saves **$5,836**; 1 hour saves **$4,083** (in-sample, 6/18–6/26). MU 6/25 alone goes from −$1,670 to −$50.
+
+3. **"Would we have killed eventual winners?"** Essentially no — 2 trades, ~$200. The bleed saved is ~30× the winner cost.
+
+## The honest caveats (why I'm verifying, not deploying)
+- **In-sample**, N=39 unconfirmed — the "only 2 winners killed" is a small-sample result.
+- **It's 6/18–6/26 data, which is 9:35-heavy** — and we now trade **only re-arm**. The single biggest question is whether this holds for the re-arm cohort or is an artifact of the path we already killed. **That's the #1 thing the verification is testing right now.**
+- The poll data doesn't cover the recent re-arm days, so I ran it on the days that have it.
+
+**My preliminary read:** a 30-minute time-stop on unconfirmed trades looks like a genuine, mechanism-sound win — it cuts the exact bleeders you flagged (the EOD-flatten all-day losers) while the +0.15×ATR confirm protects the recoverers. But I won't recommend flipping it live until the verification confirms it generalizes to re-arm and survives the small-N/in-sample scrutiny. I'll bring you that verdict — and a shadow-test spec — as soon as the workflow finishes.
+
+---
