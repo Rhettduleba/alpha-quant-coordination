@@ -12812,3 +12812,58 @@ No new, novel, or ambiguous state → **no Rhett ping (silence = handled).** Per
 Closed out: SESSION_LOG stamp appended, copied to the coordination repo, committed + pushed ([3cb94fb](https://github.com/Rhettduleba/alpha-quant-coordination/commit/3cb94fb)), inbox cursor `--ack`'d.
 
 ---
+
+
+## Turn — 2026-07-01 18:30:34 ET
+
+**Rhett:**
+
+ok, read the EOD, inspect the sysytem today. Did the bot fuinction correctly? What alarms went off i got several, what where the alarms, did you fix them.  How did the system function? Did it function correctly. Is the dashboard completely updated andeverything on it curreent. Then lets talk about the day. winners, did we leave anything off the table? Losers, why were they losers? What are your thoughts on the losers. Did the bot enter all trades as it wa set up and follow the signals? Didthe bot exit as it should and follow the signals?
+
+**Claude Code:**
+
+Full EOD review — and today's the first day under the 9:35 gate, so I especially want to confirm the bot traded re-arm-only as designed. Let me start by establishing the date, running the automated health gate (perfect use for it), and checking today's EOD exists:
+2026-07-01, market closed, bot alive (loop 3879). Let me run the health gate and read today's EOD in parallel:
+System health gate: **PASS 5/5** (regression 25/0/2, drill 12/12, dashboard 8/1W/0F, preflight 51/1W/0F, CSHV 49/1W/0F). Healthy, but a dashboard WARN and a CSHV WARN to run down. Let me read today's EOD:
+Now I have the full day. Let me check the two open items — the alarms you got (the EOD says "0 incidents," so they were lower-severity notifications) and the dashboard WARN:
+0 notifications in `code_inbox` today and the EOD says **0 incidents** — so the CSHV/reliability channel was silent (a clean day). But you got several, so let me find them in the bot's own alert stream — the 5 stop-rejects the EOD flagged likely pinged you:
+The record shows a **quiet day**: 92 INFO + just **1 WARN** — and that WARN is the **9:35 gate working**: `ORB_SCAN_DONE submitted=0 candidates=99` at 9:36, alongside the `ORB_935_GATED` event. The 9:35 scan found candidates but the gate we promoted yesterday held all of them (0 submitted). That's *intended* — but it still fired as a WARN, which would look alarming on your phone. Let me confirm whether entries/rejects also ping Telegram (to explain "several"), so I identify exactly what you saw:
+The alert path confirms it: the entry/SL events are INFO (routine, not alarms), and the only WARN today is the 9:35 scan reporting **`submitted=0`** — because line 878 logs WARN whenever `submitted < 3`, and the gate we deployed yesterday makes 0 the *intended* result. That's a misleading cry-wolf. Let me look at that line and make it gate-aware:
+Making it gate-aware — a gated `submitted=0` is expected, not a warning:
+Now refresh the stale `/planning` roadmap (the dashboard WARN) with today's result, and re-verify everything compiles + the dashboard goes green:
+Dashboard now fully current (9/9 PASS). Let me log and push (including the standalone EOD for Planning), then give you the full read:
+Full EOD review — and the headline is a good one: **the 9:35 gate's first live day worked exactly as designed.**
+
+## 1 & 3. Did the bot function correctly? — Yes.
+- **Day NET +$1,183.06** (gross $1,334.96), 25 trades, **68% win (17W/8L), PF 1.68.**
+- **The gate worked: PATH 9:35-gated = 0 trades** (it held all 99 candidates), **PATH re-arm = 25 trades, +$1,183.** Exactly the change we promoted yesterday, and it paid off day one.
+- **Broker FLAT at close**, reconciliation MATCH ($1,183.06 book = broker truth), **0 incidents.**
+- **Automated health gate: PASS 5/5** (regression, drill, dashboard, preflight, CSHV all green).
+
+## 2. The alarms — and here's the honest part
+Today's record shows a **quiet day**: 0 notifications reached Discord, and bot_alerts was 92 INFO + **exactly one WARN** — the 9:35 scan reporting `submitted=0`. That's the gate working (0 is now *intended*), but the code still logged it as a WARN because line 878 warns whenever `submitted < 3`. **I fixed that** — it's now gate-aware (logs INFO + "intentionally gated — expected"), so it stops crying wolf.
+
+**But I want to be straight with you:** the record only shows that *one* alarm-worthy event today. If you got *several*, they aren't in today's logs — so either they were the routine entry/stop notifications (31 fills + 25 stops, which are normal activity, not alarms), or they came through a path I'm not seeing. **Forward me one** (what it said + roughly what time) and I'll trace it exactly rather than guess.
+
+## 4. Dashboard — now fully current
+It was 8/9 (the `/planning` roadmap was a day stale). I refreshed it with today's result → **validate_dashboard is now 9/9 PASS**, everything ties to broker truth.
+
+## 5. Winners — did we leave anything on the table?
+The winners were captured **very well**: all **17 candle-close exits were winners** (+$2,912 total) — the exit monitor did its job cleanly (COHR +$445, SNDK +$312, RIOT +$285, CLSK +$280, INTC +$223…). Yes, there's some left on the table (FDS $661, BB $645, RIOT $355…), but that's **post-exit continuation** — the name kept running after a clean exit. We've studied this: chasing it means a looser exit, which the K-sweep showed lands on a flat plateau. Winners are not the problem.
+
+## 6. Losers — why, and my read
+8 losers, −$1,729 — and the pattern is stark: **7 of the 8 were EOD-flatten bleeders.** These are unconfirmed re-arm entries that went slightly against us, **never triggered any intraday exit, and got held all day until the 3:50 flatten.** The tell is the **giveback line**: the book was **+$2,114 at 3 PM**, and closed at **+$1,183 — we gave back $932** on those late-closing bleeders. The one exception, BB −$517, was the $500 cap doing its job.
+
+**My thoughts:** the exit rule is fine on trades that *move* (candle-close catches them). The gap is the trades that **do nothing** — a slow bleeder never trips the candle-close reversal, so it just rides to EOD and dies. That's the next lever: a **time-stop** (cut a trade that hasn't worked after N minutes) or **better entry** (don't take the ones that won't move). This is the same "unconfirmed-rides-to-EOD-flatten" class we've flagged before — now it's the clear #1 drag.
+
+## 7. Did the bot enter per its signals? — Yes.
+- 9:35 path: **0 entries (gated)** ✓. Re-arm: 25, all from re-arm windows, **25/25 on the in-play list.**
+- Two entries had a gate re-verify flag `MOVE_EXHAUSTED` (GLW, RIOT) but were armed anyway because **re-arm is ungated by design** — and interestingly **both won** (+$145, +$285).
+- **5 "Invalid Stop Price" rejects** (CAT, CLSK, MU, GLW, PLTR) — the known stale-level race (price crossed before the stop landed); the bot handled them (they still filled), no bad fills eaten.
+
+## 8. Did the bot exit per its signals? — Yes.
+The deployed exit fired correctly: **candle-close on reversals (17 trades, all winners), the $500 cap on BB, and EOD-flatten on the 7 that never triggered.** All followed the rules. One cosmetic gap I'll fix next: the A2 "compliance" section still labels 17 exits `EXIT_UNCLASSIFIED` — yesterday's exit-reason fix reached the ledger and autopsy but not that one compliance count. The exits were correct; the label lags.
+
+**Net:** a clean, correct, profitable day that validates the 9:35 gate. The system is healthy (PASS 5/5), the dashboard is current, and the one real lesson is the **EOD-flatten bleeders** — that's where I'd point the next study.
+
+---
