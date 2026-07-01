@@ -13033,3 +13033,41 @@ Same breakout *structure*, different *context*. Re-arm scans at 10:35+, after th
 Want me to build that early-re-arm **shadow** test? It's read-only, changes nothing live, and in a week it answers your exact question with data instead of theory.
 
 ---
+
+
+## Turn — 2026-07-01 19:12:48 ET
+
+**Rhett:**
+
+lets start tardingat 9:45, same signals as the re-arms. make that chnage now
+
+**Claude Code:**
+
+On it. Before I flip anything, I need to verify exactly what a 9:45 re-arm window would trade — the re-arm signal, not the opening-range one — and confirm the window mechanism. Let me check the config and how `orb_multiscan` uses it:
+Verified the mechanism — and it's exactly what you want. The re-arm doesn't reuse the 9:30–9:35 opening range; each window **builds a fresh 5-minute range from the 5 minutes before it** and arms breakouts off that ([orb_multiscan.py:6-8](tradestation-bot/orb_multiscan.py:6)). So adding a **9:45 window** means a fresh 9:40–9:45 range breakout — the re-arm signal, run earlier — not the 9:35 OR breakout. The change is a one-line config edit. Let me see the exact line:
+Verifying the change loads and that a 9:45 time correctly triggers the window:
+Works exactly right — 9:45 fires the new window (within the 90s tolerance), 9:35 stays out (still gated). Now the governance record + a clean load. Writing the proposal and approval:
+Now restart run_bot to fully load the config (market closed, flat) and re-verify the gate stays green:
+Not back yet — the watchdog polls on an interval. Let me give it more time and confirm it respawns (I don't want run_bot down overnight):
+Let me just check current state directly:
+`supervisor_guardian` being down is expected (it's a scheduled task that fires every 2 min, not persistent). But **run_bot is still down** and `watchdog_supervisor` (2128) hasn't respawned it — that's taking longer than the ~55s it took earlier tonight. I won't leave the bot down overnight. Let me check once more, and if still down, launch it myself the detached way:
+run_bot is still down and the watchdog hasn't respawned it in ~3 min (it took 55s earlier — likely a respawn cooldown from my multiple restarts tonight). I need to understand the watchdog's respawn timing before I either wait or intervene. Checking its logic:
+That explains it — the watchdog uses **exponential backoff (30s→300s)** and a **crash throttle** (5 restarts/hour → 30-min pause). My multiple restarts tonight tripped the backoff/throttle, so it's *deliberately* pausing before respawning run_bot — it's working as designed, not stuck. Let me confirm from its log and that it'll be up well before tomorrow's open:
+Mystery solved — **run_bot IS up: PID 5544, started 7:09 PM.** My "still down" checks landed inside the 60s backoff gap. And importantly, PID 5544 (7:09 PM) started *after* my risk_config edit, so **the 9:45 window is loaded.** Let me confirm and re-run the gate:
+That command garbled (PowerShell + Python got mixed). But I have what I need: **risk_config mtime 7:06:55 PM < run_bot start 7:09:23 PM** — so PID 5544 loaded the 9:45 window. Let me run the gate cleanly:
+**Done — the 9:45 window is live and loaded, gate green (PASS 5/5).** Let me log it and push, then explain what's now in place (and own a mistake I made getting there):
+Done — the change is live and loaded for tomorrow (pushed `b54acdd`).
+
+## What I changed
+`ORB_SCAN_WINDOWS` now includes **9:45** → `["0945","1035","1135","1235","1335","1435"]`. Starting tomorrow, the bot fires a re-arm scan at **9:45 AM** using the **exact same signal as every other re-arm window**: a fresh 5-minute range built from **9:40–9:45**, then breakout-stop entries off it. I verified the mechanism first — the re-arm never reuses the 9:35 opening range; it builds a fresh range before each window — so this is genuinely "re-arm signals, started earlier," not the gated opening-range breakout. It fills the dead 9:35→10:35 hour we were sitting out.
+
+Verified live: it triggers at 9:45 (and stays out at 9:35), run_bot loaded it (PID 5544), and the audit gate is **PASS 5/5**.
+
+## Two honest things
+1. **It's untested in the opening hour**, and I built it to prove itself: every window is tagged, so the 9:45 window's P&L is tracked *separately* from the 10:35+ windows. I'll report it in the daily review, and if it under-performs the later windows over a couple weeks (meaning re-arm's edge really is time-dependent), we pull it — one line. Fully reversible.
+
+2. **I made a mess getting here, and it's on me.** To load the change cleanly I restarted run_bot — but I'd already restarted it a couple times earlier tonight for other edits, which tripped the watchdog's backoff and **sent you "Bot Crashed, Restarting" warnings each time.** Those were self-inflicted noise, not real crashes. New owner rule for myself: **batch all edits, then restart run_bot once** — I won't spam that alarm again.
+
+Tomorrow the bot trades from 9:45 on the re-arm signal, 9:35 stays gated, and I'll watch the 9:45 window's numbers specifically and bring them to you at EOD.
+
+---
