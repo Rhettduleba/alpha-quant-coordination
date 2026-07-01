@@ -12988,3 +12988,48 @@ The gate caught that I'd edited `orb_runner` after the last bot start, so I rest
 **My standing commitment as owner:** every bug I find gets a lock so the gate catches it forever; the edge work stays focused on profit (the 9:35 gate is holding; the EOD-flatten bleeders are the next dollars); and I'll bring you the TW-stability fix and the bleeder study as real, verified proposals — not guesses. I've got it from here each day, and I'll surface anything that needs your call.
 
 ---
+
+
+## Turn — 2026-07-01 18:59:04 ET
+
+**Rhett:**
+
+i want to talk about the 9:30 am "gated". Are we trading at 9:35 as we did before? EXplain what changes we have maketo the 9:30 to 9:35 scanner and then the gated entries. The problem we identified before was that the gated entries at 9:35 where mostly losers and that the gatewas working in the opposit direction, killing winners and promoting losers. I need to understand why. Can you explain why we set up a sysytem to scann for 5 minutes choose stock to enter and our stsymen be so wrong? Why are the re-arms so much better? Should we "park" the gate all together and simply trade the re-arms signals all day starting at 9:30 am?
+
+**Claude Code:**
+
+Great question — and there's an important terminology tangle to untangle first, because "the gate" has meant two different things. Let me ground the "why" with actual data before I explain, rather than give you theory. Let me pull the 9:35 losers' entry characteristics (how extended they were at entry):
+That query just did something important — **it corrected my own earlier story.** Let me give you the honest, data-grounded answer, including where I'd been overstating.
+
+## First, untangle "the gate" — it's been two different things
+This is the source of the confusion:
+1. **The in-play *filter* (`ORB_INPLAY_GATE`)** — a selection filter that scored 9:35 candidates on RelVol / move-size / "exhaustion." **This** is the one that worked *backwards* — it rejected the quiet names that actually won and kept the ones that lost. It's been **OFF since 6/28**.
+2. **The 9:35 *entry* gate (`ORB_935_ENTRIES_ENABLED=False`)** — what I flipped on 6/30. It doesn't filter; it **turns off 9:35 entries entirely.**
+
+**So, are we trading at 9:35 now? No.** The 9:30–9:35 scanner still *runs* (it computes the opening range, ranks candidates, and logs them so we keep measuring), but it **submits zero orders.** Today: 0 from 9:35, all 25 from re-arm.
+
+## Why the 9:35 system is "so wrong" — and where I was wrong
+The 9:35 logic is an **opening-range breakout**: take the first 5 minutes' high/low, then buy a break above / short a break below, betting it continues. I'd told you the loss was mostly "chasing extended/spent gaps." **The data doesn't really support that.** Look at the 9:35 losers by how extended they were at entry:
+
+| Move at entry | trades | net | per-trade | win% |
+|---|---|---|---|---|
+| **<4% (low-conviction)** | 37 | **−$3,279** | **−$89** | 51% |
+| 4–7% | 19 | −$270 | −$14 | 58% |
+| >7% (extended) | 9 | −$4 | ~$0 | 67% |
+
+Winners and losers had basically the **same** extension (~4%). The bleed is **broad — and actually worst on the *low-conviction* names**, not the big gappers. The extended ones roughly broke even (strong momentum offsets the occasional MU-style blowup).
+
+So the real "why" isn't "we chase tops." It's simpler and worse: **the opening 5-minute range is just a bad signal.** The first five minutes is the noisiest, most-random part of the day — the opening auction imbalance, overnight digestion, max whipsaw. A range built in that chaos doesn't predict continuation, so its breakouts fail across the board. We built a system that makes a *decision* off the market's most *undecided* five minutes. That's the flaw.
+
+## Why re-arm is better
+Same breakout *structure*, different *context*. Re-arm scans at 10:35+, after the opening noise has burned off. A name breaking out then has usually built an hour of real price action — a genuine base — so the break is more likely a real trend, not an opening head-fake. **The edge isn't the logic, it's the timing:** waiting for the market to actually make up its mind.
+
+## Should we park the 9:35 gate and run re-arm all day from 9:30?
+- **Park 9:35: yes — keep it off.** The data is unambiguous (−$30/trade vs re-arm's +$1.2). The scanner keeps logging so we can re-visit if a real signal appears.
+- **Run re-arm from 9:30: don't assume it — *test* it first.** This is the exact trap to avoid: if re-arm wins *because it waits for settling*, then running it at 9:35 just re-imports the opening-noise losses under a different name. We have **zero** re-arm data from 9:30–10:35 (it doesn't run then), so I can't answer it from the numbers — and guessing is how we got the backwards filter in the first place. The right move is a **shadow test**: add an early re-arm scan (9:35, 10:00) that only *logs* what it would do, score it for a week or two, and let the data decide. If the early window wins → turn it on and capture that dead 9:30–10:35 hour. If it loses → the edge is the timing, and we leave the gap.
+
+**One honest caveat over all of this:** re-arm is only ~*breakeven* (+$1.2/trade, slightly negative post-6/19). So extending its hours doesn't create an edge — it just spreads a flat strategy across more of the day. Stopping the 9:35 bleed was the big, clean win; the *next* real dollars are in edge quality (the EOD-flatten bleeders, and whether re-arm has a true edge at all).
+
+Want me to build that early-re-arm **shadow** test? It's read-only, changes nothing live, and in a week it answers your exact question with data instead of theory.
+
+---
