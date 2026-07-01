@@ -41,6 +41,8 @@
 > **HEALTH NOW:** CSHV 43/0/0; gates green (preflight 51/1W/0F, regression 20/0F, reliability 9/9); pre-open gate
 > GO-WITH-WARNINGS; bot alive, no config drift. Canonical living plan = the **/planning** page.
 >
+> **[ALERT TRIAGE 2026-07-01 ~2:04 PM ET — autonomous run]** Inbox CLEAN (code_alert_inbox --json: n_total 0 / n_actionable 0 / n_critical_groups 0). CSHV (2:00:09 PM run) = **OK 48 / WARN 1 / FAIL 0** / INFO 1 / SKIP 2. The lone WARN is `rel_exit_side` (9/9 positions [BB, CAT, COIN, IQV, KHC, LITE, ...] "monitor 0.2m fresh; likely just filled -- verify next cycle") — the known-benign just-filled pattern (Bucket A), NOT in the CRIT-gated feed, and cross-confirmed benign by `rel_position_recon` (all 9 reconciled both ways) + `rel_phantom_deploy_book` (book $374,973 == real exposure $374,973; no false 'target reached' refusals). The INFO is `clean_day_certified` (consecutive_clean=0, intraday durable-conditions clean) — informational. Verified freshness independently before calling it clean: PowerShell system clock 2:04:31 PM ET (authoritative), bot_heartbeat 10.7s fresh (bot cycling loop 3143), CSHV 2:00:09 PM (~4.4 min, normal 5-min cadence — not stalled). Market hours (post-9:30 open). No NEW or ambiguous state → **no Rhett ping (silence = handled)**. Per forward-test freeze + watched-files: edited/placed/restarted nothing. Inbox --ack'd.
+>
 > *(Older alert-triage stamps + reboot checklist + ledgers below are HISTORICAL — superseded by the brief above.)*
 > ---
 >
