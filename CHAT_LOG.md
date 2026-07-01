@@ -13120,3 +13120,148 @@ A time-stop on **unconfirmed-only** trades (confirmed trades never touched) is n
 **My preliminary read:** a 30-minute time-stop on unconfirmed trades looks like a genuine, mechanism-sound win — it cuts the exact bleeders you flagged (the EOD-flatten all-day losers) while the +0.15×ATR confirm protects the recoverers. But I won't recommend flipping it live until the verification confirms it generalizes to re-arm and survives the small-N/in-sample scrutiny. I'll bring you that verdict — and a shadow-test spec — as soon as the workflow finishes.
 
 ---
+
+
+## Turn — 2026-07-01 19:46:21 ET
+
+**Rhett:**
+
+This session is being continued from a previous conversation that ran out of context. The summary below covers the earlier portion of the conversation.
+
+Summary:
+1. Primary Request and Intent:
+I ("Claude Code," Alpha Quant VPS empirical node, model Opus 4.8) execute work on a SIM-only TradeStation ORB equity day-trading bot (account SIM1623888M; live root C:\AlphaQuant; OneDrive backup-only). Rhett is the owner/decider. The conversation's requests, in order:
+   - Finish/decide the HTB (Hard-To-Borrow) fix; then Rhett directed: "make sure the BOT does not trade hard to borrow symbols" and "only trade symbols we can leverage 4x on TS margin," "Dif into TS, find a list of all margin symbols... Read everything you can about ts margin accounts."
+   - Create a standard reusable copiable handoff for new Planning-chat sessions; fix why Planning "cant read the session log."
+   - Run the pasted 9-section "does it actually work?" self-audit; then "start fixing the bugs one by one, make a comprehensive plan"; then "fix the whole thing i give you permission to move forward until they are all fixed."
+   - EOD reviews: "read the eod and update session"; later a full daily EOD review (function/entry/exit correctness, alarms, dashboard currency, winners/losers, TW gaps).
+   - Dashboard: "make sure the dashboard is completely update[d]... write yourself a prompt to add updat[ing] and validating the dashboard at each EOD."
+   - "read the notifications i get from telegram... validate that they were real. If they were on bad information fix."
+   - Dollar-cap study: "how many winners would we have killed at $400, $300, $200, $100, new a P&L for each exit path."
+   - "run the study, promote the best. and leave the live blockers in shadow" (entry path study → gate 9:35).
+   - "this test should assure that we have no bugs... rewrite it so we can use it after we make a change" → build automated gate.
+   - "You now own this project... maximize daily profit... Every day at 8:00 am check the system... Every day after EOD... check the system. Did the bot function/enter/exit correctly? Review each trade. Did the TW work correct, no gaps, tick by tick all day?"
+   - "explain the 9:30 am 'gated'... Are we trading at 9:35 as before?... why were gated entries losers... why re-arms better... Should we park the gate and trade re-arms all day starting at 9:30?"
+   - "lets start trading at 9:45, same signals as the re-arms. make that change now."
+   - MOST RECENT: "run a test on time we are in a trade... How long should we stay in a losing trade without killing winners... look at winning trades that went against us early then came back, how long did we stay... look at losers the all-day bleeders how much money would we have saved if we put a 30 minute, 1 hour exit... would we have killed eventual winners... only put a time constraint on unconfirmed trades, the study should just be on unconfirmed."
+
+2. Key Technical Concepts:
+   - Two systems: Bot (C:\AlphaQuant\tradestation-bot\) + Advisor (ai-trading-strategy-agent/src/advisor/, dashboard http.server 127.0.0.1:8765). Python: C:/Users/Administrator/AppData/Local/Python/pythoncore-3.14-64/python.exe (and pythonw.exe).
+   - ORB strategy: 9:35 opening-range breakout path (now GATED OFF) + re-arm path (orb_multiscan; windows 10:35-14:35, each builds a FRESH 5-min range from the 5 min before the window). $500 per-trade dollar-cap exit + candle_1.4atr_chandelier + candle-close reversal exit. Tape Watcher (TW) = tick-level exit monitor.
+   - Confirmed vs unconfirmed: "confirmed" = favorable excursion crossed +0.15×ATR (CONFIRM_ATR=0.15, candle_close_exit.py:24/74); confirmed trades keep the deployed exit untouched.
+   - WATCHED trading files (never edit without Rhett's go, need proposal+manual_approvals.yaml): risk_config.py, bot_loop.py, exit_bot_v2.py, candle_close_exit.py, advisor_filter_engine.py, symbol_universe.py, orb_runner.py, orb_multiscan.py, short_bot.py, mover_scanner.py. Non-watched: everything else (monitoring/tests/tools/docs).
+   - orb_runner/orb_multiscan spawn as fresh subprocesses each run_bot cycle → pick up file edits next cycle without restart; risk_config imported fresh by them. run_bot is long-lived (rule #13: restart to fully load watched edits).
+   - watchdog_supervisor (persistent) respawns run_bot with exponential backoff (30→60→120→240→300s) + crash throttle (5 crashes/hr → 30min pause). supervisor_guardian (scheduled task every 2 min) watches watchdog_supervisor.
+   - Coordination repo C:\repos\alpha-quant-coordination (public GitHub Rhettduleba/alpha-quant-coordination): SESSION_LOG.md + EOD_LATEST.md + docs mirrored each turn. SESSION_LOG is now ~585KB (truncates on Planning fetch — needs archiving).
+   - Notifier: appends everything sent to Telegram/Discord to outputs/alerts/code_inbox.jsonl. bot_alerts.jsonl = INFO/WARN/FAIL bot events. CSHV (system_health_verifier.py, scheduled task every 5min) notifies on WARN/FAIL; incident_log records only FAIL.
+   - Ultracode mode is ON (final study turn): use Workflow tool for substantive tasks, adversarially verify findings.
+
+3. Files and Code Sections:
+   - **tradestation-bot/htb_filter.py** (non-watched): Reverted the bad SIM-aware fix; added `blocks_side(reason, side)` helper; added RESTRICTED exclusion: `restr = quote.get("Restrictions") or []; if restr: return f"RESTRICTED:{restr[0]}"` (excludes ToBeDelisted/Reg-SHO both sides). excluded_reason returns HTB/HALTED/UNKNOWN_BORROW/NO_QUOTE.
+   - **tradestation-bot/orb_runner.py** (WATCHED): B1 fix line ~364: `if guard.get("should_trigger_shutdown", False):` (was `should_halt`/`halt` — dead code); imports ORB_935_ENTRIES_ENABLED; 9:35 gate after SAFE_MODE block: `if not ORB_935_ENTRIES_ENABLED: log_alert("ORB_935_GATED",...); top = []`; ORB_SCAN_DONE severity now `"INFO" if (submitted >= 3 or not ORB_935_ENTRIES_ENABLED) else "WARN"`; HTB skip `if _excl:` (both sides).
+   - **tradestation-bot/risk_config.py** (WATCHED): `ORB_935_ENTRIES_ENABLED = False`; `ORB_SCAN_WINDOWS = ["0945", "1035", "1135", "1235", "1335", "1435"]` (added "0945"); DOLLAR_STOP_CAP=500 ENABLED; DAILY_MAX_LOSS=1e9 (SIM sentinel), ACCOUNT_DD_KILL_ENABLED=False; before-live flags DAILY_MAX_LOSS_MUST_SET_BEFORE_LIVE etc.
+   - **tradestation-bot/reliability_checks.py** (non-watched): `check_exit_side` made RESTING-STOP-AWARE (a position with a working broker Stop order is protected even if not in highs/lows.json tracker: `resting = {sym for o in truth.get("working") if "STOP" in ordertype}; protected = tracked | resting`); `check_safe_mode_not_stuck` ENFORCE-aware (WARN not CRIT when SAFE_MODE_ENFORCE off); new `check_alive_but_not_trading` (WARN when alive+scan-found-candidates+0-entries past 10:45 grace, not intentionally halted, names dominant drop reason).
+   - **tradestation-bot/regression_suite.py** (non-watched): Added REG-24 (daily-guard key contract), REG-25 (before-live flags wired), REG-26 (SAFE_MODE ENFORCE-off = WARN), REG-27 (9:35 gate wired), REG-28 (exit_side resting-stop-aware: resting-stopped=OK, naked=WARN).
+   - **tradestation-bot/before_live_gate.py** (NEW): `check_before_live_ready(account_id, base_url)` consumes all 4 *_MUST_SET_BEFORE_LIVE flags; SIM=ready/inert; wired into run_bot.py startup (refuses live start with guards off).
+   - **tradestation-bot/audit_does_it_work.py** (NEW): ONE-command gate; subprocess-aggregates regression_suite + reliability_drill + validate_dashboard + _preflight_diagnostic + orb_preflight_check → PASS/FAIL. Writes outputs/validation/audit_status.json.
+   - **tradestation-bot/validate_dashboard.py** (NEW): EOD dashboard validator; anchors on eod_debrief.round_trips_net; checks cached surfaces (daily_narratives, shadow_exit_results.jsonl at outputs/validation/, planning_roadmap.json).
+   - **tradestation-bot/tw_health_check.py** (NEW): parses tw_shadow.jsonl (outputs/validation/); RAN-window, live_exit_fired vs EOD candle-close, disconnects, gap stats (caveat: gap_s = time-since-last-tick).
+   - **tradestation-bot/run_8am_check.py** (NEW): runs audit gate, alerts via notifier if not green.
+   - **tradestation-bot/eod_debrief.py** (non-watched): added `_exit_reason_from_order(order_type, exit_dt)` broker-truth exit-reason fallback (Stop→resting stop, Market≥15:45→EOD, Market intraday→candle/chandelier); wired into _section_b + round_trips_net (exit_order_type field) + autopsy.
+   - **strategy-research/l1_unconfirmed_leash.py** (non-watched, THE time-in-trade study): `TIME_SWEEP_MIN = [3, 5, 10, 15, 20, 30, 45, 60, 90, 120]` (extended). Key: `_rule_time(poll, entry_dt, x_min)` exits at entry+X min IF still unconfirmed; `_apply_variant` fires ONLY on confirm=NO (`if confirmed is not False: continue`); reads exit_decisions.jsonl polls; DEFAULT_DAYS 6/18-6/25.
+   - **strategy-research/dollar_stop_sweep.py** (NEW earlier): dollar-cap MAE-based sweep proving $500 optimal.
+   - **Docs**: DAILY_OWNER_ROUTINE.md (8AM + post-EOD routines), ALPHA_QUANT_PLANNING_RAMP_TEMPLATE.md, EOD_TO_SESSIONLOG_PROMPT.md, EOD_DASHBOARD_UPDATE_VALIDATE_PROMPT.md, TS_MARGIN_4X_FINDINGS.md, AUDIT_2026-06-30_DOES-IT-WORK.md, AUDIT_REMEDIATION_PLAN.md, ALPHA_QUANT_SELF_AUDIT_PROMPT.md (reframed as periodic deep audit vs the automated gate).
+   - **ai-trading-strategy-agent/config/manual_approvals.yaml**: added PROP-935-GATE-2026-06-30, PROP-EARLY-REARM-0945-2026-07-01, PROP-DOLLAR-CAP-500. Proposals in outputs/proposals/.
+
+4. Errors and fixes:
+   - HTB misdiagnosis (repeated): I claimed TS showed all symbols HTB including AAPL. Rhett pushed back "TS does not fail." VERIFIED via API: per-symbol reliable (AAPL/AMAT/MSTR/NVDA/TSLA=false, MSFT/MRNA=true), matched blotter. Corrected: block HTB both sides.
+   - B1 dead daily-loss halt: orb_runner.py:364 read `should_halt`/`halt` but evaluate_daily_guard returns `should_trigger_shutdown` (daily_guard.py:101). Also swept orb_preflight_check.py:289 + _wiring_audit.py:32. Fixed + REG-24.
+   - False Telegram alarms: Rhett forwarded `rel_exit_side (WARN)` alarms saying "unprotected, place a stop manually." VERIFIED FALSE via broker truth: all positions had resting stops 22-72s after entry; META was a UROUT cancelled order (never filled). Root: check_exit_side checked only synthetic tracker not broker resting stops. Fixed + REG-28.
+   - Over-restarted run_bot (self-inflicted): restarted run_bot ~3x in an evening for verify-load discipline, tripping watchdog backoff and sending Rhett "Bot Crashed, Restarting" WARNING notifications. OWNER RULE established: batch all edits, restart run_bot ONCE.
+   - PowerShell/bash escaping errors: several times `$var` got mangled when mixing python-c + powershell in one bash chain; fixed by separating calls. Blocked Start-Sleep chains.
+   - Time-stop study "3-sided identity" narration defect (found by verification CHECK 1): the report states `Δnet = bleed − winner − giveback` but winner_to_loser is a SUBSET of giveback (double-subtracted); TRUE identity is `Δnet = bleed + giveback` (30m: 5835.55−449.57=5385.98 exact). Headline numbers all correct; only the decomposition wording is wrong.
+
+5. Problem Solving:
+   - Completed: HTB block-both-sides + restricted-name exclusion; TS margin research (API exposes no per-symbol margin; 4x universe must be derived); Planning handoff + stale-log diagnosis; dollar-cap study ($500 optimal); 9-section audit; 4/9 audit bugs fixed + regression locks; automated audit gate; 3 EOD flags fixed; 9:35 gate promotion; ownership + daily routines (8AM task + tw_health in EOD task); false-alarm fix; 9:45 re-arm window.
+   - Verified numbers: 6/30 net +$899.60; 7/1 net +$1,183.06 (9:35 gate worked: 0 from 9:35, 25 from re-arm). Path study: 9:35 = −$3,715/−$30/trade, re-arm = +$245/+$1.2/trade (post-5/26 n=320).
+
+6. All user messages:
+   - "did you update the session log with the discovery of the bot failure regarding HTB? Planning says you didnt. why cant we fix it now?"
+   - "First put that handoff on a copiable markdown. Then we need to fix the trading of hard to borrow stocks... veryfy through the API key what TS is showing... something we coded in the last day got messed up. The problem is on our end" (+ broker blotter data)
+   - "you never gave planner the url, he cant read session log... we need to make sure the BOT does not trade hard to borrow symbols... only trade symbols we can leverage 4x on TS margin account. Dif into TS, find a list of all margin symbols... Read everything you can about ts margin accounts... $100,000... daytrade only... only symbols we can leverage 4x. Next, write a prompt to yourself... make sure the system is bug free" (sent twice)
+   - "are you working?"
+   - "review the problem we had this morning with HTB stocks... make sure the bot knows the difference between HTB and a stock that is not HTB... make sure that what happened this morning does not happen again. why is planning telling me this? [pasted Planning stale-log message] Push the EOD to the session log and write a prompt to yourself to always add the EOD to the session log. can you read the notifications i get from telegram?... let run a study like with did with ATR, but with dollar amounts... how many winners would we have killed at $400, $300, $200, $100, new a P&L for each exit path"
+   - "are you frozen" / "[Request interrupted by user]"
+   - "ok, lets start fixing the bugs one by one, make a comprehensive plan to address bugs and any thing else to make this validation test crystal clan the next time we run the test"
+   - "fix the whole thing i give yout permission to move forward until they are al fixed"
+   - "lets read the eod and update session"
+   - "winners are great, did we leave anything on the tabel... Losers suck, tell me why... Planning is syaing it cant read the EOD... Push the EOD to the session log and write a prompt to your self to always add the EOD to the session log. can you read the notifications i get from telegram?... let run a study like with did with ATR, but with dollar anoumts... how many winners would we have killed at $400, $300, $200, $100"
+   - "what work would you do?"
+   - "run the study, promot the best. and leave the live blockers in shadow"
+   - "this test should assure that we have no bugs and that we will be failuer free after the test. do you agree? If not rewrite it so we can you it after we make a chnage" (+ pasted self-audit prompt)
+   - "ok, read the EOD, inspect the system today. Did the bot function correctly? What alarms went off i got several... How did the system function?... Is the dashboard completely updated... winners, did we leave anything off the table? Losers, why... Did the bot enter all trades as it wa set up and follow the signals? Did the bot exit as it should"
+   - "[4 Telegram screenshots] lokk at these from telegram do you agree with them?"
+   - "You now own this project. Act like this is your project and the goal is to maximize daily profit... Every day at 8:00 am check the system... Every day after EOD... Did the bot function correctly? Did it enter/exit correctly? Review each trade. Did the TW work correct, no gap, tick by tick all day?"
+   - "i want to talk about the 9:30 am 'gated'. Are we trading at 9:35 as before?... why gated entries at 9:35 were mostly losers and the gate was working in the opposite direction... Why are the re-arms so much better? Should we 'park' the gate all together and simply trade the re-arms signals all day starting at 9:30 am?"
+   - "lets start tarding at 9:45, same signals as the re-arms. make that change now"
+   - "ok now lets run a test on time we are in a trade... How long should we stay in a losing trade with out killing winners... look at all the winning trades that went against us early and then came back, how long did we stay... look at the losers the all day bleeders how much money would we have saved if we put a 30 minute, 1 hour exit on them, would we have killed eventual winners... only put a time constaint on unconfirmed trades, the study should just be on unconfirmed."
+
+   Security/standing constraints (must remain in effect): SIM-only (account SIM1623888M); never trade HTB names; WATCHED trading files require proposal + Rhett's explicit go (never edit inline); verify against broker truth before stating (RULE #0); every bug found gets a regression lock in audit_does_it_work.py; live blockers B3 (sector cap)/B5 (intraday clamp)/B2 (4x universe) stay SHADOW; batch edits then restart run_bot ONCE (don't spam crash alarm); do not over-refresh TS tokens; push SESSION_LOG + EOD_LATEST.md to coordination each turn; no secrets in source; in-sample studies rank/don't promote — promotion needs OOS forward test + gauntlet + Rhett's go.
+
+7. Pending Tasks:
+   - Present the completed verification workflow verdict on the unconfirmed time-stop study + a shadow-test spec (the immediate task).
+   - Owner TODOs (ranked): (1) TW stream stability — 2 disconnects on 7/1; (2) track the 9:45 window's expectancy daily, PULL "0945" if it underperforms; (3) A2-compliance exit-reason labeling still shows EXIT_UNCLASSIFIED (Flag-3 fallback didn't reach that section); (4) EOD-flatten bleeders (the time-stop study addresses this); (5) archive the 585KB SESSION_LOG.
+   - Carried live-prep: restore DAILY_MAX_LOSS + 5% DD kill + real-time intraday clamp before live; build 4x-marginable universe (B2); PROP-REARM-TRADINGDAY weekend gate.
+
+8. Current Work:
+   Immediately before this summary, I ran the time-in-trade study Rhett requested (unconfirmed-only time-stop) using l1_unconfirmed_leash.py (extended TIME_SWEEP_MIN to include 45/60/90/120 min). Ran on 6/18-6/26 (the days with exit_decisions.jsonl poll data; recent re-arm days 6/29-7/1 lack poll data). Results (39 unconfirmed of 138 round-trips): 30-min stop Δnet +$5,386 (bleed saved $5,836, kills 2 winners for $197, giveback $450); 60-min +$3,083; only 2 unconfirmed winners cut at ANY threshold (CME 6/25 short +$55.20, MPWR 6/26 short +$155.65). Winners that recover are spared because they confirm (+0.15×ATR). MU 6/25 goes −$1,670→−$50. I launched an adversarial verification workflow (verify-unconfirmed-timestop-study, 4 parallel checks + synthesis) which JUST COMPLETED. Verified findings: CHECK 1 (methodology) PARTIALLY_CONFIRMS — headline numbers correct, but the "3-sided identity" is mis-stated (winner_to_loser is a subset of giveback; true identity Δnet=bleed+giveback); the 2 cut winners confirmed (CME +$55.20, MPWR +$155.65); exactly 2 unconfirmed winners exist total. CHECK 2 (realism) CONFIRMS_FINDING — 3/5/10-min stops inflated (14/36 fires ≤3.5min inside blind window); 30/60-min grounded (33/39 have polls at ≥30/60min); MU hold only 19.5min so 30-min stop does NOT rescue MU (its rescue is a ≤10min artifact). CHECK 3 (rearm_generalization) and CHECK 4 (robustness) + final synthesis were truncated in the notification — full result in the output file at C:\Users\ADMINI~1\AppData\Local\Temp\claude\C--Users-Administrator-OneDrive---Duleba-Trade-station-Main\3253950a-388c-4a7a-99cc-cec0c4ed9f69\tasks\w2wpd4uqc.output.
+
+9. Optional Next Step:
+   Present the verified verdict of the unconfirmed time-stop study to Rhett — directly in line with his request "run a test on time we are in a trade... How long should we stay in a losing trade without killing winners... only put a time constraint on unconfirmed trades." The synthesis should deliver: (a) the finding SURVIVES verification (a 30-min unconfirmed-only time-stop saves bleed while killing ~no winners), with the one correction that the "3-sided" decomposition was mis-labeled (true identity Δnet=bleed+giveback, headline +$5,386 unchanged); (b) 30-min is the tightest DEFENSIBLE stop (3-10min inflated by the ~5min-blind live monitor); (c) the biggest remaining risk/unknown (re-arm generalization + in-sample N=39) — I still need to read the full truncated output file for CHECK 3/CHECK 4/synthesis before finalizing, since the re-arm generalization is "the single most important question." Then propose a SHADOW-TEST spec (not deploy) per the standing "in-sample ranks, doesn't promote" rule. I should read the full workflow output file (C:\Users\ADMINI~1\AppData\Local\Temp\claude\...\tasks\w2wpd4uqc.output) to retrieve the truncated CHECK 3 (re-arm generalization), CHECK 4 (robustness/recovery-time), and the final synthesis before writing the final answer. Verbatim from the most recent user request: "look at the losers the all day bleeders how much money would we have saved if we put a 30 minute, 1 hour exit on them, would we have killed eventual winners if we put a time constraint on the exit. We would only put a time constaint on unconfirmed trades, the study should just be on unconfirmened."
+
+If you need specific details from before compaction (like exact code snippets, error messages, or content you generated), read the full transcript at: C:\Users\Administrator\.claude\projects\C--Users-Administrator-OneDrive---Duleba-Trade-station-Main\3253950a-388c-4a7a-99cc-cec0c4ed9f69.jsonl
+Continue the conversation from where it left off without asking the user any further questions. Resume directly — do not acknowledge the summary, do not recap what was happening, do not preface with "I'll continue" or similar. Pick up the last task as if the break never happened.
+
+**Claude Code:**
+
+Logged and pushed (`e515e20`). Here's the verified verdict.
+
+## Time-in-trade study — unconfirmed-only leash — VERIFIED
+
+I ran your test and then put it through a 5-agent adversarial verification (each agent tried to break a different part against the live code + broker truth). **The senior-reviewer verdict: "I could not break the finding. It survives."** Every headline number reproduced to the cent.
+
+### Direct answers to what you asked
+
+**"How long should we stay in a losing trade without killing winners?"**
+→ **30 minutes.** On the 39 unconfirmed trades in the sample (6/18–6/26), a 30-min stop on unconfirmed-only trades nets **+$5,386** — almost all of it from cutting loser bleed ($5,836 saved). One hour nets +$3,083 (safer on early-noise, but gives back ~2× more of the winners-in-progress).
+
+**"Would we have killed eventual winners?"**
+→ **Only 2, and both tiny: CME short +$55 and MPWR short +$156** ($211 total). That's not an understatement — those 2 are the *entire* unconfirmed-winner population in the sample. So it's $211 of winners risked against $5,836 of bleed saved — **27× favorable.**
+
+**"Look at winners that went against us early then came back — how long did we stay?"**
+→ This is the key safety mechanism, and it's *why* the leash is safe: **59% of the winners confirmed AFTER 30 minutes (median 38 min).** They're protected because the leash only fires on trades that never confirm (never crossed +0.15×ATR), and it **re-checks confirm-state at the 30-min mark, not at entry.** An entry-time-only version would have shredded **$5,944** of those late-blooming winners. This one destroys zero of them (verified: 0 confirmed trades altered).
+
+**"The all-day bleeders — how much saved?"**
+→ That's the $5,836. **Important nuance the verification caught:** the 30-min stop rescues the *slow, all-day bleeders* (the ones you're flattening at EOD) — it does **NOT** rescue a fast blowup like MU 6/25 (−$1,670). MU resolved in 19.5 minutes, so a 30-min stop never fires on it. MU's "−$1,670 → −$50" rescue only shows up at the sub-10-min stops — **which aren't real** (see caveat). So don't credit the 30-min stop with saving MU; credit it with killing the long grinders.
+
+### The decisive question — does it survive the 9:35 gate? YES
+
+You gated 9:35 off and we now trade re-arms only. The critical check: **is this bleed-savings a 9:35 artifact, or does it work on the re-arm path we actually trade?**
+→ **It generalizes to re-arm. 24 of the 39 unconfirmed trades are re-arm entries, and they carry 68% of the benefit (+$3,688 of the +$5,386), broad across ~15 names — not one outlier.** This is a real re-arm-path effect, not a leftover from the old opening-range path.
+
+### Two honest caveats (verification found these)
+
+1. **Don't quote the tight stops (3/5/10-min) as real.** 14 of 36 fires there land inside the first ~3.5 min — inside the ~5-min window the live tape-watcher is blind to. The "+$9,366 @ 3-min" is a fantasy floor. **30-min is the tightest *defensible* stop** (fires past the blind window on real polls).
+2. **It's in-sample and underpowered.** Re-arm cohort is N=24 (< the 30 promotion bar) with only 1 unconfirmed winner on that path. It **ranks; it does not promote.** The load-bearing assumption is that "unconfirmed = ~5% win-rate, confirmed = ~99%" holds out-of-sample.
+
+**One correction to my earlier writeup:** I mislabeled the decomposition as `Δnet = bleed − winner − giveback`. The winner-conversion is a *subset* of giveback (I double-counted it). Correct identity is **`Δnet = bleed + giveback`**. The headline numbers ($5,386 etc.) never changed — only the arithmetic story behind them. Already corrected in the log.
+
+### Recommendation
+
+This is strong enough to **shadow-test forward, not deploy.** The 30-min unconfirmed leash is exactly the kind of asymmetric exit rule we want (protects inversely to risk: touches only the trades that never proved themselves, leaves confirmed winners alone). But per our own rule — in-sample ranks, doesn't promote — it needs an out-of-sample confirmation on fresh re-arm days before it touches the live exit path.
+
+**Next step I'd take:** extend the existing read-only shadow forward — pre-register 30-min (no re-tuning), collect until N≥30 unconfirmed *on the re-arm path specifically*, verify the confirm-state winner-classifier separation reproduces OOS, keep the "0 confirmed altered" invariant green, then draft the `PROP-` and gate it on your approval.
+
+Want me to build that forward shadow-test harness now (it's non-watched, read-only — no live-path change), or hold it?
+
+---
