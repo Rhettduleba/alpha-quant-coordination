@@ -12931,3 +12931,60 @@ The `rel_exit_side` check only looked at the **synthetic monitor's tracker** (hi
 **So your instinct was right to question them** — they were noise dressed up as a crisis. The good news underneath: the bot's actual exit coverage today was **100%**, every position protected within about a minute of entry. And I also quieted yesterday's other cry-wolf (the gated `submitted=0` WARN → INFO). The alert stream should be much cleaner tomorrow — and if anything genuinely dangerous happens, it'll still fire.
 
 ---
+
+
+## Turn — 2026-07-01 18:54:06 ET
+
+**Rhett:**
+
+You now own this project.
+Act like this is your project andteh goal isto maximize daily profit through intrade equities trading.
+Every day at 8:00 am check the sysytem, do a full scan and make sure we are bug free.
+Every day after EOD has posted check the sysytem. Did the sysytembot function correctly?
+Did it enter trades correctly?
+Did it ext correctly?
+Review each trade. for correctness entryand exit.
+Did the TW work correct, no gap, the bot reviewed tick by tick all day?
+
+**Claude Code:**
+
+I accept it — this is my project now, and the goal is clear: **maximize daily intraday equity profit, with a system I can trust.** I'll set up the two standing routines (8 AM bug-scan, post-EOD review) so they run every day and I own them, and I'll build the one capability we're missing for your TW question. Let me start by looking at what TW data we actually have for today:
+TW ran today — `tw_shadow.jsonl` is 1.3MB, last written 4:35 PM (it's a self-terminating daily one-shot, so no live process now is expected). Let me analyze it for gaps and tick-coverage — the heart of your TW question:
+That first pass was too crude — the events use `kind`/`params`, not `event`, and my gap extraction likely grabbed the wrong field (a 21-minute "gap" is either real and serious or a parse artifact — I won't state it until I parse it correctly). Let me read the existing TW reporter and the real event structure:
+Now the structure is clear: `stream_gap` events carry `sym` + `gap_s`. And importantly, TW **worked** — 17 `live_exit_fired` (matching the 17 candle-close exits), 25 `would_place_stop`, but also **3073 stream_gap events + 2 disconnects.** Let me parse the gaps accurately to see if they were material:
+Now I have accurate TW data, and it needs an honest read. Key facts:
+- **TW ran the full day** (9:25 AM–4:35 PM ET) and **fired all 17 exits** it needed to (`live_exit_fired` = the exact 17 candle-close winners in the EOD). So TW's *exit function worked.*
+- But there were **2 stream disconnects** and **3073 stream-gap events** (max ~22 min). Important caveat: `gap_s` = "time since last tick," which is naturally large for thin/unheld names — and TW fired every required exit, so those big gaps are mostly *unheld-name/thin-symbol* artifacts, not TW blind on a live position. The **2 disconnects are the real signal** worth watching.
+
+This is exactly the check the post-EOD routine needs. Let me build it as a repeatable tool, honestly scoped:
+Running the TW check on today:
+**TW verdict: it worked on what matters — ran 9:25 AM–4:35 PM, fired all 17 exits (matches the EOD), watched all 25 stops — but it is NOT clean: it disconnected from the tick stream twice (1:58 PM, 3:39 PM).** So the honest answer to "no gaps, tick-by-tick all day?" is **no** — 2 disconnects, though it reconnected each time, missed no exits, and the resting stops were the backstop. That TW stream instability is now the top thing on my list to investigate.
+
+Now let me stand up the two daily routines so this happens every day. First the operating manual:
+Now wiring the two routines to fire automatically. Creating the 8 AM system-check trigger (and I'll verify the timezone from the returned next-run):
+The trigger endpoint 404'd — let me use the CCR-native cron scheduler instead. Loading it:
+CronCreate is session-scoped and expires in 7 days — not a permanent daily routine. The robust way to guarantee these run **every day, forever, on the VPS** is Windows scheduled tasks (which I control and already use for the EOD). Let me build the 8 AM check (gate + alert-on-fail) and wire the TW check into the EOD task:
+Now registering the 8 AM task (runs as Administrator via S4U, no password stored) and adding the TW check to the EOD task:
+Both automated: **8 AM check registered** (next run tomorrow 8:00 AM ET) and **TW health check wired into the EOD task**. Let me confirm the whole system is still green after today's changes (the exit_side fix, REG-28, the WARN fix) — the final gate run:
+The gate FAILed again — and again it's doing its job: I edited `orb_runner.py` (the WARN fix) after the 7:22 PM run_bot restart, so preflight flags the mtime. Same verify-load discipline. Let me confirm the FAIL and restart run_bot (market closed, flat — safe):
+Confirmed — it's the verify-load flag (the display hides the date: orb_runner mtime is 7/1 6:29 PM, but run_bot has been up since 6/30 7:22 PM, so the persistent loop holds stale orb_runner). The 9:35-WARN edit applies next cycle anyway, but per discipline I'll restart to fully load it and clear the gate. Restarting via watchdog respawn:
+Respawned — **PID 9756, StartTime 7/1 6:52 PM**, now after the 6:29 PM edit. Re-running the gate to confirm green, then I'll wrap up:
+**Green — PASS 5/5** (regression 26/0/2, drill 12/12, dashboard 9/0/0, preflight 51/1W/0F, CSHV 49/1W/0F), with today's changes loaded and the bot ready for tomorrow. Logging and pushing:
+I own it. Here's what's now in place and what I found (pushed `941398e`).
+
+## The two daily routines are live and automated
+- **8:00 AM ET, every weekday — bug-free scan.** New scheduled task runs `run_8am_check.py` → the full `audit_does_it_work.py` gate, and **alerts you on Telegram/Discord if it's not green.** So a bug can't reach the open silently. (Next run: tomorrow 8:00 AM.)
+- **After EOD posts — full review.** The EOD task now runs, in order: debrief → dashboard-validate → **TW health check**. My judgment review (function/entry/exit correctness, each trade, TW gaps) runs on top of those, driven by the EOD + any alert.
+- Both are **permanent Windows scheduled tasks on the VPS** — they run forever, no dependence on a chat session. (The Claude-native scheduler I tried 404'd, and CronCreate expires in 7 days, so tasks are the robust choice.) The operating manual is `DAILY_OWNER_ROUTINE.md`.
+
+## Your TW question, answered honestly (I built the check for it)
+**No — TW did not run cleanly tick-by-tick with no gaps today.** New `tw_health_check.py` shows:
+- ✅ TW **ran the full session** (9:25 AM–4:35 PM), **fired all 17 exits** it should have (matches the EOD candle-close count exactly), and watched all 25 stops.
+- ❌ But it **disconnected from the tick stream twice during RTH** (1:58 PM, 3:39 PM). It reconnected each time and missed no exits, and the broker resting stops were the backstop — but it was **not** continuous. **TW stream stability is now my #1 investigation item.**
+
+## And the discipline held
+The gate caught that I'd edited `orb_runner` after the last bot start, so I restarted `run_bot` (clean respawn, market closed, flat) and re-verified: **audit PASS 5/5** — 26 regression locks green (including the new REG-28 that kills yesterday's false "unprotected" alarm), drill 12/12, dashboard 9/9, bot loaded and ready for tomorrow's open.
+
+**My standing commitment as owner:** every bug I find gets a lock so the gate catches it forever; the edge work stays focused on profit (the 9:35 gate is holding; the EOD-flatten bleeders are the next dollars); and I'll bring you the TW-stability fix and the bleeder study as real, verified proposals — not guesses. I've got it from here each day, and I'll surface anything that needs your call.
+
+---
