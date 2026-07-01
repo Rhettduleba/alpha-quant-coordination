@@ -12867,3 +12867,67 @@ The deployed exit fired correctly: **candle-close on reversals (17 trades, all w
 **Net:** a clean, correct, profitable day that validates the 9:35 gate. The system is healthy (PASS 5/5), the dashboard is current, and the one real lesson is the **EOD-flatten bleeders** — that's where I'd point the next study.
 
 ---
+
+
+## Turn — 2026-07-01 18:40:21 ET
+
+**Rhett:**
+
+lokk at these from telegram do you agree with them?
+
+**Claude Code:**
+
+These are exactly what I was missing — thank you for forwarding them. They're `rel_exit_side (WARN)` firing ~5 min after each re-arm window (10:40, 11:40, 12:45, 1:50, 2:50, 3:35), and the NEXT STEP text screams **"CRITICAL: an OPEN position has NO working exit/stop order → unprotected → manually place a stop now."**
+
+That's a serious claim, so I'm going to **verify it against broker truth before I agree or disagree** — the exact "don't state it without checking" discipline. The key question: did those flagged positions actually have working resting stops, or were they naked?
+**Verified — and no, I do not agree with those alarms. They're false.** Broker truth for the 10:40 alarm's exact symbols:
+
+| Symbol | Entry | Resting stop placed | Gap |
+|---|---|---|---|
+| CEG | 10:35:15 | 10:35:39 | 24s |
+| COHR | 10:35:17 | 10:35:40 | 23s |
+| GIS | 10:35:13 | 10:36:25 | 72s |
+| INTC | 10:35:18 | 10:35:40 | 22s |
+| KHC | 10:35:17 | 10:35:39 | 22s |
+| NKE | 10:35:15 | 10:35:39 | 24s |
+
+**Every one had a working resting stop placed within ~22–72 seconds of entry — about 4 minutes *before* the 10:40 alarm claimed it was "unprotected, place a stop manually."** All 25 traded symbols got a resting stop. The alarm fires after *every* re-arm window because `rel_exit_side` checks the **synthetic monitor's tracker** (highs/lows.json), which doesn't include re-arm positions — but those positions are protected by **broker resting stops**, which the check doesn't look at. So it cries "unprotected" on positions that are actually protected. That's a real bug in the *alarm*, not the trading.
+
+**One thing I won't hand-wave:** the scan found **META** entered at 11:35 with **no resting stop ever placed** and it's not in the 25 round-trips. Let me confirm that's a no-fill (order submitted, never executed) and not a genuinely naked position:
+**Confirmed: META never filled** — status **UROUT** (order cancelled), fillpx=0. So there was **no position and no naked risk** — it was a cancelled entry order. Combined with the resting-stop timing, the verdict is clear:
+
+## No, I don't agree with those alarms — they're false, and I verified it against broker truth.
+- Every real position had a working resting stop within **22–72 seconds** of entry, ~4 minutes before each alarm claimed "unprotected."
+- **Zero genuinely-naked positions today.** META was a cancelled order, not an open position.
+- The `rel_exit_side` check looks at the **synthetic monitor's tracker** (highs/lows.json), which excludes re-arm positions — but they're protected by **broker resting stops**, which the check never checks. So it false-cries "CRITICAL: unprotected, place a stop manually" after every re-arm window. That's why you got six of them.
+
+This is exactly the failure class to kill: a scary CRITICAL-worded alarm that's wrong. Let me fix `check_exit_side` to be resting-stop-aware. Reading it:
+Now I see it — the docstring even says *"'protected' is NOT 'has a resting stop'"*, which is **outdated**: since the $500 cap (Loop 187) the ORB *does* rest broker stops. That stale assumption is the root of the false alarm. Fixing `check_exit_side` to be resting-stop-aware:
+Updating the docstring so it reflects the current (resting-stop) exit model:
+Now the regression lock (REG-28) so this false alarm can't come back:
+Verifying the fix — REG-28, plus re-running the drill to confirm I didn't break `check_exit_side`'s real CRITICAL cases:
+**Fixed and verified:** REG-28 passes (resting-stopped → OK, truly-naked → WARN), and the drill is still 12/12 — so the *real* "monitor dead / naked position" detection is fully preserved; only the false alarm is gone. Let me log and push, then give you the bottom line:
+Pushed (`15a0589`). Here's the verdict on those alarms.
+
+## No — I do not agree with them. They're false, and I proved it against broker truth.
+The alarm claimed *"CRITICAL: an OPEN position has NO working exit/stop order → unprotected → manually place a stop now."* That's flatly wrong. For the exact symbols it flagged at 10:40:
+
+| Symbol | Entry | Resting stop placed | Gap |
+|---|---|---|---|
+| CEG | 10:35:15 | 10:35:39 | 24s |
+| COHR | 10:35:17 | 10:35:40 | 23s |
+| GIS | 10:35:13 | 10:36:25 | 72s |
+| INTC | 10:35:18 | 10:35:40 | 22s |
+| KHC | 10:35:17 | 10:35:39 | 22s |
+| NKE | 10:35:15 | 10:35:39 | 24s |
+
+**Every one had a working broker stop within 22–72 seconds of entry — ~4 minutes *before* the alarm said it was unprotected.** All 25 traded symbols got a resting stop. **Zero naked positions today.** And META (the one with no stop) was a **cancelled order that never filled** — no position, no risk.
+
+## Why they fired — and the fix
+The `rel_exit_side` check only looked at the **synthetic monitor's tracker** (highs/lows.json), which doesn't include re-arm positions — but those are protected by **broker resting stops**, which the check never examined. So it screamed "unprotected" on positions that were fully protected, once after every re-arm window (which is why you got six). The check's own docstring even said *"'protected' is NOT 'has a resting stop'"* — stale since we added the $500 cap.
+
+**Fixed:** `check_exit_side` is now **resting-stop-aware** — a position with a working broker stop counts as protected, so it won't cry "unprotected" anymore. Critically, I kept the *real* detection intact: a truly-naked position (no tracker **and** no resting stop) still WARNs, and a dead exit monitor still fires CRITICAL — the drill confirms 12/12. Locked with **REG-28** so it can't regress. It's a fresh-process CSHV task, so the false spam stops on the next cycle.
+
+**So your instinct was right to question them** — they were noise dressed up as a crisis. The good news underneath: the bot's actual exit coverage today was **100%**, every position protected within about a minute of entry. And I also quieted yesterday's other cry-wolf (the gated `submitted=0` WARN → INFO). The alert stream should be much cleaner tomorrow — and if anything genuinely dangerous happens, it'll still fire.
+
+---
