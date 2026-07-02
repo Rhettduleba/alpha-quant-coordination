@@ -13288,3 +13288,46 @@ I've now read both watched exit files end-to-end myself. Two things are already 
 Waiting on the map before I touch anything. It'll re-invoke me when done.
 
 ---
+
+
+## Turn — 2026-07-01 20:54:23 ET
+
+**Rhett:**
+
+why did you stop?
+
+**Claude Code:**
+
+Not frozen — my last turn ended right after the verification runs, before I'd written the governance artifacts (proposal + approval entry + session log + push). Finishing that now.
+Everything's verified — writing the governance artifacts now. Proposal first:
+Now the approval entry in `manual_approvals.yaml`:
+Now SESSION_LOG — a ⚙️ deploy line in the CURRENT STATE block plus the Loop 220 entry:
+Push everything to the coordination repo and verify the log landed:
+I wasn't frozen — my previous turn ended after the code + verification finished but before I'd written the governance artifacts (proposal, approval entry, session log, push). That's now done. Full picture:
+
+## ✅ 30-min unconfirmed time-stop is DEPLOYED — live at the 7/02 open
+
+**What fires:** any position still **unconfirmed** (never crossed +0.15×ATR favorable) **30 minutes after its broker entry fill** gets flattened (`TIME_EXIT_30M_UNCONFIRMED`). Confirmed positions are untouched — they keep the chandelier + candle-close + $500 cap exactly as today.
+
+**The build (2 watched + 4 non-watched files):**
+- [risk_config.py](../../../../AlphaQuant/tradestation-bot/risk_config.py) — `UNCONFIRMED_TIME_STOP_MIN=30`, `ENABLED=True` (flip False = instant revert)
+- [exit_bot_v2.py](../../../../AlphaQuant/tradestation-bot/exit_bot_v2.py) — entry-fill time harvested from the `/orders` scan it already runs (broker truth, restart-safe); the check runs **before** the Tape-Watcher lease so it can't be silently skipped on TW days; fail-safe if entry time is unknown; no double-exit possible (flatten no-ops on flat)
+- Dashboards swept per your instruction: **SYSTEM_FACTS.md** (regenerated, names the mechanic at L47), **advisor validation page** (new status line), **exit-reason classifier** (new `EXIT_TIME_STOP_UNCONFIRMED` code → EOD debrief tallies these separately), **exit_decisions.jsonl** (now logs `entry_time` + `minutes_in_trade` per decision)
+
+**Verification (pasted, not claimed):**
+```
+REG-29 ... time-stop WIRED (flag+entry-harvest+unconfirmed-gate+TIME_EXIT+pre-lease)
+        & confirm gate correct vs chandelier_decision (spares confirmed, leashes
+        unconfirmed, both sides)
+SUMMARY: 27 pass / 0 FAIL / 2 skip   clean_session=True
+exit_reason_codes self-test: 14/14
+fresh-process risk_config: 30 True
+```
+
+**One deliberate call:** I did **not** restart run_bot tonight. The preflight showed a config-mtime FAIL, but I grep-proved run_bot/bot_loop don't consume the new constants — the only consumer, `exit_bot_v2`, spawns as a fresh subprocess every cycle and provably reads the new values. Killing run_bot would only have fired you a false "Bot Crashed" WARNING for zero behavioral benefit with the market closed. The mtime flag clears on its next natural restart.
+
+**Governance:** `PROP-UNCONFIRMED-TIMESTOP-30M-2026-07-01` written + recorded in `manual_approvals.yaml` (your quote as the approval). Loop 220 logged; pushed to coordination — HEAD `4afeeda`.
+
+**Watch item for tomorrow's EOD:** every `TIME_EXIT` fire gets audited in the debrief against the study's 27:1 save-to-cut ratio. If live forward data shows it cutting winners the study said it wouldn't, the pull is one flag.
+
+---
