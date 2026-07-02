@@ -14352,3 +14352,37 @@ Triage complete. Cursor advanced (inbox now `n_total: 0`).
 SESSION_LOG updated + synced to coordination repo (pushed), inbox `--ack`'d.
 
 ---
+
+
+## Turn — 2026-07-02 13:07:45 ET
+
+**Rhett:**
+
+ok, let go back to me connecting with you from my phone. all of the session that were on the phone were old and named wrong. how can i get into this session where we are now?
+
+**Claude Code:**
+
+Let me clear up the confusion first, because there are two separate things going on — and one of them is why you couldn't find this session.
+
+**Why the phone sessions looked "old and named wrong":** Remote Control **auto-names every session** by machine + two random words (`win-fibssoqki7k-stateless-knuth`, etc.). It does **not** use "AlphaQuant" or the project name. So there will *never* be one called "AlphaQuant" on the phone — that's expected, not a bug. You identify the live one by the **green dot + a "just now" timestamp**, not by the name.
+
+**Why none of them was this session:** every one you saw said **"Disconnected."** This session is live and active — if it were connected, it would show a **green dot**. So the real issue is simple: **this exact session isn't connected to Remote Control yet.** The "enable by default" toggle only auto-connects sessions that *start* after it's on, and this one was already running.
+
+So we need to connect *this* running session. There's one in-session way to do it:
+
+## Step — try this, then tell me what you see
+
+In **this desktop app**, in the message box where you type to me, type:
+
+```
+/remote-control
+```
+
+and send it. Then tell me **exactly** what appears — does it show a "connected" status, a code/QR, a menu, or "unknown command"/nothing?
+
+- **If it connects** → go to your phone's **Code** tab, pull to refresh, and open the entry with a **green dot** and a **"just now" / "0m"** time. Ignore the funny name — that green-dot, just-now one **is this conversation.**
+- **If it says unknown command or nothing happens** → the desktop app doesn't support connecting an already-running session, and I'll tell you the honest fallback (it's short).
+
+I'm not certain `/remote-control` works inside the desktop app specifically — the docs only confirm it for the terminal/VS Code — so treat this as a test. Whatever it shows, tell me and we'll go from there.
+
+---
