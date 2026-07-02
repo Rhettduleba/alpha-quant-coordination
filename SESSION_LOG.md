@@ -4702,3 +4702,24 @@ B) HEALTHCHECK "1 deaf detector in last drill" (Rhett sent the Healthchecks.io D
 Files: shadow_tournament.py, tunes_page.py, reliability_drill.py (all non-watched). Live path (risk_config/exit_bot_v2/orb_*/
 bot_loop/candle_close_exit) untouched. Bot flat, EOD done.
 
+
+[LOOP 233 — 7:40 PM ET 2026-07-02] EOD analysis 7/02 (Rhett: winners/losers/enter-correctly/exit-correctly/what-better).
+Broker truth: 20 RT, 5W/15L, NET -$770 (afternoon-only; morning lost to the outage; first entry 12:35). 19/20 exited via
+the 30-min UNCONFIRMED time-stop (first live day of the leash), 1 candle-close (MCD +$83, only confirmed trade).
+A 3-agent verification workflow OVERTURNED my preliminary read on TWO counts (I corrected both to Rhett):
+  (1) "time-stop cut ~$4,500 of would-be winners" -> WRONG. The $4,558 Section-E "left on table" is a peak-TICK mirage.
+      Independently verified held-to-EOD: top-5 peak $2,841 -> $23 held; LITE/MARA reverted to losses. Summing leftHold$
+      across all 20 = ~-$19 -> the time-stop was NET-NEUTRAL vs holding all to EOD. Only 3 names (SNDK+181/MRNA+384/HOOD+230)
+      had real recoverable continuation; 7 reverted. Time-stop was FINE on 7/02.
+  (2) "entry quality was the bigger problem / consider a re-arm gate" -> WRONG. Same ungated re-arm path made money 3 of the
+      last 4 days (+$318/+$900/+$1,183); 7/02 RelVol profile matches winning days. A RelVol<1.5 block cuts 22 confirmed
+      winners (+$4,429); a move-exhaustion block cuts +$781 of winners (ON/RIOT/SNDK). Both FAIL must-not-cut. No entry change.
+  (3) The 5% confirmation rate is a MECHANISM/measurement artifact (first day the time-stop truncated at 30m; re-arm confirm
+      not tracked cross-day), NOT an entry collapse.
+ACTED (non-watched, never-defer): fixed the misleading debrief metric -- eod_debrief.py Section E now prints BOTH peak AND
+held-to-EOD and gates the PROP-EXIT-FALSE-STOPOUT signal on the recoverable (held) amount, so it can never manufacture a fake
+edge-loss again. Compiled + re-rendered 7/02 Section E (correct). Loads next EOD run (fresh process).
+VERDICT: on 7/02 the bot made NO correctable mistake -- normal-quality entries + fine exits on a degraded afternoon-only tape.
+Real takeaways: (a) the outage cost (already fixed) was the day's real damage; (b) instrument confirmation cross-day (recommend);
+(c) time-stop = WATCH, revisit only at N>=15-20 forward days with a held-to-EOD measure. Files: eod_debrief.py (non-watched).
+
