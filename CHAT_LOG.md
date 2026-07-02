@@ -14859,3 +14859,39 @@ Done — the price-path logging is built, scheduled, verified, and live. No gaps
 That closes the loop on the shadow-SIM foundation: the scrub (clean cohort), the fill calibration, and now the price-path feed are all in place. The exit-backtester MVP (`fill_model` → `fidelity_gate` → run it) is the next build, and I'll take it start-to-finish when we turn to it. Bot's still trading, monitor's still clean.
 
 ---
+
+
+## Turn — 2026-07-02 14:16:58 ET
+
+**Rhett:**
+
+Also, you have to remember that I'm human and I have a bad memory. So if we ever go through a loop and I haven't answered all of your questions or if there's something I need to think about, make sure you remind me so that I can make those decisions. Sometimes I'm doing a lot of reading and then I forget where we're at, so don't leave anything on the table. Make sure that if I miss something that you need answered or if there's any questions on build, anything to discuss, make sure you remind me, don't leave anything out there.
+
+**Claude Code:**
+
+That's an important one, and it's on me to carry — you shouldn't have to hold the open threads in your head while you're reading. I'm going to (1) make it a standing rule, (2) build a living **Open Items** tracker I keep current, and (3) give you the full list right now so nothing's sitting out there.
+
+Saving the rule:
+Now the living tracker — the current open list, honest about what needs your decision vs what I'll just finish:
+Locked in (`64c75d1`) — it's now a standing rule with a living tracker (`OPEN_ITEMS.md`) that I'll keep current and re-surface. Here's **everything on the table right now**, sorted by what actually needs you:
+
+## ⭐ Actually needs your decision (only one, and it's not urgent)
+**Real early-close half-days (Nov 27 + Dec 24).** Today's bug was a *wrong* early-close flag, but those two dates are *genuine* 1 PM closes. On a real half-day, do you want the bot to **trade the shortened session** (I'd build early-close-aware entry-cutoff + an earlier flatten — a watched change, so it'd go through a proposal), or **cleanly skip** half-days? Months away — but it's the one thing you haven't answered.
+
+## 🔨 I'll finish these — no decision needed (just so you know where we are)
+- **Exit-backtester MVP** — the foundation's built (clean cohort + fill calibration + the price-path feed we just finished). Next is `fill_model` → `fidelity_gate` (must reproduce MU/COHR) → run it. I take it start-to-finish when we turn back to the sim.
+- **Forward live-shadow (Phase 2)** — gated until that fill model validates.
+
+## 🧪 Live in SIM but not yet trusted (I'm watching daily)
+- **30-min time-stop** — needs out-of-sample forward data before we call it proven.
+- **9:45 window** — track its expectancy vs the later windows; pull it if it lags.
+
+## 🚦 Before-live gates (not now, but on the radar)
+- Restore the $2k daily loss cap + 5% drawdown kill + intraday clamp; build the 4x-marginable universe.
+
+## 📁 Older parked stuff (may be partly stale)
+There's a set of decisions from a 6/27 planning block (pre-open gate arming, earnings feed, the gauntlet, "does a kill day count toward the 5-clean-day bar"). I can reconcile those against current reality and tell you which are still real — just say the word.
+
+So the **only open ask** for you is the early-close half-day question, and it can wait. Everything else is either mine to finish or on a watch/validation track. I'll keep this list current and remind you if anything new lands in the ⭐ bucket.
+
+---
