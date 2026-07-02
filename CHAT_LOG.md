@@ -14912,3 +14912,47 @@ Clean — bot healthy (19 arms, 18 round-trips, 0 FAIL), next window 2:35. Loggi
 Quick reminder while I've got you (per the new rule): the **only** thing still waiting on you is the **early-close half-day decision** (trade Nov 27/Dec 24's shortened session, or skip cleanly) — and it can wait. Everything else is mine to finish or on a watch track. Standing by.
 
 ---
+
+
+## Turn — 2026-07-02 14:24:38 ET
+
+**Rhett:**
+
+Are we using the tw most efficiently? Can we tune the tw to track more? Meaning, tick by tick. We need to maximize tw's potential. I think this is the way To make sure our signals are followed precisely. Regarding the half day, give me your recommendation, and then just go with it.
+
+**Claude Code:**
+
+Two good asks. Let me take the half-day off your plate first (decide + do), then dig into the TW properly — because "is the TW even running at full tick precision" is exactly the right question, and I want to answer it with evidence.
+
+**Scouting the TW's actual runtime state first** (it logged 0 records today — that's a flag), plus how it consumes ticks:
+**Correction to my own read first (Rule #0):** the TW **is** running — PID 8484, launched 9:25 AM today with `--live-exit` for a full 7-hour session. My earlier "0 records today" was wrong; its log uses `ts_wall`, not `ts`, so my filter missed them. It IS logging today.
+
+**But here's the real finding, and it confirms your instinct:** of 12,249 TW records, **11,310 are `stream_gap` — 92% — with gaps up to 46 seconds** (sample: MRNA, 46s). The TW streams real-time quotes (`/marketdata/stream/quotes`, tick-level in principle), but the stream is **constantly stalling**. During a 46-second gap it's blind — so exits fire as late as the gap, which defeats the entire point of a tick-level monitor. **We are NOT using it efficiently, and this is exactly the precision leak you suspected.**
+
+That deserves a real root-cause investigation (why the gaps), which I'll launch now. First, the half-day — decided and done.
+
+## Half-day: my call is **SKIP**, and I'm implementing it
+**Recommendation: cleanly skip real early-close days (Nov 27, Dec 24).** Reasoning: holiday-adjacent half-days are thin, low-volume tape — exactly where the ORB in-play-mover edge is weakest and fills are worst — and it's only 2 days/year. Not worth a *watched* change to the entry-cutoff + flatten logic (more code, more risk) for marginal, low-quality opportunity. The bot **already** skips them (the existing `holiday_reason` logic); the only gap is that the hardened detector would false-alarm CRITICAL on those days. Fixing that (non-watched) is the whole implementation:
+Verifying the detector change (must still catch a normal-day no-trade, only exempt real early-close days):
+**Half-day: DONE.** 7/2 stays fully covered (a normal-day no-trade still pages CRITICAL); Nov 27/Dec 24 are exempted as intended skips. Regression **29 pass / 0 FAIL**. The bot already skips those days; now the detector won't false-alarm on them.
+
+Now the TW — this needs a real root-cause dig (why the stream gaps), and since the TW is the **live exit owner**, I'll investigate read-only and bring you a plan, not edit it live. Launching that:
+TW investigation launched (`wmlsplf16`) — I'll bring you the root cause + a ranked tuning plan when it lands. While it runs, closing out the half-day paperwork so the tracker stays honest:
+Both handled. Here's the state:
+
+## Half-day — decided and shipped
+**SKIP** real early-close days (Nov 27, Dec 24). The bot already skips them; I just fixed the one gap — the detector no longer false-alarms CRITICAL on those two dates, while **7/2 and every normal day stay fully protected** (verified: normal-day no-trade still pages, regression 29/0). Reasoning: holiday-thin tape is where our edge is weakest and fills are worst, and it's 2 days/year — not worth a watched change. Logged, tracker updated, item closed.
+
+## TW — you're right, we're not using it efficiently
+The evidence is stark. The TW **is** running (PID 8484, `--live-exit`, streaming real-time quotes), but **92% of its records are stream-gaps, up to 46 seconds each.** A tick-level exit monitor that's blind for 46-second stretches isn't tick-level — during those gaps, exits fire no faster than the old 30-second poll. So its whole purpose (following your signals precisely) is being leaked away by an unstable stream.
+
+I've launched a read-only root-cause + tuning investigation (`wmlsplf16`) covering:
+- **Why the gaps** — stream stalls vs the 15-second resubscribe churn vs blocking API calls in the tick loop (a strong suspect: if `on_tick` fetches ATR/bars mid-stream, it stalls reading the next tick).
+- **Is it even beating `exit_bot_v2` today** — quantifying the real precision loss.
+- **The tick-by-tick plan** — decouple reading from work, faster gap recovery, a stream keepalive, the right TS endpoint.
+
+**Bonus I'll confirm:** a reliable TW stream would *also* give us a dense **tick-level** price path — better than the 1-minute logger I just built — so fixing this feeds the exit backtester too. Two birds.
+
+I'll bring the ranked fixes when it lands, and since the TW is the live exit owner, I'll deploy any change carefully (no blind window). Bot's still trading, monitor's clean.
+
+---
