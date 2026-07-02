@@ -4668,3 +4668,37 @@ _Pinned-bar real-time method (l1_mustnotcut_audit), K pinned at 0.75 (never tigh
 _Diagnostic, in-sample. These days are in-sample for any un-promoted rule; a streak of confirming days accumulates N toward >=30 but does not promote anything -- promotion still requires a locked rule + fresh OOS forward test + the gauntlet._
 
 ---
+
+
+[LOOP 232 — 4:58 PM ET 2026-07-02] Two workstreams (both non-watched; live path untouched).
+
+A) V8pw_wide SHADOW — confirmed running + made it a TRACKED CHAMPION (Rhett: "make sure we're running V8pw_wide on the shadow").
+   Verified end-to-end via a 5-agent ground-truth workflow: engine registry+replay = OK (params 1.8/2/0.10 correct, V0 mirrors
+   the live exit, +$2,024/0-cut reproduced). Found 4 gaps, all fixed:
+   - CHAMPION: added CHAMPION="V8pw_wide" + IN_SAMPLE_DAYS + run_kind/backfill stamp + variant_progress()/champion_progress()
+     aggregators to shadow_tournament.py. V8pw_wide is now machine-tracked, not a transient sort artifact.
+   - ACCUMULATION: was 0 OOS days. Backfilled 6/29(-$273)/6/30(+$466)/7/01(+$345) as APPROXIMATE oos (backfill=True, past-day
+     re-score drift, does NOT count toward promotion N). The 4:50 EOD task then FIRED (LastResult 0) and appended the first
+     CLEAN same-day OOS line: 7/02 N=20 +$58/0-cut. Champion now: in-sample +$2,024/0/N=138 · OOS-clean +$58/0/N=20 of 30 ·
+     OOS-all(+bkfl) +$597/0/N=83. promotable=False (correct).
+   - SCHEDULING: verified the tournament runs from the scheduler's System32 cwd (absolute sys.path/log path -> cwd-independent);
+     WorkingDirectory concern empirically refuted. First scheduled clean day confirmed landed.
+   - DASHBOARD (/tunes): rewrote tunes_page.py to show in-sample AND cumulative-OOS per variant (was runs[-1] only, which would
+     have overwritten the +$2,024 headline with one day's noise) + a CHAMPION banner with promotion progress (N x/30, PASS/FAIL).
+   Adversarial 3-agent review: gate-integrity SOUND (could not force promotable=true), engine==dashboard SOUND (all variants +
+   7 edge cases, no raise). Applied its 2 hardening items: RISK-1 days-win-over-label in _run_kind (in-sample can't leak into OOS
+   N); RISK-2 single-day-OOS write guard (no double-count). Both poison-tested. shadow_tournament.py + tunes_page.py.
+
+B) HEALTHCHECK "1 deaf detector in last drill" (Rhett sent the Healthchecks.io DOWN screenshot, 4:45:02 PM). NOT a trading
+   problem — bot traded fine (21 entries). Root cause: my Loop-221 hardening of check_alive_but_not_trading (WARN->CRIT for a
+   full open-day 0-entry outage) did not sweep reliability_drill.py, which still expected WARN for the alive_not_trading drill ->
+   drill failed 11/12 -> deadman_beacon reported UNHEALTHY -> Healthchecks DOWN. Sweep confirmed the detector CRIT is the CODIFIED
+   contract (REG-31 enforces "CRITICAL"; system_health_verifier passes it through) — the drill was the one stale consumer.
+   Decision: ORB_SCAN_DONE is emitted only by the gated 9:35 path, and ORBMS only logs on an ARMED order, so alerts CANNOT
+   distinguish "re-arm path dead" (7/02 outage) from "filters ate the book" — a full 0-entry open day is page-worthy either way
+   (the 7/02 lesson). So CRIT is correct; updated the drill expected WARN->CRITICAL + renamed filter_ate_book -> open_day_0_entries.
+   Verified: drill 12/12, deadman_beacon HEALTHY (ping OK:200 -> Healthchecks cleared to UP), regression 29 pass / 0 FAIL.
+
+Files: shadow_tournament.py, tunes_page.py, reliability_drill.py (all non-watched). Live path (risk_config/exit_bot_v2/orb_*/
+bot_loop/candle_close_exit) untouched. Bot flat, EOD done.
+
