@@ -16010,3 +16010,136 @@ Rhett wants to confirm — and make sure — the current leader **V8pw_wide** is
 Verification workflow launched (5 parallel ground-truth readers). I'll report the full picture and fix any gaps the moment it completes.
 
 ---
+
+
+## Turn — 2026-07-02 17:01:47 ET
+
+**Rhett:**
+
+<task-notification>
+<task-id>w6uuncibv</task-id>
+<tool-use-id>toolu_01NzPgfBfTqfJE2qEZ5Fcpvf</tool-use-id>
+<output-file>C:\Users\ADMINI~1\AppData\Local\Temp\claude\C--Users-Administrator-OneDrive---Duleba-Trade-station-Main\3253950a-388c-4a7a-99cc-cec0c4ed9f69\tasks\w6uuncibv.output</output-file>
+<status>completed</status>
+<summary>Dynamic workflow "Verify V8pw_wide is correctly running in the shadow tournament end-to-end (registry, scheduling, accumulation, dashboard, champion)" completed</summary>
+<result>{"registry":{"dimension":"registry","status":"OK","evidence":"Ground truth read from C:\\AlphaQuant\\strategy-research\\shadow_tournament.py (160 lines).\n(1) REGISTRY DEFINITION — line 36: VARIANTS[\"V8pw_wide\"] = {\"chand_atr\": 1.8, \"red_closes\": 2, \"be_atr\": 0.10, \"desc\": \"V8p + wider 1.8xATR trail\"}. Confirmed at runtime by importing the module: V8pw_wide -&gt; {'chand_atr': 1.8, 'red_closes': 2, 'be_atr': 0.1}. Matches intended params exactly.\n(2) REPLAY LOGIC (_replay, lines 46-82) faithfully implements the 3 mechanisms for V8pw_wide:\n  - Chandelier tick-floor: line 60 chand = hi - p[\"chand_atr\"]*atr (1.8xATR); line 62 triggers on bar low/high (l&lt;=chand / h&gt;=chand) = intrabar tick floor, always live (not confirm-gated). Correct wide trail.\n  - Breakeven+0.10xATR floor AFTER confirm: gated on `confirmed` (line 64); line 66-69 floor = entry_px + be_atr*atr (0.10), exits when close crosses it. Correct post-confirmation breakeven protection.\n  - 2 consecutive opposite-color closes: line 55 opp_close; line 71 st[\"red\"] increments on opp_close ELSE resets to 0 (enforces CONSECUTIVE); line 72 exits when red &gt;= p[\"red_closes\"] (2). Confirm-gated. Correct.\n  CONFIRM_ATR=0.15 (line 28) matches deployed. Three controlled trace scenarios (fill-model bypassed to isolate logic) produced exactly the expected exits: red_closes=2 held one extra red candle vs V0; 1.8xATR chandelier stopped wider than V0's 1.4; be-floor caught a confirmed winner at entry+0.10xATR where V0 had no floor.\n(3) BASELINE — line 43 BASELINE=\"V0_deployed\"; line 33 V0_deployed = {chand_atr:1.4, red_closes:1, be_atr:None}. _score (line 129) computes delta_vs_V0 = sum(r[k]-r[base]) and winners_cut (line 130). V0 mirrors the LIVE deployed exit: candle_close_exit.py chandelier_decision (CHANDELIER_ATR=1.4 line 60, CONFIRM_ATR=0.15, exit on FIRST opposite-color close line 79-83, no breakeven) and risk_config.py line 60 ORB_EXIT_MODE=\"candle_1.4atr_chandelier\" (the active deployed mode).\nEND-TO-END RUN CONFIRMED: shadow_tournament_log.jsonl newest line (2026-07-02T16:05:35, N=138, days 06-18..06-26) contains variants.V8pw_wide = {\"delta_vs_V0\": 2023.55, \"winners_cut\": 0, \"verdict\": \"better\"} = the claimed +$2,024 / 0 winners cut. (Prior 15:48 line predates V8pw_wide and lacks the key — expected, not a bug.)","detail":"V8pw_wide is correctly defined and its replay faithfully implements the intended design. All three parameters (chand_atr=1.8 wide chandelier, red_closes=2 consecutive opposite-color closes, be_atr=0.10 breakeven floor after confirm) are wired into distinct, correct code paths in _replay. The three exit mechanisms are OR'd (earliest trigger wins), matching the deployed \"earlier of chandelier OR candle-close\" semantics; the chandelier is always live while the breakeven floor and red-close trail are correctly gated on post-confirmation. The red-close counter resets on any non-opposite close, correctly enforcing CONSECUTIVE. V0_deployed is a faithful mirror of the live deployed exit (verified against candle_close_exit.py and the active ORB_EXIT_MODE), so it is a valid apples-to-apples baseline. The scored result is present in the accumulation log, confirming V8pw_wide is executed end-to-end, not merely defined. No logic bug found that would make V8pw_wide's replay unfaithful to its intended definition.","recommended_action":"none"},"scheduling":{"dimension":"scheduling","status":"GAP","evidence":"Task AlphaQuant_EodReconciliation: State=Ready, LastRunTime=07/01/2026 16:50:43, LastTaskResult=0 (success), NextRunTime=07/02/2026 16:50:00, daily trigger StartBoundary 16:50 ET. It has 7 actions; action #7 = pythonw.exe \"C:\\AlphaQuant\\strategy-research\\shadow_tournament.py\" (NO args, WorkingDirectory unset). shadow_tournament.py:153-160 __main__: no-args -&gt; run([datetime.now(ET).strftime(\"%Y-%m-%d\")]) (today only = OOS append); \"--dense\" -&gt; run(None) (in-sample 06-18..06-26); a date arg -&gt; that day. run()/_score() append to LOG = C:\\AlphaQuant\\outputs\\validation\\shadow_tournament_log.jsonl (open \"a\") and includes V8pw_wide from VARIANTS. GROUND TRUTH of that log: exactly 2 lines, BOTH run_at=2026-07-02 (15:48:53 and 16:05:35), BOTH days=[2026-06-18,06-22,06-23,06-24,06-25,06-26] n=138 (the in-sample dense window; 16:05 line shows V8pw_wide delta_vs_V0=2023.55, winners_cut=0, verdict=better). log mtime 2026-07-02 16:05:35. NO line has days=a single recent OOS date; NO line was produced by the 07/01 16:50 scheduled run. SESSION_LOG Loop 230 (~4:05 PM 07/02): shadow_tournament.py built today and \"Replaced v8_shadow as the daily EOD action\" — i.e. action #7 wiring is &lt;1 day old, postdating the last scheduled fire (07/01). Separately, action #3 run_eod_shadow_score.py drives a DIFFERENT harness (shadow_exit_harness.py --score) whose eod_shadow_score.log shows real daily scheduled OOS runs through 2026-07-01 rc=0.","detail":"The shadow TOURNAMENT (the REGISTRY that contains V8pw_wide) IS scheduled and correctly configured, but has NOT yet accumulated a single scheduled OOS day, so it is not proven to run end-to-end on the schedule. Specifics: (1) The daily task AlphaQuant_EodReconciliation is enabled (Ready), last fired 07/01 16:50 with result 0, next due 07/02 16:50 ET — the scheduler itself is healthy. (2) shadow_tournament.py is genuinely wired as the task's 7th action, and the no-args invocation the task uses maps to run([today]) — the OOS-accumulation code path, not the dense re-run. So the design will append one fresh OOS day per weekday. (3) However, the accumulation log shadow_tournament_log.jsonl contains ONLY the two manual dense in-sample runs performed today during the build (Loop 230/231); it has zero scheduled OOS rows. This is because the tournament and its action-7 wiring were only created today (~4:05 PM ET per SESSION_LOG), AFTER the last scheduled fire (07/01 16:50). Its first real scheduled OOS append is due at 07/02 16:50 ET, which had not yet occurred at the log's last mtime (16:05). Net: V8pw_wide is correctly registered and the leader in-sample (+$2,024, 0 winners cut), and the scheduling plumbing to accumulate OOS is in place, but end-to-end scheduled OOS accumulation is unproven — 0 OOS days on the board. NOTE: a related but SEPARATE OOS accumulator (action #3, shadow_exit_harness via run_eod_shadow_score.py) IS confirmed running daily through 07/01 (eod_shadow_score.log rc=0), but that is a different harness/registry from the shadow_tournament that holds V8pw_wide.","recommended_action":"Confirm the first scheduled OOS append actually lands: after today's 07/02 16:50 ET fire, verify shadow_tournament_log.jsonl gains a NEW line with days=[\"2026-07-02\"] (a single date, not the dense window) and a populated V8pw_wide block. If it does not appear, debug action #7 under the scheduler: (a) it has no WorkingDirectory set while shadow_tournament.py does bare imports (eod_debrief, ts_client, tape_watcher, fill_model, clean_cohort) that resolve relative to cwd — under Task Scheduler cwd defaults to C:\\Windows\\System32, so imports/round_trips_net can silently except and the run appends nothing; set the action's WorkingDirectory to C:\\AlphaQuant\\strategy-research (or run via a wrapper that chdirs) as run_eod_shadow_score.py does. (b) Backfill the missing OOS days (06-29, 06-30, 07-01, 07-02) by invoking shadow_tournament.py with each date arg so the tournament OOS series is not left empty. Re-check after the next fire before treating any OOS tournament number as real."},"accumulation":{"dimension":"accumulation","status":"GAP","evidence":"Ground truth: C:\\AlphaQuant\\outputs\\validation\\shadow_tournament_log.jsonl has exactly 2 JSONL lines (both parsed with Python 3.14). RUN 0: run_at=2026-07-02T15:48:53-04:00, n_trades=138, days=[2026-06-18,06-22,06-23,06-24,06-25,06-26] (6 days), variants={V8_two_closes, V8p_protected, V10_wide_trail} — V8pw_wide NOT present. RUN 1 (most recent): run_at=2026-07-0
+... (truncated 9748 chars, full result in C:\Users\ADMINI~1\AppData\Local\Temp\claude\C--Users-Administrator-OneDrive---Duleba-Trade-station-Main\3253950a-388c-4a7a-99cc-cec0c4ed9f69\tasks\w6uuncibv.output)</result>
+<usage><agent_count>5</agent_count><subagent_tokens>235394</subagent_tokens><tool_uses>59</tool_uses><duration_ms>247203</duration_ms></usage>
+</task-notification>
+
+**Claude Code:**
+
+The workflow completed with important findings. Let me read the full result:
+The workflow verified the full chain from ground truth. Here's the honest picture:
+
+**The engine is correct** (registry: OK) — V8pw_wide is faithfully defined and its replay logic is right, and V0_deployed is a true mirror of the live exit. The +$2,024/0-cut is real and reproduced in the log. So *the variant is genuinely being scored.*
+
+**But "running it on the shadow" as an ongoing tracked thing has 4 real gaps** — all in non-watched research/dashboard/infra (nothing touches the live path), so per never-defer I'll fix them now, not just report them:
+
+1. **Scheduling (GAP)** — the tournament is wired as action #7 of the 4:50 PM EOD task, but the wiring is <1 day old (built after the last fire), so it has **never actually run on schedule yet** — and action #7 has no WorkingDirectory set, a real silent-failure risk.
+2. **Accumulation (GAP)** — **0 OOS days on the board**; the log holds only the in-sample dense run. V8pw_wide is 0-of-30 toward the promotion bar.
+3. **Dashboard (GAP)** — /tunes shows V8pw_wide correctly *now*, but off `runs[-1]` only — the first single-day OOS append will **overwrite the +$2,024 headline with one day's noise**, despite the UI promising "accumulates every EOD."
+4. **Champion (GAP)** — no machine-tracked champion; V8pw_wide is top only as a transient sort. If another variant's delta edged ahead, the "leader" would silently change.
+
+Let me fix all four. Starting with the engine: add an explicit champion + in-sample/OOS tagging + a progress aggregator.
+Now the aggregators + the `__main__` handling for champion progress and backfill:
+Verify the engine compiles and the champion aggregator reads the current log correctly:
+Aggregator is correct: in-sample +$2,023.55/0-cut/N=138, OOS 0-of-30, promotable=false.
+
+Now the critical scheduling test — does the script actually work from the scheduler's cwd (`C:\Windows\System32`, no WorkingDirectory set)? I'll simulate the exact scheduler environment with a past OOS day (6/30) as backfill, capturing errors:
+Verified — the script runs cleanly from the scheduler's `System32` cwd (absolute sys.path + absolute log path make it cwd-independent), producing a valid 6/30 OOS line: **N=15, V8pw_wide +$466/0-cut**. So the 4:50 PM scheduled run will work — the WorkingDirectory concern was theoretical and is empirically refuted (no fragile task-XML edit needed). Note 6/30's leader was actually V_be_chand (+$524) — exactly why a committed champion matters, so the pick doesn't flip day-to-day.
+
+Let me backfill the remaining past OOS days (6/29, 7/01); today (7/02) I'll leave for the 4:50 scheduled run so we get one genuinely-clean same-day sample:
+Real OOS signal now on the board (backfilled, labeled approximate): 6/29 **−$273**, 6/30 **+$466**, 7/01 **+$345** — net **+$538 across 63 trades, 0 winners cut**, but honestly showing a losing OOS day (6/29). Let me confirm the aggregator reflects it:
+OODS aggregator is correct and honest: **in-sample +$2,024/0-cut/N=138 · OOS directional +$539/0-cut/N=63 (includes approximate backfill) · OOS-clean 0-of-30 toward promotion · promotable=false.** The clean/backfill split keeps the promotion gate rigorous.
+
+Now fix the dashboard so it shows this accumulated picture (not `runs[-1]`) and pins the champion with its promotion progress. Let me rewrite the two render functions:
+Let me clean up a leftover expression in `_detail` and verify the page renders:
+Compile OK; my test string had a bad escape. Let me re-run the render check cleanly:
+Dashboard renders correctly — champion banner ("building OOS (0/30)"), in-sample + cumulative-OOS columns, N=63, per-run detail with CHAMPION pill. All four gaps closed.
+
+One robustness gap I should close proactively: the accumulation **sums** OOS days, so a scheduler double-fire or a re-run would double-count and corrupt the promotion N. Let me make accumulation idempotent (dedupe OOS by day-set, keep latest) in both the engine and the dashboard:
+Both idempotent now. Let me re-verify the full chain holds after the dedupe change:
+Engine and dashboard aggregations agree exactly (in-sample +$2,023.55/N=138; OOS +$538.60/N=63) — single source of truth mirrored correctly, promotable=false as it should be.
+
+Per ultracode, before I call this done I'll adversarially verify the implementation from independent angles — a promotion gate is high-leverage (it's the thing that eventually decides whether a change earns its way toward the live exit), so I want it stress-tested, not just self-checked:
+Rhett sent a HealthCheck screenshot to review. The adversarial workflow is running in the background — I'll get the results when it completes. Let me look at the screenshot now:
+This is a real, current alert — **Healthchecks.io received an active _failure_ ping at 4:45:02 PM ET today (7/02), just minutes ago**, from the VPS (147.135.76.110). The failure body is the key:
+
+```json
+{"reasons": ["1 deaf detector(s) in last drill"], "ts": "2026-07-02T16:45:01.914505-04:00"}
+```
+
+So this isn't a missed heartbeat (VPS dead) — the VPS is alive and *actively reported a failure*: a self-test "drill" found **1 "deaf detector."** That's the bot's own health system flagging that one of its reliability detectors didn't respond when exercised. Per never-defer, this is top priority. Let me find exactly what emits this and which detector went deaf:
+The chain is clear: `deadman_beacon.py:88-94` reads `reliability_drill_status.json`, and if any detector `failed` the drill, it pings Healthchecks.io as UNHEALTHY with `"N deaf detector(s) in last drill"`. So a **reliability drill ran ~4:45 PM and 1 detector failed it.** Let me read the actual drill status (which detector, why) and the drill code:
+Found it — and this is important: the drill ran 12 detectors, 11 passed, and the **one** that failed is:
+
+```
+"drill": "alive_not_trading<-filter_ate_book",  expected: "WARN",  got: "CRITICAL",  pass: false
+```
+
+That detector is `check_alive_but_not_trading` — **the exact function I hardened earlier today** during the 7/02 outage fix (I made it escalate to CRITICAL). The drill still expects WARN for the "filter ate the book" scenario. This is a classic *config-change-didn't-sweep-all-consumers* miss — I changed the detector's severity but didn't reconcile the drill that hardcodes the expected value. But I must NOT just assume the drill is stale — I need to determine which is *correct*: is CRITICAL right (update the drill) or did I introduce an over-escalation false-positive (fix the detector)? Let me read both:
+Now I understand the drill scenario precisely. `filter_ate_book` (lines 169-188) simulates: bot **alive**, scan **ran** (ORB_SCAN_DONE, 56 candidates), but **submitted 0** (all filtered/HTB-dropped), entries **not** intentionally blocked, at 11 AM past the grace. The original design (line 166-167) intended that = **WARN** ("name the dominant drop reason"), reserving CRITICAL for the genuinely-broken case. My hardening made it CRITICAL.
+
+The crux: is "scanned-but-filtered-everything" a benign no-setup day (WARN) or an emergency (CRITICAL)? Over-escalating it means every legitimately-no-qualifying-setup day screams CRITICAL — alert fatigue that buries real ones. Let me read exactly what my hardened detector does — does it distinguish "didn't scan" (the 7/02 outage, CRITICAL) from "scanned but filtered" (benign, WARN)?
+My hardened detector (lines 532-549) returns **CRITICAL uniformly** for any "alive, open day, past grace, 0 entries" — it does *not* split severity by cause. It computes informative hints (dead re-arm path vs. filter-ate-book vs. quiet tape) but all three return CRIT. The drill's `filter_ate_book` fixture (ORB_SCAN_DONE + HTB, no ORBMS events) expects WARN.
+
+So this is exactly the *config-change-didn't-sweep-consumers* miss: my Loop-221 WARN→CRIT escalation didn't reconcile the drill, **and** it over-escalates the benign "re-arm ran but filters dropped everything" case to a page. The correct contract preserves CRIT for the genuine 7/02 dead-path outage but WARN for alive-but-nothing-qualified. Before I change severity, I must verify what the re-arm path actually logs so "did it run?" is faithful — let me check orb_multiscan's emissions (reading a watched file is fine):
+ORBMS tags (line 173) are emitted only when the re-arm path *arms an order* — so they're absent whenever 0 entries, which makes `rearm_output` a weak discriminator. I need the signal that proves the re-arm path *ran the session* regardless of arming. Let me find who emits `ORB_SCAN_DONE` and whether the re-arm path leaves a per-run marker:
+Decisive finding: `ORB_SCAN_DONE` is emitted **only by orb_runner (the gated 9:35 path)**, never by the re-arm path. The re-arm path (orb_multiscan) leaves ORBMS tags only when it *arms* — so there is **no positive "the re-arm path ran but armed nothing" signal** in the alert log. That means the detector genuinely cannot distinguish "re-arm path dead" (7/02 outage) from "re-arm ran but filtered everything" — both look like 0 entries. Given the 7/02 lesson (a silent no-trade day is dangerous — Rhett wants it loud, not written off), **CRITICAL is the correct, safe severity for a full open day with 0 entries**, cause-agnostic with an informative hint.
+
+So the detector is right; the **drill is the stale consumer** — my Loop-221 escalation didn't sweep it. Let me first find every consumer that hardcodes this detector's severity (the sweep-consumers rule), so I don't fix one and miss another:
+The adversarial workflow finished — and it brought excellent news I'll fold in after: **the 4:50 PM EOD task fired (Last Result 0) and appended the first clean same-day OOS line — 7/02, N=20, +$58, backfill=False → V8pw_wide is now N=20/30 toward promotion.** Both the gate and engine/dashboard equivalence verified SOUND (no reachable exploit; all edge cases handled). It flagged two latent defense-in-depth hardening items I'll apply.
+
+But first, finishing Rhett's healthcheck fix. The sweep is decisive: **REG-31 (regression_suite.py:666) already enforces the detector must be "CRITICAL"** — and `system_health_verifier.py:1407` just passes the severity through. So the detector's CRIT is the *codified intended contract*; the drill (reliability_drill.py:188) is the one consumer I forgot to update in Loop 221. No judgment call — the fix is unambiguous. Let me update the drill to match:
+Now re-run the drill to confirm 12/12, then re-run the deadman beacon so it pings Healthchecks healthy and clears the DOWN:
+12/12 — the drill passes, `open_day_0_entries` now correctly expects CRITICAL. Now re-run the deadman beacon so it reads the clean drill status and pings Healthchecks healthy, clearing the DOWN:
+**Healthcheck resolved:** drill 12/12, and the deadman beacon just pinged Healthchecks **HEALTHY (OK:200)** — the "My First Check" DOWN is cleared (Rhett should get an UP notification). Root cause was purely a monitoring self-test mismatch I introduced (not a trading problem — bot traded fine, 21 entries).
+
+Now let me apply the two defense-in-depth hardening items the adversarial review found on the shadow gate (both non-watched, both make the promotion N tamper-resistant). **RISK-1**: days should win over a stamped label (so a mislabeled in-sample line can't leak into the OOS/promotion N). **RISK-2**: guard OOS runs to single-day so accumulation can't double-count:
+Let me verify the hardening holds — compile both, confirm the live champion progress (now with the EOD-appended clean 7/02 line), and prove the two RISK fixes actually block the exploits:
+Both poison tests pass (RISK-1: mislabeled in-sample stays in_sample; RISK-2: multi-day OOS raises). The KeyError was my inline test using the wrong key name. Let me re-read the live champion progress correctly:
+Fully verified end-to-end:
+- **in-sample** +$2,023.55 / 0-cut / N=138
+- **OOS clean (toward promotion)** +$58.03 / 0-cut / **N=20 of 30** — the first genuine same-day OOS day landed via the 4:50 EOD task
+- **OOS all (incl. backfill)** +$596.63 / 0-cut / N=83 across 6/29–7/02
+- promotable: **False** (correct — ~1–2 more clean days reaches N=30)
+
+Let me run the regression suite to confirm the drill edit didn't regress anything, then log + push:
+Clean: **29 pass / 0 FAIL / 2 skip**, and REG-31 confirms the detector contract ("calendar-based + CRITICAL + counts both paths"). Everything reconciled. Let me log both workstreams and push:
+Now update OPEN_ITEMS to reflect V8pw_wide is the tracked champion accumulating clean OOS:
+Now commit the code to the local snapshot repo and push the docs to coordination:
+Let me confirm the coordination push landed on origin:
+Both done and pushed (coordination `5e8b2bc`, confirmed in sync). Here's the full picture.
+
+## The Healthcheck screenshot — resolved, and it wasn't a trading failure
+
+The Healthchecks.io "DOWN" ping at 4:45 PM was **my own monitoring change biting back, not a bot problem.** The VPS was alive and *actively* reported a failure: its self-test "drill" found "1 deaf detector." I traced it to ground:
+
+- The drill runs 12 health detectors; 11 passed, 1 failed: `alive_not_trading` returned **CRITICAL** where the drill expected **WARN**.
+- That detector is the exact one I hardened this morning during the 7/02 outage fix (WARN→CRITICAL, so a full no-trade day *pages* you). I updated the detector but **forgot to sweep the drill** that hardcodes the expected value — the classic config-change-didn't-sweep-consumers miss.
+- The sweep was decisive: **REG-31 already enforces "CRITICAL" as the intended contract**, and the pass-through health check agrees — so the detector is right, the drill was the one stale consumer. (I also confirmed the detector *can't* tell "re-arm path dead" from "filters ate the book" from the logs, so CRITICAL on any full 0-entry open day is the correct, safe call — the 7/02 lesson.)
+
+**Fix + proof:** drill now **12/12**, deadman beacon re-ran **HEALTHY (ping OK:200)** → your Healthchecks check is back **UP**, regression **29 pass / 0 FAIL**. The bot itself traded fine all along (21 entries).
+
+## V8pw_wide — confirmed running, and now a tracked champion
+
+I verified the shadow end-to-end (5-agent ground-truth pass, then a 3-agent adversarial pass). The engine is faithful (+$2,024/0-cut reproduced), but "running it" had 4 real gaps — all now closed:
+
+- **It's now the machine-tracked CHAMPION** (not just top-of-a-sort). The `/tunes` tab pins it with a promotion-progress banner.
+- **OOS accumulation started for real** — and the 4:50 PM EOD task **fired and appended the first genuine same-day OOS day**:
+
+| | delta vs V0 | winners cut | N |
+|---|---:|---:|---:|
+| in-sample | +$2,024 | 0 | 138 |
+| **OOS clean (toward promotion)** | **+$58** | **0** | **20 of 30** |
+| OOS all (incl. backfill 6/29–7/02) | +$597 | 0 | 83 |
+
+- **The dashboard won't lie anymore** — it now shows in-sample *and* cumulative-OOS separately (before, the first daily append would have overwritten the +$2,024 headline with one day's noise).
+- The adversarial review found the gate **SOUND** (couldn't force a false "promotable"), and I applied its two hardening fixes (a mislabeled line can't leak in-sample into the promotion N; accumulation can't double-count).
+
+**Honest status:** promotable = **False** — it needs N≥30 clean same-day OOS with 0 cuts and net-positive; we're at N=20 after one clean day, so ~1–2 more trading days gets there. Backfilled days are labeled approximate and deliberately don't count toward that N. Worth noting V_be_chand actually beat V8pw_wide on 6/30 — which is exactly why committing to a champion (instead of "whoever's top today") matters.
+
+All changes were non-watched (shadow_tournament.py, tunes_page.py, reliability_drill.py); the live trading path was untouched. Bot's flat, EOD done.
+
+---
