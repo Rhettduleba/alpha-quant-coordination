@@ -13490,3 +13490,17 @@ Then tell me **exactly** what appears — a link, a short code, a QR code, a men
 Don't do anything else yet — I'll wait for what it shows you.
 
 ---
+
+
+## Turn — 2026-07-01 21:22:00 ET
+
+**Rhett:**
+
+im using you in the claude code app not a terminal
+
+**Claude Code:**
+
+Got it — that changes *where* the control lives. In the desktop app it's usually a menu/button or the settings panel rather than a typed `/command`, so I don't want to send you hunting in the wrong place. Let me confirm the exact spot in the **app** before I give you the step:
+Confirming the app-specific spot now — I'll come back with the exact place to click/tap and then your single step 2. Sitting tight for its answer.
+
+---
