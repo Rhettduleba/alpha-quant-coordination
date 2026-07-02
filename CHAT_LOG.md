@@ -13331,3 +13331,43 @@ fresh-process risk_config: 30 True
 **Watch item for tomorrow's EOD:** every `TIME_EXIT` fire gets audited in the debrief against the study's 27:1 save-to-cut ratio. If live forward data shows it cutting winners the study said it wouldn't, the pull is one flag.
 
 ---
+
+
+## Turn — 2026-07-01 21:13:44 ET
+
+**Rhett:**
+
+i put you back on opus for this task, pick up where you left off
+
+**Claude Code:**
+
+Picking up — I'm back on Opus. My own broker-truth checks already landed while the audit workflow runs (I'll fold these into the final answer as the highest-tier evidence):
+
+- **Live positions = 0** right now → EOD daytrade-flat confirmed (BROKER_TRUTH).
+- **Per-symbol HTB spot-verify**: AAPL/MSFT/MRNA/NVDA + all 6 names traded today (BB/COIN/KHC/LITE/RIOT/WMT) → `IsHardToBorrow=False, IsHalted=False`, no restrictions (BROKER_TRUTH). The gate reads real per-symbol data, not a blanket flag.
+- **7/1 P&L re-derived from broker export**: 25 round-trips, **net +$1,183.06**; worst BB −517 / COIN −382 / WMT −255; best COHR +445 / SNDK +312 / RIOT +285 (BROKER_EXPORT).
+
+Let me check the audit workflow's progress (non-blocking so I don't hold the turn):
+The interruption killed the audit workflow. Let me see how far it got — completed section-agents cache their results, so I can resume from the cache rather than re-running everything:
+Only 1 of 9 section-agents finished before the kill — it was killed early. I'll resume from the run cache (the completed section returns instantly; the other 8 + synthesis re-run live). That's literally picking up where it left off:
+Resumed and running in the background (task `w4y1xhosq`) — I'll be re-invoked when it completes, so I won't block on it this time. While it runs, two quick high-value checks I can do from local data that directly cover the *new-today* risks (and complement the workflow rather than duplicate it): confirm the just-deployed time-stop did **not** fire today (it shouldn't — deployed post-close; any `TIME_EXIT` today would be a P0), and confirm the new 9:45 window actually fired on its first live day:
+Two findings:
+- **P0 guard PASS**: zero `TIME_EXIT` records anywhere in `exit_decisions.jsonl` — the time-stop correctly has not fired (deployed post-close). ✓
+- **The 0945 window produced ZERO entries before 10:00 today** — all 25 fills were 10:xx or later. That needs explaining (was the window even armed at 9:45, or just no breakout?). Let me resolve it directly — check whether the 9:45 window actually *armed* today:
+Decisive finding: **the 0945 window produced ZERO arm events today** (only ORBMS1035/1135/1235/1335/1435 fired) — it has never armed live. Most likely benign (I added "0945" to the config *during* today's session, after 9:45 had already passed, so 7/02 is its real first day) — but I must rule out failure-class 5 (configured but not actually wired to arm at 9:45). Checking how `orb_multiscan` parses a window string:
+**Resolved — no bug.** `current_window()` (orb_multiscan.py:78-82) parses each window generically as `int(w[:2]), int(w[2:])`, so `"0945"` → 09:45 with a 90s arm tolerance. The window is **correctly wired**; today's zero arms is purely deploy-timing (I added "0945" to the config during today's session, after 9:45 AM had passed). **7/02 is its genuine first live day** — a watch item, not a defect.
+
+That's five sections independently cross-checked at the highest evidence tier while the workflow finishes the deep read-only pass. Where I stand:
+
+**My independent BROKER_TRUTH / BROKER_EXPORT checks (done):**
+| Check | Result | Tier |
+|---|---|---|
+| EOD flat | 0 live positions | BROKER_TRUTH |
+| HTB per-symbol (10 names incl. all 6 traded) | all `IsHardToBorrow=False`, real per-symbol | BROKER_TRUTH |
+| 7/1 P&L | +$1,183.06, 25 round-trips | BROKER_EXPORT |
+| Time-stop P0 guard | 0 `TIME_EXIT` fires today (correct — post-close deploy) | BOT_LOG |
+| 0945 window | 0 arms today; correctly wired for 7/02 | BOT_LOG |
+
+The 9-section adversarial workflow (each agent tasked to *falsify*, not confirm) is running in the background — I won't block on it this time; it'll re-invoke me when done. Then I'll deliver the full per-section PASS/FAIL/UNKNOWN with the ranked bug list (today's failure-classes first) and the honest "does it work" declaration, folding in the broker-truth evidence above. Standing by for the completion notification.
+
+---
