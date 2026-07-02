@@ -286,6 +286,7 @@ The VPS was rebooted ~4:06 PM ET 6/22 to clear a memory-pressure incident. AutoA
 ## VERIFIED / ASSUMED / BROKEN LEDGER  (seeded Loop 36–39; update every turn)
 
 **VERIFIED (checked against code/data):**
+- **[MONITOR 1:32 PM] clean** — market open; bot trading (15 arms @12:35, 13 round-trips), 0 FAIL today, no new CSHV FAIL/CRIT; 1:35 PM re-arm window imminent. No action.
 - **[MONITOR 1:17 PM] clean** — market open; bot trading (15 arms @12:35, 13 round-trips), 0 FAIL today, code_inbox clear; lone CSHV WARN = clean_day_certifier flagging today's earlier outage (known/benign). Next window 1:35 PM. No action.
 - **[RULE 1:05 PM] NEVER-DEFER locked (Rhett demand):** memory feedback_never_defer_always_act — every warning/bug/FAIL is acted on the SAME turn (fix non-watched / escalate WITH fix for watched); open audit-FAIL is BLOCKING; log every warning+action. Root of 7/02: I DEFERRED the 7/01 audit FAIL overnight. Monitor made durable-intent: /loop 4d4534a2 (*/15 9-16 Mon-Fri, active while app open); always-on detection = CSHV 5min (hardened detector->CRITICAL) + PreOpen readiness 9AM (both Windows tasks, run every day app-or-not).
 - **[MONITOR 12:49 PM] clean** — bot RECOVERED + trading (15 arms @12:35, 9 round-trips), 0 FAIL today; lone CSHV WARN = clean_day_certifier flagging today's earlier outage (known/benign). /loop 90efb7dd active every 15min.
