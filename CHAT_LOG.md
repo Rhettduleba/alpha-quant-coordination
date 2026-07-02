@@ -13265,3 +13265,26 @@ This is strong enough to **shadow-test forward, not deploy.** The 30-min unconfi
 Want me to build that forward shadow-test harness now (it's non-watched, read-only — no live-path change), or hold it?
 
 ---
+
+
+## Turn — 2026-07-01 20:04:06 ET
+
+**Rhett:**
+
+no i want you to implement the 30 minute exit on all unconfirmed now. Whenyou make shcnages like we have are are about  to do make sure you update thedashboard in all applicable areeas.
+
+**Claude Code:**
+
+Understood. You've heard the caveats and made the call — this is SIM, fully reversible, and you'll get better forward data from a live-tracked deploy than from a pure shadow. I'll treat your message as the explicit approval, record it, and ship it *safely*: proposal + approval entry → the code change on the exit path → dashboard updated everywhere it's referenced → restart run_bot once → verify-load → regression lock.
+
+But this touches the **watched live exit path**, so Rule #0 applies hard: I will not guess where the 30-min stop injects. First I map the real exit architecture and every dashboard surface cold, then edit with full context. Launching that mapping now (read-only, parallel):
+The mapping workflow is running. While it works, I'll read the watched exit files myself in parallel — I have to read them with my own eyes before editing anyway (Rule #0), and having them loaded means I can move straight to the edit once the blueprint confirms the insertion points. Let me locate and read them:
+Good — the active exit is `chandelier_decision` (mode `candle_1.4atr_chandelier`). It computes `confirmed` and has `high_water/low_water/avg_price/atr`, but it's a *pure* function with no notion of time — so the 30-min stop belongs in the caller (`exit_bot_v2`) which knows entry time. Let me read that loop:
+I've now read both watched exit files end-to-end myself. Two things are already clear and will shape the implementation:
+
+1. **The active exit is `chandelier_decision`** (mode `candle_1.4atr_chandelier`), a *pure* function that already computes `confirmed` — but it takes **no notion of time**, so the 30-min leash needs `minutes_in_trade` threaded in.
+2. **`exit_bot_v2` is a script relaunched each cycle (not a loop), and there's a Tape-Watcher single-owner lease** (line 331): when the TW owns a symbol's exit, `exit_bot_v2` *defers*. So the time-stop can't live only in `exit_bot_v2` — a TW-owned position would never see it. The clean fix is to put the leash inside the shared `chandelier_decision` and have **both** callers pass `minutes_in_trade`. The open plumbing question is the reliable per-position **entry timestamp** source — that's exactly what the mapping workflow is resolving right now (readers B + C).
+
+Waiting on the map before I touch anything. It'll re-invoke me when done.
+
+---
