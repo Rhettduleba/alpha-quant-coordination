@@ -14295,3 +14295,60 @@ Done — pushed (`d43a794`). Everything you asked for is now in place:
 The monitor is live and just ran clean (bot recovered, 9 round-trips, 0 FAIL). From here it stays **silent when clean** — you'll only hear from me when something's actionable or I've had to escalate. That's the standard now: I watch, I act, I don't defer.
 
 ---
+
+
+## Turn — 2026-07-02 13:07:20 ET
+
+**Rhett:**
+
+<scheduled-task name="alphaquant-alert-triage" file="C:\Users\Administrator\.claude\scheduled-tasks\alphaquant-alert-triage\SKILL.md">
+This is an automated run of a scheduled task. The user is not present to answer questions. For implementation details, execute autonomously without asking clarifying questions — make reasonable choices and note them in your output. "write" actions (e.g. MCP tools that send, post, create, update, or delete), only take them if the task file asks for that specific action. When in doubt, producing a report of what you found is the correct output.
+
+AUTONOMOUS ALERT TRIAGE — Alpha Quant (Rhett-approved 2026-06-22; Planning Track A). You are a scheduled Claude Code run on the Alpha Quant VPS (live root C:\AlphaQuant). GOAL: Rhett must NOT be the human pager-relay. You read the SAME actionable alerts he would, auto-suppress known-noise, and ESCALATE anything that genuinely needs a human — pre-diagnosed. The human gate is preserved.
+
+IMPORTANT — FORWARD-TEST FREEZE: autonomous code-fixing is DEFERRED right now (Planning Track B). You DO NOT edit or commit ANY code this run (not even non-watched). You TRIAGE + ESCALATE only. (Auto-fix re-enables after the OOS forward test via a reviewed whitelist.)
+
+SOURCE OF TRUTH: read C:\AlphaQuant\CODE_ALERT_TRIAGE_PLAYBOOK.md and follow it EXACTLY (re-read each run). Procedure:
+1. `git -C C:\repos\alpha-quant-coordination pull` (ignore errors). Read the top stamp of C:\AlphaQuant\SESSION_LOG.md and C:\AlphaQuant\CSHV_FINDINGS.md for current state.
+2. Run: C:\Users\Administrator\AppData\Local\Python\pythoncore-3.14-64\python.exe C:\AlphaQuant\tradestation-bot\code_alert_inbox.py --json  → the NEW actionable CRITICAL alerts since last ack (the feed is already severity-gated to CRIT + de-noised; benign WARNs are handled at source, not here).
+3. For each alert: if it is KNOWN-NOISE (reader pre-tags many; or a state already confirmed benign in SESSION_LOG) → no action. Otherwise ESCALATE it: import notifier (add C:\AlphaQuant\tradestation-bot to sys.path) and call notifier.send_notification(subject="CODE TRIAGE — needs you", body= plain-English diagnosis + the specific proposed fix + whether it needs Rhett's approval (watched/strategy/risk) or just a go-ahead, level="CRITICAL"). For a SAFE non-watched fix you would normally make, STILL escalate it with the proposed fix (do not auto-edit during the freeze).
+4. ALWAYS at the end: append a short dated entry to C:\AlphaQuant\SESSION_LOG.md (what fired + what you escalated, or 'inbox clean'), copy it to C:\repos\alpha-quant-coordination\SESSION_LOG.md, commit + push that repo, then run code_alert_inbox.py --ack to advance the cursor. If nothing actionable, do NOT notify Rhett (silence = handled) — still --ack + one-line log.
+
+HARD RULES (never autonomously): NEVER edit/commit any code during the forward test (escalate fixes instead). NEVER edit a WATCHED strategy file (risk_config.py, bot_loop.py, exit_bot_v2.py, candle_close_exit.py, advisor_filter_engine.py, symbol_universe.py, orb_runner.py, orb_multiscan.py, short_bot.py). NEVER change risk/sizing/universe/stops/time-windows. NEVER place/cancel/modify orders or touch positions. NEVER deploy a strategy change. NEVER restart run_bot/watchdog_supervisor. NEVER touch credentials/.env or refresh TS tokens excessively. WHEN IN DOUBT, ESCALATE — never act on the live/trading path.
+
+ENVIRONMENT: Python = C:\Users\Administrator\AppData\Local\Python\pythoncore-3.14-64\python.exe. Work in C:\AlphaQuant. Keep each run tight + conservative. Your job: keep Discord quiet for Rhett by surfacing ONLY what truly needs him, pre-diagnosed.
+</scheduled-task>
+
+**Claude Code:**
+
+I'll run the autonomous alert triage per the playbook. Let me start with the setup steps.
+Now let me read the current state stamps and run the alert inbox.
+One actionable CRITICAL: `rel_alive_but_not_trading` at 12:30 PM ET. But the latest CSHV run (13:00) shows FAIL=0. I need to verify live truth before deciding escalate vs. already-handled. Let me dig.
+This is a genuine trading-path FAIL, but there are contradicting signals (readiness at 12:36 said "entry path live / already_fired"; CSHV 13:00 shows FAIL=0). I must verify live truth before deciding. Let me investigate the actual re-arm path activity today.
+July 2 is a **normal full trading day** (July 4 is Saturday → holiday observed Fri July 3; no early close today). So the "early-close mis-skip" concern is live. Let me verify whether orb_multiscan actually ran today.
+orb_multiscan state files were updated at 12:35 PM today — so it IS running. Let me confirm what it did today.
+orb_multiscan **did** run today: `multiscan_state.json` shows `date: 2026-07-02, fired: ["1235"]` and tags updated 12:35 PM with today's candidates. The entry path is demonstrably alive — so the 12:30 FAIL was a false positive that self-cleared (CSHV 13:00 = FAIL 0). Let me check whether this specific check's false-positive has been dispositioned before, to decide escalate vs. known-noise.
+This is fully resolved. SESSION_LOG **Loop 221/221b (this same hour)** shows Rhett + Claude already **found, fixed, and verified** this exact outage: `market_hours.py:38` had a bogus `date(2026,7,2)` early-close entry → orb_multiscan treated an open day as a full closure → armed 0 all day. The fix removed it; at 12:35 the 1235 re-arm window armed **15 ORB_V16_ENTRY_OK** (broker truth), and CSHV self-cleared to FAIL=0 by 13:00.
+
+So the 12:30 CRITICAL was the detector firing **correctly** during the real outage window — not a new signal. It's Bucket A (already resolved in SESSION_LOG). No ping needed. Let me log and ack.
+Now sync to the coordination repo, commit/push, and ack the inbox.
+Triage complete. Cursor advanced (inbox now `n_total: 0`).
+
+## Summary — Autonomous Alert Triage, 2026-07-02 ~1:06 PM ET
+
+**1 CRITICAL alert reviewed, 0 escalations to Rhett** (silence = handled).
+
+**Alert:** `rel_alive_but_not_trading` (FAIL @ 12:30 PM ET) — "bot ALIVE on an OPEN trading day but ARMED 0 ENTRIES; re-arm path (orb_multiscan) suspected dead / calendar mis-skip."
+
+**Verdict: Bucket A (already-resolved).** This is not a new signal — it's the detector firing **correctly** during a real outage window that Rhett + Claude had **already found, fixed, and verified in Loop 221/221b the same hour**:
+- **Root cause:** `market_hours.py:38` wrongly listed `date(2026,7,2)` as an early-close day → orb_multiscan treated a normal full trading day as a full closure → armed 0 all morning. (July 2 is a normal full day; July 4 is Saturday, so the holiday closure is Fri July 3.)
+- **Fix (non-watched, already applied):** removed the bogus entry → `holiday_reason(7/2)=None`.
+- **Verified recovery:** at 12:35 the 1235 re-arm window armed **15 ORB_V16_ENTRY_OK** (broker truth); CSHV self-cleared to **FAIL=0 by 13:00**.
+
+**Live confirmation I pulled independently:** `multiscan_state.json` = date 2026-07-02, fired ["1235"]; tags updated 12:35 PM; CSHV 13:00 OK 48 / WARN 2 / FAIL 0 (heartbeat 17s, trade_journal 12s); pre-open readiness 12:36 = GO. Entry path healthy now.
+
+**No action taken on code/orders/positions/processes** (forward-test freeze respected). The only open item — the WATCHED early-close *logic* bug for the real early closes (Nov 27 / Dec 24, → PROP-EARLY-CLOSE-FIX) — is already tracked for Rhett in Loop 221, months out, so not re-paged.
+
+SESSION_LOG updated + synced to coordination repo (pushed), inbox `--ack`'d.
+
+---
