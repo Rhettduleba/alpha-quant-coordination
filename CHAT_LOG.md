@@ -13575,3 +13575,100 @@ In the app, open **Settings** and find the **Claude Code** section. Tell me thre
 That's the whole step. Those three answers tell me whether we can light this up on your current session or need one small detour first — and they decide step 2. Don't flip anything yet; just look and tell me what's there.
 
 ---
+
+
+## Turn — 2026-07-01 21:31:28 ET
+
+**Rhett:**
+
+<task-notification>
+<task-id>a1d6be3682326b07d</task-id>
+<tool-use-id>toolu_01LAM3teYi43MHCHcqzWL9WL</tool-use-id>
+<output-file>C:\Users\ADMINI~1\AppData\Local\Temp\claude\C--Users-Administrator-OneDrive---Duleba-Trade-station-Main\3253950a-388c-4a7a-99cc-cec0c4ed9f69\tasks\a1d6be3682326b07d.output</output-file>
+<status>completed</status>
+<summary>Agent "Verify Remote Control in Claude Code desktop app" finished</summary>
+<note>A task-notification fires each time this agent stops with no live background children of its own. The user can send it another message and resume it, so the same task-id may notify more than once.</note>
+<result>## Direct Answer
+
+The documentation **does not cover the Claude Code Desktop app's UI for enabling Remote Control.** The docs only detail the **CLI and VS Code extension** approaches.
+
+However, based on the docs, here's what I can tell you:
+
+**1. How to enable Remote Control from the Desktop app:**
+
+The documentation mentions this setting:
+&gt; "In the Desktop app, you can also toggle this from **Settings → Claude Code → Enable remote control by default**."
+
+So the UI path is: **Settings → Claude Code → Enable remote control by default** (toggle). This auto-enables Remote Control for future sessions, but does not appear to include a per-session command or button to start it mid-conversation.
+
+**For starting Remote Control on the current session**, the docs only document the CLI approach (`/remote-control` command) and the VS Code extension approach (`/remote-control` command). The Desktop app's UI does not appear in the documented methods. You may need to test whether the `/remote-control` slash command works inside a Desktop session, but it's not explicitly stated.
+
+**2. Connecting from another device (once enabled):**
+
+Once Remote Control is active, the other device can connect via:
+- **Browser**: Open the session URL or go to `claude.ai/code` and find the session by name in the list
+- **Claude mobile app** (iOS/Android): Tap **Code** in the navigation; find the session by name (appears with a computer icon and green status dot when online); or scan the QR code
+- All devices must be **signed into the same Anthropic account**
+
+**3. Prerequisites &amp; limits:**
+
+- **Minimum version**: Claude Code v2.1.51 or later
+- **Plan requirement**: Pro, Max, Team, or Enterprise (not API key auth)
+- **Team/Enterprise**: Owner must enable the Remote Control toggle in `claude.ai/admin-settings/claude-code` (it's off by default)
+- **Session continuity**: The local process must stay running; &gt;~10 min offline times it out
+- **Authentication**: Run `claude /login` (not API key auth)
+- **Trusted Devices**: On Team/Enterprise, if the org enables the "Require trusted devices" policy, you'll need to verify the connecting device
+
+**4. Desktop app limitation:**
+
+There is no explicit documentation of a per-session button or menu in the Desktop app UI to start Remote Control mid-conversation. If you're already in a session and want to share it remotely, **test whether `/remote-control` works as a slash command in the Desktop app**—the VS Code extension supports it this way, but Desktop app support is not documented. If it doesn't work, your option is to quit that session and start a new one with `/remote-control` from the CLI or via the Settings toggle.
+
+**My recommendation**: Try typing `/remote-control` as a slash command in your current Desktop session. If it works, great. If not, check whether the **Settings → Claude Code → Enable remote control by default** toggle (which applies to *future* sessions) is sufficient for your workflow, or start the next session from the CLI with `claude --remote-control`.</result>
+<usage><subagent_tokens>27110</subagent_tokens><tool_uses>1</tool_uses><duration_ms>12046</duration_ms></usage>
+</task-notification>
+
+**Claude Code:**
+
+Confirmed the app-specific path. Here's the real picture, then your single step.
+
+**Good news:** the Claude Code desktop app has this built in. The documented spot is **Settings → Claude Code → "Enable remote control by default."** Once it's on, your phone (Claude app → **Code** tab) or another computer (**claude.ai/code**) will show this machine's session by name — as long as every device is signed into the **same Claude account**.
+
+**The one thing that could block it entirely** (so worth checking now): Remote Control requires a **Pro / Max / Team** plan **and** being signed in with your Claude account — it does *not* work on API-key auth. (Also needs app v2.1.51+.)
+
+## Step 1 (just this — then report back)
+
+In the app, open **Settings** and find the **Claude Code** section. Tell me three things:
+
+1. Is there a toggle called **"Enable remote control by default"**? (Its presence confirms your app version is new enough.)
+2. Is it currently **on or off**?
+3. Anywhere in Settings/account, what **plan** and **sign-in** does it show — i.e., are you on Pro/Max/Team and logged in with your Claude account (not an API key)?
+
+That's the whole step. Those three answers tell me whether we can light this up on your current session or need one small detour first — and they decide step 2. Don't flip anything yet; just look and tell me what's there.
+That screenshot answers all three — and we're clear on every prerequisite:
+
+- ✅ **"Enable remote control by default"** toggle exists **and is ON** — "Automatically connect new local sessions to Remote Control so you can continue them from the CLI or claude.ai/code."
+- ✅ **Plan = Max** (bottom-left: *Rhett Duleba · Max*) — satisfies the Pro/Max/Team requirement.
+- ✅ **Signed in with your Claude account** (not an API key — an API key wouldn't show a Max plan).
+
+So the capability is on. **One honest caveat:** that toggle says it auto-connects *new* sessions. This session was already running, so it may or may not have been picked up — the only way to know is to look from the other side. That's the test.
+
+⚠️ **Before you do anything:** don't click the **"Relaunch to update"** button in the bottom-left yet. Relaunching could close this session (and kill the audit still running in the background). We'll update *after* we've confirmed remote access.
+
+## Step 2 (just this — then report back)
+
+On **another device** (your phone or a second computer), open a browser and go to:
+
+```
+claude.ai/code
+```
+
+Sign in with the **same account** (Rhett Duleba). Then look for a session named **"AlphaQuant"** — it should show a small computer icon and a **green dot** if it's connected and live.
+
+Tell me one thing: **does "AlphaQuant" appear in that list?** (Yes / No, and if yes whether the dot is green.)
+
+- If **yes** → you tap it and you're in this exact chat from that device; we're essentially done.
+- If **no** → that just means this already-running session didn't auto-connect, and I'll give you the one small step to fix it.
+
+Don't open/change anything else — just tell me if it shows up.
+
+---
