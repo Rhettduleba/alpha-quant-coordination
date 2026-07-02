@@ -16164,3 +16164,51 @@ Clean post-close tick — nothing to act on:
 No new SESSION_LOG line needed — the Loop 232 block I pushed 15 minutes ago already captures today's full state, and nothing has changed since. **Monitor 5:15 PM ET: clean, handled.** Loop is done for the day; resumes tomorrow 9 AM with the pre-open readiness gate.
 
 ---
+
+
+## Turn — 2026-07-02 19:24:58 ET
+
+**Rhett:**
+
+OK EOD is in. Give me your feedback winners losers did we enter correctly did we exit correctly? What could've been done better?
+
+**Claude Code:**
+
+EOD's in — let me pull today's broker-truth trade ledger and the debrief, then give you the full read. First, scouting the actual per-trade data:
+20 round-trips, **5 winners / 15 losers, NET −$770** (gross −$656, commissions $114). Small winners (capped ~+$83), losers ran much larger (FLEX −$275, MU −$139). And one thing jumps out immediately: ~14 entries fired in the 12:35 window alone — I need to check that against `MAX_OPEN_POSITIONS=4`. Let me pull the debrief's MFE/MAE + gate context and compute actual concurrency before I analyze:
+**Major finding to verify before I say anything else: the bot held 14 positions simultaneously at 12:35 (~$276k notional).** The documented caps are `MAX_OPEN_POSITIONS=4` and `MAX_TOTAL_EXPOSURE=$100k`. If real, that's a 3.5× position-count breach and ~2.8× exposure breach — and the debrief's anomaly section didn't flag it. This is load-bearing, so I verify against the actual code before stating it. Let me check the current limits and whether the re-arm path enforces them:
+Important correction before I go further — I verified instead of asserting: **MAX_OPEN_POSITIONS is actually 16, not 4** (the CLAUDE.md primer is stale). The re-arm path *does* enforce it (orb_multiscan.py:287, `slots = MAX_OPEN_POSITIONS - held|working`), and 14 ≤ 16, so **there is no position-count breach** — my initial read was wrong, and I'm glad I checked. (The exposure was ~$276k, within the ~$400k 4× buying-power design; MAX_TOTAL_EXPOSURE=$100k appears to be the base, not the notional cap.)
+
+Now the real analysis needs MFE/MAE (did winners get cut early, did losers run too far). Let me read the debrief's per-trade ledger:
+Now the full picture is clear, and it's a specific, important story. The defining fact of the day: look at the **conf** column and the exit breakdown — **19 of 20 trades NEVER confirmed** (never reached +0.15×ATR in their favor), so all 19 got flushed by the 30-min time-stop. Only MCD confirmed → candle-close → best trade (+$83). And Section E is the twist: **10 of those time-stopped positions then moved favorably after exit — ~$4,500 "left on the table"** (the time-stop cut would-be winners).
+
+Before I hand you a verdict off one compromised, afternoon-only day (morning was lost to the outage), I'll verify the two load-bearing claims against recent days — is 1/20-confirmed abnormal, and is the time-stop's "false stopout" a pattern or just today? Per ultracode I'll do this in parallel and adversarially:
+While that cross-day verification runs, here's my read off today's broker truth — the story is unusually clear-cut.
+
+## The one-sentence version
+A **compromised, afternoon-only day** (the morning outage cost us the ORB open), where the bot armed **20 low-conviction re-arm entries, 19 of which never confirmed**, so the 30-minute time-stop flushed the whole book at small losses — and then **~$4,500 of those "losers" moved our way right after we exited**. Net **−$770 (5W/15L)**.
+
+## Winners & losers (broker truth)
+**Winners (5, +$216):** MCD +$83 · STX +$80 · ADBE +$34 · DELL +$10 · SNDK +$9
+**Losers (15, −$986):** FLEX −$275 · MU −$139 · RIVN −$112 · MRNA −$79 · BA −$72 · HOOD −$66 · TSLA −$56 · LITE −$55 · FISV −$53 · AAPL −$43 · NFLX −$13 · BB −$8 · MARA −$7 · COHR −$6 · ISRG −$2
+
+Note the shape: winners capped at +$83, losers ran to −$275. Classic small-win/big-loss distribution → profit factor 0.22.
+
+## Did we enter correctly? — This is the real problem, and the answer is *mostly no*
+- **19 of 20 entries never confirmed.** Every ledger row says `conf: no` except MCD. Entering 20 names and having 19 fail to move even +0.15×ATR in our favor means the entries had **no follow-through** — we bought/shorted names that just sat.
+- **The re-arm path is ungated.** 17/20 came from re-arm windows that don't have to clear the 9:35 RelVol/move quality bar. RelVols were low (many 1.0–1.6). At 12:35 it armed **15 names at once** — spreading one weak signal across 14 concurrent positions (within the 16-cap, so not a limit breach — I checked; the CLAUDE.md "4" is stale doc).
+- **Two were flatly bad entries:** HOOD and MRNA both failed gate re-verify with `MOVE_EXHAUSTED` — we entered a move that was already spent. Both lost.
+- The one good entry (MCD, RelVol 1.4, confirmed) was our **best trade**. Signal: quality-gated confirmation is what works.
+
+## Did we exit correctly? — Mechanically yes, by outcome painful
+- **19/20 exited on the 30-min unconfirmed time-stop** — exactly as designed (it flushes never-confirmed positions). That's not a malfunction.
+- **But it cut ~$4,500 of would-be winners.** Section E flags 10 names where price continued our way *after* the stop: SNDK $737, STX $659, MU $531, LITE $458, MARA $456, MRNA $422, HOOD $406, COHR $338, DELL $305, BB $246. The MFE/MAE confirms the mechanism — e.g. MU (short) went $10 against us before we stopped, *then* fell $531. **The time-stop repeatedly exited at the local adverse extreme, right before mean-reversion.**
+
+## What could be done better (preliminary — verifying the recurrence now)
+1. **Entry quality on the re-arm path** is the bigger lever — 19/20 no-confirm is the root cause, not the exit. A light quality gate (min RelVol, block `MOVE_EXHAUSTED`) *may* help, but any entry change must be backtested against confirmed winners (must-not-cut) before I'd propose it.
+2. **The 30-min time-stop looks too eager today** — but a 6-day study said it's net +$5,386, so **one compromised day doesn't overturn it.** The question that decides the recommendation: is today's false-stopout pattern *recurring*? That's what the running verification checks.
+3. **Don't over-weight this day** — no morning ORB, afternoon-only, N=20. It's context, not a verdict.
+
+I'll come back with the verified cross-day numbers (is 1/20-confirmed and the false-stopouts an anomaly or a trend?) as soon as the workflow lands — that determines whether the time-stop/confirm-threshold needs a real proposal or just watching.
+
+---
