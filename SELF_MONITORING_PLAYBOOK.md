@@ -3,6 +3,17 @@
 **Trigger to run this:** every trading day at **9:00 AM ET**, then **every 15 minutes** until 4:00 PM ET.
 Invoke by pasting: *"Run the SELF_MONITORING_PLAYBOOK check."* (or via `/loop 15m` while the app is open).
 
+## HOW THIS RUNS (Rhett's choice 2026-07-02: "keep the app open")
+- **Always-on, every day, app open or not (Windows scheduled tasks — these page Rhett directly):**
+  `AlphaQuant PreOpen TradeReadiness` (9:00 AM, `pre_open_trade_readiness.py`) + `AlphaQuant CSHV` (every 5 min,
+  runs the hardened `check_alive_but_not_trading` → CRITICAL on alive+open+0-arms). Rhett is paged within 5 min
+  of a silent no-trade regardless of whether I'm looping.
+- **My active every-15-min watch:** a `/loop` (cron `*/15 9-16 * * 1-5`) that runs THIS playbook while the app is
+  open. It is **session-scoped** (dies if the app closes/restarts). **SESSION-START RE-ARM (do this every time I
+  start a session during/near a trading day):** check `CronList`; if no `*/15 9-16 * * 1-5` monitoring loop is
+  running, RE-CREATE it (CronCreate, recurring) so the active watch resumes. Never assume it survived a restart.
+- No headless/unattended autonomy — the active loop only runs with the app open, and Rhett stays in control.
+
 **Why this exists:** On 2026-07-02 the bot sat out an entire open trading day (a bad early-close calendar
 entry) and I didn't notice until Rhett did, at noon. My verification stopped at "does my change work / is it
 healthy now." It never asked **"will the bot actually TRADE today, and is it trading RIGHT NOW?"** This playbook
