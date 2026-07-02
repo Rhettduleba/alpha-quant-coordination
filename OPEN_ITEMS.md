@@ -5,8 +5,12 @@ _Last updated: 2026-07-02 ~2:20 PM ET. I keep this current and re-surface the �
 ## ⭐ DECISIONS AWAITING RHETT (need your input — nothing happens until you choose)
 _(none open right now)_
 
-## 🔬 IN PROGRESS (I'm investigating; will bring you findings)
-- **TW (Tape Watcher) efficiency tuning** — the tick-stream is 92% stream-gaps (up to 46s), defeating tick-precision. Root-cause + tuning plan in flight (workflow wmlsplf16). I'll bring the ranked fixes; deploy carefully since the TW is the live exit owner.
+## 🔬 IN PROGRESS (I'm driving these)
+- **TW tuning rollout** (investigation DONE). Root cause: TW reads last-*trade* price only, blind to the mid moving between prints → ~a duplicate of the poller, no real edge (lost 8/9 exits on 7/02). NO safety hole (always covered by poll + time-stop + resting stop). ROLLOUT I'm driving: (a) **after 4pm today** deploy the safe detection fixes (reconnect-reset, honest gap metric, dense tick side-channel = bonus backtester price path) + restart TW per discipline; (b) **tomorrow RTH** shadow-validate the mid-feed fix (fire=False alongside live, diff exit timing); (c) **after tomorrow's close** arm the mid-feed. Never restart the live exit owner during RTH.
+
+## ⭐ DECISIONS AWAITING RHETT
+- **PROP-LIVE-QUOTES** (you asked me to draft — DONE, awaiting your approval): switch QUOTES to the live market-data feed, orders stay 100% SIM, hard config split. The real fidelity ceiling for tick-level exits + a true backtester tape. `ai-trading-strategy-agent/outputs/proposals/PROP-LIVE-QUOTES-2026-07-02.md`.
+- **Smaller TW calls (I'll bring these with data, not urgent):** should TW own the 30-min time-stop or cede it to exit_bot_v2? · acceptable exit-timing shift from the mid feed (I'll show shadow-diff numbers) · promote tape_watcher.py to the watched-file set since it fires live exits?
 
 ## ✅ RESOLVED
 - **Early-close half-days** (2026-07-02, Rhett delegated → my call): **SKIP** them (Nov 27, Dec 24 — thin holiday tape, not worth a watched change for ~2 days/yr). Bot already skips via holiday_reason; detector exempts them from the CRITICAL no-trade alarm (7/2 still fully covered). Non-watched; REG 29/0.
