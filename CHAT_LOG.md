@@ -15086,3 +15086,33 @@ So the loop is closed: EOD surfaces a candidate tune → it goes through the rig
 Everything's logged and pushed (`fbe2690`), `OPEN_ITEMS` is current, bot's still trading, monitor's clean. Nothing left half-built.
 
 ---
+
+
+## Turn — 2026-07-02 15:01:02 ET
+
+**Rhett:**
+
+SELF-MONITORING (daily, every 15 min 9:00 AM–4:00 PM ET). Follow C:\AlphaQuant\SELF_MONITORING_PLAYBOOK.md. RULE: never defer — act on every warning THIS run (fix non-watched; escalate WITH the fix for watched trading files). STEPS: (1) Confirm ET time + market state. If it's ~9:00 AM (pre-open), run `python C:\AlphaQuant\tradestation-bot\pre_open_trade_readiness.py` (the "will it trade today?" gate) and ACT on any CRITICAL before 9:45. If market is closed now, do a quick EOD broker-flat check then finish this run (the cron resumes next weekday 9 AM). (2) Read the SAME warnings Rhett gets: `python C:\AlphaQuant\tradestation-bot\alerts_bridge.py` (bot_alerts 24h — any FAIL in the last hour = top priority), C:\AlphaQuant\CSHV_FINDINGS.md (any FAIL/CRITICAL/WARN), code_inbox.jsonl actionable items. (3) Trade-liveness (the 7/02 catch): after 10:45 AM confirm >=1 ORB_V16_ENTRY_OK in today's bot_alerts.jsonl; if 0 on an open regular trading day, run reliability_checks.check_alive_but_not_trading() and diagnose. (4) ACT (never defer): verify each warning vs broker truth FIRST; fix non-watched now (+regression-lock+verify); for WATCHED trading files (orb_*, exit_bot_v2, risk_config, bot_loop, candle_close_exit, market-behavior) never edit mid-session — surface + write a proposal + escalate to Rhett with the concrete fix. (5) Log a one-line status to SESSION_LOG.md (clean or what I acted on) and push to coordination. Ping Rhett only if actionable for him or I escalated; otherwise silence = handled.
+
+**Claude Code:**
+
+Monitor tick:
+**1 FAIL today** — that's new since the last tick, so per the never-defer rule I investigate it now before anything else:
+`TS_AUTH_FAIL` at 14:51:54 — but the detail shows it's a **504 Gateway Timeout from TradeStation's server** (their side), not a real auth failure. Per verify-before-act, I need to confirm it's a one-off transient vs a persistent outage, and that the bot recovered:
+Verified — it's benign:
+- **Single one-off** 504 at 14:51:54 (not a burst, not persistent).
+- **Heartbeat loop 3345, 12s fresh** → run_bot recovered and is cycling normally.
+- Bot still trading (21 arms, 19 round-trips) — it handled the hiccup and continued.
+
+So it's a **transient TradeStation server-side gateway timeout**, not an auth problem or a bug on our end. But there's a real monitoring imprecision I shouldn't leave: a **504 timeout is being labeled `TS_AUTH_FAIL` at FAIL severity** — which could falsely alarm you into thinking your API key is failing. Per never-defer, checking if that's a clean fix:
+The definition is clear: `alerts_bridge.py:29` says **`TS_AUTH_FAIL = TS API returned 401/403`** — a real auth failure. But a **504 timeout** got labeled that. So whatever emits it is catching *all* account-fetch errors and calling them auth failures. That's a real (non-watched) monitoring bug worth fixing now — it would falsely scream "API key failing" on every TS server hiccup. Finding the emitter:
+Found it — and it's a **watched file**, so I escalate, not edit. `orb_runner.py:256` catches *any* account-fetch exception in a broad `except` and logs `TS_AUTH_FAIL / FAIL` — even a transient 504. Since `orb_runner.py` is a watched trading file, I will **not** touch it mid-session. Writing the proposal + escalating, and logging the tick:
+Monitor tick handled — and this one's worth a heads-up since you may have gotten the alert:
+
+**The `TS_AUTH_FAIL` you might have seen at 2:51 PM was benign.** It was a single transient **504 gateway timeout on TradeStation's server** — *not* your API key failing. The bot recovered instantly and kept trading (21 arms, 19 round-trips, heartbeat healthy). Nothing wrong on our end.
+
+**But the alert lied to you**, and I don't like that: `orb_runner.py:256` labels *any* account-fetch hiccup — including a 504 — as `TS_AUTH_FAIL/FAIL`, even though that code is defined for real 401/403 auth failures. So every TS server blip pages you as if your key died. Since `orb_runner.py` is a **watched trading file, I did not edit it mid-session** — I wrote **`PROP-TS-TRANSIENT-LABEL`** (a one-line "classify 504 as a transient WARN, not an auth FAIL" fix, alerting-only) and put it in your `OPEN_ITEMS` for a quick yes. Logged and pushed (`8224e8c`).
+
+Bot's otherwise clean and trading normally. Nothing needs you right now beyond that small proposal whenever you get to it.
+
+---
