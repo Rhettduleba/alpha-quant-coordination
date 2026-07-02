@@ -15996,3 +15996,17 @@ Confirmed: no new activity since the 4:30 PM check, still flat (0 positions). Th
 **Monitor 4:33 PM ET — nothing to do: market closed, bot flat, no new alerts, EOD already wrapped.** Loop is done for the day; resumes tomorrow 9 AM with the pre-open readiness gate.
 
 ---
+
+
+## Turn — 2026-07-02 16:35:59 ET
+
+**Rhett:**
+
+So let's make sure we running v eight p w underscore wide on the shadow
+
+**Claude Code:**
+
+Rhett wants to confirm — and make sure — the current leader **V8pw_wide** is actually the variant we're working in the shadow. That's a real "is the plumbing end-to-end correct" question: registry params, daily EOD scheduling, OOS accumulation, dashboard surfacing, and whether it's clearly designated as the champion we're tracking toward promotion. I'll verify all of that from ground truth in parallel, then act on any gap.
+Verification workflow launched (5 parallel ground-truth readers). I'll report the full picture and fix any gaps the moment it completes.
+
+---
