@@ -14664,3 +14664,79 @@ When it lands I'll bring you the blueprint (architecture + honest effort + risks
 I'll surface the blueprint the moment it's ready. Meanwhile the bot's still trading and the 15-min monitor's still watching.
 
 ---
+
+
+## Turn — 2026-07-02 13:58:06 ET
+
+**Rhett:**
+
+<task-notification>
+<task-id>wmo63h33g</task-id>
+<tool-use-id>toolu_01K5QX5fHWPBhZtRXdoPrqBU</tool-use-id>
+<output-file>C:\Users\ADMINI~1\AppData\Local\Temp\claude\C--Users-Administrator-OneDrive---Duleba-Trade-station-Main\3253950a-388c-4a7a-99cc-cec0c4ed9f69\tasks\wmo63h33g.output</output-file>
+<status>completed</status>
+<summary>Dynamic workflow "Design the shadow-SIM engine (forward live-shadow + historical backtest) from existing reusable pieces" completed</summary>
+<result>{"maps":[{"area":"Existing replay/sim/backtest machinery to REUSE for the SHADOW SIM engine","findings":"I read all nine target files plus the underlying data primitives. The single most important finding: **every existing replayer replays EXITS against already-real (broker-truth) entries. NOTHING re-runs the bot's ENTRY signal logic offline.** A grep for any entry-signal function (`entry_signal|scan_for_entries|orb_breakout|detect_entry|would_enter|entries_for_day`) across strategy-research returned zero matches. This is the biggest gap for a self-contained BACKTEST mode and the entire FORWARD-shadow mode.\n\nPer-file summary (does it replay real trades vs alt EXITS? does it run ENTRY logic? reuse path?):\n\n1. `ai-trading-strategy-agent/src/backtesting/experiment_runner.py` (13 lines) and `validator.py` (16 lines) are STUBS. `experiment_runner.build_experiment_plan` returns `{\"status\":\"planned\"}` and runs no sim (experiment_runner.py:6-12). `validator.validate_backtest_inputs` only checks that `start_date`/`end_date`/`slippage_bps` keys exist (validator.py:6-15). These are parked V1 scaffolding (CLAUDE.md flags `src/backtesting/` as parked). No exit replay, no entry logic. Reusable only as the naming/`slippage_bps` config skeleton — negligible.\n\n2. `tradestation-bot/candle_close_exit.py` — THE pure, reusable exit-decision core. `candle_close_decision(side, avg_price, last_price, high_water, low_water, atr, last_closed_candle) -&gt; (should_exit, reason, confirmed)` (candle_close_exit.py:28-52) and `chandelier_decision(...)` (candle_close_exit.py:63-85) are pure, side-effect-free, and already used by the live bot. Constants PHASE1_ATR=0.15, CONFIRM_ATR=0.15, CATASTROPHE_ATR=1.0, CHANDELIER_ATR=1.4 (lines 23-25, 60). Its `__main__` even self-replays a real 6/10 SMCI short on 1-min bars (lines 148-169). This IS the shadow SIM's exit engine for the deployed strategy; both modes call it directly. NOTE the ATR/bar helpers `get_atr14`/`get_last_closed_1min` (lines 93-124) hit the live TS API — read-only market data, but for BACKTEST determinism the sim must feed pinned/historical bars instead, not these live helpers.\n\n3. `tradestation-bot/shadow_exit_harness.py` (1177 lines) — the closest thing to an exit-backtest engine already built, and the richest reuse target. For every REAL entry it replays 10 pre-registered exit variants (V0-V9) on the same 1-min series, net of cost, causally. Key reusable parts: cost model `_commission` + `_net_pnl` (mirrors commission_model, SEC/TAF, EXIT_SLIP_BPS=1.3) (lines 72-102, 477-485); the causal bar-slice contract `_bars_after`/`_eod_bar` with 15:50 EOD flatten (lines 128-135); V0 = live `candle_close_decision` by construction (lines 142-163); V9 = the deployed chandelier (lines 440-458); the whole VARIANTS dict (461-467); `_entries(date)` which pulls real round-trips via `eod_debrief._round_trips` (489-501); the INPUT-PIN mechanism that snapshots exact (bars, atr) per (date,sym) so a past-day re-replay is byte-deterministic (lines 38-70, 522-600) — this is the fill-realism/reproducibility backbone; the V0 faithfulness gate `faithfulness`/`faithfulness_from_log`/`faithfulness_breakdown` (&gt;=90% px within 50 bps, &gt;=95% ground-truth) (lines 770-878); the causality/no-look-ahead guard `_causality_guard` (715-737); and `reconcile_v9_vs_broker` — the invariant that the shadow's live column MUST equal broker-truth NET per round-trip within tolerance, with a planted-mismatch self-test (lines 881-913, 667-677). This module answers YES to \"replays real trades vs alternative exits\" and is the direct foundation for BACKTEST mode (A). It does NOT run entry logic. Honest limits it already documents: PER-TRADE counterfactual, NOT a portfolio re-sim (a different exit changes slot/capital availability — not modeled); exit fills are MODELED price-at-trigger minus haircut (lines 18-22).\n\n4. `tradestation-bot/shadow_versions.py` (338 lines) — READ-ONLY glossary/scoreboard generated FROM code. `registry()` renders each variant's plain-English description with LIVE-interpolated params (lines 117-151); `exit_explainer()` reads the deployed exit mode/timeframe from live code (162-198); `forward_test_scoreboard()` is essentially the FORWARD-shadow reporting layer already: per-day V9(broker-truth) vs frozen same-day V0, clean-day status via clean_day_certifier, cumulative \"live_beats_v0\", kill thresholds from the change log (226-296). Reuse directly as the shadow SIM's reporting/scoreboard surface and the kill-condition tracker. No entry logic, no new replay.\n\n5. `strategy-research/from_entry_stop_replay.py` (249 lines) — one-day (6/29) READ-ONLY replay of a FROM-ENTRY protective stop over each real trade's [entry_dt..actual_exit_dt] window on 1-min bars. Reusable primitives: `sim_exit` (D*ATR stop) (48-57), `sim_exit_dollar` ($-cap stop, price where loss==cap) (60-70), `sim_exit_asbuilt` (min(atr_frac*ATR, cap/qty), the live orb_runner Loop-185 formula) (73-83), and the loser/winner cohort split with must-not-cut \"winners killed\" accounting (95-96, 154-167). Uses `tape_watcher.minute_bars_for_day` + `tape_watcher.atr14_asof` + `eod_debrief.round_trips_net`. Answers YES (replays real trades vs an alternative from-entry stop). No entry logic. Explicitly flags the 1-min upper-bound caveat (intrabar high/low order unresolved) — directly relevant to fill realism.\n\n6. `strategy-research/l1_unconfirmed_leash.py` (728 lines) — the most complete SCORING/methodology harness. Applies time/MAE/n-closes leashes to the UNCONFIRMED cohort only, scored as three-sided net-of-cost (bleed_reduction − winner→loser conversion − giveback) with must-not-cut control, per-segment (clean-fail vs near-miss) splits, per-day robustness, and an unchanged-trade reconcile to broker truth (lines 351-460). Public API `simulate(days)`/`score(results)` (320-439). It rides the POLLED price path from `exit_decisions.jsonl` (via excursion_study `_poll_series`) plus pinned bars — NOT a fresh bar replay, so it is exit-decisions-log-dependent. Reuse the three-sided scorer, must-not-cut control, and reconcile-to-broker pattern wholesale as the shadow SIM's scoring/acceptance layer. No entry logic.\n\n7. `strategy-research/excursion_study.py` (1046 lines) — the READ-ONLY feature/excursion engine and the source of the pin/poll loaders that l1 and others import: `_load_pin`/`_bars_from_pin`/`_entry_day_bars`/`_eod_bar` (deterministic pinned 1-min bars, 6/24+) (lines 113-153), `_poll_series` (confirm state/time, atr, confirm_level, MFE/MAE from exit_decisions polls) (175-224), `_bar_excursion`/`_left_after_exit_bars` (264-302), and a self-contained mirror of the deployed V9 exit `_simulate_current_exit` + an `_simulate_adaptive_widen` variant engine (588-668). Crucially it carries a rigorous PROVENANCE map tagging every field broker-truth/derived/NOT-LOGGED (479-519) and marks rs_vs_spy / distance_from_or / extension / R as NOT-LOGGED. Reuse the pin/poll loaders and provenance discipline. No entry logic (it explains outcomes, doesn't generate entries).\n\n8. `strategy-research/exit_design_study.py` (200 lines) — 15-day (6/08-6/29) READ-ONLY replay of managed pre-confirm exit rules (time-stop@N, ATR@K, hybrid, VWAP-break) ON TOP of the $500 floor, released on confirm, scored as delta vs the $500 baseline with MU-in/MU-out/leave-one-out/per-day robustness (lines 34-77, 127-182). Uses `eod_debrief.round_trips_net_all` filtered to `strategy startswith 'orb'` since 6/08 (82-84) + `tape_watcher` bars/ATR. This is the multi-day exit-backtest-over-real-entries pattern the clean_cohort backtest should follow. Answers YES. No entry logic. Flags 1-min proxy: \"tighter level assumed hit first intrabar\" (conservative) — a documented fill-realism convention.\n\nDATA PRIMITIVES the whole stack rests on (all read-only, all reusable):\n- `eod_debrief._fills(date)` (eod_debrief.py:74-101) parses broker_orders_unified.csv FILLED rows (px, qty, commission, fee, times, order_id). `_r
+... (truncated 75387 chars, full result in C:\Users\ADMINI~1\AppData\Local\Temp\claude\C--Users-Administrator-OneDrive---Duleba-Trade-station-Main\3253950a-388c-4a7a-99cc-cec0c4ed9f69\tasks\wmo63h33g.output)</result>
+<usage><agent_count>5</agent_count><subagent_tokens>501091</subagent_tokens><tool_uses>106</tool_uses><duration_ms>561019</duration_ms></usage>
+</task-notification>
+
+**Claude Code:**
+
+The design is back. The headline finding is important: **every existing replayer handles exits against real entries — nothing re-runs entry logic offline**, which shapes the whole build. Let me pull the actual blueprint (architecture, MVP, fill model, effort, risks) cleanly:
+The blueprint is excellent — and it's mostly **reuse** (we already built ~80% of this in prior shadow work). Here's the honest distillation, one surprise that changes the plan, and the recommendation.
+
+## The design (two phases, not one)
+- **Phase 1 — the exit backtester (MVP, ~4–6h, ~80% reuse):** `shadow_exit_harness.replay()` already replays alternate exits on our real trades and anchors to broker truth. The only genuinely new pieces are a **calibrated fill model** (from our 719 real fills) and a **fidelity gate**. This is buildable now.
+- **Phase 2 — the forward live-shadow (your "shadow SIM," ~1–2 weeks):** the real net-new build — an offline **entry engine**, a sim clock, and an order-matching `SimClient`. Bigger, and it should wait.
+
+## The surprise that changes the plan (honest)
+**We only have dense price-path data for ~6 days (6/18–6/26).** Polling collapsed after that (6/30 = 2 polls, 7/01 = 6). So the *trustworthy* exit-backtest set is those ~6 dense days — **not all 217 trades.** Two consequences:
+1. We tune on a small window → real overfitting risk (I'll run leave-one-out + MU-in/out robustness, and bring a proposal, never tune inline).
+2. **We should fix the price-path logging going forward** so future backtests have far more data. That's a cheap, high-value change.
+
+## The anti-lie guardrail (built into the plan)
+The fidelity gate **must reproduce MU −$1,670 and COHR −$1,975** before any tuned number counts. *If the fill model can't reproduce the losers, the model is wrong — not the losers.* Plus a planted-mismatch self-test. This is the direct guard against the −99.92% trap.
+
+## The one risk I want to name loudly
+Our fills are **SIM fills**, which are typically *more generous* than live. The model can only honestly claim **SIM-fidelity** — and a forward shadow built on it **launders that optimism forward in real time.** So: **build and validate the exit backtester first; do NOT build the forward shadow until the fill model proves out.** That's the blueprint's recommendation and I agree with it.
+
+## My recommendation on sequencing
+1. **Build Phase 1 (exit backtester) now** — calibrate fills → fill model → fidelity gate (reproduce MU/COHR) → backtest the clean cohort's dense days.
+2. **Hold Phase 2 (forward shadow)** until the fill model is validated.
+3. **Separately, fix price-path logging** so we stop starving future backtests.
+
+Starting the concrete foundation — the fill calibration from our real trades. Reading the canonical slippage source to build it correctly:
+I have the canonical slippage anchor (`eod_debrief.entry_slip` — the one place slippage is defined). Building the fill calibration on top of it — this turns our 700+ real fills into the actual slip distributions the fill model needs:
+**Real execution numbers, straight from our fills** — this is the calibrated fill model's foundation, and it tells us something useful about our own execution:
+
+| Order type | N | median slip | p90 | max |
+|---|---|---|---|---|
+| **Entry stop-limit (long)** | 169 | +0.6 bps | +4.4 | **+5.8** (collar cap ✓) |
+| **Entry stop-limit (short)** | 192 | +1.5 bps | +4.5 | +8.8 |
+| **Stop-loss exit (long)** | 18 | +3.1 bps | **+19.5** | +41 ⚠ thin |
+| **Marketable-limit exit (long)** | 149 | ~0 | ~0 | ~0 |
+
+**What this reveals:** our **entries are tight** (the 5-bps collar is working — nothing slips past it), and **marketable-limit exits fill at the touch (~0 slip)**. The *only* place slippage genuinely bites is the **stop-market exits** — the tail runs to +19–41 bps, which is exactly where losers get worse than the nominal stop — **but we only have 14–18 of them, so that estimate has wide error bars.** That thin sample is the single biggest fidelity caveat, and I've flagged it in the model so we don't over-trust it.
+
+Logging + pushing this milestone:
+Logged + pushed (`7e8747c`). Here's where **both** stand after this session:
+
+## ✅ The scrub — done
+`clean_cohort.py` → **217 clean equity trades** for exit backtesting, losers (MU, COHR) kept, futures scoped out, with a guard that prevents any rule from ever scrubbing a real loss.
+
+## 🔄 The shadow SIM — designed + foundation built
+- **Blueprint done** — and the good news is it's ~80% reuse of shadow work we already have.
+- **Fill calibration built + run** — real slip numbers from 719 fills (`calibrate_fills.py` + saved artifact). Your execution is genuinely tight; the only soft spot is the thin stop-market exit sample.
+- **Remaining for the exit-backtester MVP** (~3–4h of careful building): `fill_model.py` (reads the calibration) → `fidelity_gate.py` (must reproduce MU/COHR before any number counts) → run the dense-day backtest.
+- **Forward live-shadow (Phase 2)** stays parked until the fill model validates — building it sooner would just launder SIM-fill optimism forward.
+
+## Two honest flags to carry
+1. **We only have ~6 days of dense price-path data.** The exit backtest is trustworthy on those; beyond that it's thin. So separately, we should **fix the price-path logging going forward** (cheap, high value) so future backtests aren't starved.
+2. Everything the sim produces is **SIM-fidelity** — a screen before the SIM account, never a live verdict.
+
+This is a good checkpoint. The bot's still trading (monitor's clean), the scrub is done, and the exit-backtester is foundation-built with real calibration.
+
+**Your call on next step:** want me to keep going and finish the exit-backtester MVP (`fill_model` → `fidelity_gate` → run it on the clean cohort), or pause here and pick it up next session? Either is fine — nothing's half-wired or left broken.
+
+---
