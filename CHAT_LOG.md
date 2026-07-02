@@ -14506,3 +14506,52 @@ It's gated (`PROP-LEARN`), so it'd go through a proposal + your approval, and th
 **Bottom line:** worth building, cheap in dollars, real in effort — but its entire value hinges on validating it against real fills first. Want me to write up the concrete build plan (MVP scope + the fidelity-validation gate) as a proposal for you to look at?
 
 ---
+
+
+## Turn — 2026-07-02 13:28:05 ET
+
+**Rhett:**
+
+First, answer this question when you say there is no value in version b, but if we had version b and we applied different signals, we could test those signals before applying the changes to the SIM account. Explain why you think there's no value. For example, let's say we change the exit strategy but wanted to test it first. If we had an exact t s bot that worked on its own. We could test it in what I would call the live trading shadow. We tested ourselves on version b and then decide if we wanna promote it to the SIM.
+
+**Claude Code:**
+
+You're right, and I was wrong — let me correct it properly, because you've spotted something real.
+
+## What I got wrong
+I collapsed two different things into "Version B" and dismissed both. When I said "no value," I was picturing *"rebuild TS SIM to be your only execution venue"* — **that** is pointless. But what you're describing is different and genuinely valuable: **a parallel live paper-sim running a *modified* strategy alongside the real bot** — a "live trading shadow" as a staging step before the SIM account. That has clear value, and I shouldn't have waved it off.
+
+## Why your version actually is valuable
+Three real reasons, and they're not small:
+
+1. **It's a forward test — so it can't overfit.** This is the big one. The historical backtester (Version A) replays the *past*, which you can accidentally curve-fit to. Your live shadow tests a change on **unseen, real-time data going forward** — the gold standard for trusting a result. That's a genuine advantage over the backtester, not a lateral move.
+
+2. **It doesn't pollute the SIM account.** Right now, to test an exit change I have to deploy it to the one live SIM bot — which changes that bot and contaminates its P&L, its clean-day counter, its stats. Your shadow lets the SIM account stay clean while you experiment.
+
+3. **True parallel A/B.** One SIM account can only run one version at a time. Your shadow lets "current exit" and "new exit" run **side-by-side on the exact same live tape** — apples to apples, same day, same fills-ish. You literally can't do that on a single SIM account.
+
+And a bonus: **it's the same engine as the backtester.** Version A = feed the engine historical data. Version B = feed the same engine the live quote stream and run the modified strategy. Building A gets you ~80% of B. They're not either/or.
+
+## The one honest caveat (smaller than I made it sound)
+It still *models* fills rather than getting real ones — but on **live** data, for our **marketable-limit** order style, a fill model calibrated against our logged real TS fills is actually pretty good. And your own framing handles the rest: the shadow is the **screen**, the SIM is the **confirm**. Test on B → if it holds up, promote to SIM → then live. Imperfect fills are fine for a pre-filter.
+
+So the ladder becomes: **backtest (fast, overfit-risk) → your live shadow (forward, clean, parallel) → TS SIM (real fills) → live money.** Your shadow fills the missing "forward test with no consequences" rung. Good instinct.
+
+## One alternative worth knowing before we build anything
+There may be a shortcut to *most* of what you want, with **real** fills and almost no build: **a second TS SIM account.** TS hands out SIM accounts; we already have two (equity + the futures one for H5). Point a second bot instance running the *modified* strategy at a **third** SIM account, and you get:
+- **Real TS fills** (no fill-modeling problem at all — highest fidelity)
+- Parallel, forward, live A/B against the main bot
+- Zero pollution of the primary SIM
+- Almost no code — it's the same bot, different account + a config flag
+
+**Trade-off:** a second SIM account gives you *one* variant with real fills; our home shadow (B) gives you *unlimited* variants with modeled fills, full control, and doubles as the backtester.
+
+## My honest recommendation
+- If you want a **live parallel shadow soon, with the best fills, least work** → **second TS SIM account.** That's likely the fastest, highest-fidelity path to exactly the "test-then-promote" flow you described.
+- If you want a **research platform** that runs many variants, tests entries at scale, replays history, and isn't dependent on TS → **build the engine (A+B).** More work, modeled fills, but far more powerful long-term.
+
+They're complementary — and honestly, doing the second-SIM-account first (cheap, real fills) while we build the engine in parallel is probably the smartest sequence.
+
+Want me to spec out the second-SIM-account "live shadow" path (what it'd take, how the A/B logs would compare)? That's the low-cost, high-fidelity way to get your exact idea running fastest.
+
+---
