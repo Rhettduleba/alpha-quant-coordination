@@ -14572,3 +14572,48 @@ Clean — bot trading (15 arms, 13 round-trips), 0 FAIL, the 1:35 window is immi
 Whenever you're ready to continue on the sim question — the second-SIM-account "live shadow" spec, or anything else — I'm here.
 
 ---
+
+
+## Turn — 2026-07-02 13:37:30 ET
+
+**Rhett:**
+
+We can't have a second sim account. A second sim account would require me to deposit money and pay a monthly fee, which doesn't make sense. So let's scope out the alternative of the complete shadow reason back testing on our data is difficult because we had many days of failure, many anomalies like m u and other problems. Could you take the entire trade log that we have and remove those anomalies and all of those problem time periods such as the day that we traded just hard to borrow stocks, get all of the noise out of our trade history, then we can back test exit strategies.
+
+**Claude Code:**
+
+This is a good plan **with one line we absolutely have to hold** — and it's the difference between a backtest you can trust and one that lies to you. Let me show you the line, grounded in our actual data. Quick scan of our trade history first:
+Here's the data for our post-5/26 history, and it makes the one critical line crystal clear:
+
+| Date | Trades | Net | Worst trade |
+|---|---|---|---|
+| 6/25 | 23 | **−$2,017** | **−$1,670 (MU)** |
+| 6/29 | 23 | **−$3,493** | **−$1,975 (COHR)** |
+| (all other days) | 7–52 | mixed | normal |
+
+## The line: remove BUGS, never remove LOSSES
+
+Your instinct to clean the data is right — **and exit-backtesting on our real trades is the *high-fidelity* kind** (real entries, real price paths, just swap the exit). Good call. But there's one razor line we can't cross, and the table shows exactly why.
+
+**6/25 (MU) and 6/29 (COHR) are the "problem days" you're describing — but those were NOT bugs.** The bot entered MU and COHR *per its rules*, and they moved against us. They're **real losses the strategy produced.** And here's the kicker:
+
+> **Those two days are the exact data that gave us our two best exit fixes.** The $500 dollar-cap was discovered *because* of 6/29 (it recovered +$1,672 that day). The 30-min time-stop was discovered *because* of MU on 6/25 (turned −$1,670 into −$50). **If we'd deleted those days, we'd have found neither.**
+
+That's the trap: an exit strategy's entire *job* is to handle the trades that go against you. If you remove the losers before testing, you're testing exits **only on winners** — the backtest comes back "this is great!" and then loses real money live. **This project already got burned by exactly this** (an old backtest showed −99.92%). Deleting inconvenient losses is the #1 way a backtest lies to you.
+
+## What SHOULD be removed (the real cleaning)
+Not losses — **bugs.** Trades where a *code defect* made the bot do something it wasn't designed to do:
+- **Pre-5/26** trades (different strategy config — already excluded by baseline).
+- **Bug-driven trades** — the HTB-filter-broken periods (traded names it never should have), the calendar-outage days (didn't trade), any day a filter was broken. Those aren't "the strategy," they're a defect.
+
+Key subtlety: this is **per-trade tagging, not per-day deletion.** Example — 6/30 had a broken HTB path on the 9:35 side, but the re-arm still took *legit* trades that day. You keep the legit ones, drop the bug ones.
+
+## One honest flag
+I scanned the post-6/08 broker record and **I don't actually see an "only-HTB-stocks day"** in it — the HTB issues shrank the 9:35 book, but the re-arm path still traded normal names. So before we exclude any "problem period," we verify it against the documented incident log (SESSION_LOG / bot_alerts) rather than deleting by feel. That verification *is* the cleaning work.
+
+## The build
+A **"clean cohort" tagger**: read `broker_orders_unified.csv`, tag every trade as `legit` or `bug-driven (+reason)` using our documented incident history, **keep all legit trades — winners and losers, MU included** — and exclude only the true bug-trades. Then backtest exits on that clean-but-honest set.
+
+**Bottom line: we clean out the *bugs*, we keep the *losers*.** The losers aren't noise — they're the signal. Want me to build the clean-cohort tagger and show you exactly which trades get flagged bug vs kept (with the reason for each), so you can see nothing legit is being scrubbed?
+
+---
