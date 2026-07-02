@@ -13401,3 +13401,92 @@ While that confirms, here's what I can already tell you with confidence so you'r
 Standing by for the specialist's confirmation before we take step 1.
 
 ---
+
+
+## Turn — 2026-07-01 21:19:27 ET
+
+**Rhett:**
+
+<task-notification>
+<task-id>aa461ae2c480f2666</task-id>
+<tool-use-id>toolu_01TgeLGxNM8yPNWH5UEsBPqo</tool-use-id>
+<output-file>C:\Users\ADMINI~1\AppData\Local\Temp\claude\C--Users-Administrator-OneDrive---Duleba-Trade-station-Main\3253950a-388c-4a7a-99cc-cec0c4ed9f69\tasks\aa461ae2c480f2666.output</output-file>
+<status>completed</status>
+<summary>Agent "Verify Claude Code remote session access" finished</summary>
+<note>A task-notification fires each time this agent stops with no live background children of its own. The user can send it another message and resume it, so the same task-id may notify more than once.</note>
+<result>Based on the official Claude Code documentation, here are the authoritative answers to your questions:
+
+## Summary
+
+**1. Built-in feature to access the same running local CLI session from a different device?**
+
+**No native feature for this.** Claude Code does not have a "follow my session" mechanism. A session running in a terminal on machine A is not directly viewable or controllable from device B.
+
+**2. "Remote control" / "remote access" / "share session" toggle?**
+
+**Yes, but it's different than you might expect.** Claude Code has **Remote Control**, but it is not a setting — it's a feature activated by running commands:
+- `claude remote-control` (server mode on the VPS)
+- `claude --remote-control` (interactive session with remote access)
+- `/remote-control` (enable remote on an existing session)
+
+**3. Cloud sync to claude.ai or mobile app?**
+
+**Partially, via Remote Control.** When you activate Remote Control, the session does NOT move to the cloud. Instead:
+- The local session stays running on your VPS
+- Anthropic routes remote connections (from claude.ai/code, or the Claude iOS/Android mobile apps) back to that local VPS process
+- The web and mobile interfaces are a **window into your local session** — your files, MCP servers, and tools all stay available
+- **The VPS process must stay running.** If you close the terminal, quit the process, or the machine goes offline for &gt;10 minutes, the session ends
+
+**4. The `claude --resume` feature?**
+
+**Local-only.** `--resume` resumes a session from local transcript files stored in `~/.claude/projects/&lt;project&gt;/&lt;session-id&gt;.jsonl`. It does **not** pull sessions from the cloud or work across machines. To use it on a different machine, you would need to manually copy the transcript files — there is no built-in cross-machine resume.
+
+**5. "Claude Code on the web" or remote-agent capability?**
+
+**Yes, but separate from your running session.** Claude Code on the web runs in Anthropic-managed cloud infrastructure, completely independent of your local VPS session. It would NOT give you access to your VPS session; it is a separate cloud session with no access to your local files or MCP servers.
+
+## The Key Distinction
+
+**To access your running VPS session from a phone or another laptop:**
+
+Use **Remote Control** (`claude remote-control` on the VPS). This keeps your session on the VPS and streams it to remote devices via the Anthropic API.
+
+**NOT** a built-in feature that makes a local CLI session portable or cloudable. The session runs locally; the interface is remote.
+
+**Docs reference:**
+- Remote Control: https://code.claude.com/docs/en/remote-control.md
+- Sessions: https://code.claude.com/docs/en/sessions.md
+- How Claude Code works (execution environments): https://code.claude.com/docs/en/how-claude-code-works.md</result>
+<usage><subagent_tokens>36053</subagent_tokens><tool_uses>5</tool_uses><duration_ms>24027</duration_ms></usage>
+</task-notification>
+
+**Claude Code:**
+
+Your instinct was right — I was about to steer you toward the clunkier path (RDP), and I'm glad I checked first. There **is** a native Claude Code feature for exactly this, and it's better than remote-desktop for your goal.
+
+## What it is (confirmed from Claude's docs)
+
+**Claude Code Remote Control.** It does precisely what you asked:
+- **This session stays running here on the VPS** — it does *not* move to the cloud.
+- Anthropic then lets the **Claude mobile app (iOS/Android)** and **claude.ai/code** act as a *window into this exact session* — same chat, same files, same tools, the background audit and everything.
+- So from your phone or another laptop, you're looking at *this* conversation, live.
+
+Two things to know so there are no surprises:
+- The VPS and this process have to **stay running** (yours is always-on, so fine). If the machine goes offline for ~10 min, the session ends.
+- It's activated by a **command**, not a settings toggle — which is why you remembered "a remote control setting" but couldn't find it.
+
+## Step 1 (just this — then stop and tell me what you see)
+
+In **this same terminal window**, type:
+
+```
+/remote-control
+```
+
+and press Enter.
+
+Then tell me **exactly** what appears — a link, a short code, a QR code, a menu, or an error/"unknown command." That output tells me whether it's ready to go or needs a prerequisite first, and it decides step 2.
+
+Don't do anything else yet — I'll wait for what it shows you.
+
+---
