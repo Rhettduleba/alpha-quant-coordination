@@ -15640,3 +15640,48 @@ We'll work it a few days as you said. My honest expectation: if the pattern hold
 It's tracked in `OPEN_ITEMS` and the tune log. Market's at the close now; I'll verify EOD-flat and deploy the TW safe fixes on the next tick.
 
 ---
+
+
+## Turn — 2026-07-02 15:50:17 ET
+
+**Rhett:**
+
+Can we run multiple shadow sims, or would that take more building?
+
+**Claude Code:**
+
+Great question — and the honest answer is: **yes, and it's a small build, not a big one.** Everything expensive is already shared (the clean cohort, the calibrated fills, the fidelity gate, the bar source, the 3-sided scorer, the daily accumulation). The `v8_shadow` runner just has one tune hardcoded. The clean way — and it's *better* than separate runners — is one harness that scores a **registry of exit variants in a single pass**: same trades, same fills, same day → true apples-to-apples, and adding a tune is one entry.
+
+Rather than describe it, let me just build it — and it lets me test a **protected V8** that should fix the must-not-cut problem we just found:
+**That's the answer — and the tournament immediately earned its keep.** Three variants scored apples-to-apples in one pass:
+
+```
+variant           vs V0 $   winners_cut   verdict
+V8_two_closes        -36          4        MUST-NOT-CUT VIOLATED
+V8p_protected     +1,219          0        better  ← breakeven floor fixes V8
+V10_wide_trail      +804          0        better
+```
+
+**This is exactly why multiple sims matter.** Plain V8 fails (cuts 4 winners). But **V8p — V8 plus a breakeven+0.1×ATR floor once confirmed — is +$1,219 with ZERO winners cut.** The protection catches the 4 trades that were round-tripping to losses while keeping the upside. V10 (wider trail) also looks good (+$804, 0 cut). The tournament found the winner V8-alone couldn't be.
+
+Let me re-point the daily EOD run to the tournament (so all variants accumulate, not just V8) and record it:
+EOD now runs the full tournament daily. Recording the finding and pushing:
+Answered by building it — pushed (`597bf9c`).
+
+## Yes — we can run multiple, and it was a small build
+The whole expensive foundation was already shared (clean cohort, calibrated fills, fidelity gate, bar source, scorer). So `shadow_tournament.py` just generalizes the runner: it scores a **registry of exit variants in one pass** — same trades, same fills, same day, bars fetched once. **Adding a new tune is literally one line** in the `VARIANTS` table. It's now the daily EOD run, so every variant accumulates OOS automatically.
+
+## And it immediately paid off
+Running V8 alone told us it fails. Running **multiple** told us *why* and found the fix:
+- **V8** (2 red closes): −$36, cuts 4 winners → **fails your must-not-cut rule**
+- **V8p** (V8 + a breakeven floor once confirmed): **+$1,219, zero winners cut** ← the floor catches exactly the reversals V8 was losing
+- **V10** (wider 1.8×ATR trail): +$804, zero cut
+
+So the simple tune was a dud, but the **protected** version is a genuinely promising lead — and we'd never have seen that testing one at a time. That's the payoff of running them in parallel.
+
+## The honest caveat (unchanged)
+This is all **in-sample** (6 dense days). V8p and V10 are *promising directional leads, not promotable* — they now accumulate OOS every EOD, and a variant only graduates to a live proposal on OOS + N≥30 + zero winners cut + net-positive vs the deployed exit. Nothing touches the live bot until then.
+
+So: multiple shadow sims are live, running daily, and we already have two candidates (V8p, V10) worth watching over the next few days. All tracked in `OPEN_ITEMS` and the tune log.
+
+---
