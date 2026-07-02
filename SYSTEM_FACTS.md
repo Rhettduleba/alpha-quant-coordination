@@ -1,6 +1,6 @@
 # SYSTEM_FACTS — live mechanics, machine-generated from the running code/config/broker-truth
 
-> **Generated:** 2026-07-01 16:50:30 Eastern Daylight Time · **coordination-repo HEAD:** `caddad9` · by `strategy-research/system_facts.py` (read-only).
+> **Generated:** 2026-07-01 20:26:22 Eastern Daylight Time · **coordination-repo HEAD:** `f335fa0` · by `strategy-research/system_facts.py` (read-only).
 > Every value below is READ from a real source (the live import for the VALUE; a fresh file scan for the SOURCE file:line). Nothing is hand-typed. A field that can't be derived says `UNVERIFIED`.
 > If this contradicts memory, THIS wins — regenerate it (re-run the script) rather than trusting recall.
 
@@ -8,7 +8,7 @@
 | Fact | Live value | Source |
 |---|---|---|
 | Live exit mode | candle_1.4atr_chandelier | `tradestation-bot/risk_config.py:60` |
-| SAFE_MODE_ENFORCE (gate teeth) | False | `tradestation-bot/risk_config.py:200` |
+| SAFE_MODE_ENFORCE (gate teeth) | False | `tradestation-bot/risk_config.py:217` |
 | consecutive_clean streak | 1 | `validation/clean_day_certifier.py:consecutive_clean()` |
 | Posture / freeze + last forward-test | human-maintained record (not a code constant) -- read the CURRENT STATE block | `SESSION_LOG.md (FINDINGS & TEST RESULTS LEDGER + CURRENT STATE)` |
 
@@ -20,20 +20,20 @@
 | Universe source | research_brain_v1 | `advisor_universe_latest.json:universe_source` |
 | Relative-strength pool size | not in the published artifact -- see research-brain build log | `UNVERIFIED` |
 | Re-arm path enabled (ORB_MULTISCAN) | True | `tradestation-bot/risk_config.py:76` |
-| Re-arm window times | ['1035', '1135', '1235', '1335', '1435'] | `tradestation-bot/risk_config.py:79` |
+| Re-arm window times | ['0945', '1035', '1135', '1235', '1335', '1435'] | `tradestation-bot/risk_config.py:85` |
 | 9:35 open scan | the once-a-day Zarattini 5-min ORB (orb_runner owns it; NOT a re-arm window) | `tradestation-bot/orb_runner.py:4 (module docstring)` |
 | Strategy / breakout trigger | Zarattini 5-min Opening-Range Breakout: long on break of OR high, short on break of OR low | `tradestation-bot/orb_runner.py:459-460 (or_high/or_low) + :4 docstring` |
 | Opening-range window | first 5 min (09:30->09:35 ET); scan/arm at 09:35:30 | `tradestation-bot/orb_runner.py:9-12 (timeline)` |
-| In-play gate (RelVol/move/$-vol) | False  (OFF) | `tradestation-bot/risk_config.py:271` |
-| HTB/halted exclusion | True  (ON) | `tradestation-bot/risk_config.py:315` |
+| In-play gate (RelVol/move/$-vol) | False  (OFF) | `tradestation-bot/risk_config.py:288` |
+| HTB/halted exclusion | True  (ON) | `tradestation-bot/risk_config.py:332` |
 | Earnings veto | live-invoked in 9:35 path; fails OPEN on stale/missing calendar | `tradestation-bot/orb_runner.py:441 (is_earnings_blackout call) + orb_earnings_veto.py` |
-| Deploy-controller scope | True -- governs the RE-ARM/multiscan admit ceiling only; 9:35 ORB sizes by its own constants | `tradestation-bot/risk_config.py:250` |
-| Deploy base | $400,000 | `tradestation-bot/risk_config.py:249` |
-| Deploy target % | 0.95 | `tradestation-bot/risk_config.py:253` |
+| Deploy-controller scope | True -- governs the RE-ARM/multiscan admit ceiling only; 9:35 ORB sizes by its own constants | `tradestation-bot/risk_config.py:267` |
+| Deploy base | $400,000 | `tradestation-bot/risk_config.py:266` |
+| Deploy target % | 0.95 | `tradestation-bot/risk_config.py:270` |
 | Deploy target $ (computed live) | $380,000 | `deploy_controller.deploy_target() = DEPLOY_BASE * DEPLOY_TARGET_PCT` |
-| Per-position notional cap | $25,000 | `tradestation-bot/risk_config.py:254` |
-| Per-side cap | 0.50 ($200,000/side) | `tradestation-bot/risk_config.py:255` |
-| Max open positions (count backstop) | 16 | `tradestation-bot/risk_config.py:86` |
+| Per-position notional cap | $25,000 | `tradestation-bot/risk_config.py:271` |
+| Per-side cap | 0.50 ($200,000/side) | `tradestation-bot/risk_config.py:272` |
+| Max open positions (count backstop) | 16 | `tradestation-bot/risk_config.py:92` |
 
 ## EXIT
 | Fact | Live value | Source |
@@ -44,6 +44,7 @@
 | Chandelier trail multiple | 1.4 x ATR (ratchet-favorable-only floor) | `tradestation-bot/candle_close_exit.py:60` |
 | Candle-close trail (post-confirm) | after confirm, exit on first opposite-color 1-min close; live exit = earlier of (chandelier) OR (candle-close) | `tradestation-bot/candle_close_exit.py:63-68 (chandelier_decision docstring)` |
 | Catastrophe stop (legacy candle_close mode) | 1.0 x ATR | `tradestation-bot/candle_close_exit.py:25` |
+| Unconfirmed time-stop (Loop 220, LIVE 2026-07-01) | 30 min -> flatten if STILL UNCONFIRMED (favorable excursion never crossed +0.15xATR); confirmed positions UNTOUCHED. Fires in exit_bot_v2 for every open position incl. TW-owned (before the lease); reason TIME_EXIT_<N>M_UNCONFIRMED (does not count toward the 2-stops/day breaker). SIM-only, reversible via UNCONFIRMED_TIME_STOP_ENABLED. | `tradestation-bot/risk_config.py:161` |
 | EOD forced-flatten time | 15:50 ET (3:50 PM) | `tradestation-bot/market_hours.py:68 + tradestation-bot/market_hours.py:69` |
 | Live exit OWNER (Loop 155, LIVE Mon 6/29) | Tape Watcher (tape_watcher --live-exit) fires exits tick-fast via the proven flatten_symbol + holds the exit_ownership lease; exit_bot_v2 DEFERS for TW-owned names. no-double-exit is STRUCTURAL (flatten re-reads live qty -> no-op on flat, no flip). Resting stop = always-on dead-man backstop; lease TTL reclaim (45s) on TW death. | `strategy-research/tape_watcher.py (run_live fire) + tradestation-bot/exit_ownership.py + exit_bot_v2 skip-guard` |
 | TW kill-switch (Loop 157) | create tradestation-bot/tw_abort.flag -> TW stands down + releases the lease (exit_bot_v2 resumes; resting stops stay); delete to resume. Read each cycle -- no restart/deploy. | `tradestation-bot/exit_ownership.py:abort_requested` |
