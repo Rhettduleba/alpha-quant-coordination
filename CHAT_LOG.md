@@ -14457,3 +14457,52 @@ We let the **live market be the judge.** Instead of trusting an entry shadow, we
 **One-line summary:** exit ideas we can prove in the shadow; entry ideas the shadow can only *hint* at — they need a real, tagged live test to trust. Your confusion was actually the correct instinct.
 
 ---
+
+
+## Turn — 2026-07-02 13:20:47 ET
+
+**Rhett:**
+
+SELF-MONITORING (daily, every 15 min 9:00 AM–4:00 PM ET). Follow C:\AlphaQuant\SELF_MONITORING_PLAYBOOK.md. RULE: never defer — act on every warning THIS run (fix non-watched; escalate WITH the fix for watched trading files). STEPS: (1) Confirm ET time + market state. If it's ~9:00 AM (pre-open), run `python C:\AlphaQuant\tradestation-bot\pre_open_trade_readiness.py` (the "will it trade today?" gate) and ACT on any CRITICAL before 9:45. If market is closed now, do a quick EOD broker-flat check then finish this run (the cron resumes next weekday 9 AM). (2) Read the SAME warnings Rhett gets: `python C:\AlphaQuant\tradestation-bot\alerts_bridge.py` (bot_alerts 24h — any FAIL in the last hour = top priority), C:\AlphaQuant\CSHV_FINDINGS.md (any FAIL/CRITICAL/WARN), code_inbox.jsonl actionable items. (3) Trade-liveness (the 7/02 catch): after 10:45 AM confirm >=1 ORB_V16_ENTRY_OK in today's bot_alerts.jsonl; if 0 on an open regular trading day, run reliability_checks.check_alive_but_not_trading() and diagnose. (4) ACT (never defer): verify each warning vs broker truth FIRST; fix non-watched now (+regression-lock+verify); for WATCHED trading files (orb_*, exit_bot_v2, risk_config, bot_loop, candle_close_exit, market-behavior) never edit mid-session — surface + write a proposal + escalate to Rhett with the concrete fix. (5) Log a one-line status to SESSION_LOG.md (clean or what I acted on) and push to coordination. Ping Rhett only if actionable for him or I escalated; otherwise silence = handled.
+
+**Claude Code:**
+
+Monitor tick — running the SELF_MONITORING_PLAYBOOK check:
+Clean tick. Logging and pushing (per the playbook):
+Clean tick logged (`ad6a368`) — bot's trading (13 round-trips now), 0 FAIL. Now to your question, which is a good one and ties directly to the shadow conversation we just had.
+
+Let me verify what already exists before I scope it (we've actually planned a version of this):
+Verified — and this isn't a from-scratch idea. We've already **planned** it (`PROP-LEARN-backtest-learning-loop.md`) and we already have ~60% of the parts: `experiment_runner.py`, `validator.py`, `sim_day_replay.py`, the shadow/replay harnesses, the **real fill log** (`broker_orders_unified.csv`, 1.1MB — critical, see below), and the commission/fee model. So here's my honest take.
+
+## Yes, it's possible. But there are two very different versions — pick carefully.
+
+**Version A — a backtester / research sim** (replay historical data → run the bot's signal logic → model fills → log trades + P&L). **This is the high-value one.** It's exactly what solves the problem from our shadow conversation: it's the only clean way to test **entry** changes without burning live SIM days.
+
+**Version B — a live paper-sim that *replaces* TradeStation SIM** (bot trades live market data through our own engine). **Low value — don't build this.** TS SIM already gives us realistic fills + real data *for free*. Rebuilding it ourselves means reinventing the wheel with **worse** fill realism and more maintenance. It buys us almost nothing.
+
+So the real question is "should we build the backtester?" — and my answer is yes, with eyes open.
+
+## The catch (it's the same one from the shadow talk)
+A home sim **models** fills — it can't perfectly reproduce real ones (slippage, partial fills, whether your stop or target hit first inside a 1-minute bar). That's the identical low-fidelity problem shadows have. **The danger is false confidence:** an optimistic fill model makes a losing strategy look profitable. This project has been burned by exactly that before (an old backtest showed −99.92%).
+
+**But we have a real edge that most backtests don't:** we log every *real* TS fill. So we can (a) **calibrate** the fill model's slippage against what actually happened, and (b) **prove** the sim is trustworthy by making it **reproduce a known real day** before we believe a single number it produces. That acceptance gate is already written into the plan. Without that validation, a home sim is just a fancier low-fidelity shadow.
+
+## How much work
+Not from zero — it's *assembly + hardening*, not a new build:
+- **MVP** (replay a handful of historical days, run the real ORB signal logic, calibrated fill model, P&L ledger, reproduce one known day): a few focused build sessions.
+- **The expensive part** is running the **real bot code** against the sim rather than a fork (the live modules call `TSClient()` directly — making that cleanly swappable for a mock is the actual engineering), plus fidelity hardening. Human-dev-equivalent that's weeks; I ship faster, but budget real iteration for the fidelity work.
+
+## The bill (dollars)
+Small. **1-minute bars come from the TS API we already pay for → ~$0.** The only optional cost is a tick-data vendor (Polygon/Databento, ~$50–200/mo) *if* we ever need sub-minute fill precision. Compute runs on the VPS (negligible). No extra broker account. **The real "cost" is my build/iteration time, not money.**
+
+## My recommendation
+Build **Version A as a funnel, not a verdict:**
+1. It screens many ideas fast + cheap (especially **entry** changes, which we can't shadow and don't want to burn live SIM days on).
+2. **Validate fidelity first** — it must reproduce a known real result before we trust it.
+3. Survivors still go to **live tagged SIM** for the real proof. The sim doesn't *replace* live SIM — it makes live SIM time far more productive by pre-filtering the junk.
+
+It's gated (`PROP-LEARN`), so it'd go through a proposal + your approval, and that reproduce-a-known-day acceptance criterion is what keeps us from trusting a broken sim.
+
+**Bottom line:** worth building, cheap in dollars, real in effort — but its entire value hinges on validating it against real fills first. Want me to write up the concrete build plan (MVP scope + the fidelity-validation gate) as a proposal for you to look at?
+
+---
