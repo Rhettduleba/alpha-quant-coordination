@@ -14405,3 +14405,55 @@ Quick confirmation for your records: you got in via Remote Control, and the sess
 Go ahead and test it — send me anything and I'll answer right here. What do you want to do next?
 
 ---
+
+
+## Turn — 2026-07-02 13:13:50 ET
+
+**Rhett:**
+
+@"C:\Users\Administrator\OneDrive - Duleba\Alphaquant potenial growth\shadow question.txt"
+
+**Claude Code:**
+
+Great question — and honestly it cuts right to the hardest part of the whole shadow concept. Let me verify what's actually running before I explain (I don't want to hand-wave this), then give you a clear mental model.
+Verified — and your instinct in that last question is exactly right. Here's the real picture.
+
+## What "the shadow" actually is
+The shadow is **not a running bot.** Nothing in it places orders, and nothing in it touches the live bot or the market. It's a set of **read-only "what if?" scripts** that ask: *"Given data we already logged, what WOULD have happened if we'd done X differently?"*
+
+Think of it as a **flight simulator running on yesterday's weather**, versus the live bot which is the actual plane in the air. The simulator can't crash the plane — it just replays history with a tweak.
+
+## How many "things"?
+About **30 analysis tools** exist in `strategy-research/` (plus 2 exit-replay harnesses in the bot). But they're **on-demand, not all running at once** — I fire one up when we're studying a specific idea (like `l1_unconfirmed_leash` for the 30-min time-stop you approved). Only **2** are on any schedule. So it's a *toolbox of ~30 studies*, with usually 0–1 active at a time — not a fleet constantly running.
+
+## Do we apply it to our trades, or the whole market? — This is the key split
+It depends on whether it's an **exit** test or an **entry** test, and they are fundamentally different:
+
+**Exit shadows** (most of them — the time-stop, the $500 cap, the chandelier): applied to the **real trades we actually took.** We have the real entry and we logged the price path afterward. The shadow just replays a *different exit rule* on that *same real trade* → "what P&L would this exit have gotten on the exact trade we really did?" **High fidelity**, because the entry and the price path are real and fixed — only the exit decision changes.
+
+**Entry shadows** (what you asked about): applied to the **whole market's candidates**, because a different entry rule would take *different trades* — ones that **never actually happened.**
+
+## Your killer question — and you nailed it
+> *"If the shadow changed how we ENTER, how could it pick up on the change if it wasn't trading like a bot?"*
+
+**It can't — not the way an exit shadow can. And the system openly admits it.** That's literally why there are three trust levels baked into the code:
+
+| Tier | What it is | Trust |
+|---|---|---|
+| `broker_truth` | what actually happened | highest |
+| `replay` | a different **exit** replayed on **real** trades | medium |
+| `one_minute_counterfactual_low` | **simulated** trades that never happened (an entry change) | **LOW — never a verdict** |
+
+An entry shadow lands in that bottom tier because it has to *guess* the things only real trading answers:
+- Would we actually have **gotten filled** at that price? (real fills slip)
+- What happened **between** the 1-minute bars? (a 1-min bar can't tell you if the stop or the target hit first inside that minute)
+- Would taking that trade have **used a slot** that changed the other trades?
+
+So an entry shadow gives a **directional hint** ("this filter looks like it'd help"), never proof.
+
+## So what do we actually do for entry changes?
+We let the **live market be the judge.** Instead of trusting an entry shadow, we deploy the entry change **live but tagged**, and compare real broker P&L. That's exactly what we did with the 9:35 path: we gated it OFF live and let the re-arm path run, then compared *real* fills — because, as you said, a shadow can't fake real trading.
+
+**One-line summary:** exit ideas we can prove in the shadow; entry ideas the shadow can only *hint* at — they need a real, tagged live test to trust. Your confusion was actually the correct instinct.
+
+---
