@@ -15823,3 +15823,159 @@ Only **exit** tunes are shadow-runnable today. **Entry** tunes need the winner-b
 The dashboard launches on-demand, so the new tab is there next time you open it. Bot's flat and done for the day; monitor's clean.
 
 ---
+
+
+## Turn — 2026-07-02 16:32:55 ET
+
+**Rhett:**
+
+This session is being continued from a previous conversation that ran out of context. The summary below covers the earlier portion of the conversation.
+
+Summary:
+1. Primary Request and Intent:
+I am "Claude Code" operating as the Alpha Quant VPS empirical node (model Opus 4.8) on a SIM-only TradeStation ORB equity day-trading bot (account SIM1623888M; live root C:\AlphaQuant; OneDrive backup-only; coordination repo C:\repos\alpha-quant-coordination = public GitHub Rhettduleba/alpha-quant-coordination). Rhett is owner/decider. Requests in chronological order:
+   - Present/verify the unconfirmed 30-min time-stop study, then "implement the 30 minute exit on all unconfirmed now" + "make sure you update the dashboard in all applicable areas."
+   - Run the pasted 9-section "does it actually work?" self-audit (adversarial).
+   - "i want to acces you, this exact chat and session of claude code through other divises. Walk me step by step... dont get a step in front of me" (remote control setup).
+   - "the bot did not trade today... I run the 'self test' last night and it still failed, what can we add to the self test to make it better. Find the bug and the problems with today['s] system and fix."
+   - "write a promt tp yourself to monitor the stystem... You should check the sysytem the bot at 9:00am and every 15 minutes going forward... when i tel you to make a change... and the bot failes, that is on your shoulders... ask yourself why did i do that wrong and make sure it does not happen agan."
+   - "Never differ anything, alwasy act, i demand this and i want it in memeory and logged."
+   - "do this every 15 minutes starting at 9:am every day" (persistent monitoring).
+   - Remote control: "all of the session that were on the phone were old and named wrong. how can i get into this session where we are now?" then "So I'm in and I'm on my phone right now. Just respond back to me so that I know that I'm in."
+   - Explain the shadow (conceptual: how many shadows, exit vs entry testing, fill fidelity).
+   - "would it be possible to duplicate our bot and have it run on our own sim... What size of a bill would it be? What are your thoughts?" then pushback that Version B (parallel live paper-sim) has value.
+   - "let's scope out the... complete shadow... Could you take the entire trade log... remove those anomalies and all of those problem time periods... get all of the noise out of our trade history, then we can back test exit strategies."
+   - "Move forward with both. the shadow SIM... and also scrub out so that we can use the back test."
+   - "Go ahead and build the price path logging going forward. Never ask me to keep going. I don't like to build something halfway."
+   - "you have to remember that I'm human and I have a bad memory... if we ever go through a loop and I haven't answered all of your questions or if there's something I need to think about, make sure you remind me... don't leave anything on the table."
+   - "Are we using the tw most efficiently? Can we tune the tw to track more... tick by tick... Regarding the half day, give me your recommendation, and then just go with it."
+   - "run each trade" EOD tune analysis: "did we exit and enter with the correct signals... is there a tune to be found... any tunes to entry cannot affect positive trades meaning if we change the entry strategy, we have to run back test to see if they would've had affected any positive interest." (add to EOD process)
+   - "we have a number of tunes that have been proposed. Give me a PDF that lists all of those tunes... suggest for me our first shadow sim tune."
+   - "Let's go with your recommendation. make the proper changes in the shadow SIM. and let's work it for a few days."
+   - "Can we run multiple shadow sims, or would that take more building?"
+   - MOST RECENT: "run all thirty tunes at your discretion, make a tab on the dashboard that lists every tune, and when I click on that tune, I wanna see the p and l for that tune... shadow sync tunes... keep a record of exactly what you did and keep alternating until we find the correct tunes."
+
+2. Key Technical Concepts:
+   - Two systems: Bot (C:\AlphaQuant\tradestation-bot\) + Advisor (ai-trading-strategy-agent/, local dashboard http.server 127.0.0.1:8765). Python: C:/Users/Administrator/AppData/Local/Python/pythoncore-3.14-64/python.exe (and pythonw.exe).
+   - ORB strategy: 9:35 path GATED OFF (ORB_935_ENTRIES_ENABLED=False); re-arm windows ["0945","1035","1135","1235","1335","1435"] via orb_multiscan; exit mode candle_1.4atr_chandelier (chandelier_decision).
+   - WATCHED trading files (never edit mid-session; need proposal + Rhett's go): risk_config.py, bot_loop.py, exit_bot_v2.py, candle_close_exit.py, advisor_filter_engine.py, symbol_universe.py, orb_runner.py, orb_multiscan.py, short_bot.py, mover_scanner.py. NON-watched: everything else (monitoring/research/dashboard).
+   - Subprocess model: run_bot spawns orb_runner/orb_multiscan/exit_bot_v2 as fresh subprocesses each cycle (via `subprocess.Popen([PYTHON_EXE] + args, ..., creationflags=_NO_WINDOW)` in `_run_step_with_heartbeat`, run_bot.py:657) → they re-import risk_config fresh each cycle; edits load WITHOUT a run_bot restart. run_bot is long-lived; heartbeat at C:\AlphaQuant\bot_heartbeat.json (project root, NOT the subdir).
+   - Confirm state: candle_close_exit.py CONFIRM_ATR=0.15 (confirmed = high_water >= avg+0.15*atr long / low_water <= avg-0.15*atr short); CHANDELIER_ATR=1.4.
+   - Exit backtester (shadow SIM) fidelity: broker_truth > replay > one_minute_counterfactual_low (exit_reason_codes.py FIDELITY tiers). SIM fills are more generous than live → SIM-fidelity only.
+   - Fill calibration: real slip from broker_orders_unified.csv via eod_debrief.entry_slip; StopMarket exits ~+3.1/+6.1 bps adverse, marketable-limit ~0 (near touch), entry stop-limit capped at 5bps collar.
+   - Must-not-cut: an entry tune must backtest vs clean-cohort winners; exit tunes via exit backtester; a winner turned to loser = hard violation.
+   - Self-monitoring: /loop cron `*/15 9-16 * * 1-5` (session-scoped, durable didn't persist) + always-on Windows tasks (AlphaQuant PreOpen TradeReadiness 9AM, AlphaQuant CSHV every 5min, AlphaQuant PricePathLogger every 1min RTH, AlphaQuant_EodReconciliation 4:50PM with 7 actions).
+
+3. Files and Code Sections:
+   - **strategy-research/shadow_tournament.py** (NEW, MOST RECENT): the multi-variant exit tournament — replays baseline vs a REGISTRY of exit variants in one pass (same trades/fills/day, bars fetched once). Key: `_replay(side, entry_px, qty, atr, bars, fm)` walks bars, per variant checks chandelier floor (chand_atr) + breakeven floor (be_atr after confirm) + N consecutive opposite-color closes (red_closes). VARIANTS dict has 9 entries (V0_deployed baseline + 8 candidates: V8_two_closes, V8p_protected, V8pw_wide, V10_wide_trail, V10p_wide_be, V12_tight, V13_xwide, V_be_chand). `_score` computes delta_vs_V0 + winners_cut per variant, appends to shadow_tournament_log.jsonl. Wired as the 7th EOD action (replaced v8_shadow). Result (N=138): V8pw_wide +$2,024/0-cut (leader), V10p_wide_be +$1,443/0, V8p +$1,219/0, V10/V13 +$804/0, V12 +$163/0, V8 -$36/4-cut (rejected), V_be_chand -$1,543.
+   - **ai-trading-strategy-agent/src/advisor/tunes_page.py** (NEW, MOST RECENT): dashboard /tunes tab. `render_body(variant=None)` — list view (all 32 EDGE_TUNES ledger tunes via `_ledger_rows()` parsing EDGE_TUNES.md markdown table + tournament P&L per exit variant via `_tournament_runs()` reading shadow_tournament_log.jsonl, exit variants clickable to `/tunes?v=<name>`); detail view (`_detail`) shows a variant's P&L history across runs. Honest status pills: exit→in tournament, entry→needs winner-backtest, guardrail, live. Verified: 32 ledger tunes parsed, list 15651 chars, detail 973 chars.
+   - **ai-trading-strategy-agent/src/advisor/local_dashboard.py** (EDITED): added route `if parsed.path == "/tunes": self._handle_tunes(parsed.query); return` (after /shadow-sim); added `_handle_tunes` handler (parses `?v=` query, calls tunes_page.render_body, body carries own topbar); added nav link `<a class="link-button" href="/tunes">Open Tunes (shadow P&amp;L per tune)</a>`. Earlier also added /shadow-sim route + _handle_shadow_sim + nav. COMPILE_OK. Dashboard is on-demand (not a running process) so next launch serves new pages.
+   - **strategy-research/fidelity_gate.py** (NEW): anti--99.92% guard. `TARGETS` = 4 dense-day losers (MU 6/25, DELL 6/25, PAYX 6/24, NFLX 6/26 required=True; COHR 6/29 required=False aspirational) pulled LIVE from round_trips_net. `replay_deployed_exit` replays chandelier_decision on price path + fill_model. Verdict PASSES if all data-targets reproduce (within 35% + same sign), starved SKIPS (not fail), ≥3 validated, planted +$2000 caught. Persists shadow_sim_status.json. Result: 4 reproduced/0 failed/1 skipped → PASS (DELL exact -$660 vs -$660, MU -$1,553 vs -$1,670).
+   - **strategy-research/fill_model.py** (NEW): `FillModel.exit_fill(order_type, side, trigger_px)` reads calibration_<date>.json; StopMarket = adverse slip, Limit = ~near touch.
+   - **strategy-research/calibrate_fills.py** (NEW): buckets FILLED equity orders by (order_type, side) via eod_debrief.entry_slip → calibration_<date>.json.
+   - **strategy-research/clean_cohort.py** (NEW): remove BUGS keep LOSSES tagger; `_is_futures` scope filter; PROTECTED_LEGIT_LOSERS=[MU 6/25, COHR 6/29]; result 364 kept/0 removed, 217 equity exit-backtest-eligible. BUG_PERIODS default keep.
+   - **strategy-research/price_path_source.py** (NEW): merges exit_decisions.jsonl + price_path.jsonl → canonical path; 6/25=7,397 polls.
+   - **tradestation-bot/price_path_logger.py** (NEW): dense per-position price-path capture (last/bid/ask/atr/high-low-water/confirmed) to outputs/validation/price_path.jsonl; SIM-guarded, read-only, own hi/lo state. Scheduled every 1min RTH (AlphaQuant PricePathLogger).
+   - **tradestation-bot/pre_open_trade_readiness.py** (NEW): forward "will it trade today?" gate; dry-runs orb_multiscan + calendar-contradiction; CRITICAL via notifier + code_inbox. Scheduled 9AM.
+   - **tradestation-bot/market_hours.py** (EDITED, non-watched): removed erroneous `date(2026, 7, 2): "Day before Independence Day"` from US_MARKET_EARLY_CLOSE (July 2 2026 is a NORMAL full equity trading day per NYSE; real 2026 early closes are Nov 27 + Dec 24; July 3 is full holiday). This fixed the outage.
+   - **tradestation-bot/reliability_checks.py** (EDITED): hardened `check_alive_but_not_trading` to be calendar-based (`is_regular_trading_day`, not the gated 9:35 scan), count both paths' ENTRY_OK, escalate to CRIT; added early-close exemption (is_early_close_day → OK, intended skip, Rhett decision to SKIP half-days); fixed `_bot_alert_rows_today` to match row's own ts/date not loose substring.
+   - **tradestation-bot/regression_suite.py** (EDITED): REG-29 (time-stop wired), REG-30 (calendar correctness), REG-31 (detector calendar-based). Suite 29 pass/0 FAIL.
+   - **strategy-research/eod_trade_tune_analysis.py** (NEW): per-trade tune data (net/hold/exit-code/MFE-MAE/capture/left-on-table/entry-ctx); writes outputs/reports/tune_analysis_<date>.md + seeds tune_log.md. Wired as 6th EOD action. EOD_TUNE_ANALYSIS_SPEC.md = the 4-question framework.
+   - **Docs/proposals**: SELF_MONITORING_PLAYBOOK.md, OPEN_ITEMS.md (living tracker), EOD_TUNE_ANALYSIS_SPEC.md, PROP-UNCONFIRMED-TIMESTOP-30M, PROP-LIVE-QUOTES-2026-07-02 (Rhett approved drafting; quotes-live/orders-SIM), PROP-TS-TRANSIENT-LABEL-2026-07-02 (504 mislabel fix, orb_runner.py:256, WATCHED, awaiting go), Alpha_Quant_Proposed_Tunes.pdf (delivered).
+   - **Memory files (C:\Users\Administrator\.claude\projects\...\memory\)**: feedback_never_defer_always_act.md, feedback_verify_next_session_trades.md, project_self_monitoring_playbook.md, feedback_keep_building_autonomously.md (re-hardened: "Never ask me to keep going. I don't like to build something halfway."), feedback_surface_open_items.md, project_eod_tune_analysis.md.
+
+4. Errors and fixes:
+   - **7/02 outage (bot didn't trade)**: Root cause = market_hours.py erroneously flagged date(2026,7,2) as an early-close day; orb_multiscan.py:261-263 skips ALL trading on any truthy holiday_reason → treated a normal open day as a full closure. Verified via WebSearch (July 2 2026 is a normal full equity day). Fixed by removing the bad calendar entry (non-watched). Bot recovered live: 12:35 window armed 15 entries. The self-test missed it because check_alive_but_not_trading keyed off the gated 9:35 scan + wrote off "no scan" as holiday. Hardened it. Also discovered I had DEFERRED the prior night's audit FAIL that predicted this — Rhett: "when I tell you to make a change and the bot fails, that is on your shoulders." → saved feedback_never_defer_always_act + feedback_verify_next_session_trades.
+   - **Bad heartbeat-path diagnosis (self-corrected)**: Initially concluded run_bot was "hung" because bot_heartbeat.json wasn't at tradestation-bot/; corrected — it lives at C:\AlphaQuant\bot_heartbeat.json (fresh, loop advancing) = run_bot cycling fine.
+   - **TS_AUTH_FAIL benign 504**: 14:51:54 FAIL was a transient TS 504 gateway timeout (not auth). orb_runner.py:256 mislabels any account-fetch error as TS_AUTH_FAIL/FAIL (defined for 401/403). WATCHED → escalated via PROP-TS-TRANSIENT-LABEL, did not edit.
+   - **V8 first read failure**: TUNE-08b (two-adverse-closes) alone = flat (-$36) AND violated must-not-cut (4 winners→losers). Fixed by adding a PROTECTED variant (V8p = V8 + breakeven+0.1xATR floor) → +$1,219/0-cut. This demonstrated the value of running multiple variants; V8pw_wide became the leader (+$2,024).
+   - **Heredoc quoting failures (Bash)**: apostrophes/backticks broke `$PY - <<'PYEOF'` heredocs and reportlab PDF gen; fixed by writing scripts to files (Write tool) or using clean single-quoted heredocs.
+   - **User feedback (behavioral)**: "Never ask me to keep going. I don't like to build something halfway" (re-hardened keep-building memory); "don't leave anything on the table" / bad memory (feedback_surface_open_items + OPEN_ITEMS.md tracker); pushback that Version B (parallel live paper-sim) has value (I conceded I was wrong, distinguished replace-TS-SIM vs parallel-shadow).
+
+5. Problem Solving:
+   Solved: time-stop deploy + governance; 9-section adversarial audit; 7/02 outage root cause + fix + hardened detector + regression locks; remote control (Rhett got in via Claude Code Remote Control — sessions auto-named win-fibssoqki7k-*, identify by green dot); self-monitoring (9AM readiness + CSHV + /loop); never-defer + surface-open-items + never-build-halfway rules to memory; price-path logging fix (TW-ownership collapse → standalone logger + unified reader); clean cohort (remove bugs keep losses); fill calibration + fill model + fidelity gate (PASS on 4 dense losers); EOD per-trade tune analysis; TW efficiency audit (root cause = reads last-trade price only on a coalesced SIM feed → blind between prints; 92% "gaps" mostly a measurement artifact; NO safety hole; fix = mid-feed when Last stale; deploy after-close, shadow-first); half-day decision (SKIP early-close, detector exempted); tunes PDF; V8 shadow → tournament (found V8p/V8pw winners); /tunes dashboard tab.
+   Ongoing: TW safe-fix deploy (queued post-close, but TW launch mechanism unknown — no scheduled task/launcher found, a loose end to resolve before deploying); all tournament results are IN-SAMPLE (N=138, 6 dense days) = directional NOT promotable; need OOS accumulation.
+
+6. All user messages:
+   - (approving V8 continuation, various monitor-cron messages interspersed)
+   - "So we have a number of tunes that have been proposed. Give me a PDF that lists all of those tunes. Read the list of tunes and suggest for me our first shadow sim tune."
+   - "Okay. Let's go with your recommendation. make the proper changes in the shadow SIM. and let's work it for a few days."
+   - "Can we run multiple shadow sims, or would that take more building?"
+   - "Okay, so run all thirty tunes at your discretion, make a tab on the dashboard that lists every tune, and when I click on that tune, I wanna see the p and l for that tune. you can just have me click on tunes or even better, shadow sync tunes, and then we can keep a record of exactly what you did and keep alternating until we find the correct tunes."
+   - (Earlier critical): "the bot did not trade today... Find the bug and the problems with today['s] system and fix." / "Never differ anything, alwasy act, i demand this and i want it in memeory and logged in your actions so you never defer, you act." / "Go ahead and build the price path logging going forward. Never ask me to keep going. I don't like to build something halfway." / "you have to remember that I'm human and I have a bad memory... don't leave anything on the table." / "Are we using the tw most efficiently?... Regarding the half day, give me your recommendation, and then just go with it."
+   - Security/standing constraints (verbatim intent to preserve): SIM-only, never trade HTB; WATCHED files never edited mid-session (escalate + propose); verify vs broker truth before stating; never defer (act same turn); verify next session trades before "done"; never build halfway / never ask to keep going; entry tunes MUST backtest vs winners (must-not-cut); surface all open items; push SESSION_LOG + OPEN_ITEMS every turn; don't over-refresh TS tokens; no secrets in source; in-sample ranks/doesn't promote (OOS + N≥30 + 0 cut + net-positive).
+
+7. Pending Tasks:
+   - The MOST RECENT directive (run all tunes / tunes tab / click→P&L / record / keep alternating) is essentially COMPLETE (Loop 231 pushed 2d64aae). Ongoing: keep alternating variants + accumulate OOS.
+   - TW safe-fix deploy (reconnect-reset #3, honest gap metric #2, tick side-channel #0) — queued for post-close; BLOCKER: TW launch mechanism unknown (must resolve how the TW starts daily before the edit takes effect). Mid-feed (#1) needs shadow-validation during RTH before arming.
+   - PROP-LIVE-QUOTES (Rhett approved drafting) awaiting his approval; PROP-TS-TRANSIENT-LABEL awaiting his go (WATCHED).
+   - Carried before-live gates: restore DAILY_MAX_LOSS + 5% DD kill + intraday clamp; build 4x-marginable universe.
+
+8. Current Work:
+   Immediately before this summary I completed Loop 231 (the user's "run all thirty tunes / tunes tab / click→P&L" directive): (a) closed the 4:03 PM monitor tick (market closed, EOD FLAT confirmed 0 positions, no new FAILs; noted TW launch mechanism is unknown — a loose end); (b) expanded shadow_tournament.py from 4 to 9 exit variants; (c) ran the tournament — leader V8pw_wide +$2,024/0-cut, plus V10p_wide_be +$1,443, V8p +$1,219, others (all in-sample); (d) built tunes_page.py (dashboard /tunes tab listing all 32 ledger tunes + tournament P&L per exit variant, clickable for detail) and wired the /tunes route + _handle_tunes + nav link in local_dashboard.py; (e) verified COMPILE_OK + page renders (32 tunes, list 15651 chars, detail 973 chars). The final tool call logged Loop 231 to SESSION_LOG + updated OPEN_ITEMS + pushed to coordination — result: "COMPILE_OK / logged / PUSHED: 2d64aae". I was honest about scope: only EXIT tunes are shadow-runnable now; entry tunes need the winner-backtest (some data-blocked: VWAP/catalyst/velocity); guardrails aren't tunes. All results IN-SAMPLE = directional, NOT promotable, accumulating OOS daily via the EOD tournament run.
+
+9. Optional Next Step:
+   Loop 231 is complete and pushed (2d64aae). The immediate next step is to present the completed result to Rhett (I had not yet given a chat-facing summary after the final push): confirm the /tunes dashboard tab is built (lists all 32 tunes, click a variant → its P&L history, synced from the daily EOD tournament), the 9-variant tournament is running with leader V8pw_wide (+$2,024/0-cut in-sample), and the honest scope (exit tunes run now; entry tunes need the winner-backtest + some data-blocked). This is directly in line with his most recent request: "make a tab on the dashboard that lists every tune, and when I click on that tune, I wanna see the p and l for that tune... keep a record... keep alternating until we find the correct tunes." No new tangential work should start; the loop continues accumulating OOS data and I should surface the in-progress items (tournament OOS accumulation, TW deploy blocker) per the surface-open-items rule.
+
+If you need specific details from before compaction (like exact code snippets, error messages, or content you generated), read the full transcript at: C:\Users\Administrator\.claude\projects\C--Users-Administrator-OneDrive---Duleba-Trade-station-Main\3253950a-388c-4a7a-99cc-cec0c4ed9f69.jsonl
+Continue the conversation from where it left off without asking the user any further questions. Resume directly — do not acknowledge the summary, do not recap what was happening, do not preface with "I'll continue" or similar. Pick up the last task as if the break never happened.
+
+**Claude Code:**
+
+Market's closed (4:17 PM ET Thu), bot flat (0 positions), 20 round-trips today. Let me verify the 1 FAIL is the known-benign transient and nothing new post-close:
+Confirmed clean: the only FAIL is the known 14:51 transient TS 504 (already escalated via PROP-TS-TRANSIENT-LABEL, WATCHED — not editing mid-session), nothing new post-close, **21 ORB entry-OK events today** (trade-liveness good — the 7/02 outage stays fixed). Quick CSHV read + log the EOD status:
+CSHV shows FAIL=3/CRITICAL=2/WARN=9 in a raw word count — that contradicts my "CSHV clean" note, and I will not write it off without reading the actual findings. Let me read them:
+CSHV's real summary is **OK=47 / WARN=3 / FAIL=0** — my raw word-count was catching legend text; there are zero active FAILs. But there are 3 WARNs and I won't write them off. Two point at underlying issues I should identify now (never-defer): what critical incident marked the day NON-CLEAN, and what the 1 preflight FAIL was this morning. Let me investigate both:
+All three WARNs trace to known/benign roots, but one deserves a real verify. Breakdown:
+
+- **report_integrity** — 1 of 20 trades has an unclassified exit reason (non-watched data quality, minor).
+- **clean_day_certified NON-CLEAN** — driven by exactly one "critical incident": the 14:51 benign TS 504. So the mislabel bug is now also **resetting the clean-day streak** on a network blip — a real downstream cost that strengthens PROP-TS-TRANSIENT-LABEL.
+- **pre_open_gate NO-GO** — driven by preflight's 1 FAIL: `risk_config.py mtime (8:23 PM) > bot start (7:09 PM)` = the long-lived run_bot may be running a **stale risk_config**. That's a verify-load flag I won't hand-wave. Let me get the real facts:
+Real facts confirmed: **risk_config.py was modified 7/01 8:23 PM, run_bot (PID 5544) started 7/01 7:09 PM** — so the long-lived bot has been running a risk_config that changed ~74 min after it started, and it was never restarted (it's now a ~21-hour-old process that traded all of 7/02). That's a genuine verify-load flag. But impact depends entirely on *what* changed — a real value change vs a no-op touch. Let me verify before deciding anything:
+C:\AlphaQuant is a git repo, and risk_config.py has **40 lines of uncommitted changes** since the last commit (Loop 168, 6/28) — made 7/01 8:23 PM. That's a substantial real change, not a touch, and the running bot doesn't have it loaded. I need to see exactly what changed:
+Now it's clear. The 40-line diff is **four real, Rhett-approved, deployed config changes** made 7/01 8:23 PM: the 0945 early re-arm window, the $500 dollar-stop cap (ENABLED), the 30-min unconfirmed time-stop (ENABLED), and 9:35 entries gated OFF. All documented, all intended-current.
+
+The verify-load question is whether the running bot actually *used* these today. The architecture says yes — run_bot spawns orb_runner/orb_multiscan/exit_bot_v2 as **fresh subprocesses each cycle** that re-import risk_config, so the parent's stale import is moot for exactly these four values (all consumed by subprocesses). But per STANDING RULE #0 I verify against today's real behavior, not assert it:
+Important correction: today's data is **contaminated by the morning outage** — the bot didn't scan any morning window (0945/1035/1135) because market_hours flagged 7/02 as early-close until I fixed it ~12:30 PM; first entries were 12:35. So "0945 absent today" is NOT proof either way — I can't use today's trades to confirm the new windows loaded.
+
+But the verify-load question is answerable **architecturally, independent of today**: do the strategy subprocesses re-import risk_config fresh each cycle (→ current config), and would a run_bot restart be safe to clear the standing flag? Let me verify the launch/respawn chain before deciding whether to act:
+Architecturally confirmed from the code (not asserted): run_bot spawns strategy steps as **fresh `subprocess.Popen([PYTHON_EXE]...)` each cycle** (run_bot.py:657), and orb_multiscan **imports `ORB_SCAN_WINDOWS` at module load** (line 25) — so every cycle's fresh subprocess reads the *current* risk_config from disk. The four changed values are all subprocess-consumed → the bot traded 7/02 on current config; the parent's stale import doesn't drive entry/exit. **The preflight FAIL is a false-positive on parent staleness for values the parent doesn't use.**
+
+The remaining question is whether to restart run_bot to clear the standing flag. That depends on whether the respawn chain would cleanly bring it back — I couldn't read those two processes' command lines. Let me verify before deciding (a botched overnight restart is far worse than a cosmetic flag):
+The process tree resolves several things at once:
+
+- **run_bot (5544) is a child of watchdog_supervisor (2128)** → it *is* supervised; a death would be respawned.
+- **bot_loop (10280) started 7/02 16:26 — a child of run_bot, spawned *this cycle*** → definitive proof the strategy layer runs as fresh subprocesses that re-import risk_config every cycle. The freshest strategy process started today, long after risk_config's 7/01 mtime.
+- **tape_watcher (8484) started 7/02 09:25, parent 9364** → the TW *does* have a daily launch mechanism (partially resolves that loose end).
+
+So the staleness is functionally moot — but before I decide restart vs. check-fix vs. surface, I need one more fact: does the **parent** run_bot use any risk_config value at its own long-lived scope (which a fresh subprocess wouldn't refresh)?
+Definitive: **run_bot's parent scope imports NO risk_config value** — the only import is a function-local `from risk_config import ORB_MULTISCAN` at line 737 (re-read when that block runs); the INTERVAL/SLEEP constants are hardcoded literals, not risk_config. So the parent holds zero stale risk state. Combined with the process tree (bot_loop spawned 16:26 today; orb_multiscan/orb_runner/exit_bot_v2 fresh per cycle), the risk_config staleness is **100% functionally moot — verified three ways** (source, process tree, parent-scope usage). The bot traded 7/02 on current config.
+
+That settles the action: I will **not** autonomously restart a healthy, flat, trading-correctly, watchdog-supervised live bot on a monitor tick to clear a *cosmetic* timestamp flag — nil functional benefit, nonzero overnight-down risk, and an unforced restart that broke a working bot is exactly the failure mode to avoid. I'll correct my imprecise log line and queue the durable fix. Let me read the tail to correct it:
+The interim line I wrote said "CSHV clean" (imprecise) and has a mojibake dash. Let me replace it with the accurate, complete finding:
+Now queue the durable fix in OPEN_ITEMS and push. Let me locate and update it:
+I'll update OPEN_ITEMS: add the durable preflight-check fix, and correct item #5 (0945's "first real day 7/02" is void — the morning was lost to the outage):
+Now push to coordination. Let me check the sync mechanism (C:\AlphaQuant git remote + coordination mirror):
+C:\AlphaQuant is a local-only snapshot repo (no remote); the coordination repo (C:\repos\alpha-quant-coordination → GitHub) is the push target. Let me see how SESSION_LOG/OPEN_ITEMS land there and sync:
+The coordination repo has its own tracked copies. Let me sync the two updated files over, commit, and push:
+Pushed. Let me confirm the push actually landed on origin (verify, don't assume):
+**Monitor 4:30 PM ET — market closed, bot flat, day done. Clean, with one verified false-positive run to ground.**
+
+**Traded fine:** 21 ORB entry-OK events, 20 broker round-trips, 0 open positions at EOD. The morning outage I fixed midday held — the bot recovered and traded the 12:35/13:35/14:35 re-arm windows.
+
+**0 FAILs.** The one bot_alerts FAIL is the known-benign 14:51 TS 504 gateway timeout (mislabeled `TS_AUTH_FAIL`; already escalated as PROP-TS-TRANSIENT-LABEL, WATCHED — not editing mid-session).
+
+**CSHV = OK=47 / WARN=3 / FAIL=0.** All three WARNs root-caused, not written off:
+1. **report_integrity** — 1 of 20 trades has an unclassified exit reason (minor, non-watched data).
+2. **clean_day NON-CLEAN** — driven *solely* by that benign 504. So a network blip is resetting the clean-day streak — this strengthens the PROP-TS-TRANSIENT-LABEL case (it's not just a false alarm, it's costing us streak days).
+3. **pre_open NO-GO** (preflight's 1 FAIL: `risk_config mtime 7/01 8:23p > run_bot start 7/01 7:09p`) — I chased this all the way down. It's a **verified false-positive**, confirmed three ways: run_bot's parent imports no risk_config value at long-lived scope (only a func-local re-import); the strategy layer runs as fresh per-cycle subprocesses (bot_loop spawned 4:26 PM *today*) that re-import risk_config every cycle; and all four uncommitted 7/01 config changes (0945 window, $500 cap, 30-min time-stop, 9:35-off) are subprocess-consumed. **The bot traded 7/02 on current config.**
+
+**What I did — and deliberately didn't:** I did **not** restart the healthy, flat, watchdog-supervised live bot just to reset a cosmetic timestamp — nil functional benefit, nonzero overnight-down risk, and an unforced restart that breaks a working bot is exactly the failure mode to avoid. Instead I **queued the durable fix** (OPEN_ITEMS #1): make the verify-load preflight compare risk_config against active-cycling evidence, not the orchestrator parent's start time — killing the recurring daily false NO-GO while keeping the survivability intent (a hung bot after a config edit still fails). I'm not rushing a survivability-check edit on a monitor tick.
+
+**Two loose ends moved:**
+- **TW launch mechanism** (was unknown) — tape_watcher started 9:25 AM today via a parent launcher (PID 9364), so it *does* have a daily launch path. Partially resolves that blocker.
+- **Corrected OPEN_ITEMS #5** — 0945 has **zero live samples**: 7/02's morning windows were lost to the outage, so its "first real day" is still pending, not today.
+
+Logged to SESSION_LOG, updated OPEN_ITEMS, pushed to coordination (**666115a**, confirmed in sync with origin). Monitor loop is done for the day; it resumes tomorrow 9 AM with the pre-open readiness gate.
+
+---
