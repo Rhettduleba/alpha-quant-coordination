@@ -15758,3 +15758,68 @@ Triage complete. Summary:
 No code edited, no orders touched, no processes restarted. All within the freeze rules.
 
 ---
+
+
+## Turn — 2026-07-02 16:08:15 ET
+
+**Rhett:**
+
+SELF-MONITORING (daily, every 15 min 9:00 AM–4:00 PM ET). Follow C:\AlphaQuant\SELF_MONITORING_PLAYBOOK.md. RULE: never defer — act on every warning THIS run (fix non-watched; escalate WITH the fix for watched trading files). STEPS: (1) Confirm ET time + market state. If it's ~9:00 AM (pre-open), run `python C:\AlphaQuant\tradestation-bot\pre_open_trade_readiness.py` (the "will it trade today?" gate) and ACT on any CRITICAL before 9:45. If market is closed now, do a quick EOD broker-flat check then finish this run (the cron resumes next weekday 9 AM). (2) Read the SAME warnings Rhett gets: `python C:\AlphaQuant\tradestation-bot\alerts_bridge.py` (bot_alerts 24h — any FAIL in the last hour = top priority), C:\AlphaQuant\CSHV_FINDINGS.md (any FAIL/CRITICAL/WARN), code_inbox.jsonl actionable items. (3) Trade-liveness (the 7/02 catch): after 10:45 AM confirm >=1 ORB_V16_ENTRY_OK in today's bot_alerts.jsonl; if 0 on an open regular trading day, run reliability_checks.check_alive_but_not_trading() and diagnose. (4) ACT (never defer): verify each warning vs broker truth FIRST; fix non-watched now (+regression-lock+verify); for WATCHED trading files (orb_*, exit_bot_v2, risk_config, bot_loop, candle_close_exit, market-behavior) never edit mid-session — surface + write a proposal + escalate to Rhett with the concrete fix. (5) Log a one-line status to SESSION_LOG.md (clean or what I acted on) and push to coordination. Ping Rhett only if actionable for him or I escalated; otherwise silence = handled.
+
+**Claude Code:**
+
+Monitor tick — checking if we're post-close now (TW deploy window) and how the TW launches so any fix loads tomorrow:
+Quick monitor close first: market's **closed (4:03 PM)**, bot ended **flat** (confirmed 0 positions), no new FAILs — day's done cleanly. (Note: I couldn't find a scheduled task or launcher for the TW, so *how it starts daily* is a loose end I'll resolve before deploying its fixes — good thing I didn't blind-deploy.) Now your directive.
+
+**One honest scoping note up front, so we're aligned:** the ~30 ledger entries aren't all shadow-runnable. The **exit tunes** run cleanly in the tournament (that's what the exit-backtester tests). The **entry tunes** need the winner-backtest (harder, and several are data-blocked — VWAP/catalyst/velocity aren't logged yet). And some entries are guardrails/strategies, not tunes. So I'll **run every exit variant I can now, list ALL 30 on the tab with honest status + P&L where we have it**, and we grow coverage as data comes in. Building it.
+
+First, expanding the tournament to a real grid of exit variants:
+**The tournament with 8 variants immediately found a stronger leader — and it's genuinely informative:**
+
+```
+variant          vs V0 $   cut   
+V8pw_wide         +2,024    0   ← new leader: 2 closes + breakeven floor + wider 1.8xATR trail
+V10p_wide_be      +1,443    0
+V8p_protected     +1,219    0
+V10_wide_trail      +804    0
+V13_xwide           +804    0
+V12_tight           +163    0
+V8_two_closes         -36    4   (must-not-cut violated)
+V_be_chand        -1,543    0   (no candle exit = holds too long)
+```
+
+Clear pattern: **let winners run (wider trail + wait for 2 closes) + protect with a breakeven floor.** All still in-sample. Now the dashboard tab — building the page that lists every tune and shows P&L on click:
+Verifying the page renders (list + detail), then wiring the route + nav:
+Renders — 32 tunes listed, tournament P&L wired, detail view works. Wiring the route + handler + nav link:
+Compile + log + push:
+Done — pushed (`2d64aae`). Here's how your directive landed.
+
+## Run the tunes → expanded exit tournament (9 variants), and it found a clear leader
+I ran a systematic grid at my discretion (trail width 1.0–2.2×ATR × 1/2/no candle-closes × breakeven on/off). In-sample vs the deployed exit:
+
+| variant | P&L vs V0 | winners cut |
+|---|---:|---:|
+| **V8pw_wide** | **+$2,024** | **0** ← leader |
+| V10p_wide_be | +$1,443 | 0 |
+| V8p_protected | +$1,219 | 0 |
+| V8 (plain) | −$36 | 4 ✗ |
+| V_be_chand | −$1,543 | 0 |
+
+The pattern is now clear: **let winners run (wider trail + wait for 2 closes) + protect with a breakeven floor.**
+
+## The dashboard tab → `/tunes`
+New **"Open Tunes (shadow P&L per tune)"** on the home page. It:
+- **Lists every tune** — all 32 ledger entries with category and honest status.
+- **Shows live P&L** for each exit variant (delta vs deployed, winners-cut), sorted best-first.
+- **Click a variant → its P&L history** across every accumulated run.
+- **Stays synced** — it reads the tournament log the daily EOD run writes, so it self-updates.
+
+## The record + "keep alternating"
+Every run is persisted (`shadow_tournament_log.jsonl` + the tune log), and **adding a new variant is one line** in the tournament's `VARIANTS` table — so we can keep alternating candidates and the dashboard tracks them all. That's the "keep a record and alternate until we find the right tunes" loop, running.
+
+## The one thing I have to keep honest
+Only **exit** tunes are shadow-runnable today. **Entry** tunes need the winner-backtest (and several are data-blocked — VWAP, catalyst, velocity aren't logged yet); guardrails are live safety rules, not tunes. The `/tunes` tab shows every tune's real status so nothing's hidden. And all of this is **in-sample = directional** — V8pw_wide is a strong lead, not a verdict; it promotes only after OOS + N≥30 + zero winners cut.
+
+The dashboard launches on-demand, so the new tab is there next time you open it. Bot's flat and done for the day; monitor's clean.
+
+---
