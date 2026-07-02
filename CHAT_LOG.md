@@ -13737,3 +13737,74 @@ That single tap tells us everything:
 (Heads-up: your session usage limit is still spent until **11:10 PM ET**, so things may be throttled until then — but this diagnosis step costs nothing.)
 
 ---
+
+
+## Turn — 2026-07-02 09:07:55 ET
+
+**Rhett:**
+
+<scheduled-task name="alphaquant-alert-triage" file="C:\Users\Administrator\.claude\scheduled-tasks\alphaquant-alert-triage\SKILL.md">
+This is an automated run of a scheduled task. The user is not present to answer questions. For implementation details, execute autonomously without asking clarifying questions — make reasonable choices and note them in your output. "write" actions (e.g. MCP tools that send, post, create, update, or delete), only take them if the task file asks for that specific action. When in doubt, producing a report of what you found is the correct output.
+
+AUTONOMOUS ALERT TRIAGE — Alpha Quant (Rhett-approved 2026-06-22; Planning Track A). You are a scheduled Claude Code run on the Alpha Quant VPS (live root C:\AlphaQuant). GOAL: Rhett must NOT be the human pager-relay. You read the SAME actionable alerts he would, auto-suppress known-noise, and ESCALATE anything that genuinely needs a human — pre-diagnosed. The human gate is preserved.
+
+IMPORTANT — FORWARD-TEST FREEZE: autonomous code-fixing is DEFERRED right now (Planning Track B). You DO NOT edit or commit ANY code this run (not even non-watched). You TRIAGE + ESCALATE only. (Auto-fix re-enables after the OOS forward test via a reviewed whitelist.)
+
+SOURCE OF TRUTH: read C:\AlphaQuant\CODE_ALERT_TRIAGE_PLAYBOOK.md and follow it EXACTLY (re-read each run). Procedure:
+1. `git -C C:\repos\alpha-quant-coordination pull` (ignore errors). Read the top stamp of C:\AlphaQuant\SESSION_LOG.md and C:\AlphaQuant\CSHV_FINDINGS.md for current state.
+2. Run: C:\Users\Administrator\AppData\Local\Python\pythoncore-3.14-64\python.exe C:\AlphaQuant\tradestation-bot\code_alert_inbox.py --json  → the NEW actionable CRITICAL alerts since last ack (the feed is already severity-gated to CRIT + de-noised; benign WARNs are handled at source, not here).
+3. For each alert: if it is KNOWN-NOISE (reader pre-tags many; or a state already confirmed benign in SESSION_LOG) → no action. Otherwise ESCALATE it: import notifier (add C:\AlphaQuant\tradestation-bot to sys.path) and call notifier.send_notification(subject="CODE TRIAGE — needs you", body= plain-English diagnosis + the specific proposed fix + whether it needs Rhett's approval (watched/strategy/risk) or just a go-ahead, level="CRITICAL"). For a SAFE non-watched fix you would normally make, STILL escalate it with the proposed fix (do not auto-edit during the freeze).
+4. ALWAYS at the end: append a short dated entry to C:\AlphaQuant\SESSION_LOG.md (what fired + what you escalated, or 'inbox clean'), copy it to C:\repos\alpha-quant-coordination\SESSION_LOG.md, commit + push that repo, then run code_alert_inbox.py --ack to advance the cursor. If nothing actionable, do NOT notify Rhett (silence = handled) — still --ack + one-line log.
+
+HARD RULES (never autonomously): NEVER edit/commit any code during the forward test (escalate fixes instead). NEVER edit a WATCHED strategy file (risk_config.py, bot_loop.py, exit_bot_v2.py, candle_close_exit.py, advisor_filter_engine.py, symbol_universe.py, orb_runner.py, orb_multiscan.py, short_bot.py). NEVER change risk/sizing/universe/stops/time-windows. NEVER place/cancel/modify orders or touch positions. NEVER deploy a strategy change. NEVER restart run_bot/watchdog_supervisor. NEVER touch credentials/.env or refresh TS tokens excessively. WHEN IN DOUBT, ESCALATE — never act on the live/trading path.
+
+ENVIRONMENT: Python = C:\Users\Administrator\AppData\Local\Python\pythoncore-3.14-64\python.exe. Work in C:\AlphaQuant. Keep each run tight + conservative. Your job: keep Discord quiet for Rhett by surfacing ONLY what truly needs him, pre-diagnosed.
+</scheduled-task>
+
+**Claude Code:**
+
+I'll execute this scheduled alert triage run following the playbook. Let me start with the setup steps.
+Now let me read the current state (SESSION_LOG top + CSHV_FINDINGS) and run the inbox.
+One actionable CRITICAL: the 8AM audit gate is not green — preflight shows 1 FAIL. This matches the WATCH note in SESSION_LOG L34 (the 7/01 time-stop change edited `risk_config.py` without a run_bot restart, so the mtime-survivability check FAILs benignly). But per STANDING RULE #0, I must verify, not assume. Let me confirm the exact FAIL.
+Confirmed — the single FAIL is exactly the documented one:
+```
+[FAIL] ORB risk_config.py loaded (mtime<=bot_start)  mt=08:23 PM bot=07:09 PM
+```
+risk_config.py was edited 7/01 8:23 PM (the approved 30-min time-stop change), but run_bot's StartTime is 7:09 PM — before the edit. SESSION_LOG L34 pre-diagnosed this as a benign false-positive. But I need to verify the two load-bearing claims that make it benign, and check whether run_bot has since restarted. Let me confirm.
+Let me fix the process-time query (CIM datetime parsing).
+Now let me verify the key benign-claim: that run_bot is a non-consumer of the time-stop constant (so the stale run_bot process behavior is genuinely unchanged), and that exit_bot_v2 is the consumer that reads it fresh.
+Verification complete. The diagnosis is airtight:
+
+- **run_bot** PID 5544, StartTime **7/01 7:09:23 PM** — before the config edit.
+- **risk_config.py** mtime **7/01 8:23:18 PM** (the approved `PROP-UNCONFIRMED-TIMESTOP-30M-2026-07-01` change).
+- Live values load correctly: `UNCONFIRMED_TIME_STOP_MIN=30, ENABLED=True` ✓
+- **Consumers of the constant**: only `exit_bot_v2.py` (fresh subprocess each cycle → reads it live) + `regression_suite.py`. **run_bot.py is NOT a consumer** → the stale run_bot process behavior is genuinely unchanged.
+
+So the FAIL is the documented-benign mtime false-positive, cascading to pre-open gate NO-GO → SAFE_MODE active but `ENFORCE=OFF` (cosmetic, entries NOT blocked). Exactly what SESSION_LOG L34 anticipated for 7/02.
+
+This is a CRITICAL 8AM audit-gate alert with SAFE_MODE active (a named Bucket C trigger), and clearing it requires a run_bot restart — a human-gated action I must not take. Per "when in doubt, escalate" + preserving the human gate, I'll escalate ONE pre-diagnosed CRITICAL: confirmed benign, no trading impact, with the single clearing action for his go-ahead.
+Escalation delivered. Now the mandatory close-out: append to SESSION_LOG, sync to coordination repo, commit + push, then `--ack`.
+Now sync to the coordination repo, commit + push, then `--ack`.
+Committed and pushed. Now advance the inbox cursor.
+The ack completed ("cursor advanced; 1 alert(s) marked processed") — exit 1 is just the tool's convention when actionable alerts existed. Let me confirm the cursor advanced.
+Cursor advanced — inbox now clean (`n_actionable: 0`). Triage run complete.
+
+## Alert Triage Summary — 2026-07-02 ~9:06 AM ET
+
+**1 actionable CRITICAL fired → ESCALATED to Rhett (pre-diagnosed).**
+
+**What fired:** "8AM AUDIT GATE NOT GREEN" — `audit_does_it_work.py` not green before the open, from preflight **50 PASS / 1 WARN / 1 FAIL**.
+
+**Verified root cause (benign):** `[FAIL] ORB risk_config.py loaded (mtime<=bot_start)` — risk_config.py mtime **7/01 8:23:18 PM** > run_bot (PID 5544) StartTime **7/01 7:09:23 PM**. This is the direct, documented consequence of the approved `PROP-UNCONFIRMED-TIMESTOP-30M-2026-07-01` change (run_bot intentionally not restarted) — exactly the "WATCH 7/02" false-positive Rhett flagged in SESSION_LOG.
+
+**Trading NOT affected (verified this run):**
+- Live config loads `UNCONFIRMED_TIME_STOP_MIN=30 / ENABLED=True` — time-stop is live.
+- Consumers = `exit_bot_v2.py` (fresh subprocess each cycle) + `regression_suite.py`; **run_bot.py is NOT a consumer** (grep-confirmed) → stale process behavior unchanged.
+- SAFE_MODE active but `SAFE_MODE_ENFORCE=OFF` → cosmetic, entries NOT blocked.
+- CSHV 9:00 AM = OK 47 / WARN 2 / FAIL 0; both WARNs are the same cascade off the one preflight FAIL.
+
+**Why escalated (not silenced):** it's a CRITICAL audit-gate + SAFE_MODE state that recurs every morning until run_bot restarts, and the clearing action is human-gated. **Proposed fix (his go-ahead only, non-watched/no-code):** supervised run_bot restart to move StartTime past the config mtime — greens the gate and auto-clears the cosmetic SAFE_MODE, changing no behavior.
+
+**Compliance with freeze:** edited/placed/restarted **nothing** on the trading path. SESSION_LOG updated (both roots), coordination repo committed + pushed ([`2e963ec`](https://github.com/Rhettduleba/alpha-quant-coordination/commit/2e963ec)), inbox `--ack`'d and confirmed clean.
+
+---
