@@ -13964,3 +13964,152 @@ Triage run complete. Summary:
 Nothing needs your attention.
 
 ---
+
+
+## Turn — 2026-07-02 12:31:04 ET
+
+**Rhett:**
+
+the bot did not trade today. This is the frustrtaing thing. I run the "self test" last night and it still failed, what can we add to the self test to make it better. Find the bug and the problems with today sysytem and fix
+
+**Claude Code:**
+
+Stop — this is the priority now, and it's serious. Drop the remote-control thread. **The bot not trading is exactly the failure class last night's audit flagged as an open FAIL** (Section 1: "a re-arm path silently arming 0 across all windows would be INVISIBLE... no alive-but-not-trading alert"). It predicted this and I didn't fix it in time. Let me find the actual cause first — broker truth and live logs, no guessing — then fix both the cause and the blind detector.
+
+Scouting the live state right now, in parallel:
+Confirmed the core facts (broker truth): **0 round-trips today**, market open at **12:08 PM**, and **run_bot is alive** (PID 5544, up since 7/1 7:09 PM — it did *not* crash). So this isn't a dead bot — it's alive and **not entering**. That's precisely the silent-starvation class. My path was mangled on the alert read; re-running with correct paths to see what the entry path actually did today:
+The smoking gun: **today's `bot_alerts.jsonl` has only `H5_SIDELINED × 30` — ZERO ORB scan, arm, entry, or gate events.** Yesterday (7/1) the ORB path emitted 31 arms. Today the entire ORB entry path (orb_runner + orb_multiscan) produced *nothing*, while the separate H5 process is cycling fine. And `bot_heartbeat.json` / `run_bot.log` aren't where expected. So run_bot (PID 5544, up 17h) is alive but its ORB stages aren't producing output. Let me locate the heartbeat/logs and confirm whether run_bot is actually cycling:
+`bot_heartbeat.json` exists at the **OneDrive** copy but the live-path check for `C:\AlphaQuant\tradestation-bot\bot_heartbeat.json` returned *not found* — a contradiction that could mean run_bot is running from the wrong directory. I need PID 5544's actual command line and which `run_bot.py` it's executing. This is the decisive fact:
+Decisive facts now:
+- PID 5544 **is** running the correct `C:\AlphaQuant\tradestation-bot\run_bot.py`.
+- But `C:\AlphaQuant\tradestation-bot\bot_heartbeat.json` is **MISSING** — and the heartbeat is written at the *top of run_bot's main loop* (`run_bot.py:708`). No heartbeat file = **run_bot never entered its main loop.** It's alive but hung in module-level startup, before the first cycle — which is exactly why zero ORB scans/arms/entries all day.
+
+Now: why is it hung, and why didn't the watchdog restart it? Checking the supervisor + where run_bot stalled:
+watchdog_supervisor (PID 2128) is alive, yet run_bot is hung with no heartbeat and the watchdog hasn't restarted it — so the watchdog is likely only checking "process alive" (PID exists), not "heartbeat advancing." Let me read the watchdog's own log + its stale-detection logic, and confirm where run_bot hung:
+Wait — I need to correct my own reasoning before going further (RULE #0). The watchdog log shows **no** staleness warnings today, and its `_heartbeat_age()` returns 9999 if the file is missing — which *would* trigger a restart. Since it hasn't, the watchdog must be reading a **fresh** heartbeat somewhere. My `Test-Path` checked one exact path; run_bot may write elsewhere. I have to find the real heartbeat file and its freshness before concluding "hung" vs "cycling-but-not-entering" — those need opposite fixes.
+
+Also critical from the log: **run_bot crash-looped last night** — restarts #3 and #4 at 18:51 and 19:09 (PID 5544 is restart #4), with a `code=4294967295` abnormal exit. That coincides with my edits. Let me pin down the heartbeat truth and that crash:
+Correction to my own diagnosis — I checked the wrong path. The heartbeat lives at **`C:\AlphaQuant\bot_heartbeat.json`** (project root, not the bot subdir) and it's **fresh: 12:12:52 PM, seconds ago.** So **run_bot IS cycling normally** — it is *not* hung. My "hung" conclusion was wrong; the honest picture is **run_bot alive and looping, but the ORB entry stages produce zero output** — the true "alive-but-not-trading" case.
+
+And the watchdog log revealed a **crash-loop last night** right in my edit window (restarts #3 and #4, 6:51–7:09 PM, abnormal `code=4294967295`). PID 5544 (restart #4) is what's been running since. So the likely bug: my edits made the ORB subprocesses crash on spawn. Testing that directly (compile + config flags, no order placement):
+run_bot is confirmed **cycling** (loop 2888, heartbeat 12:13:34), all entry modules **compile clean**, and flags are correct (`ORB_MULTISCAN=True`, `ACTIVE_STRATEGY=orb_v1`, re-arm windows present, SAFE_MODE off). So the ORB stages are being invoked but produce nothing — they must be **failing at runtime on spawn** (which run_bot logs and swallows, continuing the loop). I need to see the actual crash. Checking whether I can safely dry-run the ORB stage + hunting last night's traceback:
+`orb_multiscan` supports `dry_run` (safe — no orders placed), and the last ORB candidate logged was **yesterday 2:35 PM** — nothing today. run_bot's crash stderr isn't captured (pythonw). So the fastest way to see the actual runtime error is to **replay the ORB scan in dry-run** at a window that already passed today. This does read-only broker calls, places nothing:
+**FOUND IT.** The dry-run returned:
+
+```
+RESULT: {'status': 'holiday', 'detail': 'EARLY_CLOSE: Day before Independence Day'}
+```
+
+That's the root cause. `orb_multiscan` is **skipping all arming today because it classifies 2026-07-02 as a holiday/early-close** — so it never scans, never arms, never enters. But the market **is open** (we confirmed `is_market_open=True`); today is at most an *early-close* day (1 PM), where the bot should still trade the pre-1PM windows (0945–1235), not sit out entirely. The holiday-skip conflates "early close" with "closed."
+
+Let me read the exact logic and the calendar to see whether it's mis-classifying the date or mishandling early-close, before I touch this watched file:
+**Root cause confirmed and it's a pre-existing latent bug — not my deployment's fault.** `market_hours.py:38` has `US_MARKET_EARLY_CLOSE = { date(2026, 7, 2): "Day before Independence Day" }`, and `holiday_reason()` returns a truthy `"EARLY_CLOSE: ..."` string for early-close days *just like* full holidays. Then `orb_multiscan.py:261-263` skips **all** arming on any truthy `holiday_reason` — so it treats today's *early-close* day (market open till ~1 PM) as a *full closure* and sits out the entire session.
+
+This only bites on early-close days (a few per year), which is why it stayed hidden. Now I need the full blast radius before fixing: does `orb_runner` have the same conflation, and — critically — is the **EOD flatten early-close-aware** (or would enabling early-close trading strand positions at the 1 PM close)?
+I have the complete root cause and its blast radius. Let me give you the straight answer, then verify one external fact before I prescribe the fix.
+
+## Why the bot didn't trade today — the bug
+
+**Today (2026-07-02) is flagged as an early-close day** in the bot's calendar (`market_hours.py:38` → `US_MARKET_EARLY_CLOSE = { date(2026,7,2): "Day before Independence Day" }`). And there's a logic bug in how that's handled:
+
+- `holiday_reason()` returns a **truthy** string for early-close days *and* full holidays alike (`"EARLY_CLOSE: ..."` vs `"HOLIDAY: ..."`).
+- `orb_multiscan.py:261-263` (and `orb_runner.py:1207`) skip **all** trading whenever `holiday_reason()` is truthy — the comment even says *"holiday_reason()=None on every trading day,"* which is the false assumption. Early-close days **are** trading days.
+
+So the bot treated an **open, shortened trading day as a full closure** and sat out the entire session. Proven by dry-run replay: `run_multiscan(...)` → `{'status': 'holiday', 'detail': 'EARLY_CLOSE: Day before Independence Day'}`. Last ORB candidate logged was **yesterday 2:35 PM**.
+
+**Two honesty notes:**
+- This is a **pre-existing latent bug** (Loop 121 holiday-skip), *not* caused by my time-stop/0945 deploy. It only surfaces on early-close days (a few per year).
+- The crash-loop in the watchdog log last night (restarts #3, #4) **was** from my over-restarting — separate issue, and run_bot has been stable since (loop 2888, cycling fine).
+
+**Blast radius makes it worse:** even if I flip the skip off, `is_market_open()` (`:154`) uses the **regular 4 PM close** — it's *not* early-close-aware — and the EOD flatten is hardcoded to **3:50 PM** (`FORCED_FLATTEN_HOUR=15`). So naively "just trade today" would open positions that wouldn't get flattened until 3:50 PM, **2h 50m after the 1 PM close** — stranded. That's why I will *not* rush a fix to scrape the last ~25 min of today.
+
+Let me verify the one external fact this hinges on — whether 7/2/2026 is genuinely an NYSE early close:
+**This changes everything — and it's worse (but the fix is simpler and I can salvage today).**
+
+The web check is unambiguous: **July 2, 2026 is a normal, full NYSE trading day** (9:30–4:00). July 3 is the *full* closure (Independence Day observed, since the 4th is Saturday). The only real 2026 early closes are **Nov 27** and **Dec 24**. The bond market closes at 2 PM on July 2 — the author almost certainly confused that with an equity early close.
+
+So the bot's calendar entry `date(2026,7,2): "Day before Independence Day"` is **factually wrong**, and the bot **sat out an entirely normal trading day** because of bad calendar data + the early-close-skip logic bug.
+
+**That means today is fixable right now, low-risk:** since July 2 is a normal full day, `is_market_open` (4 PM) and the 3:50 PM flatten are already correct — I just need to remove the bogus calendar entry, and `orb_multiscan` (fresh subprocess each cycle) will start arming the remaining windows (12:35 / 13:35 / 14:35) this afternoon. No early-close-awareness needed to save today.
+
+Let me read the full calendar to fix it correctly (and confirm the real early closes and July 3 are right):
+Full calendar confirms it precisely: the **only** wrong entry is `date(2026, 7, 2)`. The real 2026 early closes (Nov 27, Dec 24) are correctly present, and July 3 is correctly a full closure. So today's fix is a surgical one-line data correction. `market_hours.py` is **non-watched**, and this is a verified factual fix Rhett explicitly asked for — applying it now to restore this afternoon's trading:
+Fix applied. Now verifying it actually clears the block and the bot will arm this afternoon — compile, confirm `holiday_reason` is now None for today, and dry-run replay the ORB scan (no orders placed):
+**Fix verified — today is salvageable.** The dry-run now proceeds past the holiday gate and **arms a real candidate**:
+
+```
+holiday_reason(2026-07-02) = None    is_regular_trading_day = True
+RESULT: {'status': 'dry_run', 'window': '1135', 'candidates': 1,
+         'armed': [RIVN long 1055sh, tag ORBMS1135_long, rel_vol 4.4]}
+```
+
+`orb_multiscan` is a fresh subprocess each cycle, so it picks up the corrected calendar on the **next run_bot cycle — no restart needed**. The remaining windows today (**12:35 / 13:35 / 14:35**) will arm normally, flatten at 3:50 PM as usual. I'll confirm a live arm right after the 12:35 window.
+
+Now the part you actually care about most — **why the self-test didn't catch this.** Last night's audit *did* flag this exact class (S1 FAIL: "a re-arm path silently arming 0 across all windows would be INVISIBLE... no alive-but-not-trading alert"). Let me confirm precisely why the live `check_alive_but_not_trading` detector stayed silent today, so the fix is targeted:
+**That's exactly why it missed** — and it's the audit's S1 finding made concrete. `check_alive_but_not_trading` (reliability_checks.py:498) has this escape:
+
+```python
+if not _scan_ran_today(today):
+    return OK, "no 9:35 scan today -- holiday/closed, no trading expected"
+```
+
+Two fatal gaps for today's architecture:
+1. **It keys off the 9:35 scan** (`ORB_SCAN_DONE`, `scan.candidates`) — but the 9:35 path is **gated OFF**, so there's no scan, and the whole detector is structurally blind to the **re-arm path** that's actually the live entry path.
+2. It **infers "holiday/closed" from the absence of a 9:35 scan** instead of checking the real calendar. Today the market was *open* but the scan didn't run (gate + holiday-skip), so it wrote the whole day off as "no trading expected." It never noticed the re-arm path armed 0.
+
+So the fix is precise: the detector must decide "should we be trading?" from the **actual market calendar** (`is_regular_trading_day` + open), not from whether the gated 9:35 scan ran — and it must escalate to a hard **FAIL** so you'd get paged. Let me confirm the severity constants and helpers before I rewrite it:
+Let me see the severity constants and the RTH/helper definitions at the top:
+Severities are `OK / WARN / CRIT / UNK` (no "FAIL"; CRITICAL is the hard page). Now rewriting the detector so it (1) decides "should we be trading?" from the real calendar via `is_regular_trading_day`, (2) counts arms from **both** entry paths, and (3) escalates to **CRITICAL** — it would have paged you at 10:45 AM today:
+Now verify the hardened detector actually fires for today's state (it should return CRITICAL — 0 entries so far on an open trading day, which is exactly what it must catch):
+CRITICAL fires correctly — that would have paged you at 10:45 AM. But the **hint** says "filter dropped them all" while the real cause was the holiday-skip, which means the detector's row-reader (`_bot_alert_rows_today`) is seeing `ORB_SCAN_DONE` rows my manual scan didn't (today's `bot_alerts` had only `H5_SIDELINED`). That's a data-source discrepancy I should confirm isn't a date bug (a date bug could cause a false *OK* in other cases). Checking it:
+Found a real imprecision: `_bot_alert_rows_today` matches `if today in l` — a **substring anywhere in the raw line**, so a row from another day that merely *mentions* today's date in a detail field gets counted as today. That's why the hint misfired, and worse, it could count a stale `ENTRY_OK` and produce a **false OK**. Fixing it to match the row's own `ts`/`date`:
+Now the corrected reader shows today's real rows: the 9:35 scan **did** run (`ORB_SCAN_DONE`, `ORB_935_GATED` — 9:35 gated intentionally), but the **re-arm path (`orb_multiscan`) logged zero output** — no `ORBMS` events — because of the holiday-skip. So the accurate triage hint should point at the *re-arm path*, not "a filter ate the book." Refining the hint to name that precisely (that's exactly the diagnosis pain you hit):
+Now the regression locks so this exact class can never silently return. Adding **REG-30** (calendar correctness — the direct catch for the 7/2 bug) and **REG-31** (the detector is calendar-based + CRITICAL, not scan-based):
+Running the regression suite to confirm REG-30/REG-31 pass and nothing regressed:
+Both new locks pass — **28 pass / 0 FAIL / 3 skip, clean_session=True.** The bug is now impossible to reintroduce (REG-30) and the outage can't recur silently (REG-31).
+
+Now let me **prove the live fix works**, not just the dry-run — launching a background monitor for the real 12:35 arm:
+The live-arm monitor is running in the background (I'll confirm the real 12:35 fill when it lands). Let me log this and push, then give you the full picture:
+Logged and pushed (`99c416e`). Here's the complete picture.
+
+## Why the bot didn't trade today — root cause
+
+**A wrong date in the market calendar, plus a logic bug that turned it into a full-day skip.**
+
+`market_hours.py` had `date(2026, 7, 2)` listed as an **equity early-close day**. That's factually wrong — I verified against the NYSE calendar: **July 2, 2026 is a normal, full equity trading day.** (The 2 PM close on July 2 is the *bond* market only; July 3 is the full Independence-Day closure since the 4th is a Saturday; the only real 2026 equity early closes are Nov 27 and Dec 24.)
+
+That bad entry hit a latent logic bug: `holiday_reason()` returns a truthy value for early-close days *and* full holidays alike, and `orb_multiscan`/`orb_runner` skip **all** trading on any truthy `holiday_reason`. So the bot treated a normal open trading day as a full closure and **armed zero entries all day** — proven by dry-run: `run_multiscan(...)` → `{'status':'holiday','detail':'EARLY_CLOSE: Day before Independence Day'}`.
+
+Two honesty points: run_bot never crashed (it's alive and cycling — I misread a heartbeat path early on and corrected it), and this bug is **pre-existing** (not my time-stop/0945 deploy — it only bites on early-close days).
+
+## Why last night's self-test didn't catch it
+
+The `check_alive_but_not_trading` detector keyed off the **now-gated 9:35 scan** and treated "no 9:35 scan" as *"holiday/closed → no trading expected."* It was structurally blind to the **re-arm path** — the actual live entry path — arming zero on an open day. (Last night's audit *did* flag this exact gap as an open FAIL; I just didn't land the fix before the open.)
+
+## Fixes — done and verified (all non-watched)
+
+| # | Fix | Verified |
+|---|-----|----------|
+| 1 | Removed the bogus 7/2 early-close entry (`market_hours.py`) | `holiday_reason(7/2)=None`; dry-run now **arms RIVN**; afternoon windows will trade, no restart |
+| 2 | Hardened detector: decides "trade today?" from the **real calendar**, counts both paths, escalates to **CRITICAL** | Returns **CRITICAL** for today's state — would have paged you at 10:45 AM |
+| 3 | Fixed `_bot_alert_rows_today` loose date-substring match (could false-count other days) | Correct today-only rows |
+| 4 | **REG-30** (calendar correctness) + **REG-31** (detector is calendar-based) | Suite **28 pass / 0 FAIL** |
+
+**Today is salvaged:** `orb_multiscan` is a fresh subprocess each cycle, so it picks up the corrected calendar immediately. The 12:35 / 13:35 / 14:35 windows will arm normally and flatten at 3:50 PM. My background monitor is watching for the live 12:35 fill — I'll confirm it.
+
+## What's the answer to "what can we add to the self-test"
+
+The concrete additions are #2, #3, #4 above. The key upgrade: the "alive-but-not-trading" check no longer trusts the gated 9:35 scan as a proxy for "should we be trading" — it now asks the **actual calendar** and pages **CRITICAL** on any open trading day with zero arms. REG-30 makes a mis-entered holiday date a test failure before it can ever zero a session.
+
+## One thing still open — needs your call (watched files)
+
+The early-close **logic** bug still affects the *real* early-close days (Nov 27, Dec 24): the bot would skip those too, and `is_market_open` (4 PM) + the 3:50 PM flatten aren't early-close-aware. Two options:
+
+1. **Trade half-days** — make `orb_multiscan`/`orb_runner` + `is_market_open` + flatten early-close-aware (a watched-file change → I'll draft `PROP-EARLY-CLOSE-FIX` for your approval), or
+2. **Cleanly skip half-days** but loudly (the hardened detector now catches it either way).
+
+Do you want the bot to **trade** early-close half-days, or **skip** them? That decides which way I build the remaining fix.
+
+Sources: [NYSE Holidays & Trading Hours](https://www.nyse.com/trade/hours-calendars), [Kiplinger — 2026 stock market holidays](https://www.kiplinger.com/investing/stock-market-holidays)
+
+---
