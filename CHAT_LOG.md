@@ -16143,3 +16143,24 @@ I verified the shadow end-to-end (5-agent ground-truth pass, then a 3-agent adve
 All changes were non-watched (shadow_tournament.py, tunes_page.py, reliability_drill.py); the live trading path was untouched. Bot's flat, EOD done.
 
 ---
+
+
+## Turn — 2026-07-02 17:15:52 ET
+
+**Rhett:**
+
+SELF-MONITORING (daily, every 15 min 9:00 AM–4:00 PM ET). Follow C:\AlphaQuant\SELF_MONITORING_PLAYBOOK.md. RULE: never defer — act on every warning THIS run (fix non-watched; escalate WITH the fix for watched trading files). STEPS: (1) Confirm ET time + market state. If it's ~9:00 AM (pre-open), run `python C:\AlphaQuant\tradestation-bot\pre_open_trade_readiness.py` (the "will it trade today?" gate) and ACT on any CRITICAL before 9:45. If market is closed now, do a quick EOD broker-flat check then finish this run (the cron resumes next weekday 9 AM). (2) Read the SAME warnings Rhett gets: `python C:\AlphaQuant\tradestation-bot\alerts_bridge.py` (bot_alerts 24h — any FAIL in the last hour = top priority), C:\AlphaQuant\CSHV_FINDINGS.md (any FAIL/CRITICAL/WARN), code_inbox.jsonl actionable items. (3) Trade-liveness (the 7/02 catch): after 10:45 AM confirm >=1 ORB_V16_ENTRY_OK in today's bot_alerts.jsonl; if 0 on an open regular trading day, run reliability_checks.check_alive_but_not_trading() and diagnose. (4) ACT (never defer): verify each warning vs broker truth FIRST; fix non-watched now (+regression-lock+verify); for WATCHED trading files (orb_*, exit_bot_v2, risk_config, bot_loop, candle_close_exit, market-behavior) never edit mid-session — surface + write a proposal + escalate to Rhett with the concrete fix. (5) Log a one-line status to SESSION_LOG.md (clean or what I acted on) and push to coordination. Ping Rhett only if actionable for him or I escalated; otherwise silence = handled.
+
+**Claude Code:**
+
+Monitor tick — confirm ET time and market state first:
+5:15 PM ET, market closed — post-close tick. I did the full EOD check at 4:30, then the shadow + healthcheck work. Quick confirm: still flat, nothing new fired, and CSHV is clean after my drill fix (the deaf-detector WARN should be gone):
+Clean post-close tick — nothing to act on:
+
+- **Flat** (0 positions), **no new alerts** since 4:58 PM (market's been closed since 4:00).
+- **CSHV** (fresh, 5:15:08 PM): **OK=47 / WARN=3 / FAIL=0**. The 3 WARNs are the same known/already-logged set from the 4:30 EOD check (report_integrity 1-unclassified-exit, clean_day NON-CLEAN from the benign 504, pre_open_gate false-positive). No new issues.
+- **Healthcheck confirmed clean** — no "deaf detector"/drill residue in CSHV; the earlier Healthchecks DOWN is fully resolved (drill 12/12, beacon healthy).
+
+No new SESSION_LOG line needed — the Loop 232 block I pushed 15 minutes ago already captures today's full state, and nothing has changed since. **Monitor 5:15 PM ET: clean, handled.** Loop is done for the day; resumes tomorrow 9 AM with the pre-open readiness gate.
+
+---
