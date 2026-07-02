@@ -6,7 +6,7 @@ _Last updated: 2026-07-02 ~2:20 PM ET. I keep this current and re-surface the �
 _(none open right now)_
 
 ## 🔬 IN PROGRESS (I'm driving these)
-- **Shadow TOURNAMENT (multiple exit tunes)** -- shadow_tournament.py scores V0/V8/V8p/V10 apples-to-apples, daily EOD accumulation (shadow_tournament_log.jsonl), SHADOW-only. Initial in-sample: V8 fails must-not-cut; **V8p_protected +$1,219/0-cut** and V10 +$804/0-cut are the promising leads. Accumulating OOS; promote only OOS+N>=30+0-cut+net-positive vs V0.
+- **Shadow TOURNAMENT (9 exit variants) + /tunes dashboard tab** -- click a tune -> P&L; leader V8pw_wide +$2,024/0-cut in-sample. Entry tunes still need the winner-backtest (some data-blocked). Accumulating OOS daily. [was: multiple exit tunes] -- shadow_tournament.py scores V0/V8/V8p/V10 apples-to-apples, daily EOD accumulation (shadow_tournament_log.jsonl), SHADOW-only. Initial in-sample: V8 fails must-not-cut; **V8p_protected +$1,219/0-cut** and V10 +$804/0-cut are the promising leads. Accumulating OOS; promote only OOS+N>=30+0-cut+net-positive vs V0.
 - **TW tuning rollout** (investigation DONE). Root cause: TW reads last-*trade* price only, blind to the mid moving between prints → ~a duplicate of the poller, no real edge (lost 8/9 exits on 7/02). NO safety hole (always covered by poll + time-stop + resting stop). ROLLOUT I'm driving: (a) **after 4pm today** deploy the safe detection fixes (reconnect-reset, honest gap metric, dense tick side-channel = bonus backtester price path) + restart TW per discipline; (b) **tomorrow RTH** shadow-validate the mid-feed fix (fire=False alongside live, diff exit timing); (c) **after tomorrow's close** arm the mid-feed. Never restart the live exit owner during RTH.
 
 ## ⭐ DECISIONS AWAITING RHETT
