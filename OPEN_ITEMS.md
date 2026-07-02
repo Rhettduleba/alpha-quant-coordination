@@ -1,6 +1,6 @@
 # OPEN ITEMS — living tracker (Claude maintains; Rhett decides the ⭐ items)
 
-_Last updated: 2026-07-02 ~2:20 PM ET. I keep this current and re-surface the ⭐ items so nothing gets dropped._
+_Last updated: 2026-07-02 ~4:30 PM ET. I keep this current and re-surface the ⭐ items so nothing gets dropped._
 
 ## ⭐ DECISIONS AWAITING RHETT (need your input — nothing happens until you choose)
 _(none open right now)_
@@ -18,12 +18,13 @@ _(none open right now)_
 - **Early-close half-days** (2026-07-02, Rhett delegated → my call): **SKIP** them (Nov 27, Dec 24 — thin holiday tape, not worth a watched change for ~2 days/yr). Bot already skips via holiday_reason; detector exempts them from the CRITICAL no-trade alarm (7/2 still fully covered). Non-watched; REG 29/0.
 
 ## 🔨 QUEUED BUILDS (no decision needed — I'll finish these start-to-finish)
+1. **Verify-load preflight check: make it subprocess-aware** (non-watched, `_preflight_diagnostic.py`). The `risk_config.py mtime <= run_bot start` check is a VERIFIED false-positive on this architecture — the parent run_bot imports no risk_config value at long-lived scope (only a func-local ORB_MULTISCAN re-import); all consumers are fresh per-cycle subprocesses (bot_loop/orb_multiscan/orb_runner/exit_bot_v2) that re-import each cycle. It has been causing a recurring daily pre_open NO-GO (non-blocking: SAFE_MODE_ENFORCE=off → bot trades anyway). Fix: compare risk_config mtime vs **active-cycling evidence** (a fresh strategy-subprocess-written artifact after the config mtime) instead of the orchestrator parent's start time — preserving the survivability intent (a hung/non-cycling bot after an edit still FAILs) while killing the false alarm. Deliberately not rushed on a monitor tick (rule #18: don't weaken a survivability check carelessly). Add a regression lock. _Alt/opportunistic: a run_bot restart at any safe flat window also clears it (system's intended remediation), but I won't restart a healthy live bot just for this._
 2. **Exit-backtester MVP** (the shadow SIM, Phase 1): `fill_model.py` → `fidelity_gate.py` (must reproduce MU −$1,670 + COHR −$1,975) → run on the clean cohort's dense days. Foundation done (clean_cohort + fill calibration + price-path feed). I take this to completion when we turn back to the sim.
 3. **Forward live-shadow** (shadow SIM Phase 2): GATED — build only after the exit-backtester's fill model validates (else it launders SIM-fill optimism forward).
 
 ## 🧪 PENDING VALIDATION (live in SIM, but in-sample — not yet "trusted")
 4. **30-min unconfirmed time-stop** — LIVE in SIM (Loop 220). In-sample/directional. Keep/promote verdict needs OOS forward data + N≥30 unconfirmed on the re-arm path. Watching daily.
-5. **9:45 AM re-arm window** — LIVE (Loop 218); first real day 7/02. Track its expectancy vs the 10:35+ windows; PULL "0945" if it underperforms (~2 weeks / N≥20).
+5. **9:45 AM re-arm window** — LIVE (Loop 218). ⚠️ 7/02 was NOT a valid first day — the morning windows (0945/1035/1135) were lost to the market_hours early-close outage (fixed ~12:30 PM; first entries were 12:35). So 0945 has **zero live samples yet**; its first real day is the next full session. Track its expectancy vs the 10:35+ windows; PULL "0945" if it underperforms (~2 weeks / N≥20).
 
 ## 🚦 BEFORE-LIVE GATES (not now — required before ANY real-money step)
 6. Restore `DAILY_MAX_LOSS` ($2k) + 5% account-DD kill + a real-time intraday loss clamp (all OFF for SIM).
