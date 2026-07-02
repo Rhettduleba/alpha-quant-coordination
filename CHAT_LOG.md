@@ -15685,3 +15685,20 @@ This is all **in-sample** (6 dense days). V8p and V10 are *promising directional
 So: multiple shadow sims are live, running daily, and we already have two candidates (V8p, V10) worth watching over the next few days. All tracked in `OPEN_ITEMS` and the tune log.
 
 ---
+
+
+## Turn — 2026-07-02 15:51:56 ET
+
+**Rhett:**
+
+SELF-MONITORING (daily, every 15 min 9:00 AM–4:00 PM ET). Follow C:\AlphaQuant\SELF_MONITORING_PLAYBOOK.md. RULE: never defer — act on every warning THIS run (fix non-watched; escalate WITH the fix for watched trading files). STEPS: (1) Confirm ET time + market state. If it's ~9:00 AM (pre-open), run `python C:\AlphaQuant\tradestation-bot\pre_open_trade_readiness.py` (the "will it trade today?" gate) and ACT on any CRITICAL before 9:45. If market is closed now, do a quick EOD broker-flat check then finish this run (the cron resumes next weekday 9 AM). (2) Read the SAME warnings Rhett gets: `python C:\AlphaQuant\tradestation-bot\alerts_bridge.py` (bot_alerts 24h — any FAIL in the last hour = top priority), C:\AlphaQuant\CSHV_FINDINGS.md (any FAIL/CRITICAL/WARN), code_inbox.jsonl actionable items. (3) Trade-liveness (the 7/02 catch): after 10:45 AM confirm >=1 ORB_V16_ENTRY_OK in today's bot_alerts.jsonl; if 0 on an open regular trading day, run reliability_checks.check_alive_but_not_trading() and diagnose. (4) ACT (never defer): verify each warning vs broker truth FIRST; fix non-watched now (+regression-lock+verify); for WATCHED trading files (orb_*, exit_bot_v2, risk_config, bot_loop, candle_close_exit, market-behavior) never edit mid-session — surface + write a proposal + escalate to Rhett with the concrete fix. (5) Log a one-line status to SESSION_LOG.md (clean or what I acted on) and push to coordination. Ping Rhett only if actionable for him or I escalated; otherwise silence = handled.
+
+**Claude Code:**
+
+Monitor tick — post-close, so this includes the EOD-flat check and I'll handle the queued TW deploy:
+Clean tick, and the important one confirmed: **EOD FLAT — 0 open positions** (the 3:50 flatten worked, broker truth). No new FAILs. It's 3:51 PM — market's open until 4:00, and the TW is still the live exit owner, so the TW deploy correctly waits for the **next tick after 4:00**. Logging:
+✅ Clean (`0470e52`) — **bot ended the day flat** (0 positions, confirmed against broker), no new issues. Full day: recovered from the morning outage and traded 21 entries cleanly.
+
+The TW safe-fix deploy is correctly holding until the market's fully closed (next tick after 4:00, when the TW is no longer the live exit owner). Standing by for that.
+
+---
