@@ -3,7 +3,13 @@
 _Last updated: 2026-07-02 ~2:20 PM ET. I keep this current and re-surface the ⭐ items so nothing gets dropped._
 
 ## ⭐ DECISIONS AWAITING RHETT (need your input — nothing happens until you choose)
-1. **Early-close half-days (Nov 27, Dec 24 2026).** Today's outage was a *wrong* early-close flag; but those two dates are *real* 1 PM closes. Question: on a real early-close day, do we **(a) trade the shortened session** (I build early-close-aware entry-cutoff + 12:50 flatten — a WATCHED change, so it goes through a proposal), or **(b) cleanly SKIP** early-close days (the hardened detector already catches a wrongful skip)? Months away, not urgent — but unanswered.
+_(none open right now)_
+
+## 🔬 IN PROGRESS (I'm investigating; will bring you findings)
+- **TW (Tape Watcher) efficiency tuning** — the tick-stream is 92% stream-gaps (up to 46s), defeating tick-precision. Root-cause + tuning plan in flight (workflow wmlsplf16). I'll bring the ranked fixes; deploy carefully since the TW is the live exit owner.
+
+## ✅ RESOLVED
+- **Early-close half-days** (2026-07-02, Rhett delegated → my call): **SKIP** them (Nov 27, Dec 24 — thin holiday tape, not worth a watched change for ~2 days/yr). Bot already skips via holiday_reason; detector exempts them from the CRITICAL no-trade alarm (7/2 still fully covered). Non-watched; REG 29/0.
 
 ## 🔨 QUEUED BUILDS (no decision needed — I'll finish these start-to-finish)
 2. **Exit-backtester MVP** (the shadow SIM, Phase 1): `fill_model.py` → `fidelity_gate.py` (must reproduce MU −$1,670 + COHR −$1,975) → run on the clean cohort's dense days. Foundation done (clean_cohort + fill calibration + price-path feed). I take this to completion when we turn back to the sim.
