@@ -15600,3 +15600,43 @@ Clean — 21 arms, 20 round-trips, only the triaged benign 504; EOD flatten (3:5
 ✅ Clean (`522c347`). Bot's healthy heading into the 3:50 flatten. Next tick (post-close) I'll verify EOD-flat and deploy the TW safe fixes. Standing by.
 
 ---
+
+
+## Turn — 2026-07-02 15:45:19 ET
+
+**Rhett:**
+
+Okay. Let's go with your recommendation. make the proper changes in the shadow SIM. and let's work it for a few days.
+
+**Claude Code:**
+
+Approved — and to be clear on the guardrail: this goes into the **shadow SIM only** (the exit-backtester), **not** the live exit path. V8 gets scored against the deployed exit on our real trades, we watch it accumulate over the coming days, and it only graduates to a live proposal if it beats baseline *and* cuts zero winners.
+
+Let me build it properly. First, confirming the 1-min bar source the candle-close replay needs:
+The bar-source signature differs from what I guessed. Let me mirror how `exit_design_study` (which already does exit-rule replay over real trades) loads bars, so I reuse the proven path instead of re-implementing it:
+Got it — `minute_bars_for_day(client, sym, date)` needs a client (read-only historical fetch), exactly as `exit_design_study` uses it. Building the V8 shadow runner mirroring that proven pattern — replays **baseline (1 red close)** vs **V8 (2 consecutive red closes)** over the full day, calibrated fills, 3-sided + must-not-cut, and appends a daily result so it accumulates:
+The shadow SIM just did its job — and the result is genuinely informative, not the slam-dunk it looked like:
+
+**V8 first read (N=138, 6 dense days): roughly break-even AND it violates must-not-cut.**
+- V8 vs baseline: **−$36** (basically flat) — the +$2,261 it captured on winners that ran further was almost exactly cancelled by −$2,301 given back on winners that reversed while waiting for the 2nd close.
+- **4 winners turned into losers** (CCI, RUM, ANET, PENN) — waiting one more bar cost the whole gain.
+- Baseline reconciles to broker within ~$22 (engine sanity checks out).
+
+So on the data we have, V8 isn't a clear win and it trips your must-not-cut rule. That's exactly why we shadow first. But you asked to work it a few days, so I'll wire the daily accumulation and we'll see if OOS days change the picture. Setting the runner to score each day + wiring it into EOD:
+Wiring the daily run into the EOD task (7th action) so it accumulates OOS automatically:
+V8 is now the 7th EOD action — it scores each day automatically. Recording the candidate + initial result in the tune log, updating the tracker, and pushing:
+Done and pushed (`54881a6`). Here's the honest state of the first tune.
+
+## V8 is in the shadow SIM and running — but the first read is a warning, not a win
+- **Built:** `v8_shadow.py` replays baseline (1 red close) vs V8 (2 consecutive red closes) over each day's 1-min bars with calibrated fills, scores 3-sided + must-not-cut, and reconciles the baseline to broker truth (median $22 off — the engine is sound).
+- **Initial in-sample read (138 trades, 6 dense days):** V8 is **flat (−$36)** and it **violates your must-not-cut rule — 4 winners turned into losers.** The "let winners run" upside (+$2,261) was almost perfectly cancelled by winners reversing while V8 waited for the 2nd close (−$2,301).
+- **Wired to accumulate:** it's now the 7th EOD action, so it scores every new day automatically into `v8_shadow_log.jsonl`. We'll build OOS data over the coming days exactly as you asked.
+
+## What this means
+The shadow SIM did precisely what it's for: it flagged that V8 — which *sounded* like a clean improvement — is break-even and cuts winners, **before it ever touched the live bot.** On the current data it would **not** promote (your must-not-cut rule kills it).
+
+We'll work it a few days as you said. My honest expectation: if the pattern holds (flat + cutting winners), we kill V8 and move to the runner-up (**TUNE-10**, earned-loosening) or a *protected* V8 variant that keeps a breakeven-stop so a confirmed winner can't round-trip to a loss. But we let the OOS days speak first — I'll report as they come in.
+
+It's tracked in `OPEN_ITEMS` and the tune log. Market's at the close now; I'll verify EOD-flat and deploy the TW safe fixes on the next tick.
+
+---
