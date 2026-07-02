@@ -14816,3 +14816,46 @@ Triage run complete. Summary:
 Nothing needs Rhett this run.
 
 ---
+
+
+## Turn — 2026-07-02 14:10:51 ET
+
+**Rhett:**
+
+Go ahead and build the price path logging going forward. Never ask me to keep going. I don't like to build something halfway.
+
+**Claude Code:**
+
+Understood — and that's a rule worth locking in. I don't build halfway, and I don't ask permission to finish. Saving that, then building the price-path logging completely.
+Confirmed the root cause: `exit_bot_v2` skips the price-path log (L451/L595) for any symbol the **Tape Watcher owns** — it `continue`s at the TW-lease at L411, *before* the logging. Since the TW went live as exit-owner on 6/29, its positions stopped landing in `exit_decisions.jsonl` — that's the collapse. The TW logs to `tw_shadow.jsonl` instead. So the clean, non-watched fix is: make the TW log a proper price-path poll + unify both sources for the backtester.
+
+First, hardening that rule into memory:
+Now checking exactly what the TW logs per tick — whether `tw_shadow.jsonl` already has the price path or I need to add it:
+Now the real picture: the TW's `tw_shadow.jsonl` logs **events, not a price path** (11,244 of its records are `stream_gap`), and it logged **0 records today** — so *neither* source captures a dense price path going forward, especially when the TW owns exits. And I will **not** edit the watched `exit_bot_v2` while the bot is live-trading. So the complete, safe fix is a **standalone, non-watched price-path logger** that captures every open position independently, plus a unified reader so the backtester sees all sources. Building all of it now.
+
+**Piece 1 — the logger:**
+**Testing the logger against live positions** (read-only, no orders):
+Logger works — captured NFLX's path (last, high/low water, confirm state, ATR), and the water-mark state persists across runs. Now **Piece 2 — the unified reader** the backtester uses (merges the historical `exit_decisions.jsonl` + the new `price_path.jsonl` into one canonical path):
+**Piece 3 — verify the unified reader merges both sources, then schedule the logger to run every minute going forward:**
+Reader works — **6/25 shows 7,397 polls (dense historical), today merges both sources**, and going forward the logger fills the gap. The contrast (7,397 vs 22) is exactly the starvation we're fixing. Now scheduling the logger to run **every minute, 9:30–4:00, weekdays**:
+Registered — **State: Ready, repeats every 1 min for 6.5h, Mon–Fri (days=62)**. Let me confirm it actually runs under the scheduler (pythonw + token), since it was created after today's 9:30 trigger:
+**Confirmed — the scheduled task runs and writes.** The price-path logging is complete and live. Logging + pushing:
+The backticks in my log text broke the shell. Rewriting with a quoted heredoc (no shell interpretation):
+Done — the price-path logging is built, scheduled, verified, and live. No gaps left.
+
+## What's now running
+**The problem it fixes:** when the Tape Watcher took over exits on 6/29, `exit_bot_v2` stopped logging the price path for TW-owned positions — so our dense data collapsed to a 6-day window (6/18–6/26). That's why the exit backtester was starved.
+
+**The complete fix (three pieces, all non-watched — I didn't touch the live exit path):**
+
+1. **`price_path_logger.py`** — a standalone, measurement-only logger that captures **every** open position's path (last/bid/ask/ATR/high-low-water/confirm-state) each run, independent of who owns the exit. Read-only, SIM-guarded, can't affect trading. *Verified: captured NFLX live.*
+
+2. **`AlphaQuant PricePathLogger` scheduled task** — runs **every 1 minute, 9:30–4:00, Mon–Fri**. State: Ready, and I confirmed it actually executes under the scheduler (wrote a record). Starts its full daily cadence tomorrow at 9:30.
+
+3. **`price_path_source.py`** — one unified reader that merges the historical `exit_decisions.jsonl` (6/25 alone = 7,397 polls) with the new `price_path.jsonl`, so the backtester gets full coverage from one source. *Verified: merges both.*
+
+**Result:** future exit backtests will have a dense price path for every trade, every day — the ~6-day starvation is fixed going forward. A position open 30 minutes now generates ~30 polls instead of near-zero.
+
+That closes the loop on the shadow-SIM foundation: the scrub (clean cohort), the fill calibration, and now the price-path feed are all in place. The exit-backtester MVP (`fill_model` → `fidelity_gate` → run it) is the next build, and I'll take it start-to-finish when we turn to it. Bot's still trading, monitor's still clean.
+
+---
