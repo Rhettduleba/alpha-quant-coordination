@@ -17857,3 +17857,186 @@ Then a verdict agent ranks the strongest *real* edge, with the honest N caveat a
 I'm running actual code, not theorizing — and I'll give you the truth, whether that's "here's a real signal at AUC 0.7" or "the strongest thing is X but N is too thin to trust yet, here's how we confirm it." Back with the numbers the moment it lands.
 
 ---
+
+
+## Turn — 2026-07-03 16:54:39 ET
+
+**Rhett:**
+
+This session is being continued from a previous conversation that ran out of context. The summary below covers the earlier portion of the conversation.
+
+Summary:
+1. Primary Request and Intent:
+The overarching intent is to develop, harden, and find edge in the Alpha Quant SIM-only ORB equity day-trading bot. Chronological explicit requests:
+   - Confirm/ensure V8pw_wide is running on the shadow tournament.
+   - Review a HealthCheck.io "1 deaf detector" screenshot; explain + fix.
+   - Analyze the last trading day (7/02, negative): winners/losers, did we enter/exit correctly, what could be better.
+   - Ensure the bot fires Monday when it should (raised in context of "tomorrow fires" — I corrected that tomorrow=7/3 is a holiday).
+   - **Warning process demand**: "the way that I thought we set it up was that... We both receive the warning or you review the warning the moment you review the warning you send me a communication this is what happened this is the fix. How do we build this?" — Rhett chose autonomy level "Notify + auto-apply safe fixes."
+   - "Fix this warning stuff. I feel like most all not actually impactful and or old."
+   - Pre-Monday full review: "take care of everything that is broken... make sure that the dashboard is completely up-to-date... make sure that TW is completely fixed... Is there anything to write/fix that we talked about in the last day that we haven't done... make sure that the bot fires on Monday... give me a rundown of the recent changes... give me a summary of what we are currently running, live as far as entry signal timing and exit."
+   - Confirm entry timing model; delete H5 ("that was the other strategy running on a different SIM account number that produced no fruit... let's just delete that"); fully explain the "still needs your call" gated items.
+   - "Keep the 945 first set up. You have my go-ahead to do all three proposals, but the caveat is after you complete the coding you need to do a complete check of the system and make sure that the coding is correct and make sure we don't have fails."
+   - News/earnings infrastructure audit + cross-reference historical news vs trades to find contradicted entries.
+   - Test the last day: confirmed/unconfirmed × winners/losers 2x2.
+   - Deep dive into what traders look for in historical data (52-week highs/lows etc.) — generate edge ideas.
+   - **MOST RECENT: "Your goal is to find an edge you have to find an edge somewhere."**
+
+2. Key Technical Concepts:
+   - ORB re-arm strategy: 9:35 entries GATED OFF (ORB_935_ENTRIES_ENABLED=False, the loss engine −$3,715); LIVE path = re-arm windows [0945,1035,1135,1235,1335,1435] via orb_multiscan; 0945 added 7/01, Monday 7/6 is its first real day.
+   - Exit stack: candle_1.4atr_chandelier (CONFIRM_ATR=0.15, CHANDELIER_ATR=1.4, RESTING_SL_FRAC=1.4, first-opposite-candle-close post-confirm), $500 DOLLAR_STOP_CAP (ENABLED), 30-min UNCONFIRMED_TIME_STOP (ENABLED).
+   - Subprocess architecture: run_bot spawns bot_loop/orb_runner/orb_multiscan/exit_bot_v2 as FRESH subprocesses each cycle (re-import config each cycle) → edits load without run_bot restart; parent holds no risk_config at long-lived scope.
+   - WATCHED files (never edit mid-session without Rhett's go): risk_config, bot_loop, exit_bot_v2, candle_close_exit, advisor_filter_engine, symbol_universe, orb_runner, orb_multiscan, short_bot, mover_scanner. Non-watched: everything else.
+   - Confirmation: a trade is "confirmed" when favorable excursion reaches +0.15×ATR (rides candle-close exit); "unconfirmed" → time-stopped at 30 min.
+   - Shadow tournament CHAMPION="V8pw_wide"; in-sample vs OOS-clean (same-day, counts toward N≥30 promotion bar) vs OOS-backfill (approximate, doesn't count); dedupe idempotency.
+   - Governance: strategy-change guard blocks committing watched files not in the LATEST change-log entry; log_change.py + strategy_change_schema.py; manual_approvals.yaml (tolerant parser doesn't strip inline # comments, ids must be on clean lines).
+   - PROP-LIVE-QUOTES data-plane split: GET /marketdata/* → live host; all orders/positions/account/balance → SIM (hard-wired); requires live TS credentials + real-time entitlement (NONE configured → flagged off).
+   - MAX_OPEN_POSITIONS=16 (not 4 — CLAUDE.md primer is stale). MAX_TOTAL_EXPOSURE=$100k (base, not notional cap). Sizing off REAL_CAPITAL_BASE $100k × 4x = $400k, ~$20k/name.
+   - N per bucket: ~221 round-trips over 10 days; AUC method (entry_signature_study), must-not-cut, clean_cohort, fill_model.
+
+3. Files and Code Sections:
+   - **strategy-research/shadow_tournament.py**: Added CHAMPION="V8pw_wide", IN_SAMPLE_DAYS, run_kind/backfill stamping in _score, `_dedupe_by_days` (keep latest per day-set, idempotent), `_run_kind` (days WIN over stamped label — RISK-1 fix), single-day-OOS guard in _score (RISK-2), variant_progress()/champion_progress() aggregators, `--champion` and `--backfill` CLI. Backfilled 6/29(−$273)/6/30(+$466)/7/01(+$345).
+   - **ai-trading-strategy-agent/src/advisor/tunes_page.py**: Rewrote to show in-sample AND cumulative-OOS per variant (was runs[-1]), CHAMPION banner with promotion progress, _dedupe_by_days mirror, _run_kind days-win.
+   - **tradestation-bot/reliability_drill.py**: Changed `alive_not_trading` expected WARN→CRITICAL (renamed filter_ate_book→open_day_0_entries) matching REG-31; then fixed holiday bug: `if base.weekday() < 5:` → `if _mh_d.is_regular_trading_day(base):` (skip on holidays too).
+   - **tradestation-bot/eod_debrief.py**: Fixed misleading `_left_after_exit` Section E (now shows peak AND held-to-EOD, gates PROP-EXIT-FALSE-STOPOUT on recoverable held amount). Added cross-day confirmation metric: helpers `_fav_mfe_window`, `_atr14` (uses tape_watcher in strategy-research), `_CONFIRM_ATR_FRAC=0.15`, `_CONFIRM_WINDOW_MIN=30`; per-row confirmed_30m/confirmed_hold; Section D confirmation line.
+   - **tradestation-bot/_preflight_diagnostic.py**: Fixed risk_config check to compare mtime vs last-cycle (heartbeat) not orchestrator start (`bot_loaded = max(bot_start, _hb_mt)`). Removed 4 dead H5 checks (h5 heartbeat block, h5_files loop, H5 functional dry-run) post-H5-deletion → 39 PASS/0 FAIL.
+   - **tradestation-bot/safe_mode.py**: reconcile_from_reliability auto-clear now covers `triggered_by in ("reliability_monitor", "pre_open_gate")` (was reliability_monitor only).
+   - **tradestation-bot/system_health_verifier.py**: clean_day non-trading-day branch `sev = OK if cert["clean"] else FAIL` → `else WARN` (anti-spam).
+   - **tradestation-bot/strategy_compliance.py**: `_deployed_exit_codes()` added `erc.EXIT_TIME_STOP_UNCONFIRMED, erc.EXIT_PHASE1_ATR_STOP` → 7/02 compliance fixed 0/20→17/20.
+   - **ai-trading-strategy-agent/src/advisor/strategy_signals_page.py**: Added `entries_935`, live `_uni_desc` read; entry card shows 9:35 GATED OFF + re-arm LIVE path + live universe; exit card added $500 cap + 30-min time-stop. (render_body returns (title, body) TUPLE.)
+   - **tradestation-bot/ts_client.py**: PROP-LIVE-QUOTES split. Added `self.market_data_base = (os.getenv("TS_MARKET_DATA_BASE") or "").strip() or None`; `_base_for(path, method)` (GET /marketdata/* → market_data_base only when set, else base_url; orders always SIM); `request` uses _base_for + fail-safe (live-marketdata error → retry SIM); `get`/`post` route through _base_for. Verified: 0 order paths leak to live.
+   - **tradestation-bot/orb_runner.py**: PROP-TS-TRANSIENT-LABEL. account-fetch except now classifies: 401/403 → TS_AUTH_FAIL/FAIL; else → TS_API_TRANSIENT/WARN (fail-soft via `getattr(getattr(e,"response",None),"status_code",None)`).
+   - **tradestation-bot/regression_suite.py**: Added t_livequotes_split_guard (REG-32, CRITICAL) + t_ts_transient_classify (REG-33).
+   - **tradestation-bot/supervisor_guardian.py**: Commented out H5 watch line 166 (equity bot watch line 165 intact).
+   - **ai-trading-strategy-agent/config/manual_approvals.yaml**: Added PROP-TS-TRANSIENT-LABEL, PROP-UNCONFIRMED-TIMESTOP-30M, PROP-LIVE-QUOTES (ids on clean lines, comments above).
+   - **strategy_changes/**: Created 3 change-log entries (AQ-20260703-ORB-TS-TRANSIENT-LABEL-001, AQ-20260703-TSCLIENT-LIVE-QUOTES-SPLIT-001, AQ-20260701-EXIT-UNCONFIRMED-TIMESTOP-30M-001) via mk_changelog.py.
+   - **Archive/h5_deleted_2026-07-03/**: 9 H5 files archived (h5_orders/runner/signal/supervisor.py, run_h5.py, _flatten_h5_stuck.py, h5_daily_state.json, h5_disabled.flag, h5_supervisor.log).
+   - **Memory**: feedback_surface_warnings_in_chat.md created + MEMORY.md updated.
+   - **News/earnings data**: earnings_calendar.csv (242 rows, veto wired ONLY to disabled 9:35 path, stale 3.3d); news_shadow.jsonl (821 rows, null sentiment, one-off 6/27, 9 tickers); FMP news 403 dead; PROP-NEWS-REALTIME pending.
+
+4. Errors and fixes:
+   - Preliminary EOD 7/02 read WRONG (self-caught via verification workflow): claimed time-stop cut $4,500 of winners + entry-quality was the problem. Verified held-to-EOD only $23 (top-5 of $2,841 peak); re-arm entry filter fails must-not-cut. Corrected to Rhett honestly.
+   - Claimed clean_day NON-CLEAN was "the benign 504" 3 times — WRONG. Verified it was the real 7/02 outage (rel_trading_is_thinking HARD incident). Corrected + saved to memory: verify before calling a warning "noise."
+   - `git commit -am` blocked by strategy-change guard (staged exit_bot_v2.py) — used explicit `git add <files>` instead; learned the guard checks the LATEST change-log entry.
+   - change-log validation failed: (a) missing falsification clause → added "WHAT EVIDENCE WOULD PROVE IT WRONG"; (b) approvals not in manual_approvals.yaml → added them (then found inline # comments broke the tolerant parser → moved ids to clean lines).
+   - orb_runner commit blocked (latest change-log was TIMESTOP not orb_runner) — committed non-watched batch; left orb_runner/exit_bot_v2/risk_config deployed-but-git-uncommitted (documented, noted as separate cleanup).
+   - Bash heredoc f-string quote-escaping failures — rewrote with helper functions.
+   - render_body 2-char false alarm — it returns a (title, body) tuple; len()=2 elements.
+   - USER FEEDBACK: "Keep the 945 first set up" (don't re-enable 9:35). "make sure we don't have fails" (required complete system check). Chose warning-responder autonomy = "Notify + auto-apply safe fixes."
+
+5. Problem Solving:
+   Solved: V8pw_wide champion tracking (4 gaps + 2 hardening); healthcheck drill sweep + holiday bug; EOD 7/02 corrected analysis; pre_open false-positive; clean_day correction; SAFE_MODE auto-clear; compliance 0/20→17/20; dashboard currency; H5 full deletion; 3 proposals implemented + verified 0 FAIL; news/earnings audit (veto not on live path, no live news); confirmed/unconfirmed 2x2; edge-idea deep dive. Ongoing: edge-hunt workflow running.
+
+6. All user messages:
+   - "SELF-MONITORING..." (many identical cron prompts)
+   - "So let's make sure we running v eight p w underscore wide on the shadow"
+   - "review this screenshot I got from HealthCheck." (deaf detector image)
+   - "OK EOD is in. Give me your feedback winners losers did we enter correctly did we exit correctly? What could've been done better?"
+   - "Complete the recommended and let's hope everything fires tomorrow you do have the correct fail stops in place so that tomorrow fires when it should"
+   - "You're right, tomorrow is an absurd holiday on the stock market."
+   - "Many telegram warnings, what are they all about?"
+   - "Check the warnings"
+   - "I thought we had a process when a warning fires you get notified? Every time you get a notification of a warning I want you to respond on this chat with why the warning happened and how you are going to address the warning"
+   - "Can you fix this warning stuff. I feel like most all not actually impactful and or old. When I get one you should get the same eight or you should be reading every 15 minutes"
+   - "So where do we stand right now with the system the project in general we have a couple days of downtime until the next trading day. I want to take care of everything that is broken... make sure that the dashboard is completely up-to-date... make sure that TW is completely fixed... Is there anything to write fix that we talked about in the last day that we haven't done... make sure that everything is accurate and I don't find any mistakes and that the bot fires on Monday... give me a rundown of the recent changes... give me a summary of what we are currently running, live as far as entry signal timing and exit"
+   - "So I just got two warnings. Here's how I want the process to work. We both receive the warning or you review the warning the moment you review the warning you send me a communication this is what happened this is the fix. How do we build this?"
+   - "Just to be clear the way that I thought we set it up was that the bot scans from 9:35 to 940 and then starts to trade agreed? Let's talk a little bit about each five that was the other strategy running on a different SIM account number that produced no fruit. We turned that off correct let's just delete that from our project. Is that what you're referring to you when you say H5? Explain in what still my call. I don't understand so when you say still need your call, I need you to fully explain that."
+   - "Keep the 945 first set up. You have my go-ahead to do all three proposals, but the caveat is after you complete the coding you need to do a complete check of the system and make sure that the coding is correct and make sure we don't have fails."
+   - "OK, let's move the topic of subject to the news. What do we currently have in regards to infrastructure and the news? Are we getting a news feed are we getting earnings? Can we run a test and look at all the news in prior days that we have and cross-reference that with trades to see if any of that news would contradict going into one of the entries."
+   - "Also, let's run a test on our last day of trading. That was a negative day. I wanna know how many of the trades were confirmed and unconfirmed and how many losers and winners in each category."
+   - "We haven't looked at historical data like a stocks 52 week high or low. I don't know anything about reviewing a stocks historical data. Can you do a deep dive into what things... traders look for in past performance... when a stock breaks through, it's 52 high what it does when it breaks below their 52 low... let's go and think about what other traders use to make good trading decisions. I need ideas from you to try to gain an edge somewhere."
+   - "Your goal is to find an edge you have to find an edge somewhere"
+
+7. Pending Tasks:
+   - **PRIMARY (in progress): Find a real, measured edge** — edge-hunt workflow w8dekjnex running.
+   - Build the warning-responder daemon (Rhett approved "Notify + auto-apply safe fixes") — NOT started.
+   - Awaiting Rhett's decision: (a) build scored Finnhub news feed; (b) write earnings-veto-on-live-path proposal; (c) run chop-day regime study.
+   - Queued non-watched: holiday-blind-spot audit (~18 weekday() sites); git-snapshot reconciliation of deployed watched files (orb_runner/exit_bot_v2/risk_config uncommitted).
+   - Before-live gates: restore DAILY_MAX_LOSS $2k + 5% DD kill + intraday clamp; build 4x-marginable universe.
+
+8. Current Work:
+   Immediately before this summary, Rhett said "Your goal is to find an edge you have to find an edge somewhere." I marked a chapter "Edge hunt — run the real tests", scouted the trade tape (**221 round-trips across 10 days**: 6/18=41, 6/22=16, 6/23=11, 6/24=21, 6/25=23, 6/26=26, 6/29=23, 6/30=15, 7/01=25, 7/02=20; confirmed entry_context_sidecar.py/entry_signature_study.py/clean_cohort.py exist), and launched a background workflow (task **w8dekjnex**, run wf_a0aa1f53-217) with 3 parallel hunt agents (feature-separation AUC, regime-and-window/chop-day expectancy, structural-features + must-not-cut) + a high-effort synthesis "verdict" agent. The workflow uses the real machinery and demands honest N/significance reporting. The workflow is RUNNING; I have NOT yet received its results. This summary request interrupted before completion.
+
+9. Optional Next Step:
+   Read the edge-hunt workflow (w8dekjnex) results when the completion notification arrives (output file: C:\Users\ADMINI~1\AppData\Local\Temp\claude\...\tasks\w8dekjnex.output), then present the honest verdict to Rhett — the strongest real edge found with AUC/net-$/N, ranked top-3 candidates, must-not-cut status, and the single highest-value forward test to confirm it. This is directly in line with the most recent explicit request: "Your goal is to find an edge you have to find an edge somewhere." The workflow verdict agent was instructed: "if nothing is deployable-grade yet at this N, say so plainly — but still identify the strongest signal + the concrete path to confirm it. Do NOT manufacture an edge... Rhett wants truth + direction, not a fabricated win." Also continue the standing SELF-MONITORING cron on schedule (next real trading session is Monday 7/6 9 AM — verified READY; 0945 window is its first live day, watch the confirmed/unconfirmed split).
+
+If you need specific details from before compaction (like exact code snippets, error messages, or content you generated), read the full transcript at: C:\Users\Administrator\.claude\projects\C--Users-Administrator-OneDrive---Duleba-Trade-station-Main\3253950a-388c-4a7a-99cc-cec0c4ed9f69.jsonl
+Continue the conversation from where it left off without asking the user any further questions. Resume directly — do not acknowledge the summary, do not recap what was happening, do not preface with "I'll continue" or similar. Pick up the last task as if the break never happened.
+
+**Claude Code:**
+
+Let me read the rest — the structural verdict and the final synthesis:
+I have the full verdict. Here's the honest truth — and it's genuinely useful, even though it's not the "AUC 0.7 slam-dunk" headline.
+
+## Edge hunt — the honest verdict (broker-truth tape, N=221, 6/18–7/02)
+
+I ran real code against the real tape, three tests in parallel plus an adversarial synthesis. Baseline reproduced exactly: **221 round-trips, 131 win / 90 lose (59.3%), net −$3,371.**
+
+**The blunt bottom line: no *entry* feature we log is a deployable edge at this N.** Best entry-knowable separator is AUC 0.398 — everything else (relvol, RS-vs-SPY, gap, move%, exhaustion) sits at 0.43–0.51, which is noise. Nothing near the 0.70 bar. But three things came out of this that matter:
+
+**1. Our top hypothesis got *falsified* — and that's worth knowing.** The deep-dive's #1 idea ("losses concentrate on chop days") is **wrong in our data.** Day-level correlation between SPY choppiness and P&L is −0.16; the median split is *inverted* (higher-efficiency days lost more); the two big loss days (6/25, 6/29) were actually the *cleaner-trending* days. **Do not build a chop-day gate.** This is exactly why we test instead of trusting priors — I would have built that filter and it would have done nothing.
+
+**2. The relvol lead is a head-fake — I'm explicitly telling you not to trade it.** Relative volume predicts *confirmation* well (day_relvol AUC 0.638, the best predictive hit in the study). But when I bucketed on **dollars**, the **low-relvol tertile is the only profitable one (+$1,004)**; high-relvol is −$1,629. Chasing relvol to chase confirmation *loses money*. It predicts the label and is anti-correlated with net-$. Seductive on the AUC number, dead on the P&L — killed.
+
+**3. The one real, significant, robust signal is time-of-day** — but it lives in shadow, not the bot. Entry **before 11:00 ET wins 67.7%; after 11:00 wins 47.9%** — a 19.8pp gap, z=2.97 (significant), and it holds the same sign on **all 10 leave-one-day-out folds** (most robust thing in the tape). **The catch:** it does *not* convert to dollars yet — the early book actually loses slightly *more per trade*, and as a hard `BLOCK_ENTRIES_AFTER_TIME` it fails must-not-cut (cuts 45 real winners). Real win-rate edge, no money edge at this N.
+
+**The most important finding: our edge is entirely in the EXIT, not the entry.** Confirmed trades (favorable move hits +0.15×ATR within 30 min) = **+$14,894 at 96.7% win**; unconfirmed = **−$14,156 at 9.1%**. That's not tradeable as an entry filter (confirm is known 30 min *after* entry) — but it *validates the exit stack we've been building*: the candle-close trail, the $500 cap, and the 30-min unconfirmed time-stop are aimed at exactly the cohort where all the losses live. **The money lever is the exit engine, and the parked confirmation-keyed-exit direction is where the real edge work is.**
+
+One structural signal has a genuinely deployable *shape*: **"entry at/above the trailing-20-day high"** as a size-*down* gate — 2.1:1 loser-$-saved to winner-$-removed, and it's the one filter that would've caught our single biggest loser (MU 6/25, −$1,670). But MU alone drives 39% of what it saves — one trade — so it's suggestive, not proven.
+
+---
+
+### My recommendation
+
+Two must-not-cut-safe directions worth **shadow-logging** (size-down only, drop nothing, touch no live path), measured toward N≥30 before any proposal:
+- **A) Time-of-day de-prioritization** (entry ≥11:00 → downsize) — the most robust signal.
+- **B) 20d-high size-down gate** — deployable shape, catches the worst loser, but needs N to prove it's not just MU.
+
+I'm building the shadow ledger that measures both against broker truth each EOD — that's the engine that turns "suggestive" into "deployable or dead." Reading the exact machinery now so I reproduce it faithfully:
+This gives me exactly the machinery to reuse. Let me check the round-trip shape and the confirm helper, then build the production ledger:
+`side` is "long"/"short", `entry_dt`=`en["opened"]` (aware datetime), `net` is broker-truth. I have everything. Building the production shadow ledger — reusing the exact proven prox-to-20d-high logic and the canonical round-trip source:
+Now let me run it against the full 10-day tape to populate the ledger and see where the two candidates actually stand today:
+The ledger works — and it surfaced something the separate tests missed. Let me capture the key numbers before wiring it in:
+
+**In-sample, over all 10 days (−$3,371 baseline):**
+
+| Gate (halve size, never drop) | Cum Δ | N hit | +days | −days | Counterfactual net |
+|---|---|---|---|---|---|
+| **A** — late (≥11:00 ET) | +$645 | 94 | 4 | 5 | −$2,726 |
+| **B** — at/above 20d high | +$1,120 | 31 | 5 | 3 | −$2,250 |
+| **C** — union (A *or* B) | **+$1,885** | 117 | **7** | 3 | **−$1,486** |
+
+The **combined** gate is the real find — neither test ran it. A-alone is fragile (positive only 4/10 days, as the verdict warned). But **A *or* B together is positive on 7 of 10 days** and nearly halves the loss, because they catch *different* bad trades: the time gate catches afternoon chop, the 20d-high gate catches the extended-breakout blowups (it size-downs into 6/25 +$975 and 6/29 +$489 — exactly the two days that detonated). That's a diversification the single-feature studies structurally couldn't see.
+
+**The honest caveat that governs everything:** this +$1,885 is **in-sample** — the 11:00 cutoff and −0.5% threshold were derived from these same 10 days. It is curve-fit until proven forward. That's the entire point of making it a *standing ledger* instead of a one-shot number. Let me find the EOD orchestration to wire it in so it accumulates fresh, out-of-sample data every close:
+Let me look at how the EOD scheduled task chains its actions:
+That MCP is for Claude cloud schedules. The EOD task is a Windows Scheduled Task — let me inspect its actions:
+The EOD task has 7 chained actions. I'll make the ledger self-stamp (so it needs no argument when run headless) and append it as the 8th action. First the self-stamp edit:
+Now append it as the 8th EOD action, preserving the existing 7:
+8th action wired. Now let me verify the headless no-argument path (what the scheduler invokes) resolves the right date and the ledger reads back cleanly:
+Headless path resolves correctly (target = latest broker date, becomes 7/6 Monday) and the ledger reads back clean. The build is complete and verified. Let me record it in SESSION_LOG and save the durable findings to memory so these dead-lead lessons don't get re-chased:
+Let me find where the current turn-log entries live so I append in the right place with the right loop number:
+The last dated entry is 7/01; I'll append the 7/03 edge-hunt entry at the end (line 4998):
+Now the durable memory so these dead leads don't get re-chased in a future session:
+Done — built, wired, verified, and recorded. Here's the close-out.
+
+## What I did this turn (all verified)
+
+**1. Ran the real edge hunt** (workflow w8dekjnex, 4 agents, broker-truth N=221). Baseline reproduced exactly: −$3,371.
+
+**2. The honest answer to "find an edge":** There is **no deployable *entry* edge in our data at this N** — and I'm not going to manufacture one. But the hunt produced three things that are genuinely worth more than a fake win:
+- **Killed two dead leads before we wasted time on them.** The chop-day gate (our deep-dive's #1 idea) is *falsified* — losses don't concentrate on choppy days, the correlation is actually backwards. And relvol is a *head-fake*: it predicts confirmation beautifully (AUC 0.638) but is anti-correlated with dollars. Both would have felt smart and lost money.
+- **Located where the edge actually is: the EXIT.** Confirmed trades make +$14,894 at 96.7%; unconfirmed lose −$14,156 at 9.1%. That's not an entry signal (you learn it 30 min in) — it *validates the exit stack we've been building* and says the real edge work is the parked confirmation-keyed-exit direction.
+- **Found one thing the separate tests couldn't see:** a *combined* size-down gate (halve size on entries that are either late OR at the 20-day high) that catches two different failure modes — afternoon chop and extended-breakout blow-ups. In-sample it takes the tape from −$3,371 to −$1,486 (+$1,885), positive on 7 of 10 days, and never cuts a trade to zero.
+
+**3. Built the measurement engine so that finding proves itself forward instead of staying a curve-fit number.** `strategy-research/edge_shadow_ledger.py` — read-only, shadow-only, must-not-cut-safe by construction. Backfilled the 10-day tape, wired as the **8th action of the EOD task** (verified: task now has 8 actions; headless target resolves to the latest broker date → 7/6 Monday). Every close it appends the day's counterfactual to `outputs/edge_shadow/edge_ledger.jsonl`.
+
+**The caveat that governs everything:** the +$1,885 is **in-sample** — the 11:00 cutoff and −0.5% threshold were derived from these same 10 days. It is *not proven* until it clears the forward bar: **N≥30 per cell, positive on ≥7/10 fresh days, forward z≥2.0.** That's exactly what the ledger now accumulates, starting Monday.
+
+Logged to [SESSION_LOG.md](SESSION_LOG.md) (7/03 edge-hunt entry) and saved to memory so the two dead leads don't get re-chased.
+
+---
+
+**The real fork ahead** (your call, no rush — the ledger runs regardless): the money is in the *exit*, but exit changes are watched/gated. I can draft the `PROP-CONFIRM-KEYED-EXIT` proposal artifact (the direction the data points at) for you to review — that's where I'd spend the next real effort. Want me to write that up, or let the shadow ledger run a week first and revisit with forward numbers?
+
+---
