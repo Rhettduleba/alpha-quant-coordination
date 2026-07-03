@@ -16659,3 +16659,18 @@ The 9:30 loop-stall FAIL cleared on its own (didn't recur — good). But it casc
 Bottom line: bot flat, cycling, market closed. The loop-stall was the only *real* event (transient, recovered, watching); everything else today has been my not-holiday-aware monitoring code, which I'm cleaning up.
 
 ---
+
+
+## Turn — 2026-07-03 10:03:27 ET
+
+**Rhett:**
+
+SELF-MONITORING (daily, every 15 min 9:00 AM–4:00 PM ET). Follow C:\AlphaQuant\SELF_MONITORING_PLAYBOOK.md. RULE: never defer — act on every warning THIS run (fix non-watched; escalate WITH the fix for watched trading files). STEPS: (1) Confirm ET time + market state. If it's ~9:00 AM (pre-open), run `python C:\AlphaQuant\tradestation-bot\pre_open_trade_readiness.py` (the "will it trade today?" gate) and ACT on any CRITICAL before 9:45. If market is closed now, do a quick EOD broker-flat check then finish this run (the cron resumes next weekday 9 AM). (2) Read the SAME warnings Rhett gets: `python C:\AlphaQuant\tradestation-bot\alerts_bridge.py` (bot_alerts 24h — any FAIL in the last hour = top priority), C:\AlphaQuant\CSHV_FINDINGS.md (any FAIL/CRITICAL/WARN), code_inbox.jsonl actionable items. (3) Trade-liveness (the 7/02 catch): after 10:45 AM confirm >=1 ORB_V16_ENTRY_OK in today's bot_alerts.jsonl; if 0 on an open regular trading day, run reliability_checks.check_alive_but_not_trading() and diagnose. (4) ACT (never defer): verify each warning vs broker truth FIRST; fix non-watched now (+regression-lock+verify); for WATCHED trading files (orb_*, exit_bot_v2, risk_config, bot_loop, candle_close_exit, market-behavior) never edit mid-session — surface + write a proposal + escalate to Rhett with the concrete fix. (5) Log a one-line status to SESSION_LOG.md (clean or what I acted on) and push to coordination. Ping Rhett only if actionable for him or I escalated; otherwise silence = handled.
+
+**Claude Code:**
+
+Monitor tick — let me check current CSHV state (did clean_day drop to WARN, anything new?):
+CSHV is clean now: **FAIL=0**, and the clean_day FAIL correctly dropped to **WARN** (my fix worked). The single remaining WARN is that legitimate holiday-record I already explained last tick (the transient stall → non-clean day → deduped WARN, not spam). Nothing new firing — the two holiday false-fires (drill, clean_day) are both dead, and CSHV has stayed clean through RTH-time, so the whack-a-mole is done.
+**Monitor 10:02 AM: clean and quiet.** FAIL=0, bot flat, market closed. The lone WARN is the expected holiday record I already walked you through — no new noise. I'll go quiet now unless something new actually fires. Logged + pushed (`0dea7df`).
+
+---
