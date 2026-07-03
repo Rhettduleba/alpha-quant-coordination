@@ -17818,3 +17818,19 @@ Quick recap of what got done over the long weekend, since it was a productive on
 **Monday is verified ready** — the 0945 window dry-run arms 16 candidates. Two things are queued for your nod whenever you're back: run the chop-day study, and whether to close the earnings-veto/news-feed gaps. Enjoy the rest of the holiday.
 
 ---
+
+
+## Turn — 2026-07-03 16:18:17 ET
+
+**Rhett:**
+
+SELF-MONITORING (daily, every 15 min 9:00 AM–4:00 PM ET). Follow C:\AlphaQuant\SELF_MONITORING_PLAYBOOK.md. RULE: never defer — act on every warning THIS run (fix non-watched; escalate WITH the fix for watched trading files). STEPS: (1) Confirm ET time + market state. If it's ~9:00 AM (pre-open), run `python C:\AlphaQuant\tradestation-bot\pre_open_trade_readiness.py` (the "will it trade today?" gate) and ACT on any CRITICAL before 9:45. If market is closed now, do a quick EOD broker-flat check then finish this run (the cron resumes next weekday 9 AM). (2) Read the SAME warnings Rhett gets: `python C:\AlphaQuant\tradestation-bot\alerts_bridge.py` (bot_alerts 24h — any FAIL in the last hour = top priority), C:\AlphaQuant\CSHV_FINDINGS.md (any FAIL/CRITICAL/WARN), code_inbox.jsonl actionable items. (3) Trade-liveness (the 7/02 catch): after 10:45 AM confirm >=1 ORB_V16_ENTRY_OK in today's bot_alerts.jsonl; if 0 on an open regular trading day, run reliability_checks.check_alive_but_not_trading() and diagnose. (4) ACT (never defer): verify each warning vs broker truth FIRST; fix non-watched now (+regression-lock+verify); for WATCHED trading files (orb_*, exit_bot_v2, risk_config, bot_loop, candle_close_exit, market-behavior) never edit mid-session — surface + write a proposal + escalate to Rhett with the concrete fix. (5) Log a one-line status to SESSION_LOG.md (clean or what I acted on) and push to coordination. Ping Rhett only if actionable for him or I escalated; otherwise silence = handled.
+
+**Claude Code:**
+
+Monitor tick — let me confirm the time and market state, since this could be Monday's open:
+Still 4:17 PM Friday (holiday) — this is a late-Friday tail tick, 8 minutes after the EOD wrap. Nothing changes on a closed market. Quick confirm and done:
+Nothing new since the EOD wrap (0 new FAIL/WARN, flat). This is a redundant tail tick — I'll log it and stay quiet.
+**Monitor 4:17 PM: clean** (tail tick, nothing changed). Handled — the holiday's done, market was closed all day, and the loop resumes **Monday 7/6 at 9 AM** for the real pre-open readiness gate. I'll be watching Monday's open closely since it's the first live day for the 0945 window.
+
+---
