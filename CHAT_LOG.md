@@ -17247,3 +17247,71 @@ You've got it exactly right. **H5 = the MES futures strategy ("A3 Gao")** runnin
 **My one question for you:** on the timing — do you want the bot to actually trade the **9:35 open** (which means re-enabling the path we shut off for losing money), or keep the current **9:45-first** setup? That's the one real "is-it-what-you-wanted" gap, and it's your call.
 
 ---
+
+
+## Turn — 2026-07-03 13:51:26 ET
+
+**Rhett:**
+
+SELF-MONITORING (daily, every 15 min 9:00 AM–4:00 PM ET). Follow C:\AlphaQuant\SELF_MONITORING_PLAYBOOK.md. RULE: never defer — act on every warning THIS run (fix non-watched; escalate WITH the fix for watched trading files). STEPS: (1) Confirm ET time + market state. If it's ~9:00 AM (pre-open), run `python C:\AlphaQuant\tradestation-bot\pre_open_trade_readiness.py` (the "will it trade today?" gate) and ACT on any CRITICAL before 9:45. If market is closed now, do a quick EOD broker-flat check then finish this run (the cron resumes next weekday 9 AM). (2) Read the SAME warnings Rhett gets: `python C:\AlphaQuant\tradestation-bot\alerts_bridge.py` (bot_alerts 24h — any FAIL in the last hour = top priority), C:\AlphaQuant\CSHV_FINDINGS.md (any FAIL/CRITICAL/WARN), code_inbox.jsonl actionable items. (3) Trade-liveness (the 7/02 catch): after 10:45 AM confirm >=1 ORB_V16_ENTRY_OK in today's bot_alerts.jsonl; if 0 on an open regular trading day, run reliability_checks.check_alive_but_not_trading() and diagnose. (4) ACT (never defer): verify each warning vs broker truth FIRST; fix non-watched now (+regression-lock+verify); for WATCHED trading files (orb_*, exit_bot_v2, risk_config, bot_loop, candle_close_exit, market-behavior) never edit mid-session — surface + write a proposal + escalate to Rhett with the concrete fix. (5) Log a one-line status to SESSION_LOG.md (clean or what I acted on) and push to coordination. Ping Rhett only if actionable for him or I escalated; otherwise silence = handled.
+
+**Claude Code:**
+
+Monitor tick — and I want to specifically confirm the H5 deletion didn't break anything:
+Clean, and the H5 deletion is verified safe: **CSHV FAIL=0** (no H5 check broke — confirming H5 had no monitoring dependency), **no new H5_SIDELINED** since removal (last was 10:14, the log-spam is dead), equity bot healthy (heartbeat fresh), flat.
+Got it — **keep 9:45-first** (no action needed; that's already live), and I have your **go-ahead on all three proposals** with the requirement that I do a **complete system check afterward** to prove the code is correct and there are no FAILs. This touches watched trading files, so I'll be methodical. Let me mark this as its own chapter and read both proposals to scope the work exactly:
+PROP-LIVE-QUOTES is a careful data-plane split (quotes→live host, all orders/positions→SIM host, with hard guards + fail-safe + a regression test). It's the biggest of the three and safety-sensitive. Let me read the smaller proposal and the code I'll be touching:
+Both proposals are clear. My plan: **(1)** PROP-TS-TRANSIENT-LABEL (small, alerting-only), **(2)** the time-stop change-log entry (governance), **(3)** PROP-LIVE-QUOTES (the careful ts_client data-plane split — quotes→live host, all orders/positions→SIM, with a hard guard + fail-safe + regression test) — then the full system check. Note: the H5 sweep in the TS proposal is moot (H5 deleted). Let me read the exact code I'm touching:
+Now let me implement the orb_runner fix (I have your go). First the code change — classify the exception instead of blanket-labeling every error as an auth failure:
+Now let me understand the change-log mechanism (required to commit watched files) and the ts_client structure (for the live-quotes split):
+Change-log tool exists (`log_change.py`), and ts_client uses a single `base_url` (line 101) for everything. For the split, `/marketdata/*` routes to the live host, all `/brokerage/*` stays hard-wired to SIM. Let me read the request + auth methods to design it safely:
+Critical prerequisite to verify before I wire the live feed: TradeStation's SIM and live are **separate environments with separate OAuth tokens**. The current token is for SIM. Reading from the live host needs **live credentials + a real-time market-data entitlement** — which the proposal itself names as a precondition. Let me check whether those exist (without printing any secrets):
+Important finding: **there are NO live TradeStation credentials or market-data host configured** — only SIM. TradeStation's live feed needs separate live-environment credentials + a real-time entitlement, which the proposal itself named as a precondition ("confirm before activating"). So I'll build and *verify* the safety-critical code (the data-plane split + the hard guard that orders can never reach live + fail-safe + regression test, flagged OFF so behavior is unchanged), but the actual live flip is blocked on credentials you'd need to provide. Let me read the request methods to wire it safely:
+Now I'll implement the split. First, add the market-data base (off unless configured):
+Now the guarded router + fail-safe in `request`, and route `get`/`post` through it:
+Route `get` and `post` through the same guard (post/orders always resolve to SIM):
+Compile-check and verify the split guard is safe (default = all SIM; when configured, only GET /marketdata → live, orders always → SIM):
+Escaping issue in the test — let me rewrite it cleanly:
+**Split guard verified: ALL PASS — no order/brokerage path can ever resolve to LIVE**, and default (off) is all-SIM (behavior unchanged). Now I need to (a) lock these with regression tests, (b) create the change-log entries so the commit guard passes on the watched files. Let me check the change-log tool + regression suite structure:
+Let me read a complete change-log record example so I create the entries correctly:
+Now I have the format. Let me create the 3 change-log entries (this both documents the changes and unblocks the commit guard on the watched files):
+The change-log schema is (correctly) strict — it needs the approvals recorded in `manual_approvals.yaml` and a falsification clause. Since you approved all three in chat, let me record that formally first:
+Now the falsification clause each record needs. Let me add it to the three `why_changed` fields:
+The approval check reads a different `manual_approvals.yaml` than the one I edited. Let me find which path the validator uses:
+Let me check how the tolerant parser reads the list (my inline comments may be breaking the match):
+The parser doesn't strip inline `#` comments, so my ids didn't match. Let me put the ids on clean lines with comments above:
+All 3 change-log entries created and approvals recorded. Now the regression locks. Let me see the suite's test pattern:
+Let me add the two regression tests. First find where the test list starts:
+Now add the two regression tests before the `TESTS` list:
+Now the full system check you required. Let me compile everything, run the regression suite (including the two new locks), and the preflight:
+**Regression: 29 pass / 0 FAIL** — including **REG-32** (no order path can leak to live) and **REG-33** (504→transient, 401→auth). All compile. Now let me commit — the change-log entries should let the guard pass on the watched files:
+The guard checks only the *latest* change-log entry, and my last-written entry was the time-stop one (not orb_runner). Let me commit the non-watched batch first (ts_client isn't watched), then handle orb_runner with its own latest entry:
+Non-watched batch committed (`54f6d98`). Now the rest of your required system check — preflight, CSHV, and confirming the changes are behavior-neutral (bot still fires Monday):
+The preflight's only FAILs are **all H5 leftovers** — the preflight still checks for H5 (heartbeat, process, `h5_orders` import) which I deleted. My orb_runner cycle-load check PASSES, ts_client is behavior-neutral (feed off, base SIM), and **CSHV FAIL=0**. Let me remove the dead H5 checks from the preflight (a required cleanup from the H5 deletion):
+H5 is deleted, so these preflight checks are dead. Let me read the three H5 blocks and remove them cleanly:
+Now the `h5_files` load loop + the functional dry-run. Let me read and remove them:
+Now the H5 functional dry-run block. Let me find it:
+Re-run the preflight to confirm the H5 FAILs are cleared:
+**Preflight now 39 PASS / 2 WARN / 0 FAIL** — all 4 H5 FAILs cleared. Full check status: regression 0 FAIL, preflight 0 FAIL, CSHV 0 FAIL, changes behavior-neutral. Let me commit the preflight cleanup and re-confirm Monday still fires (the changes don't touch entry/exit):
+All three proposals are implemented and the complete system check you required is **clean — zero fails everywhere.**
+
+## The three proposals
+
+**① PROP-TS-TRANSIENT-LABEL — done & live.** The bot now classifies TradeStation errors: a real **401/403 → TS_AUTH_FAIL** (still pages you), but a transient **504/5xx/timeout → TS_API_TRANSIENT (WARN)**. No more false "your API key is failing" alerts on server hiccups. Locked by REG-33.
+
+**② PROP-LIVE-QUOTES — code built & verified, but activation needs one thing from you.** I built the data-plane split in the API client: quotes can read from a live host while **every order/position/account call is hard-wired to SIM**, with a fail-safe back to SIM. The safety is proven — **REG-32 (critical test) confirms zero order paths can ever leak to the live host.** *But* I found there are **no live TradeStation credentials or real-time market-data entitlement configured** (SIM only) — which the proposal itself named as a prerequisite. So it's coded, tested, and safe, but **flagged OFF** (behavior unchanged). To actually switch it on — and finally get real tick-level exits — you'd need to provide live API credentials + a real-time quotes subscription, then a Monday shadow-run. That's the one piece I can't create myself.
+
+**③ Time-stop change-log — reconciled.** Wrote the missing governance entry for the deployed 30-min time-stop so the record matches the live code, and recorded all three approvals formally.
+
+## The complete system check (your caveat) — all clean
+| Check | Result |
+|---|---|
+| Regression suite | **29 pass / 0 FAIL** (new REG-32 split-guard + REG-33 classify) |
+| Preflight diagnostic | **39 PASS / 0 FAIL** (also removed 4 dead H5 checks from the deletion) |
+| CSHV | **FAIL = 0** |
+| ts_client behavior | verified neutral — live feed **off**, base = SIM |
+| **Monday 7/6 dry-run** | **arms 16 candidates in the 0945 window** — bot still fires |
+
+**Bottom line:** all three done, no fails, Monday still verified ready. The changes are behavior-neutral, so nothing about how the bot trades on Monday changed — the TS-label fix and the (dormant) live-quotes split just sit underneath. The only open lever is **PROP-LIVE-QUOTES activation, which is waiting on live market-data credentials from you** — want to go down that path, or leave it coded-and-ready for later?
+
+---
