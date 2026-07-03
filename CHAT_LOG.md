@@ -17203,3 +17203,47 @@ All 3 dashboard gaps fixed and verified (18,008-char render): the Strategy Signa
 Bot's flat, market closed, Monday's verified READY. I'll continue with the responder build next unless you redirect me.
 
 ---
+
+
+## Turn — 2026-07-03 13:29:00 ET
+
+**Rhett:**
+
+Just to be clear the way that I thought we set it up was that the bot scans from 9:35 to 940 and then starts to trade agreed? Let's talk a little bit about each five that was the other strategy running on a different SIM account number that produced no fruit. We turned that off correct let's just delete that from our project. Is that what you're referring to you when you say H5? Explain in what still my call. I don't understand so when you say still need your call, I need you to fully explain that.
+
+**Claude Code:**
+
+Three good questions, and I want to answer each precisely — especially the timing one, because your mental model and what's actually running have drifted apart, and I won't just say "agreed" if it isn't. Let me verify the exact 09:45 window mechanics and the full H5 footprint from ground truth first:
+Now I have the facts. Let me check how H5 is kept alive (so a clean removal doesn't touch the equity bot's supervision):
+I have the full picture now. Let me execute the H5 removal cleanly (it's authorized, on a separate account, reversible), then explain all three of your questions. First, read the guardian's H5 watch so I remove it without touching the equity bot's supervision:
+Removing the H5 watch (line 166) — the equity bot's watch on line 165 stays fully intact:
+Compile the guardian edit, stop the running H5 processes, and archive all H5 files (reversible):
+The archive succeeded (all 9 files moved), and the equity bot (watchdog + run_bot) is untouched. But the Stop-Process command had an escaping error, so let me verify the H5 processes are actually stopped and kill any stragglers cleanly:
+**H5 is fully deleted** — 9 files archived (reversible), both processes stopped, guardian no longer respawns it. Final process state: only the equity bot (run_bot, watchdog_supervisor) + TW. Let me commit that, then answer all three of your questions properly:
+Both done and committed (`feb6610`). Now — clear answers to all three, and on the first one I have to gently correct you rather than just agree.
+
+## 1. The entry timing — not quite "agreed," and here's the honest version
+
+What you're picturing (scan the 9:35 opening range, then trade the breakout) is the **classic 9:35 ORB** — and that's exactly the strategy we **turned OFF.** You approved gating it on 6/30 because it was the **loss engine**: −$3,715, basically the entire book loss came from that 9:35 path.
+
+**What actually runs now:**
+- The first live entry window is **9:45** (not 9:35). It builds a fresh 5-minute range from **9:40–9:45**, then arms breakout-stop entries off *that* range — so it enters when price breaks the 9:40–9:45 range, at/after 9:45.
+- Then it re-arms hourly: **10:35, 11:35, 12:35, 13:35, 14:35.**
+
+So your *concept* is right — form a short range, trade the breakout — but the bot is **~10 minutes later than you're picturing (9:45, not 9:35–9:40), and the true 9:35 breakout is disabled.** Monday is actually the **first real day** for that 9:45 window (7/02's morning was lost to the outage). If your intent was for it to trade the 9:35 open, that's a real gap between what you want and what's running — worth deciding.
+
+## 2. H5 — yes, exactly that, and it's deleted
+
+You've got it exactly right. **H5 = the MES futures strategy ("A3 Gao")** running on a **separate paper account (SIM1623889F)**, not the equity bot. It produced no fruit (net-negative), you benched it 6/10, and I just **fully deleted it**: stopped its processes, removed it from the supervisor so it can't come back, and archived its 9 files (reversible, in `Archive/`). The equity bot is completely untouched — and as a bonus this **kills the H5 log-spam** you were seeing.
+
+## 3. "Still needs your call" — what that means, fully
+
+**The core rule:** I never edit the **watched trading files** — the actual code that decides entries, exits, sizing, and risk — without your explicit yes. It's a safety guardrail so I can't quietly change *how the bot trades*. Everything else (monitoring, dashboards, reports) I fix freely. So "needs your call" = *"this touches the live trading logic, so I need your go before I touch it."* The three:
+
+- **① PROP-LIVE-QUOTES** — the big one. Right now the bot reads only the **last trade price**, blind to the bid/ask "mid" moving between trades — which is *why* TW lags and is just a duplicate of the backup. To get real tick-by-tick exit precision, the bot needs to subscribe to the live **quote** feed. Orders stay 100% SIM; only the *data source* changes. **Yes → TW can reach its potential. No → TW stays a redundant last-trade watcher, permanently capped.**
+- **② PROP-TS-TRANSIENT-LABEL** — the false *"auth failing"* alerts. When TradeStation's server hiccups (a 504 — their fault, momentary), our code mislabels it as a dead API key and fires a CRITICAL. The fix is one line: call a 504 a transient warning, not an auth failure. Alerting-only, zero trading impact — but it lives in a watched file. **Yes → those false pings stop.**
+- **③ Change-log entry for the time-stop** — pure paperwork. The 30-min time-stop is live and you approved it, but there's no formal record entry, so the commit-guard keeps flagging it. Writing the entry makes the record match reality — no behavior change. **This one I can just do on your nod.**
+
+**My one question for you:** on the timing — do you want the bot to actually trade the **9:35 open** (which means re-enabling the path we shut off for losing money), or keep the current **9:45-first** setup? That's the one real "is-it-what-you-wanted" gap, and it's your call.
+
+---
