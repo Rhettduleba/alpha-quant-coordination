@@ -18040,3 +18040,28 @@ Logged to [SESSION_LOG.md](SESSION_LOG.md) (7/03 edge-hunt entry) and saved to m
 **The real fork ahead** (your call, no rush — the ledger runs regardless): the money is in the *exit*, but exit changes are watched/gated. I can draft the `PROP-CONFIRM-KEYED-EXIT` proposal artifact (the direction the data points at) for you to review — that's where I'd spend the next real effort. Want me to write that up, or let the shadow ledger run a week first and revisit with forward numbers?
 
 ---
+
+
+## Turn — 2026-07-03 16:56:23 ET
+
+**Rhett:**
+
+SELF-MONITORING (daily, every 15 min 9:00 AM–4:00 PM ET). Follow C:\AlphaQuant\SELF_MONITORING_PLAYBOOK.md. RULE: never defer — act on every warning THIS run (fix non-watched; escalate WITH the fix for watched trading files). STEPS: (1) Confirm ET time + market state. If it's ~9:00 AM (pre-open), run `python C:\AlphaQuant\tradestation-bot\pre_open_trade_readiness.py` (the "will it trade today?" gate) and ACT on any CRITICAL before 9:45. If market is closed now, do a quick EOD broker-flat check then finish this run (the cron resumes next weekday 9 AM). (2) Read the SAME warnings Rhett gets: `python C:\AlphaQuant\tradestation-bot\alerts_bridge.py` (bot_alerts 24h — any FAIL in the last hour = top priority), C:\AlphaQuant\CSHV_FINDINGS.md (any FAIL/CRITICAL/WARN), code_inbox.jsonl actionable items. (3) Trade-liveness (the 7/02 catch): after 10:45 AM confirm >=1 ORB_V16_ENTRY_OK in today's bot_alerts.jsonl; if 0 on an open regular trading day, run reliability_checks.check_alive_but_not_trading() and diagnose. (4) ACT (never defer): verify each warning vs broker truth FIRST; fix non-watched now (+regression-lock+verify); for WATCHED trading files (orb_*, exit_bot_v2, risk_config, bot_loop, candle_close_exit, market-behavior) never edit mid-session — surface + write a proposal + escalate to Rhett with the concrete fix. (5) Log a one-line status to SESSION_LOG.md (clean or what I acted on) and push to coordination. Ping Rhett only if actionable for him or I escalated; otherwise silence = handled.
+
+**Claude Code:**
+
+I'll run the self-monitoring check now. First, confirm the time and market state:
+It's **4:54 PM ET Friday 7/03 — market closed** (and today was the observed Independence Day holiday; July 4 falls on Saturday, so no trading occurred today). Per the playbook: quick EOD broker-flat check, then finish this run. Let me verify flat and scan for any FAIL in the last 24h:
+Clean — 32 INFO, zero FAIL/WARN in 24h (consistent with a no-trade holiday). Let me confirm broker-flat and check CSHV:
+Broker flat — 0 open positions, correct for a holiday. Quick CSHV scan:
+CSHV is fresh (1 min ago): **OK=49, FAIL=0**, one WARN. Let me verify that WARN is genuinely benign (per my 7/02 lesson — never call a warning "noise" without checking) and scan the code inbox:
+Verified clean — nothing actionable. The one CSHV WARN is genuinely benign (I checked, per the 7/02 lesson):
+
+- **7/03 was a confirmed holiday closure** — `pre_open_trade_readiness` correctly flagged it at 9:00 AM: *"NO_TRADE_DAY (HOLIDAY: Independence Day observed). Bot will sit out."* July 4 falls Saturday 2026 → observed Friday 7/3. The bot correctly sat out; no holiday-blind-spot bug.
+- **Zero FAIL/WARN/SAFE_MODE/incident** in today's bot_alerts (32 lines, all INFO), **broker flat** (0 positions), **CSHV FAIL=0**.
+- The lone WARN (`clean_day_certified`, non-trading day) is the *expected* holiday path — the certifier can't certify a clean trading day when there was no trading day. This is exactly the benign non-trading-day case, not a masked outage like 7/02. Verified, not assumed.
+
+Logging the clean status and finishing this run (market closed; cron resumes Monday 9 AM):
+**Monitor run complete — clean, no action needed.** 7/03 was a market holiday (Independence Day observed); the bot correctly sat out, broker is flat, and all health surfaces are green (0 FAIL; the single WARN is the expected non-trading-day path, verified benign). Logged to SESSION_LOG. Market's closed and it's past 4:00 PM, so this run is done — the monitor resumes Monday 7/6 at 9:00 AM, which is the first live day for the 0945 re-arm window and the first forward row for the edge shadow ledger. Nothing for you to act on.
+
+---
