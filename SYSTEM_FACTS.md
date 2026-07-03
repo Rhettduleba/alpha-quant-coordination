@@ -1,6 +1,6 @@
 # SYSTEM_FACTS — live mechanics, machine-generated from the running code/config/broker-truth
 
-> **Generated:** 2026-07-02 16:50:39 Eastern Daylight Time · **coordination-repo HEAD:** `5ad4111` · by `strategy-research/system_facts.py` (read-only).
+> **Generated:** 2026-07-03 16:50:22 Eastern Daylight Time · **coordination-repo HEAD:** `8067434` · by `strategy-research/system_facts.py` (read-only).
 > Every value below is READ from a real source (the live import for the VALUE; a fresh file scan for the SOURCE file:line). Nothing is hand-typed. A field that can't be derived says `UNVERIFIED`.
 > If this contradicts memory, THIS wins — regenerate it (re-run the script) rather than trusting recall.
 
@@ -15,8 +15,8 @@
 ## ENTRY
 | Fact | Live value | Source |
 |---|---|---|
-| Universe size today (published) | 140 | `ai-trading-strategy-agent/outputs/advisor_guidance/advisor_universe_latest.json:universe_size` |
-| Universe generated_at | 2026-07-02T07:30:32.149296-04:00 | `advisor_universe_latest.json:generated_at` |
+| Universe size today (published) | 143 | `ai-trading-strategy-agent/outputs/advisor_guidance/advisor_universe_latest.json:universe_size` |
+| Universe generated_at | 2026-07-03T07:30:27.283694-04:00 | `advisor_universe_latest.json:generated_at` |
 | Universe source | research_brain_v1 | `advisor_universe_latest.json:universe_source` |
 | Relative-strength pool size | not in the published artifact -- see research-brain build log | `UNVERIFIED` |
 | Re-arm path enabled (ORB_MULTISCAN) | True | `tradestation-bot/risk_config.py:76` |
