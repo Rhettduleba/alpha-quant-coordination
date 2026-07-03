@@ -16603,3 +16603,30 @@ Verified — CSHV is now **fully clean** (0 WARN / 0 FAIL). Brief status:
 Everything's quiet now: bot flat, 0 alerts, CSHV clean. Committed and pushed (`54a11e9`). No further Telegram noise should come today.
 
 ---
+
+
+## Turn — 2026-07-03 09:35:50 ET
+
+**Rhett:**
+
+SELF-MONITORING (daily, every 15 min 9:00 AM–4:00 PM ET). Follow C:\AlphaQuant\SELF_MONITORING_PLAYBOOK.md. RULE: never defer — act on every warning THIS run (fix non-watched; escalate WITH the fix for watched trading files). STEPS: (1) Confirm ET time + market state. If it's ~9:00 AM (pre-open), run `python C:\AlphaQuant\tradestation-bot\pre_open_trade_readiness.py` (the "will it trade today?" gate) and ACT on any CRITICAL before 9:45. If market is closed now, do a quick EOD broker-flat check then finish this run (the cron resumes next weekday 9 AM). (2) Read the SAME warnings Rhett gets: `python C:\AlphaQuant\tradestation-bot\alerts_bridge.py` (bot_alerts 24h — any FAIL in the last hour = top priority), C:\AlphaQuant\CSHV_FINDINGS.md (any FAIL/CRITICAL/WARN), code_inbox.jsonl actionable items. (3) Trade-liveness (the 7/02 catch): after 10:45 AM confirm >=1 ORB_V16_ENTRY_OK in today's bot_alerts.jsonl; if 0 on an open regular trading day, run reliability_checks.check_alive_but_not_trading() and diagnose. (4) ACT (never defer): verify each warning vs broker truth FIRST; fix non-watched now (+regression-lock+verify); for WATCHED trading files (orb_*, exit_bot_v2, risk_config, bot_loop, candle_close_exit, market-behavior) never edit mid-session — surface + write a proposal + escalate to Rhett with the concrete fix. (5) Log a one-line status to SESSION_LOG.md (clean or what I acted on) and push to coordination. Ping Rhett only if actionable for him or I escalated; otherwise silence = handled.
+
+**Claude Code:**
+
+Monitor tick — holiday, confirming everything's still clean after the drill-cascade cleanup:
+A **new FAIL** appeared at 9:30 (the WARNs cleared): `rel_trading_is_thinking`. And 9:30 is exactly RTH-open time — this smells like the *same holiday blind spot* firing now that the clock says "market hours," and it'll spam every 5 min (→ Telegram) until 4 PM if I don't kill it. Let me verify the detail and the check logic:
+Different root than I guessed — it's **not** the holiday blind spot. The check is holiday-firing correctly, and it caught a **real transient stall**: at the 9:30 snapshot the loop was frozen at 2295 for >4 min, but the **live check now reads OK** (loop advanced to 2303, cycling). So run_bot briefly stalled around 9:30 and already recovered. Let me confirm it's stably cycling and whether it's a one-off or recurring:
+Confirmed: **one-off, self-recovered.** loop_count is climbing normally (2295→2303→2306), and there's exactly **1** `trading_is_thinking` incident today (09:30:10). So run_bot briefly stalled >4 min around 9:30 and recovered on its own. Let me get the actual cause rather than guess — checking run_bot's cycle timing around the stall:
+No accessible cycle log, so I won't guess at the exact cause. Here's the honest picture, logged and surfaced per the process:
+Pushed (`7fb854d`). Surfacing per the process — a FAIL fired, so here's the why + how:
+
+**Monitor 9:33 AM (holiday): one FAIL — `rel_trading_is_thinking` at 9:30, and it's already self-resolved.**
+
+- **Why:** this one is *not* a false alarm — the check was right. run_bot's loop counter froze at 2295 for over 4 minutes around 9:26–9:30, so the "is the bot's loop actually thinking" check correctly flagged a real stall.
+- **How:** it **recovered on its own** — the loop is climbing normally again (2295 → 2303 → 2306), the live check now reads OK, and it was a **one-off** (a single incident at 9:30, not recurring). CSHV clears the FAIL on its next cycle. No fix needed — nothing's broken; a transient hang self-healed.
+
+**Honest caveat:** I couldn't verify the *exact* cause — run_bot doesn't persist a cycle-timing log I could read. My best hypothesis (labeled as such, not fact) is a per-cycle subprocess hanging on a flaky SIM-API call and hitting run_bot's ~180-second timeout, which would freeze the loop for the >4 min the check saw. On a holiday it's zero trading impact, but **I'm watching for recurrence** — if this repeats during a real session it could delay entries, and *then* it's worth chasing the subprocess-hang root down properly.
+
+So: nothing actively wrong now, bot cycling, flat, market closed. Just wanted you to see the FAIL and know it's a transient that already cleared — not more noise to chase today.
+
+---
