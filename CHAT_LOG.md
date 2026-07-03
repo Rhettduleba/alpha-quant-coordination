@@ -17168,3 +17168,38 @@ Every page we discussed is present and renders (/tunes with the V8pw_wide champi
 Want me to keep going down the "I'll do next" list now (starting with the responder build + dashboard fixes), and should I proceed on any of the three gated items?
 
 ---
+
+
+## Turn — 2026-07-03 13:19:45 ET
+
+**Rhett:**
+
+SELF-MONITORING (daily, every 15 min 9:00 AM–4:00 PM ET). Follow C:\AlphaQuant\SELF_MONITORING_PLAYBOOK.md. RULE: never defer — act on every warning THIS run (fix non-watched; escalate WITH the fix for watched trading files). STEPS: (1) Confirm ET time + market state. If it's ~9:00 AM (pre-open), run `python C:\AlphaQuant\tradestation-bot\pre_open_trade_readiness.py` (the "will it trade today?" gate) and ACT on any CRITICAL before 9:45. If market is closed now, do a quick EOD broker-flat check then finish this run (the cron resumes next weekday 9 AM). (2) Read the SAME warnings Rhett gets: `python C:\AlphaQuant\tradestation-bot\alerts_bridge.py` (bot_alerts 24h — any FAIL in the last hour = top priority), C:\AlphaQuant\CSHV_FINDINGS.md (any FAIL/CRITICAL/WARN), code_inbox.jsonl actionable items. (3) Trade-liveness (the 7/02 catch): after 10:45 AM confirm >=1 ORB_V16_ENTRY_OK in today's bot_alerts.jsonl; if 0 on an open regular trading day, run reliability_checks.check_alive_but_not_trading() and diagnose. (4) ACT (never defer): verify each warning vs broker truth FIRST; fix non-watched now (+regression-lock+verify); for WATCHED trading files (orb_*, exit_bot_v2, risk_config, bot_loop, candle_close_exit, market-behavior) never edit mid-session — surface + write a proposal + escalate to Rhett with the concrete fix. (5) Log a one-line status to SESSION_LOG.md (clean or what I acted on) and push to coordination. Ping Rhett only if actionable for him or I escalated; otherwise silence = handled.
+
+**Claude Code:**
+
+Monitor tick — quick check, then I'll continue the queued non-watched work:
+Monitor: **clean** — FAIL=0, only the known clean_day WARN, flat, the 1 non-H5 alert is INFO. Now continuing the queued non-watched work you authorized ("take care of everything broken") — the 3 dashboard currency gaps first. Let me read the Strategy Signals page:
+I can see the gaps. Let me make the 3 fixes. First let me see the function setup so I read config/universe live:
+Now the 3 fixes. First, add the live universe read + 9:35-gate state:
+Now rewrite the entry card to be accurate — 9:35 gated off, re-arm is the live path, live universe:
+Add the 30-min time-stop and $500 dollar-cap to the exit card:
+Verify the page compiles and renders with the fixes:
+Only 2 chars — render_body is failing silently. Let me see the actual error:
+False alarm — `render_body()` returns a `(title, body)` tuple, so `len(b)`=2 (elements, not chars). It's rendering fine. Let me test correctly:
+All 3 dashboard gaps fixed and verified (18,008-char render): the Strategy Signals page now shows 9:35 **GATED OFF**, the re-arm **LIVE entry path**, the full exit stack including the **30-min time-stop** and **$500 cap**, and a **live universe read** (no more hardcoded "~530 names"). Let me commit:
+**Monitor 1:16 PM: clean**, and I kept going on your "take care of everything" list. Progress so far this session:
+
+**Fixed (non-watched, committed):**
+- ✅ The false "0/20 traded to the rules" bug → now correctly 17/20
+- ✅ SAFE_MODE auto-clear gap (the stuck-mode I cleared by hand this morning)
+- ✅ **Dashboard now accurate** — your "make sure the dashboard is up to date" ask is done: the Strategy Signals page correctly shows the 9:35 gate is OFF, the re-arm windows as the live entry path, the *full* exit stack (chandelier + resting stop + $500 cap + candle-close + 30-min time-stop), and a live universe read instead of a stale hardcoded string.
+- ✅ Corrected the stale TW note in OPEN_ITEMS
+
+**Still on the list (I'll keep going):** the warning-responder daemon (your notify + auto-apply-safe-fixes build), the H5 log-spam dedup, and the holiday-blind-spot sweep. The TW safe-detection fixes I'll handle carefully since it's a live-exit file.
+
+**Still needs your call (gated):** PROP-LIVE-QUOTES (the real TW ceiling), PROP-TS-TRANSIENT-LABEL, and the change-log entry for the deployed time-stop.
+
+Bot's flat, market closed, Monday's verified READY. I'll continue with the responder build next unless you redirect me.
+
+---
