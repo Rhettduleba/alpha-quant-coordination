@@ -17315,3 +17315,18 @@ All three proposals are implemented and the complete system check you required i
 **Bottom line:** all three done, no fails, Monday still verified ready. The changes are behavior-neutral, so nothing about how the bot trades on Monday changed — the TS-label fix and the (dormant) live-quotes split just sit underneath. The only open lever is **PROP-LIVE-QUOTES activation, which is waiting on live market-data credentials from you** — want to go down that path, or leave it coded-and-ready for later?
 
 ---
+
+
+## Turn — 2026-07-03 13:52:09 ET
+
+**Rhett:**
+
+SELF-MONITORING (daily, every 15 min 9:00 AM–4:00 PM ET). Follow C:\AlphaQuant\SELF_MONITORING_PLAYBOOK.md. RULE: never defer — act on every warning THIS run (fix non-watched; escalate WITH the fix for watched trading files). STEPS: (1) Confirm ET time + market state. If it's ~9:00 AM (pre-open), run `python C:\AlphaQuant\tradestation-bot\pre_open_trade_readiness.py` (the "will it trade today?" gate) and ACT on any CRITICAL before 9:45. If market is closed now, do a quick EOD broker-flat check then finish this run (the cron resumes next weekday 9 AM). (2) Read the SAME warnings Rhett gets: `python C:\AlphaQuant\tradestation-bot\alerts_bridge.py` (bot_alerts 24h — any FAIL in the last hour = top priority), C:\AlphaQuant\CSHV_FINDINGS.md (any FAIL/CRITICAL/WARN), code_inbox.jsonl actionable items. (3) Trade-liveness (the 7/02 catch): after 10:45 AM confirm >=1 ORB_V16_ENTRY_OK in today's bot_alerts.jsonl; if 0 on an open regular trading day, run reliability_checks.check_alive_but_not_trading() and diagnose. (4) ACT (never defer): verify each warning vs broker truth FIRST; fix non-watched now (+regression-lock+verify); for WATCHED trading files (orb_*, exit_bot_v2, risk_config, bot_loop, candle_close_exit, market-behavior) never edit mid-session — surface + write a proposal + escalate to Rhett with the concrete fix. (5) Log a one-line status to SESSION_LOG.md (clean or what I acted on) and push to coordination. Ping Rhett only if actionable for him or I escalated; otherwise silence = handled.
+
+**Claude Code:**
+
+Monitor tick — and I want to confirm the heavy proposal + H5 work left CSHV clean:
+Clean — CSHV **FAIL=0** after all the proposal + H5 work (no new failures introduced), only the known clean_day WARN, flat, market closed. Everything from this session's work is verified stable.
+**Monitor 1:51 PM: clean.** CSHV FAIL=0 after all the session's work (3 proposals + H5 deletion), flat, market closed. Everything's verified stable and Monday's still ready — handled.
+
+---
