@@ -4739,3 +4739,25 @@ not tradestation-bot). Same-day computed (rolling bars window) -> the comparable
 = 1/20 (5%) confirmed-within-30m. All defensive (never breaks the EOD). Compiled + full-build verified. Loads next EOD run.
 Files: eod_debrief.py (non-watched). Live path untouched.
 
+
+[LOOP 235 — 9:45 PM ET 2026-07-02] Rhett: "fix this warning stuff (mostly not impactful/old)" + "surface warnings in chat with why+how; I read every 15 min."
+Triaged all 3 CSHV WARNs vs TRUTH (verified, not assumed):
+ 1. pre_open_gate NO-GO -> GENUINE FALSE-POSITIVE. FIXED (non-watched, _preflight_diagnostic.py): the "risk_config mtime<=bot_start"
+    check compared config mtime to the ORCHESTRATOR's START time, but the ORB code runs in FRESH per-cycle subprocesses that
+    re-read config every cycle -> the orchestrator start is the wrong baseline. Now compares to LAST-CYCLE evidence (heartbeat
+    mtime). Preserves survivability (hung bot w/ stale config still FAILs). Result: risk_config now PASS (mt 8:23p <= cyc 9:34p),
+    preflight 51 PASS/0 FAIL; re-ran the gate -> OK (was NO-GO). Recurring daily noise = GONE.
+ 2. clean_day_certified NON-CLEAN -> **CORRECT, NOT NOISE. I was WRONG earlier** (said "benign 504" 3x). Verified the certifier:
+    the 504 IS correctly EXEMPT (_is_transient_external). The real driver is incidents.jsonl HARD=rel_trading_is_thinking +
+    SOFT=rel_alive_but_not_trading x2 = the REAL 7/02 MORNING OUTAGE. Today genuinely was non-clean; streak reset is accurate.
+    LEAVE IT (the system working). Clears naturally on the next clean day (Mon 7/6 if it trades normally). LESSON: verify the
+    incident SOURCE before calling a warning noise -- blanket-suppression would have hidden the one real signal.
+ 3. report_integrity (1 unclassified exit) -> MINOR data gap: MCD's candle-close exit logged reason=None -> classifier (correctly,
+    it's total) tags UNCLASSIFIED. Non-critical; the root (candle-close logging None) is WATCHED (candle_close_exit.py) -> not
+    fixing inline. Low priority.
+PROCESS SET UP: SELF_MONITORING_PLAYBOOK CLOSE-OUT changed from "silence=handled" to "surface every ACTIVE warning in chat with
+why+how (verify first; new/changed -> full why+how, standing -> one-line status)". Memory feedback_surface_warnings_in_chat saved.
+Honest mechanics: not a real-time listener; I read the same sources (bot_alerts/CSHV/code_inbox) every 15 min during market hours.
+STILL WATCHED/escalated: orb_runner.py:256 mislabels a 504 as TS_AUTH_FAIL -> a false "auth failing" Discord alert (PROP-TS-TRANSIENT-
+LABEL, awaiting Rhett's go; lower-impact than believed since the certifier already exempts it). Files: _preflight_diagnostic.py (non-watched).
+
