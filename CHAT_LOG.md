@@ -17066,3 +17066,105 @@ Triage run complete.
 Per the forward-test freeze and watched-file rules, this run edited / placed / restarted / cleared **nothing** on the trading path. No Discord ping to Rhett — nothing needed him.
 
 ---
+
+
+## Turn — 2026-07-03 13:15:43 ET
+
+**Rhett:**
+
+So I just got two warnings. Here's how I want the process to work. We both receive the warning or you review the warning the moment you review the warning you send me a communication this is what happened this is the fix. How do we build this?
+
+**Claude Code:**
+
+Two things here — the two warnings you just got (I'll surface those with why+how per our process), and the bigger architecture question (how to build the auto-responder). Let me check what just fired first — and I want to rule out that my running audit's agents tripped something:
+The recent Telegram alerts today were mostly **this morning's holiday-drill bug** (the deaf-detector, which I fixed at 9:05) and the **9:30 transient loop-stall** — all already fixed or benign. But that's exactly your point: the raw alerts say *"CSHV 1 FAIL"* with no context, no why, no fix. Let me design the system that fixes that — and first check what infrastructure already exists to build on:
+Good news — **most of this already exists**, so it's a small build, not a big one:
+- Every alert that reaches your Telegram is already mirrored to a queue (`code_inbox.jsonl`) with a cursor tracking what's been seen.
+- There's already a reader/classifier (`code_alert_inbox.py`).
+- **The Claude CLI is installed on the VPS** (`~/.local/bin/claude.exe`) — so a headless Claude review is genuinely feasible.
+- The notifier can push to your Telegram.
+
+## The design — one new supervised daemon
+
+**Flow:** warning fires → notifier mirrors it to the queue → a small always-on daemon (`warning_responder.py`, watching the queue near-real-time) picks up the new FAIL/CRIT → fires a **headless Claude review** (`claude -p`) that (1) verifies it against live truth, (2) works out *what happened + the fix*, (3) sends **you** a Telegram message like:
+
+> ⚠️ *CSHV: rel_trading_is_thinking FAIL* — **What happened:** run_bot's loop stalled >4 min at 9:30, self-recovered (one-off). **Fix:** none needed; watching for recurrence.
+
+→ then marks it triaged so you never get the same raw alert twice without context.
+
+**Built-in:** triggers on FAIL/CRIT only (not INFO — avoids the H5-spam class), dedup + a cooldown so a flapping warning can't spam reviews (bounds token cost), ~20–60s latency, supervised by `supervisor_guardian` (24/5).
+
+## Two honest constraints
+1. It has to be a **separate headless mechanism** — *this* chat only runs when you message me or the 15-min cron fires. The daemon + `claude -p` is what makes it real-time. You and I both still get the raw alert; the daemon adds the analysis on top.
+2. Each review **spends tokens** (dedup keeps it to a few/day normally). And it's one-shot analysis — great for "what happened / here's the fix," not deep multi-step debugging (that still comes to you or me).
+
+There's one real decision that's yours — how autonomous the responder should be:
+Got it — **notify + auto-apply safe fixes** (never touching watched trading files). That's the build. Let me confirm the one technical dependency — how the headless Claude runs non-interactively with the right permission scope — then build it:
+The pre-Monday audit landed — and the headline is what matters most: **Monday-readiness = READY, verified across all 7 dimensions** (7/6 is correctly a trading day, the 0945 window dry-run armed 16 candidates, all config is live, run_bot is watchdog-supervised and will survive the weekend, all tasks present, no blockers). Let me read the full findings before I present and fix:
+The full audit is in — this is exactly the pre-Monday picture you wanted. Bottom line up front: **the bot is verified READY to fire Monday**, and the audit found a real fixable bug list. Let me fix the highest-value non-watched bugs right now (weekend window), then give you the complete rundown. Starting with the standout real bug — the EOD report falsely saying "0/20 traded to the rules":
+`_deployed_exit_codes()` returns only 2 codes but the deployed exit now includes the 30-min time-stop (and the $500 cap resting stop). Let me confirm the exact code names before adding them:
+Confirmed the codes. The fix: `_deployed_exit_codes()` must include the 30-min time-stop (`EXIT_TIME_STOP_UNCONFIRMED`) and the resting 1.4×ATR/$500-cap protective stop (`EXIT_PHASE1_ATR_STOP`), both deployed. Fixing:
+Let me verify the fix — re-run compliance for 7/02 (should now show ~19-20/20, not 0/20):
+**Fixed** — 7/02 compliance now correctly reads **17/20** (was a false 0/20); the 3 real exceptions are MCD's unclassified exit + the 2 move-exhausted entries. That's the standout bug gone. Let me knock out the SAFE_MODE auto-clear gap (the one I had to clear by hand this morning):
+The gap is clear (line 113): auto-clear only fires for `reliability_monitor`-engaged SAFE_MODE, so a `pre_open_gate`-engaged one sticks. Fix — auto-clear any *automatic* engager when the technical checks are clean, but leave manual engagements alone:
+Compile-check both fixes, correct the stale TW rollout note in OPEN_ITEMS, and commit:
+Let me commit these fixes and log the audit:
+Fixes committed (`5154727`). Here's your complete pre-Monday rundown.
+
+# 🟢 Monday go/no-go: READY — the bot will fire
+
+Verified across all 7 dimensions from ground truth (not assumed):
+- **7/6 is correctly a full trading day** (7/3 is the holiday, not 7/6 — the calendar is right).
+- **Entry path dry-run for Monday 9:45 armed 16 candidates** in the 0945 window (status `dry_run`, not holiday/off).
+- **All config is live:** re-arm on, 0945 window in, 9:35 gated off, time-stop on, $500 cap on.
+- **run_bot is alive + watchdog-supervised** (child of the supervisor chain, not any transient session) → survives the weekend into Monday. Heartbeat fresh.
+- **All 8 scheduled tasks Ready** with Monday next-runs; the universe rebuilds Monday 7:30 AM before the open.
+- **No blockers:** SAFE_MODE off, no halt override, CSHV FAIL=0.
+
+# 🔧 What I fixed this weekend (committed)
+1. **The standout real bug** — your EOD report was falsely saying *"0/20 traded to the rules."* The compliance checker was frozen at 6/25 and didn't know the 30-min time-stop is a deployed exit. Fixed → 7/02 now correctly reads **17/20** (the 3 real exceptions: MCD's unclassified exit + 2 move-exhausted entries).
+2. **SAFE_MODE auto-clear gap** — the stuck-SAFE_MODE I had to clear by hand this morning. A gate-engaged SAFE_MODE now auto-clears when the checks go clean (manual engagements still stick, by design).
+3. Corrected the stale TW note in OPEN_ITEMS to reality.
+
+# ⚙️ What's running LIVE right now (entry / timing / exit)
+
+**ENTRY** — the **re-arm path only** (`orb_multiscan`):
+- The **9:35 opening-range-breakout entry is GATED OFF** (`ORB_935_ENTRIES_ENABLED=False`) — it was the loss engine (−$3,715). It still *scans* for measurement but submits 0.
+- The in-play gate is **off** (it anti-selected). Selection = in-play movers via `mover_scanner`; HTB/halted excluded; **1 entry per name per day**.
+- Sizing off a **$100k × 4× = $400k** base, ~**$20k/name**; **max 16 positions**, $100k exposure cap, **sector cap 2**.
+
+**TIMING** — re-arm windows **09:45 · 10:35 · 11:35 · 12:35 · 13:35 · 14:35 ET**; EOD flatten **3:50 PM**. ⚠️ **09:45 is brand-new and Monday is its first real day** (7/02's morning was lost to the outage, so it has zero live samples yet). *(Note: there's no "10:45 grace" in the code — that was the old 9:35→10:35 dead zone, now filled by the 09:45 window.)*
+
+**EXIT** — `candle_1.4atr_chandelier`, stacked:
+- **Confirm** at +0.15×ATR favorable → then exit on the **first opposite-color 1-min candle close**.
+- **1.4×ATR chandelier trail** (ratchets favorable-only) + a **1.4×ATR resting broker stop**.
+- **$500 from-entry dollar cap** (resting stop = tighter of 1.4×ATR or $500/qty).
+- **30-min unconfirmed time-stop** — flattens any position that never confirms within 30 min.
+
+# 📋 Recent changes (6/30 → 7/03)
+- **6/30:** $500 dollar-stop-cap ENABLED (after the 6/29 runaways).
+- **7/01:** 30-min unconfirmed time-stop ENABLED; **0945 window added**.
+- **7/02:** fixed the market_hours early-close outage; shadow-tournament champion **V8pw_wide**; cross-day confirmation metric added to the EOD debrief.
+- **7/03:** fixed the pre-open false-positive, the reliability-drill holiday bug, clean_day holiday FAIL→WARN, cleared stuck SAFE_MODE; **today** fixed the compliance false-0/20 + safe_mode auto-clear.
+- *No watched trading-path change was made 7/02–7/03 (forward-test freeze held).*
+
+# 🎯 TW — the honest answer: **no, we did not accomplish the goal**
+- **0% of the TW rollout is deployed** — `tape_watcher.py` is untouched since 6/28. The lag/miss-tick symptom is unchanged (7/02: 1,236 stream gaps, max ~15 min).
+- **The ceiling is fundamental:** TW reads only the **last-trade** price, blind to the mid between prints — that's *why* it's a near-duplicate of the poller. Real tick-level tracking needs the **live-quote mid feed = PROP-LIVE-QUOTES, which is gated on your approval.** Until that lands, "TW to its highest potential" is capped.
+- **Good news:** the launch mechanism (a known loose end) is **resolved** (Windows task, survives restarts), and there's **no safety hole** — exits are triple-covered (poll + time-stop + resting stop; TW fails open).
+- The safe *detection* fixes (reconnect reset, honest gap metric) I can deploy this weekend without the feed — they improve measurement, not the exit decision.
+
+# 📊 Dashboard — complete, mostly current, 3 small gaps
+Every page we discussed is present and renders (/tunes with the V8pw_wide champion, /shadow-sim, etc.), and the data's fresh. Three currency gaps on the **Strategy Signals** page: it doesn't show the 9:35-gate, the exit card omits the 30-min time-stop, and it has a hardcoded universe string. I'll fix those (advisor repo, non-watched).
+
+# ✅ What's left — and your decisions
+**I'll do next (non-watched, this weekend):** dashboard 3 gaps · h5 log-spam dedup · holiday-blind-spot audit (~18 checks) · TW safe-detection fixes · **build the warning-responder daemon** (you chose notify + auto-apply-safe-fixes).
+
+**Needs your call (watched / gated):**
+- **PROP-LIVE-QUOTES** — the real TW ceiling. Approve to unlock tick-level exits.
+- **PROP-TS-TRANSIENT-LABEL** — one-line fix so a TS 504 stops false-alarming "auth failing."
+- **Change-log entry for the deployed time-stop** — the code's live+approved but the formal record is incomplete (this is why the commit guard flagged it).
+
+Want me to keep going down the "I'll do next" list now (starting with the responder build + dashboard fixes), and should I proceed on any of the three gated items?
+
+---
