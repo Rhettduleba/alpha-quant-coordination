@@ -16757,3 +16757,28 @@ Fully benign — and the answer is clear: **H5 was intentionally sidelined by yo
 **Monitor 10:17 AM: clean, nothing to do.** The bot_alerts jump was a false scare on my end — all 30 are INFO `H5_SIDELINED`, from the H5 futures strategy you deliberately benched on 6/10. They're log-only (never touch Telegram), so no action beyond a queued cosmetic to stop it re-logging every cycle. CSHV FAIL=0, bot flat, market closed. Quiet holiday — I'll keep it brief unless something real fires. Pushed (`1d5f2b3`).
 
 ---
+
+
+## Turn — 2026-07-03 10:35:19 ET
+
+**Rhett:**
+
+SELF-MONITORING (daily, every 15 min 9:00 AM–4:00 PM ET). Follow C:\AlphaQuant\SELF_MONITORING_PLAYBOOK.md. RULE: never defer — act on every warning THIS run (fix non-watched; escalate WITH the fix for watched trading files). STEPS: (1) Confirm ET time + market state. If it's ~9:00 AM (pre-open), run `python C:\AlphaQuant\tradestation-bot\pre_open_trade_readiness.py` (the "will it trade today?" gate) and ACT on any CRITICAL before 9:45. If market is closed now, do a quick EOD broker-flat check then finish this run (the cron resumes next weekday 9 AM). (2) Read the SAME warnings Rhett gets: `python C:\AlphaQuant\tradestation-bot\alerts_bridge.py` (bot_alerts 24h — any FAIL in the last hour = top priority), C:\AlphaQuant\CSHV_FINDINGS.md (any FAIL/CRITICAL/WARN), code_inbox.jsonl actionable items. (3) Trade-liveness (the 7/02 catch): after 10:45 AM confirm >=1 ORB_V16_ENTRY_OK in today's bot_alerts.jsonl; if 0 on an open regular trading day, run reliability_checks.check_alive_but_not_trading() and diagnose. (4) ACT (never defer): verify each warning vs broker truth FIRST; fix non-watched now (+regression-lock+verify); for WATCHED trading files (orb_*, exit_bot_v2, risk_config, bot_loop, candle_close_exit, market-behavior) never edit mid-session — surface + write a proposal + escalate to Rhett with the concrete fix. (5) Log a one-line status to SESSION_LOG.md (clean or what I acted on) and push to coordination. Ping Rhett only if actionable for him or I escalated; otherwise silence = handled.
+
+**Claude Code:**
+
+Monitor tick — quick check:
+Clean — and the H5 INFO spam even stopped on its own (still 30, no new ones since 10:14). CSHV FAIL=0, only the known clean_day holiday WARN, bot flat. Nothing new.
+The commit guard **blocked** — and it caught something I need to check: `exit_bot_v2.py` (a **WATCHED** trading file) has **uncommitted modifications** that I didn't make this session. My `git commit -am` accidentally tried to stage it. This is exactly the kind of thing to verify, not ignore. Let me check what changed and when:
+Verified — this is **not** a suspicious change. The uncommitted `exit_bot_v2.py` diff is **+75 lines of the Loop-220 30-min unconfirmed time-stop** (mtime 7/01 8:24 PM) — the *deployed, Rhett-approved* code we've been discussing all session. It was written to the working tree but never committed to the local snapshot repo (same as risk_config.py's deployed changes). So the guard did exactly its job — it blocked my careless `git commit -am` (which auto-stages everything, including the watched file). My mistake; I should stage only SESSION_LOG. Let me redo it properly and note the finding:
+Fixed — committed SESSION_LOG explicitly (guard ALLOW; `9d28094` / `dc0c2b6`).
+
+**Monitor 10:32 AM: clean tick, but my sloppy `git -am` surfaced something worth your awareness.**
+
+The strategy-change guard blocked me because `-am` tried to auto-stage `exit_bot_v2.py`. I verified it: those uncommitted changes are the **legit, deployed Loop-220 30-min time-stop** (+75 lines, from 7/01) — nothing suspicious, and the guard worked exactly as designed. My mistake (I should stage files explicitly, which I fixed).
+
+But it exposed a real **governance-record gap**: the deployed time-stop (and, similarly, risk_config's dollar-cap/9:35-gate/0945-window) is **live and you approved it, but it was never committed to the snapshot repo or covered by a recognized change-log entry** — the guard cites `AQ-...DOLLARCAP500` which doesn't list `exit_bot_v2.py`. So the code running in production is ahead of the formal git + change-log record. That's not a trading or safety problem — the code is correct and approved — but the *paper trail* is incomplete, which is exactly what that guard is meant to keep honest.
+
+Want me to **reconcile the change-log** — log the deployed time-stop (and audit the other deployed watched-file changes) so the formal record matches what's actually live and the guard is satisfied? It's a records-cleanup, no behavior change. Otherwise everything's quiet: bot flat, market closed, CSHV clean.
+
+---
