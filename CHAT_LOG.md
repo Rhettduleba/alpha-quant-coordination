@@ -17441,3 +17441,35 @@ The audit + cross-reference test are running in the background. Here's the preli
 **Your test is running now** — it's cross-referencing every entry in our last five trading days against (a) earnings dates and (b) the shadow news, to flag entries that news/earnings would have contradicted — *and* the key must-not-cut question: were those flagged entries net-losers (so a filter would help) or would it have cut winners? I'll report the full findings — infra depth + the actual contradictions found — the moment it lands.
 
 ---
+
+
+## Turn — 2026-07-03 14:43:49 ET
+
+**Rhett:**
+
+Also, let's run a test on our last day of trading. That was a negative day. I wanna know how many of the trades were confirmed and unconfirmed and how many losers and winners in each category.
+
+**Claude Code:**
+
+This is a focused 2×2 on 7/02 — I'll compute it directly from broker truth (the news workflow keeps running in the background). "Confirmed vs unconfirmed" maps cleanly to the exit reason: a trade time-stopped at 30 min = never confirmed; a candle-close exit = confirmed. Let me build the grid:
+Here's the 2×2 for **7/02** (last trading day, −$770, 20 round-trips), from broker truth. "Confirmed" = the trade's favorable move actually reached the +0.15×ATR confirm threshold (so it rode the candle-close exit); "unconfirmed" = it never did and got flushed by the 30-min time-stop.
+
+| | Winners | Losers | Total |
+|---|---:|---:|---:|
+| **Confirmed** | **1** (+$83) | **0** | 1 (+$83) |
+| **Unconfirmed** | **4** (+$133) | **15** (−$986) | 19 (−$853) |
+| **Total** | 5 | 15 | 20 |
+
+- **Confirmed: 1 trade — and it won** (MCD +$83). It was the *only* trade all day that showed real follow-through in our favor.
+- **Unconfirmed: 19 trades** — the 4 "winners" were tiny (+$133 total, avg +$33; SNDK/STX/DELL/ADBE just happened to be slightly green when the 30-min stop fired) and **all 15 losers were unconfirmed.**
+
+## What this actually tells us
+The striking part: **confirmation was near-perfectly predictive.** Every single loser failed to confirm, and the one trade that confirmed won. The entire day's loss (−$853) lived in the unconfirmed bucket. In plain terms — on 7/02 the market gave us almost **no follow-through** (5% confirmation rate); we entered 20 breakouts and 19 just went nowhere.
+
+**Two honest caveats before you read too much into it:**
+1. **You can't filter on this at entry** — confirmation happens *after* you're in the trade. It's a read on the *day's* quality (choppy, no follow-through), not a knob we can turn pre-entry. It's exactly what the 30-min time-stop is designed to catch.
+2. **7/02 was a compromised day** — the morning was lost to the outage, so we only traded the lower-quality afternoon re-arm tape, and it was the first live day of the time-stop. A clean full session (Monday) is a fairer test of the confirmation rate.
+
+The bigger signal: if this 1-in-20 confirmation rate persists on *clean* days, that's a real entry-quality problem worth chasing. If Monday looks normal (~50–60% like the pre-time-stop days), 7/02 was just a bad, degraded tape. Worth watching Monday's confirmed/unconfirmed split closely.
+
+---
