@@ -16574,3 +16574,32 @@ Inbox clean (0/0/0). Triage run complete.
 Per the freeze: edited/placed/restarted/cleared **nothing** on the trading path. SESSION_LOG updated, synced + pushed to coordination repo ([b34cad6](https://github.com/Rhettduleba/alpha-quant-coordination/commit/b34cad6)), inbox `--ack`'d (6 processed, now 0/0/0). No Rhett ping.
 
 ---
+
+
+## Turn — 2026-07-03 09:21:46 ET
+
+**Rhett:**
+
+SELF-MONITORING (daily, every 15 min 9:00 AM–4:00 PM ET). Follow C:\AlphaQuant\SELF_MONITORING_PLAYBOOK.md. RULE: never defer — act on every warning THIS run (fix non-watched; escalate WITH the fix for watched trading files). STEPS: (1) Confirm ET time + market state. If it's ~9:00 AM (pre-open), run `python C:\AlphaQuant\tradestation-bot\pre_open_trade_readiness.py` (the "will it trade today?" gate) and ACT on any CRITICAL before 9:45. If market is closed now, do a quick EOD broker-flat check then finish this run (the cron resumes next weekday 9 AM). (2) Read the SAME warnings Rhett gets: `python C:\AlphaQuant\tradestation-bot\alerts_bridge.py` (bot_alerts 24h — any FAIL in the last hour = top priority), C:\AlphaQuant\CSHV_FINDINGS.md (any FAIL/CRITICAL/WARN), code_inbox.jsonl actionable items. (3) Trade-liveness (the 7/02 catch): after 10:45 AM confirm >=1 ORB_V16_ENTRY_OK in today's bot_alerts.jsonl; if 0 on an open regular trading day, run reliability_checks.check_alive_but_not_trading() and diagnose. (4) ACT (never defer): verify each warning vs broker truth FIRST; fix non-watched now (+regression-lock+verify); for WATCHED trading files (orb_*, exit_bot_v2, risk_config, bot_loop, candle_close_exit, market-behavior) never edit mid-session — surface + write a proposal + escalate to Rhett with the concrete fix. (5) Log a one-line status to SESSION_LOG.md (clean or what I acted on) and push to coordination. Ping Rhett only if actionable for him or I escalated; otherwise silence = handled.
+
+**Claude Code:**
+
+Monitor tick — holiday, and I want to confirm the 3 WARNs I fixed last tick have actually cleared on CSHV's cycle:
+Down to **WARN=1** (deadman + SAFE_MODE cleared as expected). The remaining one is `pre_open_gate_ran`. Per the process, let me see exactly what it says now — I re-ran the gate last tick but the CSHV check may still be reading the 6 AM NO-GO or flagging the holiday INFO:
+The `pre_open_gate_ran` WARN is **stale** — it's showing the 6 AM/9 AM NO-GO from *before* my ~9:05 drill fix (the scheduled gate ran before I fixed the drill). My manual re-run returned clean INFO but didn't write the status file CSHV reads. Let me find where the gate persists its status so I can refresh it (rather than leave a stale WARN all weekend):
+The CSHV check reads `C:\AlphaQuant\pre_open_gate_status.json` — written by `pre_open_gate.py` (a different component from the readiness gate I re-ran; it's also what engaged SAFE_MODE at 6 AM). Let me confirm the file is the stale NO-GO and re-run the right component to refresh it:
+Confirmed stale: `{'verdict': 'NO-GO'}` from 6 AM (drill 11/12). Let me re-run `pre_open_gate.py` (no `--notify`, no `--engage` — so no new Telegram alert, no SAFE_MODE change) to refresh the status now that the drill's fixed:
+Status refreshed: **GO-WITH-WARNINGS** (was NO-GO) — heartbeat 1s, SAFE_MODE off, all checks pass; the "warnings" are just holiday staleness (universe 97h old, expected). Let me confirm the CSHV check now reads it as clear:
+CSHV check now returns **OK** ("GO-WITH-WARNINGS") — the last of the 3 WARNs is cleared. The holiday is fully clean now. 
+
+Today exposed a pattern worth a quick proactive check: the bug was "skips weekends but not holidays." Let me grep for other checks with the same blind spot before I log:
+CSHV is fully clean now (0 WARN). The grep shows ~20 `weekday()`-based checks — most are benign RTH-gates that degrade fine on a holiday, but the pattern (skip weekends, not holidays) is a latent blind spot. Nothing else is false-firing right now (CSHV clean), and the next holiday is months out, so I'll **queue a proper audit** rather than rush-edit 20 files on a tick. Let me log, queue it, and push:
+Verified — CSHV is now **fully clean** (0 WARN / 0 FAIL). Brief status:
+
+**Monitor 9:19 AM (holiday):** the one remaining WARN was **stale** — `pre_open_gate_status.json` still held the 6 AM `NO-GO` written before my ~9:05 drill fix. I re-ran the gate (no notify/engage, so no new Telegram) → it now reads **GO-WITH-WARNINGS** (heartbeat 1s, SAFE_MODE off; the "warnings" are just holiday staleness like a 97h-old universe, which is expected). CSHV's check now returns OK. So the whole drill cascade is fully cleared.
+
+**Proactive finding:** today's bug was "skips weekends but not holidays," and a grep shows **~20 checks share that `weekday()` pattern**. Most are harmless RTH-gates, but any that *assert* trading-day behavior could false-fire on a future holiday. Nothing else is misfiring right now, and the next market holiday is months out — so I **queued a proper audit** (OPEN_ITEMS 1b: convert the assert-type ones to `is_regular_trading_day`, plus fix the SAFE_MODE auto-clear gap) rather than rush edits across 20 files on a holiday tick.
+
+Everything's quiet now: bot flat, 0 alerts, CSHV clean. Committed and pushed (`54a11e9`). No further Telegram noise should come today.
+
+---
