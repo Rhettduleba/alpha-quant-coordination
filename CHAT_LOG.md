@@ -16463,3 +16463,46 @@ Your read is half-right: the **pre-open one was a false-positive** (fixed), but 
 Two of the three recurring sources are now fixed. If you want, I can dig into what killed the watchdog at 7:56 — otherwise Monday should be quiet, and I'll surface anything that fires here with why+how.
 
 ---
+
+
+## Turn — 2026-07-03 09:08:31 ET
+
+**Rhett:**
+
+SELF-MONITORING (daily, every 15 min 9:00 AM–4:00 PM ET). Follow C:\AlphaQuant\SELF_MONITORING_PLAYBOOK.md. RULE: never defer — act on every warning THIS run (fix non-watched; escalate WITH the fix for watched trading files). STEPS: (1) Confirm ET time + market state. If it's ~9:00 AM (pre-open), run `python C:\AlphaQuant\tradestation-bot\pre_open_trade_readiness.py` (the "will it trade today?" gate) and ACT on any CRITICAL before 9:45. If market is closed now, do a quick EOD broker-flat check then finish this run (the cron resumes next weekday 9 AM). (2) Read the SAME warnings Rhett gets: `python C:\AlphaQuant\tradestation-bot\alerts_bridge.py` (bot_alerts 24h — any FAIL in the last hour = top priority), C:\AlphaQuant\CSHV_FINDINGS.md (any FAIL/CRITICAL/WARN), code_inbox.jsonl actionable items. (3) Trade-liveness (the 7/02 catch): after 10:45 AM confirm >=1 ORB_V16_ENTRY_OK in today's bot_alerts.jsonl; if 0 on an open regular trading day, run reliability_checks.check_alive_but_not_trading() and diagnose. (4) ACT (never defer): verify each warning vs broker truth FIRST; fix non-watched now (+regression-lock+verify); for WATCHED trading files (orb_*, exit_bot_v2, risk_config, bot_loop, candle_close_exit, market-behavior) never edit mid-session — surface + write a proposal + escalate to Rhett with the concrete fix. (5) Log a one-line status to SESSION_LOG.md (clean or what I acted on) and push to coordination. Ping Rhett only if actionable for him or I escalated; otherwise silence = handled.
+
+**Claude Code:**
+
+Monitor tick — and today's the holiday, so let me confirm state and check for any active warnings (I'll surface them here per the new process):
+9:02 AM on the holiday — market closed, bot flat, 0 alerts. But CSHV shows **3 WARNs**, and per the new process I surface each with why+how — after verifying what they actually are right now (one I fixed last night, so let me confirm its state):
+The 3 WARNs **changed overnight** — and they all trace to one root: **the reliability drill is failing 11/12 again** (a detector "did not fire"), which cascades into deadman UNHEALTHY + pre-open NO-GO + a cosmetic SAFE_MODE flag. This is a *new* warning (per the process, I surface it) — and I suspect it's a **holiday-specific bug** in the drill I touched yesterday. Let me verify which detector and why:
+Confirmed the root cause — and it's a bug I introduced yesterday's blind spot:
+
+**`alive_not_trading<-open_day_0_entries` expected=CRITICAL, got=OK.** The drill fixture forces the clock to 11 AM but uses the *real* date. Today is a Friday *holiday*, so the detector correctly returns **OK** ("no trading expected on a holiday") — but the fixture only skips on *weekends* (`weekday < 5`), not holidays, so it still expects CRITICAL → false FAIL. **The detector is right; the drill's date check is naive.** That one false FAIL cascades into all 3 CSHV WARNs. Non-watched, so I fix it now:
+Two occurrences (both drills in the else branch) — both should say non-trading day:
+Let me compile-check and re-run the drill (expect 12/12), then clear the beacon:
+Fixed — drill **11/11 all pass** (holiday scenario now correctly skipped), **deadman beacon HEALTHY**. Now let me clear the downstream cascade (pre-open gate NO-GO + the cosmetic SAFE_MODE that engaged off the false drill CRIT) by refreshing the reliability state:
+Pre-open gate is now clean **INFO** (correctly a holiday, no false alarm), and reliability CRIT/FAIL = **0**. But **SAFE_MODE is still active** — it engaged 180 min ago off the false drill CRIT and didn't auto-clear. Let me check why it's stuck:
+Found it: SAFE_MODE was engaged at 6:00 AM by the **pre_open_gate** (off the false drill 11/12), but `reconcile_from_reliability` only auto-clears SAFE_MODE it *itself* engaged — so a gate-engaged one gets stuck. Its trigger is now resolved (drill fixed, 0 tech CRIT), and it's cosmetic (ENFORCE=off). Let me clear it:
+**SAFE_MODE cleared** (active: False). All three WARNs are now resolved at the source: drill 11/11, deadman HEALTHY, gate INFO (holiday), SAFE_MODE off, 0 tech CRIT. Let me commit the drill fix, log, and push:
+Pushed (`ba4f380`). Surfacing this per the process we set up — because a warning fired, and it's the same "deaf detector" you saw yesterday, resurfaced.
+
+## Monitor 9:07 AM (holiday) — caught and fixed a false-alarm cascade
+
+Market's closed, bot flat, 0 bot alerts. But CSHV had **3 WARNs that changed overnight**, and they all traced to **one root** — and it's my fault from yesterday.
+
+**Why it happened:** the reliability drill false-failed **11/12** — the same "deaf detector" that generated your Healthchecks DOWN yesterday. When I fixed that yesterday, I had a blind spot: the drill's test fixture forces the clock to 11 AM but uses the *real date*, and it only skipped the scenario on **weekends**, not **holidays**. Today is a Friday holiday, so the detector correctly returns "OK — no trading expected," but the fixture still expected CRITICAL → **false FAIL.** That one false failure cascaded into all three warnings: deadman beacon UNHEALTHY, pre-open gate NO-GO, and a stuck cosmetic SAFE_MODE. So this morning's alert (and likely a repeat Healthchecks ping ~6 AM) was noise from my incomplete fix.
+
+**How I addressed it:** the detector was right — the *drill* was wrong. Fixed it to skip on any non-trading day (`is_regular_trading_day`), not just weekends. Verified end-to-end:
+- Drill **11/11 all pass**
+- Deadman beacon **HEALTHY** (ping 200)
+- Pre-open gate **INFO** (correct holiday, no false alarm)
+- Reliability **0 CRIT/FAIL**, and I cleared the stuck cosmetic SAFE_MODE (its trigger was resolved)
+
+So all three WARNs are resolved at the source; CSHV will show them green on its next 5-minute cycle. Committed and pushed.
+
+**One honest follow-up I noted (not rushed):** SAFE_MODE only auto-clears if *reliability* engaged it — a *gate*-engaged one (like this morning's) gets stuck cosmetically. Minor and safety-adjacent, so I'll fix that carefully rather than on a monitor tick.
+
+This is exactly the class of thing you were frustrated about — a false alarm from my own monitoring code. It's dead at the root now, and it won't fire on holidays again. Nothing else is active; the day's quiet.
+
+---
