@@ -16406,3 +16406,60 @@ From now on, on every 15-minute monitor tick, **every active warning gets a post
 The 504 also gets mislabeled `TS_AUTH_FAIL` by the entry code, which is what sends you that false **"auth failing"** alert on any TradeStation hiccup. The fix is one line and alerting-only (reclassify a 504 as a transient warning), but it lives in a **watched trading file** — so I won't touch it without your go. Want me to apply it? It's `PROP-TS-TRANSIENT-LABEL`, ready to ship.
 
 ---
+
+
+## Turn — 2026-07-03 02:13:11 ET
+
+**Rhett:**
+
+Many telegram warnings, what are they all about?
+
+**Claude Code:**
+
+Getting many Telegram warnings on a market holiday is itself a red flag — let me find exactly what's firing and why. Checking time, the notifier activity, and the alert sources:
+2:08 AM, holiday, and **zero bot_alerts today** — so the Telegram spam isn't from the bot's alert log. Something else is calling the notifier directly, likely overnight. Let me find the notifier's send history and what's triggering it:
+`alerts_check.log` is being written **right now (2:07 AM)** — that's the hourly Manager Alerts / Watchlist check (`check_alerts.py`), which I own. Its known gotcha: it reads the last *archived* advisor review and can fire stale alerts. Let me see exactly what it's sending:
+Manager Alerts is actually clean ("ALL CLEAR" — correctly filtering stale ones). So that's not it. The notifier uses per-subject dedup lock files — those record exactly what was sent and when. Let me find them:
+The notifier's last send was **11:25 PM on 7/02** — nothing today. So the Telegram warnings Rhett's seeing are from yesterday evening, ~8-9 sends across the day. The lock filenames are hashed, but the alerts mirror to `code_inbox.jsonl` — let me read the actual messages sent:
+Now I can see it. The Telegram warnings are **5 CRITICALs from yesterday (7/02)**, and I can map most of them:
+
+- **8:00 AM** "8AM audit gate not green" + **9:30 & 12:30** "CSHV 1 FAIL" → the **morning outage** (the market_hours bug — bot wasn't trading; fixed ~12:30 PM).
+- **16:45** "Reliability drill failed (deaf detector)" → the sweep-miss I already fixed (the screenshot you sent).
+- **19:56** "Supervisor Guardian restarted watchdog_supervisor.py" → needs a look (why did the watchdog die?).
+
+Two things I haven't fully explained — the watchdog restart and a notifier send at 11:25 PM. Let me run those down before I give you the full picture:
+No incidents logged after 7 PM, and nothing today. So the warnings are all from yesterday, last one ~11:25 PM. The one that needs explaining is the 7:56 PM watchdog restart. Let me check why it died and confirm everything's healthy now:
+System is healthy now: watchdog + run_bot both alive (restarted 7:56 PM, ~6h uptime), heartbeat **4s fresh**. The guardian caught the death and self-healed. Let me get the actual restart reason from the guardian log:
+The guardian log tells the full story:
+
+```
+2026-07-02 19:56:01 ET  watchdog_supervisor.py is NOT running -- recovering.
+2026-07-02 19:56:02 ET  killed orphaned run_bot.py PID 5544
+2026-07-02 19:56:02 ET  launched watchdog_supervisor.py
+```
+
+So the watchdog process died, the guardian caught it, cleaned up the orphaned bot, and relaunched — **the survivability chain working exactly as designed**, after market close, with zero trading impact. Let me confirm nothing's firing now, then give you the full rundown:
+Confirmed: **0 sends today, 0 firing now.** The last one was 11:25 PM last night. So nothing is actively spamming you — what you're seeing on Telegram is the accumulated batch from yesterday. Here's every one of them, with why + how (the process we just set up):
+
+## They're all from 7/02 — and 7/02 was a genuinely rough day
+
+**1. The morning outage — the biggest cluster (8:00 AM, 9:30, 12:30, ~1:20 PM)**
+- *Why:* the market_hours calendar bug flagged 7/02 as a holiday, so the bot skipped the morning. The "8 AM audit gate not green" + two "CSHV 1 FAIL" alerts were the system correctly screaming that the bot wasn't trading when it should be. **These were real and correct.**
+- *How:* fixed ~12:30 PM (removed the bad calendar entry); the bot recovered and traded the afternoon. The 8 AM gate was likely also tripped by the pre-open false-positive — which I **fixed last night** (preflight now passes, gate returns OK), so it shouldn't recur Monday.
+
+**2. Reliability drill "deaf detector" (4:45 PM)**
+- *Why:* my mistake — I hardened a detector to CRITICAL but forgot to update its self-test. The screenshot you sent.
+- *How:* fixed (drill 12/12, beacon healthy). Done.
+
+**3. Supervisor Guardian restarted the watchdog (7:56 PM)**
+- *Why:* the `watchdog_supervisor` process died; the guardian detected it, killed the orphaned bot, and relaunched. This is the **survivability chain working** — it self-healed within its polling interval, after market close, with zero trading impact.
+- *How:* nothing needed — it recovered on its own and has been healthy for ~6 hours (heartbeat 4s fresh). **Honest caveat:** the log doesn't say *why* the watchdog died, and the timing overlaps my heavy edit session. I'll watch for a repeat — a one-off is the guardian doing its job; a pattern would be a real bug to chase.
+
+**4. One send at 11:25 PM** I couldn't pin to a specific source (it's not in the incident logs) — a single alert, not spam.
+
+## The honest bottom line
+Your read is half-right: the **pre-open one was a false-positive** (fixed), but the **outage and drill ones were real** — 7/02 stacked a genuine outage + a self-test miss + a supervisor blip into one day, which is why it felt like "many." A clean day sends ~zero. That's exactly why I can't just mute warnings — I fix the false ones at the source and leave the real ones loud.
+
+Two of the three recurring sources are now fixed. If you want, I can dig into what killed the watchdog at 7:56 — otherwise Monday should be quiet, and I'll surface anything that fires here with why+how.
+
+---
