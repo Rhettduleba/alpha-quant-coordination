@@ -4817,3 +4817,4 @@ LABEL, awaiting Rhett's go; lower-impact than believed since the certifier alrea
 [MONITOR 2:02 PM ET 2026-07-03 (HOLIDAY)] CLEAN: CSHV FAIL=0, flat, no new alerts. Silence=handled.
 [MONITOR 2:17 PM ET 2026-07-03 (HOLIDAY)] CLEAN: CSHV FAIL=0, flat, no new alerts. Silence=handled.
 [MONITOR 2:32 PM ET 2026-07-03 (HOLIDAY)] CLEAN: CSHV FAIL=0, flat, no new alerts. Silence=handled.
+[MONITOR 2:48 PM ET 2026-07-03 (HOLIDAY)] CLEAN: CSHV FAIL=0, flat, no new alerts. Silence=handled. (Awaiting Rhett: build scored news feed? + earnings-veto-on-live-path proposal? News/earnings audit found veto wired only to disabled 9:35 path -> 0 live protection; no working live news feed.)
