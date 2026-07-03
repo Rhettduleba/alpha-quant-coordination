@@ -16739,3 +16739,21 @@ Cursor advanced; inbox now clean (0/0). Triage run complete.
 **Actions taken:** SESSION_LOG entry appended + synced to coordination repo + committed/pushed (`f3607d8`); inbox `--ack`'d. **No Discord ping to Rhett** (silence = handled). Per forward-test freeze: edited / placed / restarted / cleared **nothing** on the trading path.
 
 ---
+
+
+## Turn — 2026-07-03 10:20:19 ET
+
+**Rhett:**
+
+SELF-MONITORING (daily, every 15 min 9:00 AM–4:00 PM ET). Follow C:\AlphaQuant\SELF_MONITORING_PLAYBOOK.md. RULE: never defer — act on every warning THIS run (fix non-watched; escalate WITH the fix for watched trading files). STEPS: (1) Confirm ET time + market state. If it's ~9:00 AM (pre-open), run `python C:\AlphaQuant\tradestation-bot\pre_open_trade_readiness.py` (the "will it trade today?" gate) and ACT on any CRITICAL before 9:45. If market is closed now, do a quick EOD broker-flat check then finish this run (the cron resumes next weekday 9 AM). (2) Read the SAME warnings Rhett gets: `python C:\AlphaQuant\tradestation-bot\alerts_bridge.py` (bot_alerts 24h — any FAIL in the last hour = top priority), C:\AlphaQuant\CSHV_FINDINGS.md (any FAIL/CRITICAL/WARN), code_inbox.jsonl actionable items. (3) Trade-liveness (the 7/02 catch): after 10:45 AM confirm >=1 ORB_V16_ENTRY_OK in today's bot_alerts.jsonl; if 0 on an open regular trading day, run reliability_checks.check_alive_but_not_trading() and diagnose. (4) ACT (never defer): verify each warning vs broker truth FIRST; fix non-watched now (+regression-lock+verify); for WATCHED trading files (orb_*, exit_bot_v2, risk_config, bot_loop, candle_close_exit, market-behavior) never edit mid-session — surface + write a proposal + escalate to Rhett with the concrete fix. (5) Log a one-line status to SESSION_LOG.md (clean or what I acted on) and push to coordination. Ping Rhett only if actionable for him or I escalated; otherwise silence = handled.
+
+**Claude Code:**
+
+Monitor tick — quick check:
+Flat and CSHV clean (FAIL=0), but **bot_alerts jumped 0 → 30** since the last tick — on a holiday, that's unexpected and worth a look. Let me see what they are:
+The 30 alerts are all **INFO `H5_SIDELINED`** — the H5 futures strategy logging "sidelined" ~2×/minute since 10:00 AM. These are INFO (not FAIL/CRIT), so they're **not** hitting your Telegram — but ~2/min is log spam worth understanding. Let me see why it's repeating and whether it's benign:
+Root cause found: `h5_runner.py:360` logs `H5_SIDELINED` INFO **every cycle** while an `h5_disabled.flag` file is present. So the H5 futures strategy is **disabled via a flag**, and it re-logs that every ~30s. It's INFO (not Telegram, not a FAIL) — pure log noise, not part of your alert spam. Let me check whether the disable is intentional (flag age) before I wrap:
+Fully benign — and the answer is clear: **H5 was intentionally sidelined by you on 6/10** (flag content: *"Sideline H5... do not delete. Reason: H5 net-negative on a tiny sample"*). So H5 being disabled is correct and month-old; `h5_runner` just re-logs that INFO status every cycle. Nothing's wrong.
+**Monitor 10:17 AM: clean, nothing to do.** The bot_alerts jump was a false scare on my end — all 30 are INFO `H5_SIDELINED`, from the H5 futures strategy you deliberately benched on 6/10. They're log-only (never touch Telegram), so no action beyond a queued cosmetic to stop it re-logging every cycle. CSHV FAIL=0, bot flat, market closed. Quiet holiday — I'll keep it brief unless something real fires. Pushed (`1d5f2b3`).
+
+---
