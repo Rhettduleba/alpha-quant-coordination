@@ -4761,3 +4761,19 @@ Honest mechanics: not a real-time listener; I read the same sources (bot_alerts/
 STILL WATCHED/escalated: orb_runner.py:256 mislabels a 504 as TS_AUTH_FAIL -> a false "auth failing" Discord alert (PROP-TS-TRANSIENT-
 LABEL, awaiting Rhett's go; lower-impact than believed since the certifier already exempts it). Files: _preflight_diagnostic.py (non-watched).
 
+
+[MONITOR 9:07 AM ET 2026-07-03 (HOLIDAY)] Market CLOSED (Independence Day observed), bot FLAT, 0 bot_alerts today. But CSHV had
+3 WARNs (state-CHANGED overnight) -> ACTED (never-defer) + surfaced to Rhett per the new process. All 3 traced to ONE root:
+ ROOT: reliability_drill FAILED 11/12 -- 'alive_not_trading<-open_day_0_entries' expected CRITICAL got OK. WHY: the drill
+   fixture forces the clock to 11 AM but uses the REAL date; today is a Friday HOLIDAY, so check_alive_but_not_trading correctly
+   returns OK ('no trading expected on a holiday'), but the fixture only skipped WEEKENDS (weekday<5), not holidays -> false FAIL.
+   The DETECTOR is right; the drill's date check was naive. Cascade: drill 11/12 -> deadman_beacon UNHEALTHY (WARN) + pre_open_gate
+   NO-GO (WARN) + SAFE_MODE gate-engaged 6AM (cosmetic, ENFORCE off) -> rel_safe_mode_not_stuck (WARN).
+ FIX (non-watched, reliability_drill.py): gate the alive_not_trading fixture on is_regular_trading_day(base) instead of
+   weekday<5 -> skips on holidays too (matches the detector). Verified: drill 11/11 all pass; deadman re-ran HEALTHY (ping 200);
+   pre_open gate re-ran INFO (correct holiday, no false alarm); reliability 0 CRIT/FAIL. Cleared the stuck cosmetic SAFE_MODE
+   (its trigger resolved; it was gate-engaged so reconcile_from_reliability wouldn't auto-clear it).
+ NOTED follow-up (minor, safety-adjacent -> not rushed on a tick): reconcile_from_reliability only auto-clears SAFE_MODE it
+   ITSELF engaged, so a pre_open_gate-engaged SAFE_MODE can get stuck (cosmetic). Worth a careful fix in safe_mode.py.
+ All 3 WARNs resolved at source; CSHV file updates on its next 5-min cycle. Files: reliability_drill.py (non-watched).
+
