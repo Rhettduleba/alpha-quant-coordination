@@ -17419,3 +17419,25 @@ Clean — FAIL=0, flat, holiday, nothing new.
 **Monitor 2:32 PM: clean.** Handled — market's closed all day, so I'll keep these brief through the rest of the holiday unless something real fires.
 
 ---
+
+
+## Turn — 2026-07-03 14:41:21 ET
+
+**Rhett:**
+
+OK, let's move the topic of subject to the news. What do we currently have in regards to infrastructure and the news? Are we getting a news feed are we getting earnings? Can we run a test and look at all the news in prior days that we have and cross-reference that with trades to see if any of that news would contradict going into one of the entries.
+
+**Claude Code:**
+
+Good pivot — news/catalyst is a real edge dimension we've talked about (BLOCK_SYMBOL_DUE_TO_NEWS, earnings veto, the catalyst tune) but never fully audited. Let me scout the actual footprint first, then run a proper multi-agent audit + the news-vs-trades cross-reference test you're asking for.
+Clear map now: there's a substantial **earnings** pipeline (calendar, FMP source, `orb_earnings_veto`), but **news** looks like mostly scaffolding (a source registry + a `PROP-NEWS-REALTIME` proposal + the `BLOCK_SYMBOL_DUE_TO_NEWS` advisor control). The load-bearing question for your test: is news actually *collected*, or just planned? Let me verify before I design the cross-reference:
+Now I have the real picture: **earnings is a live pipeline** (242-row calendar + `orb_earnings_veto` + FMP), and **news is collected in shadow** (`news_collector.py` + `news_shadow.jsonl` + a `catalyst_classifier`), but the real-time news→bot channel (`PROP-NEWS-REALTIME`) is **pending, not live**. So your cross-reference test is feasible against both. Per ultracode, I'll run a multi-agent audit + the actual news/earnings-vs-trades contradiction test:
+The audit + cross-reference test are running in the background. Here's the preliminary answer to your infrastructure questions from my scouting, which the workflow is now verifying in depth:
+
+**Earnings — yes, we have a real feed.** A 242-row earnings calendar (NASDAQ source, refreshed by a scheduled `earnings_nasdaq_refresh` task), an FMP earnings source, an earnings-risk policy, and an `orb_earnings_veto` that's meant to keep us out of names around their earnings. (One thing the audit is verifying: whether that veto actually applies on the *live re-arm path* or only the gated-off 9:35 path — that matters.)
+
+**News — collected, but shadow-only (not yet driving trades).** We *do* have a `news_collector`, a `catalyst_classifier`, and a `news_shadow.jsonl` of historical news, plus the `BLOCK_SYMBOL_DUE_TO_NEWS` advisor control is built. **But** the real-time news→bot channel (`PROP-NEWS-REALTIME`) is still *pending approval*, not live — so today news informs the advisor's thinking but doesn't gate the bot's entries. So the honest state is: news is *watched*, not yet *acted on*.
+
+**Your test is running now** — it's cross-referencing every entry in our last five trading days against (a) earnings dates and (b) the shadow news, to flag entries that news/earnings would have contradicted — *and* the key must-not-cut question: were those flagged entries net-losers (so a filter would help) or would it have cut winners? I'll report the full findings — infra depth + the actual contradictions found — the moment it lands.
+
+---
