@@ -16630,3 +16630,32 @@ Pushed (`7fb854d`). Surfacing per the process — a FAIL fired, so here's the wh
 So: nothing actively wrong now, bot cycling, flat, market closed. Just wanted you to see the FAIL and know it's a transient that already cleared — not more noise to chase today.
 
 ---
+
+
+## Turn — 2026-07-03 09:50:50 ET
+
+**Rhett:**
+
+SELF-MONITORING (daily, every 15 min 9:00 AM–4:00 PM ET). Follow C:\AlphaQuant\SELF_MONITORING_PLAYBOOK.md. RULE: never defer — act on every warning THIS run (fix non-watched; escalate WITH the fix for watched trading files). STEPS: (1) Confirm ET time + market state. If it's ~9:00 AM (pre-open), run `python C:\AlphaQuant\tradestation-bot\pre_open_trade_readiness.py` (the "will it trade today?" gate) and ACT on any CRITICAL before 9:45. If market is closed now, do a quick EOD broker-flat check then finish this run (the cron resumes next weekday 9 AM). (2) Read the SAME warnings Rhett gets: `python C:\AlphaQuant\tradestation-bot\alerts_bridge.py` (bot_alerts 24h — any FAIL in the last hour = top priority), C:\AlphaQuant\CSHV_FINDINGS.md (any FAIL/CRITICAL/WARN), code_inbox.jsonl actionable items. (3) Trade-liveness (the 7/02 catch): after 10:45 AM confirm >=1 ORB_V16_ENTRY_OK in today's bot_alerts.jsonl; if 0 on an open regular trading day, run reliability_checks.check_alive_but_not_trading() and diagnose. (4) ACT (never defer): verify each warning vs broker truth FIRST; fix non-watched now (+regression-lock+verify); for WATCHED trading files (orb_*, exit_bot_v2, risk_config, bot_loop, candle_close_exit, market-behavior) never edit mid-session — surface + write a proposal + escalate to Rhett with the concrete fix. (5) Log a one-line status to SESSION_LOG.md (clean or what I acted on) and push to coordination. Ping Rhett only if actionable for him or I escalated; otherwise silence = handled.
+
+**Claude Code:**
+
+Monitor tick — checking whether the transient loop-stall FAIL cleared and if it recurred:
+The transient FAIL cleared (loop recovered, one-off — good), but a **new FAIL** appeared: `clean_day_certified`. This is a cascade from that 9:30 loop stall — and it's the kind that spams. Let me verify the driver and the branch:
+Confirmed: the 9:30 loop-stall logged a HARD incident → the holiday is now "non-clean" → and the clean_day check's **non-trading-day branch returns FAIL** (unlike the post-close branch, which was deliberately downgraded to WARN to stop exactly this every-5-min CRITICAL re-ping). So this would spam Telegram all day for a transient that already alerted once and self-recovered. That's a real anti-spam gap — non-watched, so I fix it. Let me read the exact branch:
+Compile-check and verify the check now returns WARN not FAIL:
+Fixed — clean_day now returns **WARN not FAIL** on a non-trading day (recorded, visible, but no CRITICAL re-ping spam), consistent with the post-close branch. CSHV loads it fresh next cycle. Let me commit, log, and surface:
+Pushed (`24354a3`). Brief status per the process:
+
+**Monitor 9:47 AM (holiday): fixed a spam-cascade, and there's a clear theme now.**
+
+The 9:30 loop-stall FAIL cleared on its own (didn't recur — good). But it cascaded into a `clean_day_certified` **FAIL**, because that transient incident made the holiday "non-clean," and the check's non-trading-day branch was returning FAIL — which would have re-fired CRITICAL to your Telegram every 5 minutes all day, for a hiccup that already alerted once and self-recovered.
+
+- **Why:** the non-trading-day branch never got the anti-spam treatment the post-close branch has (post-close non-clean was deliberately made WARN, not FAIL, for exactly this reason).
+- **How:** fixed it to match — non-trading-day non-clean is now **WARN** (recorded, visible, streak still resets), not a spamming FAIL. Verified; CSHV picks it up next cycle.
+
+**The theme:** the holiday is smoking out reliability checks that aren't holiday-aware — the drill (fixed 9:07), and now clean_day (9:47). I'm killing each at the root as it surfaces, and the thorough sweep of the remaining ~20 is already queued (OPEN_ITEMS 1b). Nothing else is currently firing — CSHV showed only these. So the Telegram noise should now actually stop for the day.
+
+Bottom line: bot flat, cycling, market closed. The loop-stall was the only *real* event (transient, recovered, watching); everything else today has been my not-holiday-aware monitoring code, which I'm cleaning up.
+
+---
