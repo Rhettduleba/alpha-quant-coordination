@@ -4723,3 +4723,19 @@ VERDICT: on 7/02 the bot made NO correctable mistake -- normal-quality entries +
 Real takeaways: (a) the outage cost (already fixed) was the day's real damage; (b) instrument confirmation cross-day (recommend);
 (c) time-stop = WATCH, revisit only at N>=15-20 forward days with a held-to-EOD measure. Files: eod_debrief.py (non-watched).
 
+
+[LOOP 234 — 8:10 PM ET 2026-07-02] Two asks from Rhett.
+(1) "hope everything fires tomorrow" -> SURFACED: tomorrow FRI 7/3 is a FULL holiday "Independence Day (observed)"
+(July 4 = Saturday). The bot correctly WON'T trade 7/3; the real "does it fire" test is MON 7/6. Verified the fail-safes
+handle both: check_alive_but_not_trading -> OK/silent on 7/3 (holiday), CRITICAL on 7/6 if 0 entries (would page the no-fire);
+pre_open_trade_readiness -> INFO on 7/3 (no false alarm) + a CALENDAR_CONTRADICTION CRIT guard (catches a wrong-holiday, the
+7/2 bug shape); full entry-path dry-run on 7/6. Calendar verified: 7/3 non-trading, 7/6 trading. The correct fail-stops ARE in place.
+(2) COMPLETED recommendation #3 (cross-day confirmation instrumentation, eod_debrief.py, non-watched): added a
+CROSS-DAY-CONSISTENT confirmation metric -- favorable MFE vs +0.15xATR14 in a FIXED 30-min window from entry, computed the
+SAME way for EVERY trade INCL re-arm (whose ATR the bot does NOT log; ATR14 via tape_watcher). Reports confirmed-within-30-min
+(the time-stop's keep-rate) + confirmed-ever-in-hold; the GAP = what the 30-min leash cut. New helpers _fav_mfe_window/_atr14
+(+_ATR14_CACHE), row keys confirmed_30m/confirmed_hold, Section-D line. Fixed a path bug (tape_watcher is in strategy-research,
+not tradestation-bot). Same-day computed (rolling bars window) -> the comparable series builds FORWARD from 7/6. Tested: 7/02
+= 1/20 (5%) confirmed-within-30m. All defensive (never breaks the EOD). Compiled + full-build verified. Loads next EOD run.
+Files: eod_debrief.py (non-watched). Live path untouched.
+
