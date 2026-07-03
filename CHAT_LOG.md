@@ -16271,3 +16271,67 @@ The 30-min time-stop fired exactly as designed, and on net it was **~neutral** (
 **Bottom line: on 7/02 the bot made no correctable mistake.** Normal entries, fine exits, on a degraded half-day the outage handed it. It's a −$770 data point, not a signal — the honest move is to wait for clean full sessions before reading anything into the time-stop or the entries.
 
 ---
+
+
+## Turn — 2026-07-02 21:00:07 ET
+
+**Rhett:**
+
+Complete the recommended and let's hope everything fires tomorrow you do have the correct fail stops in place so that tomorrow fires when it should
+
+**Claude Code:**
+
+Two things here — and the second one needs a clarification I have to surface before anything else. Let me verify the calendar, because **tomorrow (Friday 7/3) is Independence Day observed — a full NYSE closure** (July 4 falls on Saturday). If that's right, the bot *shouldn't* fire tomorrow, and the real "does it fire when it should" test is Monday 7/6. Let me confirm against the actual calendar and the fail-safes:
+Confirmed and important: **tomorrow (Fri 7/3) is a full holiday — "Independence Day (observed)"** (July 4 is a Saturday). So the bot *shouldn't* fire tomorrow — it should sit flat and silent, and that's correct. **The real "does it fire" test is Monday 7/6.**
+
+Now let me prove the fail-safes handle both correctly — silent on the holiday, but they'll *catch* a no-fire on Monday. Simulating the detector on both dates:
+Fail-safe verified exactly right: **silent on the 7/3 holiday** ("no trading expected"), but **pages CRITICAL on 7/6** if the bot is alive and armed 0 entries. That's the 7/02-catch working as intended. Let me confirm the 9 AM pre-open readiness gate also won't false-alarm on the holiday morning:
+Let me read the pre-open gate's holiday branch to confirm it treats a *legit* holiday as OK (not a false CRITICAL) while still catching a *wrong* one:
+The pre-open gate is correct too: **INFO** on a legit holiday (surfaces it, no false alarm), and it CRITs only on a *contradiction* (calendar-closed but market-open — the exact 7/2 bug shape) or if the entry path won't arm on a real trading day. So the full chain is verified:
+
+| | 7/3 (holiday) | 7/6 (Monday) |
+|---|---|---|
+| Calendar | non-trading ✓ | trading ✓ |
+| No-fire detector | silent (OK) | **CRITICAL if 0 entries** |
+| Pre-open gate | INFO, no false alarm | full entry-path dry-run |
+| Contradiction guard | armed (would catch a wrong-holiday) | armed |
+
+So: **tomorrow correctly sits out; Monday 7/6 is the real test, and if it doesn't fire you'll get paged.** Now let me complete recommendation #3 — the cross-day confirmation metric. Let me look at how the debrief computes MFE so I can measure "confirmed within 30 min" consistently:
+`_mfe_mae` uses a per-symbol bars cache — I can compute a fixed-window MFE from it. The key gap the verification flagged: re-arm ATR isn't logged, so confirmation isn't tracked for re-arm trades. I'll compute a **cross-day-consistent** confirmation metric (favorable excursion vs 0.15×ATR14, measured in a fixed 30-min window from entry) for *every* trade. Let me find where Section A/D is assembled to wire in the summary:
+The whole-hold MFE is already per-row, but for a *cross-day-consistent* metric I need a fixed 30-min window (hold length varies by day). Let me read the build assembly and row structure to wire this in defensively:
+Let me read `build()` to see where sections are assembled and the bars cache lives:
+The bars cache lives in `_section_b`'s loop — I'll compute confirmation there (where entry_px/entry_dt/exit_dt and the cache are all available) and summarize in Section D. Everything defensive (never break the EOD). First, the helpers:
+Now compute confirmation in the row loop and add it to the row dict:
+Now the Section D summary line. Let me read the current `_section_d` to place it:
+Compile-check and regenerate 7/02's Section D to verify the confirmation metric:
+Confirmation line didn't appear — `confirmed_30m` came back None for all trades. Let me debug the helper:
+tape_watcher isn't in tradestation-bot. Let me find where it actually lives:
+tape_watcher is in `strategy-research` — my helper inserted the wrong path. Let me fix it (the debrief already cross-imports from strategy-research, e.g. trade_autopsy):
+The confirmation metric works: **1/20 confirmed within 30 min (5%)** for 7/02, measured consistently for every trade (incl. re-arm, via 0.15×ATR14 in a fixed window). One note on scope: it's computed same-day at EOD (past-day bars aren't fetchable via the rolling window), so the comparable **cross-day series builds forward from 7/6** — exactly what was missing before. Let me commit, log, and push:
+Let me confirm the push reached origin, then summarize:
+Both done and pushed (`35b3c3b`, confirmed on origin). Here's where it stands.
+
+## One important heads-up: tomorrow is a holiday
+**Friday 7/3 is a full NYSE closure — "Independence Day (observed)"** (July 4 falls on a Saturday). So the bot *shouldn't* fire tomorrow — it should sit flat and silent, and that's correct behavior, not a failure. **The real "does it fire when it should" test is Monday 7/6.**
+
+## The fail-stops are in place and verified for both days
+I didn't take this on faith — I simulated the detectors on each date:
+
+| | Fri 7/3 (holiday) | Mon 7/6 (trading) |
+|---|---|---|
+| No-fire detector | **silent** ("no trading expected") | **CRITICAL → pages you** if 0 entries |
+| Pre-open 9 AM gate | INFO only (no false alarm) | full entry-path dry-run |
+| Calendar-contradiction guard | armed (catches a *wrong* holiday flag) | armed |
+
+So if Monday the bot is alive but hasn't armed a single entry by ~11 AM, you get paged loudly — that's the 7/02 catch, now calendar-correct. And the guard that would have caught the 7/02 bug (calendar says closed while the market's actually open) is live.
+
+## Recommendation #3 — done: cross-day confirmation metric
+The debrief now reports a **confirmation rate measured the same way every day** — favorable move vs +0.15×ATR14 in a **fixed 30-minute window from entry**, computed for *every* trade including re-arm (whose ATR the bot wasn't logging). It shows:
+- **confirmed-within-30-min** (the time-stop's keep-rate),
+- **confirmed-ever-in-hold**, and the **gap** between them = exactly what the 30-min leash cut.
+
+Tested on 7/02: **1/20 (5%)**. The one caveat: it's computed same-day at EOD, so the *comparable cross-day series builds forward from Monday* — but that's the whole point; we couldn't trend confirmation cleanly before, and now we can. It's fully defensive (can never break the EOD run), non-watched, and loads on the next debrief.
+
+Everything's committed. Bot's flat, and it'll correctly stay flat through the long weekend — I'll be watching Monday morning from 9 AM.
+
+---
