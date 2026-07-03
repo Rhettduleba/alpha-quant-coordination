@@ -16350,3 +16350,59 @@ Yeah — the market takes the Friday off because the Fourth lands on a Saturday,
 Practical upshot for us: nothing should happen tomorrow, and that's the *correct* outcome — the bot sits flat, the detectors stay quiet (no false "it didn't trade!" page), and Monday 7/6 is the first real session. I'll be watching from 9 AM Monday with the pre-open gate. Enjoy the long weekend.
 
 ---
+
+
+## Turn — 2026-07-02 21:39:37 ET
+
+**Rhett:**
+
+Check the warnings
+
+**Claude Code:**
+
+CSHV is fresh (9:25 PM): **OK=47 / WARN=3 / FAIL=0** — the same 3 WARNs from earlier today. Let me check the other two warning sources (bot_alerts, code_inbox) and verify each WARN against truth rather than assume they're unchanged:
+All three warning sources checked. Here's the triage — and I verified each against truth, not memory:
+
+**bot_alerts:** 1 FAIL (the known 14:51 TS 504 — benign transient, already escalated). **code_inbox:** clean (1 "OK" row, the post-outage recovery). **CSHV: 0 FAIL, 3 WARN** — the same three all day. Two are settled: `clean_day NON-CLEAN` (caused solely by that benign 504) and `pre_open_gate NO-GO` (the verified risk_config false-positive, durable fix queued in OPEN_ITEMS).
+
+The third — `report_integrity: 1 unclassified exit` — is worth a look, because it points at something real in your daily debrief. Let me dig:
+That question is fair, and it points at a real gap in how I've been operating — let me address both the mechanics and the three current warnings. First, let me find the exact monitor rule that needs to change:
+Rhett's two messages together are clear: **the warnings are mostly noise (old / non-impactful / false-positive), so fix them at the source**, and set up the process so only *meaningful* warnings fire and I surface them here with why+how. I've got a 3-day weekend (safe window) to fix them carefully. Let me locate all three fix targets:
+All three located. Let me read the two highest-value fix sites — the preflight false-positive (fires every session) and the clean_day incident logic:
+Now let me fix the highest-value one — the pre-open false-positive that fires **every session**. The check compares config mtime to the orchestrator's *start* time, but the strategy runs in fresh per-cycle subprocesses that re-read config every cycle. The correct comparison is "has the bot *cycled* since the edit" (heartbeat = cycle evidence), which preserves the survivability intent (a hung bot still fails) while killing the false alarm:
+Let me run the preflight to confirm the risk_config FAIL is now resolved:
+Preflight fixed: risk_config now **PASSES** (cycle evidence 9:34 PM > config edit 8:23 PM) → **51 PASS / 0 FAIL**. That kills the recurring pre-open NO-GO at its root. Let me refresh the gate to clear the cached result and look at the clean_day incident source:
+The clean_day WARN comes from `clean_day_certifier.certify_day()` flagging `no_critical_incident` — driven by that same benign 504. Let me find where it detects the "critical incident" so I can stop a transient 504 from counting:
+The certifier already *has* a `_is_transient_external` exemption for transient 5xx — but today's 504 wasn't caught by it. Let me see why:
+Wait — `_is_transient_external` *should* match this 504 ("server error" + "504"). So either it's already exempt and something else is driving NON-CLEAN, or there are other incidents. The debrief said "4 incidents today." Before I "fix" anything, let me verify what's *actually* flagging the day non-clean:
+Critical correction — I verified, and **my earlier read was wrong.** The clean_day NON-CLEAN is *not* the benign 504 (that's correctly exempt). The real driver is in `incidents.jsonl`: **`rel_trading_is_thinking` (HARD) + `rel_alive_but_not_trading` ×2 — the actual 7/02 morning outage.** So that warning is *correct and meaningful*, not noise — today genuinely wasn't a clean day. Had I blanket-suppressed warnings, I'd have hidden the one real signal. That's exactly the trap to avoid.
+
+Let me persist the corrected process. First the memory and playbook:
+Now the playbook rule. Let me read and update the reporting section:
+Now re-run the pre-open gate to clear its cached NO-GO (preflight passes now), then log and commit:
+Pre-open gate now returns **OK** (was NO-GO) — the fix cleared it; CSHV will show it green on its next 5-min run. Let me log (with the correction) and commit:
+Done — pushed (`43f4950`). Here's the payoff, in the format you asked for.
+
+## The process is now set up
+From now on, on every 15-minute monitor tick, **every active warning gets a post here: why it fired + how I'm addressing it** — new/changed ones get the full explanation, standing ones get a one-line status so I'm not spamming you. I saved it to memory and rewrote the monitor's old "silence = handled" rule.
+
+**Honest mechanics so you know what to expect:** I'm not a always-on listener — I can't ping the instant something fires. But I read the *same sources* that notify you (bot_alerts, CSHV, code_inbox) every 15 min during market hours, plus the 9 AM gate. So "when you get one, I get the same one" is true — with up to a ~15-minute lag, and only while the monitor's running.
+
+## The three current warnings — why + how
+
+**1. Pre-open gate NO-GO — genuine false alarm. FIXED.**
+- **Why:** the preflight compared risk_config's file-edit time to the bot's *process start* time. Your config edits (7/01 8:23 PM) landed after run_bot started (7:09 PM), so it screamed "running stale config" — **every single session.** But the strategy runs in fresh subprocesses that reload config every cycle, so it was never stale.
+- **How:** fixed it to compare against the *last cycle* (heartbeat) instead. It still fails a genuinely hung bot. Result: risk_config now PASSES, preflight 0 FAIL, gate returns **OK**. That recurring noise is gone for good.
+
+**2. Clean-day NON-CLEAN — and here I owe you a correction.**
+- **Why:** I told you three times this was "the benign 504." **I was wrong** — I hadn't read the actual source. The 504 *is* correctly ignored. The real driver is the **7/02 morning outage itself** (`trading_is_thinking` + `alive_not_trading` incidents). Today genuinely *wasn't* a clean day, so marking it non-clean is **correct.**
+- **How:** leave it — it's the system working, and it clears itself on the next clean day (Monday, if it trades normally). This is exactly why I *can't* just blanket-mute warnings to reduce noise: this one looks like noise but is the one real signal.
+
+**3. Report-integrity (1 unclassified exit) — minor.**
+- **Why:** MCD's candle-close exit (the day's one winner) logged no reason code, so it got tagged "unclassified."
+- **How:** low priority — it's cosmetic data hygiene, and the root is in a watched file. Noted, not touching it inline.
+
+## One thing that needs your yes
+The 504 also gets mislabeled `TS_AUTH_FAIL` by the entry code, which is what sends you that false **"auth failing"** alert on any TradeStation hiccup. The fix is one line and alerting-only (reclassify a 504 as a transient warning), but it lives in a **watched trading file** — so I won't touch it without your go. Want me to apply it? It's `PROP-TS-TRANSIENT-LABEL`, ready to ship.
+
+---
