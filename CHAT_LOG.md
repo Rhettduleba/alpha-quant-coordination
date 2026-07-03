@@ -17006,3 +17006,17 @@ Clean — FAIL=0, flat, holiday, nothing new.
 **12:47 PM: clean.** Handled.
 
 ---
+
+
+## Turn — 2026-07-03 12:58:40 ET
+
+**Rhett:**
+
+So where do we stand right now with the system the project in general we have a couple days of downtime until the next trading day. I want to take care of everything that is broken. Has a bug needs fixed. I wanna make sure that the dashboard is completely up-to-date. Meaning it has everything on it that we talked about and everything is current data wise. I also wanna make sure that TW is completely fixed and there's no lagging or miss ticks to the best of its capability we talked about utilizing TW to his highest potential. Did we accomplish that goal? Is there anything to write fix that we talked about in the last day that we haven't done take a full review and make sure that there's nothing for us to do your goal. Your job your mission is to make sure that everything is accurate and I don't find any mistakes and that the bot fires on Monday when it should when the market opens also give me a rundown of the recent changes we have made give me a summary of what we are currently running, live as far as entry signal timing and exit
+
+**Claude Code:**
+
+This is the big pre-Monday review — exactly the right thing to do with the downtime. Let me mark this as its own chapter and run a comprehensive multi-agent audit across every dimension you named (Monday-readiness, open bugs, dashboard, TW, live config), all from ground truth, then I'll fix what's fixable this weekend and give you the full rundown.
+The full audit is running (5 parallel ground-truth auditors: Monday-readiness, open bugs/undone items, dashboard currency, TW status, and live config + recent changes). When it lands I'll independently re-verify the mission-critical "will it fire Monday" facts myself, fix every non-watched bug this weekend, surface anything watched/gated for your call, and give you the complete rundown — recent changes, exactly what's running live (entry/timing/exit), the honest TW verdict, and the Monday go/no-go. Sit tight — reporting back the moment it completes.
+
+---
