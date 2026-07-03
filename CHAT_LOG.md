@@ -16335,3 +16335,18 @@ Tested on 7/02: **1/20 (5%)**. The one caveat: it's computed same-day at EOD, so
 Everything's committed. Bot's flat, and it'll correctly stay flat through the long weekend — I'll be watching Monday morning from 9 AM.
 
 ---
+
+
+## Turn — 2026-07-02 21:27:02 ET
+
+**Rhett:**
+
+You're right, tomorrow is an absurd holiday on the stock market.
+
+**Claude Code:**
+
+Yeah — the market takes the Friday off because the Fourth lands on a Saturday, so we get a three-day weekend out of a holiday that technically isn't even tomorrow. Half-days around Thanksgiving and Christmas Eve are the same kind of quirk.
+
+Practical upshot for us: nothing should happen tomorrow, and that's the *correct* outcome — the bot sits flat, the detectors stay quiet (no false "it didn't trade!" page), and Monday 7/6 is the first real session. I'll be watching from 9 AM Monday with the pre-open gate. Enjoy the long weekend.
+
+---
