@@ -18511,3 +18511,51 @@ The workflow traced the live code for all 13 other approved behaviors and found 
 The shift you asked for is done: wherever a machine can hold the line, I've taken my judgment out of the loop. Every future bug now becomes one more permanent invariant — the system only gets harder to fool from here.
 
 ---
+
+
+## Turn — 2026-07-04 16:24:48 ET
+
+**Rhett:**
+
+Fix the anomaly
+
+**Claude Code:**
+
+The freeze was on the *autonomous* run editing code without a human in the loop. You're here now directing it — human-in-the-loop is satisfied, and the target is a non-watched observability/logging path, not a WATCHED strategy file. Let me investigate the root cause properly before changing anything.
+
+First, let me understand how the timestamps get generated and confirm the current clock/TZ is stable.
+Confirmed root cause: UTC is exactly +4h from EDT right now (4:21 PM EDT = 8:21 PM UTC). So a run at ~3:04 PM ET that read a **UTC** clock would get 19:04 = "7:04 PM" — exactly the future-dated stamp. The prior run used a UTC-derived time and labeled it "ET". Let me check whether the playbook/skill mandates a specific clock source and whether an ET helper already exists.
+The codebase's canonical ET pattern is `ZoneInfo("America/New_York")` (used in 67 places) with `datetime.now(ET)` — TZ-safe regardless of system TZ. The prior run bypassed that and used a raw UTC clock. Let me verify the canonical pattern produces the correct stamp now, then build the fix.
+Windows `strftime` doesn't support `%-I`. I'll build the helper with portable formatting. Let me create a canonical ET-stamp helper the triage will use, so no future run can hand-roll a UTC clock.
+Helper works and is TZ-safe (correct `-04:00` offset via ZoneInfo, independent of system TZ). Now let me correct the erroneous entry itself. Let me read the exact surrounding text.
+There are newer 7/03 holiday entries now — and notably they already reference "the known git-bash UTC-mislabel bug" and switched to PowerShell. That belief is actually slightly wrong (git-bash `date` returned correct EDT in my tests; the real culprit was a UTC source like `date -u`/`utcnow`). My ZoneInfo helper fixes it robustly regardless of which shell. Let me locate the actual erroneous 7/02 entry.
+This is the erroneous entry (line 76): it cites "CSHV 15:00" and "Bot healthy at 15:00" but stamped "~7:04 PM ET" — the run actually executed **~3:04 PM ET** (15:04 EDT mislabeled as UTC 19:04). I'll correct the stamp and annotate the correction rather than silently rewrite it (honest audit trail).
+Now the recurrence prevention. Let me mandate the canonical helper in the triage playbook and add a future-stamp self-check.
+Let me verify the helper's AM/PM edge cases (midnight/noon) before committing — I want it correct, not just plausible.
+All edge cases correct (00:04→12:04 AM, 12:04→12:04 PM, 19:04→7:04 PM). Now let me sync the SESSION_LOG correction to the coordination repo. Let me check what that repo tracks.
+The coordination repo mirrors both SESSION_LOG.md and the playbook. Let me check whether the live tree (C:\AlphaQuant) is itself a git repo (for the new `et_now.py`), then sync everything.
+`C:\AlphaQuant` is a local repo (no remote) that regularly commits these files; the coordination repo is the pushed mirror for SESSION_LOG + playbook. Let me commit all three to the local repo, then sync the two mirrored files to the coordination repo and push.
+Committed locally; the repo's own strategy-change guard confirmed "no watched strategy files staged → allow (benign edit)". Now sync the two mirrored files to the coordination repo and push.
+Pushed. Let me do a final verification: confirm the corrected entry reads right and the helper runs exactly as the triage will invoke it.
+Fixed and verified. Here's what the anomaly was and what I changed:
+
+## Root cause
+The 2026-07-02 triage entry was stamped **"~7:04 PM ET"** but actually ran ~3:04 PM ET. A prior autonomous run read a **UTC** clock (15:04 EDT = 19:04 UTC) and labeled it "ET" — future-dating the audit trail ~4 hours. I confirmed the mechanism live: UTC is currently exactly +4h from EDT, and the entry cites the *CSHV 15:00* snapshot, pinning its real run time to ~3:04 PM.
+
+The 7/03 entries had been working around this by switching to PowerShell and blaming a "git-bash UTC-mislabel bug" — but git-bash `date` actually returns correct EDT in my tests; the real culprit was a UTC source (`date -u` / `utcnow`), and the workaround was fragile (depends on which shell the agent happens to use).
+
+## The fix (three parts)
+
+1. **Canonical helper** — new [`tradestation-bot/et_now.py`](tradestation-bot/et_now.py) using the codebase's standard `ZoneInfo("America/New_York")` pattern (used in 67 other files). DST-correct and **independent of the host timezone**, so it can't be fed a UTC value. Verified across edge cases (12:04 AM, 12:04 PM, etc.). CLI: `python et_now.py` → `2026-07-04 ~4:24 PM ET`.
+
+2. **Corrected the record** — [SESSION_LOG.md:76](SESSION_LOG.md:76) header changed to `~3:04 PM ET` with an inline `[STAMP CORRECTED 2026-07-04: …]` annotation (honest correction, not a silent rewrite). Zero future-dated `7:04 PM` headers remain.
+
+3. **Recurrence prevention** — [CODE_ALERT_TRIAGE_PLAYBOOK.md](CODE_ALERT_TRIAGE_PLAYBOOK.md) now mandates stamping from `et_now.py`, forbids UTC-derived stamps, and adds a **self-check**: if your stamp is in the future vs `et_now.py` or later than the newest entry beyond real elapsed time, STOP and refix before committing. Since the scheduled task re-reads this playbook every run, the mandate propagates automatically.
+
+## Persistence
+- Committed to the local `C:\AlphaQuant` repo (`aceaa21`) — the repo's own strategy-change guard confirmed **"no watched strategy files staged → allow (benign edit)"**.
+- SESSION_LOG + playbook mirrored and pushed to the coordination repo (`5ec0b5a`).
+
+All edits were on the non-watched observability path — no trading code, no orders, no processes touched.
+
+---
