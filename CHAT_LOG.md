@@ -18160,3 +18160,58 @@ The risk-floor restore ($2k daily stop, 5% DD kill, intraday clamp) and 4x unive
 **The one thing I need from you before Monday:** on the earnings gap — **(a)** run Monday with no live earnings guard (low but non-zero risk), or **(b)** want me to stage the blunt fail-safe stopgap tonight (skip any re-arm candidate sitting in the earnings-CSV blackout)? I lean (b) — it's conservative and closes the hole. Everything else can wait for your unhurried read.
 
 ---
+
+
+## Turn — 2026-07-03 20:08:39 ET
+
+**Rhett:**
+
+B
+
+**Claude Code:**
+
+Going with **B** — staging the fail-safe earnings stopgap now. You've given the explicit go on the watched file, so I'm authorized to touch `orb_multiscan.py`. I'll do this the governed way: reuse the *proven* `is_earnings_blackout` veto (same call the 9:35 path uses), put it behind an instant-revert flag, regression-lock it, record the approval + change-log, and verify-load before I call it done.
+
+Let me read the exact insertion points first:
+Clear insertion point — right after the HTB exclusion (line 353), grouped with the other pre-trade structural filters. Now let me find where the ORB flags live in `risk_config` so the toggle sits with its siblings:
+The HTB flag at line 332 is the natural sibling. Let me read that exact block to place the new flag precisely:
+Now I'll make the two watched-file edits. First the flag in `risk_config`:
+Now the veto itself in `orb_multiscan.py`, inserted after the HTB exclusion and mirroring its style + the 9:35 path's fail-safe pattern:
+Both watched edits are in. Now I verify before I call this done (verify-load discipline). Compile both files, prove the veto function works on real data (true-positive, clean, and fail-safe paths), and confirm the flag loads:
+Compile passes, flag loads, clean + fail-safe paths correct. But I have NOT yet proven the veto actually *blocks* during re-arm hours — and there's a real risk it doesn't. The veto centers a ±18h window on `earnings_date` at 09:30; a name reporting that morning could fall *outside* the window by the 9:45 scan. If so, wiring it in is a no-op and I'd be falsely claiming the hole is closed. Let me read the actual window math:
+The window is centered on **now ±18h** (not on earnings_date), so my timing worry was misplaced — a name reporting the morning of the scan *is* inside the window at 9:45. Good. But this raises the real question: the CSV is 3.5 days stale (refreshed 6/30) — does it even *contain* Monday 7/6's earnings names? If not, the stopgap is wired correctly but blind for Monday. Let me verify the true-block path AND whether the calendar covers Monday:
+Verification is conclusive and positive:
+- **True-block proven:** TLX (reports 7/02) → `block=True` when scanned during 7/02 trading hours. The veto *does* fire during re-arm hours for a same-day earnings name.
+- **Fail-safe + clean paths correct** (garbage symbol and SPY → allow, no raise).
+- **Calendar covers Monday:** despite the 3.5-day mtime, the CSV *content* runs 6/29→7/16 with **21 names reporting 7/6–7/8** — so the guard is armed for Monday, not blind. (A full refresh would catch any newly-scheduled reports; that's a separate non-watched enhancement, not required.)
+
+Now the regression lock so this can't silently regress. Let me see the existing REG pattern:
+Let me read the source-lock test pattern to mirror it for REG-34:
+Adding REG-34 to lock the wiring (source-level, mirroring REG-33's pattern):
+Now run the full regression suite to confirm REG-34 passes and nothing regressed:
+**30 pass / 0 FAIL**, REG-34 green ("orb_multiscan wires the earnings veto, flag=True"), nothing regressed. Now the governance records so this deployment is complete (proposal ✓, approval, change-log, REG ✓). First the approval in the source-of-truth yaml:
+Now the change-log entry (governance-complete):
+Change-log written. Now confirm it validates (covers both watched files for any future commit) and check the bot's verify-load status:
+**run_bot is live-cycling right now** (heartbeat 0.3 min old, loop 4085) — it cycles on the holiday even though it won't trade. Since `orb_multiscan`/`risk_config` are fresh subprocesses each cycle, the change loads on the next cycle, not just Monday. The change-log correctly covers both watched files. Let me run the prescribed verify-load — the preflight diagnostic — to confirm the running system is healthy and has picked up the edit:
+**Verify-load confirmed: 39 PASS / 0 FAIL.** The risk_config check is clean (not flagged) — meaning the cycling bot has already picked up the edit. The 2 WARNs are both pre-existing and unrelated to my change (a benign leftover H5 state-file check, and the preflight hardcoding 5 config literals — old tech debt). The earnings stopgap is fully deployed and governed.
+
+Let me update the tracker and log, moving the now-decided P0 to RESOLVED:
+Done — **B is deployed, verified, and fully governed.** The live re-arm path now has an earnings guard for Monday.
+
+## What shipped
+The proven `is_earnings_blackout` veto (±18h, fail-safe) is now wired into `orb_multiscan`'s candidate filter, behind `REARM_EARNINGS_VETO_ENABLED=True` in `risk_config` — instant revert by flipping to `False`. It mirrors the 9:35 path exactly; any error → allow, so it can never lock the book.
+
+## Verified before I called it done (not asserted)
+- **It actually blocks during trading hours:** TLX (reports 7/02) → `block=True` when scanned at 7/02 10:00 ET. My earlier worry that the window closes before 9:45 was wrong — it centers on *now* ±18h, so a same-day earnings name is in-window across the whole 9:45–2:35 re-arm session. Clean names (SPY) and a garbage symbol → allow, no raise.
+- **The calendar covers Monday:** despite the 3.5-day mtime, the CSV *content* runs 6/29→7/16 with **21 names reporting 7/6–7/8** — the guard is armed, not blind.
+- **Regression-locked:** REG-34 added and green; suite **30 pass / 0 FAIL**.
+- **Verify-load:** run_bot is live-cycling (heartbeat 0.3 min, loop 4085); fresh subprocesses re-import each cycle, so it's already loaded — **preflight 39 PASS / 0 FAIL**, risk_config check clean.
+- **Governance-complete:** [proposal](ai-trading-strategy-agent/outputs/proposals/PROP-EARNINGS-VETO-LIVE-PATH-2026-07-03.md) · approval recorded · change-log `AQ-20260703-EARNINGS-VETO-LIVE-PATH-001` (both files) · REG-34.
+
+## One honest limitation
+The calendar was last *refreshed* 6/30, so a report **newly scheduled after 6/30** could slip through (false-negative only — it will never wrongly block a clean name). Current coverage is adequate for Monday, but if you want the strongest guard I can refresh the calendar from the NASDAQ feed and promote it before Monday's open (non-watched, ~2 min) — your call, not required.
+
+## Still on the table (no rush)
+Two P1 questions remain: the **exit-redesign fork** (draft now vs. let the ledger run a week — I lean wait) and the **clean-day disqualification policy** (loop-stall / kill-day = hard reset or soft ding — I lean soft ding). And one correction I owe you: I'd previously called `consecutive_clean=0` "benign noise" — it's not; it reflects real past loop-stalls, and the fix is repairing that stall, which is the P1 above. Nothing there needs you tonight.
+
+---
