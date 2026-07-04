@@ -73,7 +73,7 @@
 >
 > **[ALERT TRIAGE 2026-07-02 ~4:04 PM ET — autonomous run]** Inbox **CLEAN** (0 total / 0 actionable / 0 CRITICAL). Post-close: CSHV 16:00 = **OK 46 / WARN 3 / FAIL 0** — the 3 WARNs (`report_integrity` 1 unclassified-exit-reason of 20 trades; `clean_day_certified/no_critical_incident`; `pre_open_gate_ran` NO-GO) are the SAME already-alerted 7/02 morning cascade (9:30 loop-stall + preflight FAIL + early-close-calendar outage) handled in the 9:06/10:07 AM + 1:06/2:04/3:04 PM runs — WARN-not-FAIL = intentional no-re-ping, NOT new. Bot healthy at close: heartbeat 12s, trade_journal touched 16s ago, 21 entry-arms today. True clock verified **4:04 PM ET** via BOTH git-bash `date` (EDT −0400) AND PowerShell `Get-Date` — and cross-checked vs CSHV gen-stamp 16:00:08 + 12s heartbeat. **ANOMALY (non-trading, cosmetic, NOT escalated as CRITICAL — noise):** the prior triage entry below is stamped "~7:04 PM ET" but was written between 2:04–4:04 PM (it cites CSHV 15:00); that run mis-labeled UTC (19:04) as ET → future-dated by ~4h. Real time now is 4:04 PM, so no run has legitimately happened at 7:04 PM. Proposed fix (for a human, during freeze): the autonomous run should stamp from an explicitly TZ-pinned clock (e.g. `Get-Date` on this EST box, not a UTC-derived value) and self-check that its stamp is not in the future vs the newest existing entry. Flagging only — no ping (cosmetic, self-corrected clock). No new ping this run (silence = handled). Edited / placed / restarted nothing on the trading path. Inbox --ack'd.
 >
-> **[ALERT TRIAGE 2026-07-02 ~7:04 PM ET — autonomous run]** Inbox **CLEAN** (0 total / 0 actionable / 0 CRITICAL). Post-close check: CSHV 15:00 = **OK 47 / WARN 3 / FAIL 0** — the 3 WARNs (`report_integrity` 1 unclassified-exit-reason of 18 trades; `clean_day_certified/no_critical_incident`; `pre_open_gate_ran` NO-GO) are all the SAME already-alerted 7/02 morning cascade (9:30 loop-stall + preflight FAIL + early-close-calendar outage) escalated/handled in the 9:06/10:07 AM + 1:06/2:04 PM runs — WARN-not-FAIL = intentional no-re-ping, NOT new. Bot healthy at 15:00 (heartbeat 3s, trade_journal 19s, 21 entry-arms today, re-arm path traded, 1 position protected + reconciled both ways). True clock verified 7:04 PM ET. No new ping (silence = handled). Edited / placed / restarted nothing. Inbox --ack'd.
+> **[ALERT TRIAGE 2026-07-02 ~3:04 PM ET — autonomous run]** _[STAMP CORRECTED 2026-07-04: original header read "~7:04 PM ET" — a UTC mislabel (15:04 EDT == 19:04 UTC printed as ET). This run actually executed ~3:04 PM ET, consistent with the CSHV **15:00** snapshot it cites. Root cause fixed via `tradestation-bot/et_now.py` (canonical ZoneInfo ET stamp) now mandated by the triage playbook.]_ Inbox **CLEAN** (0 total / 0 actionable / 0 CRITICAL). Post-close check: CSHV 15:00 = **OK 47 / WARN 3 / FAIL 0** — the 3 WARNs (`report_integrity` 1 unclassified-exit-reason of 18 trades; `clean_day_certified/no_critical_incident`; `pre_open_gate_ran` NO-GO) are all the SAME already-alerted 7/02 morning cascade (9:30 loop-stall + preflight FAIL + early-close-calendar outage) escalated/handled in the 9:06/10:07 AM + 1:06/2:04 PM runs — WARN-not-FAIL = intentional no-re-ping, NOT new. Bot healthy at 15:00 (heartbeat 3s, trade_journal 19s, 21 entry-arms today, re-arm path traded, 1 position protected + reconciled both ways). True run time ~3:04 PM ET (header originally mis-stamped 7:04 PM = UTC mislabel; corrected 2026-07-04). No new ping (silence = handled). Edited / placed / restarted nothing. Inbox --ack'd.
 >
 > **[ALERT TRIAGE 2026-07-02 ~2:04 PM ET — autonomous run]** Inbox **CLEAN** (0 actionable / 0 CRITICAL). CSHV 14:00 = **OK 48 / WARN 2 / FAIL 0** (heartbeat 18s, trade_journal 13s — bot alive+trading). Both WARNs (`clean_day_certified/no_critical_incident` + `pre_open_gate_ran` NO-GO) are the SAME already-alerted cascade off this morning's 9:30 loop-stall + preflight FAIL + early-close outage — escalated/handled in the 9:06/10:07 AM + 1:06 PM runs, NOT new (WARN not FAIL = intentional no-re-ping). True clock verified 2:04 PM ET via Get-Date. No new ping (silence = handled). Edited/placed/restarted nothing. Inbox --ack'd.
 >
@@ -4996,3 +4996,98 @@ _Pinned-bar real-time method (l1_mustnotcut_audit), K pinned at 0.75 (never tigh
 _Diagnostic, in-sample. These days are in-sample for any un-promoted rule; a streak of confirming days accumulates N toward >=30 but does not promote anything -- promotion still requires a locked rule + fresh OOS forward test + the gauntlet._
 
 ---
+
+### 2026-07-03 — EDGE HUNT (workflow w8dekjnex, broker-truth N=221) + edge_shadow_ledger BUILT & WIRED
+
+**Directive (Rhett):** "find an edge you have to find an edge somewhere." Ran 3 parallel hunt agents + adversarial synthesis over the real 221-round-trip tape (6/18-7/02, net -$3,371). Baseline reproduced exactly.
+
+**HONEST VERDICT — no deployable ENTRY edge at this N.** Best entry-knowable separator AUC 0.398 (time-of-day); everything else (relvol/RS/gap/move/exhaustion) AUC 0.43-0.51 = noise.
+- **Chop-day hypothesis FALSIFIED** (deep-dive #1): corr(SPY-efficiency, day net) = -0.16; median split INVERTED (cleaner-trend days lost more); the 2 blow-up days (6/25,6/29) were higher-efficiency. DO NOT build a chop-day gate.
+- **relvol -> confirm is a HEAD-FAKE:** day_relvol predicts confirmation AUC 0.638 (best predictive hit) BUT is anti-correlated with net-$ (low-relvol tertile is the ONLY profitable one +$1,004; high -$1,629). Explicitly NOT trading it. Do not let AUC-on-a-label become a size change.
+- **Strongest real+significant+robust signal = time-of-day:** entry <11:00 ET win 67.7% vs >=11:00 47.9% (z=2.97; same sign all 10 LODO folds). BUT does NOT convert to dollars (early book loses more per-trade); fails must-not-cut as a hard filter (cuts 45 winners). Shadow, not bot.
+- **THE EDGE IS IN THE EXIT, not the entry:** confirmed cohort +$14,894 @96.7% vs unconfirmed -$14,156 @9.1%. Not entry-knowable (confirm is set 30 min post-entry) -> validates the deployed candle-close trail + $500 cap + 30-min unconfirmed time-stop, and points at the parked PROP-CONFIRM-KEYED-EXIT direction.
+
+**BUILT (non-watched, SHADOW-ONLY, read-only): `strategy-research/edge_shadow_ledger.py`** — measures the 2 must-not-cut-SAFE size-DOWN gates (halve size, never drop) each EOD vs broker truth:
+- A_LATE = half size on entries >=11:00 ET; B_ATHIGH = half size at/above trailing-20d high (prox>=-0.5%); C = union.
+- **In-sample 10-day result (curve-fit, NOT proven): A +$645 (4/10 +days, fragile); B +$1,120 (N=31, 5/10); C UNION +$1,885 (N=117, 7/10 +days) -> -$3,371 to -$1,486.** The UNION is the emergent find (neither single-feature study tested it): time gate catches afternoon chop, 20d-high gate catches extended-breakout blow-ups (size-downs into 6/25 +$975 & 6/29 +$489). Diversified, most robust.
+- **WIRED as the 8th EOD action** (Windows task AlphaQuant_EodReconciliation) -> accumulates FORWARD/OOS data from Mon 7/6. Self-stamps headless; idempotent by date; ledger = `ai-trading-strategy-agent/outputs/edge_shadow/edge_ledger.jsonl`.
+- **Promotion bar before any of these can become a gated proposal:** N>=30 per cell + positive delta on >=7/10 FORWARD days + forward-only 2-prop z>=2.0. Std rule #3: advisory measurement only, no live-path touch until manual_approvals records it.
+
+Verify-load: ledger backfilled 10 days OK; headless no-arg target resolves to latest broker date (7/02 now -> 7/6 Mon); task now 8 actions (verified). No live/watched file touched.
+
+[MONITOR 4:54 PM ET 7/03] clean — HOLIDAY (Independence Day observed, no trading). Bot correctly sat out (pre_open_trade_readiness flagged NO_TRADE_DAY 9:00 AM). Broker flat (0 pos), bot_alerts 32 INFO / 0 FAIL-WARN 24h, CSHV FAIL=0 (1 WARN = benign non-trading-day clean_day path, verified). No action. Cron resumes Mon 7/6 9 AM — 0945 window's first live day; watch confirmed/unconfirmed split + edge_shadow_ledger's first forward row.
+
+### 2026-07-03 ~8:20 PM ET — DEPLOYED: earnings veto on the LIVE re-arm path (Rhett "B", PROP-EARNINGS-VETO-LIVE-PATH)
+
+**Gap (verified):** the earnings veto `is_earnings_blackout` was consumed ONLY at `orb_runner.py:458` (the gated-off 9:35 path). The live book is 100% the re-arm path (`orb_multiscan`), which had ZERO earnings references → an earnings-gap name could arm LIVE with no catalyst guard. Monday 7/6 = first full live re-arm session.
+
+**Fix (Rhett approved option B, chat):** wire the SAME proven veto onto the re-arm candidate filter (`orb_multiscan.py`, after the HTB exclusion), behind `risk_config.REARM_EARNINGS_VETO_ENABLED=True`. Fail-safe: any error → ALLOW (mirrors `orb_runner:464`). Two WATCHED files touched (risk_config + orb_multiscan) — under Rhett's explicit go.
+
+**Verified before calling done:**
+- Compile OK both; flag loads True.
+- Veto function: TLX(reports 7/02) @ 7/02 10:00 ET → **block=True** (true-positive during trading hours); SPY & garbage-symbol → block=False (clean + fail-safe, no raise). Window is now-centered ±18h → a same-day earnings name IS in-window at 09:45–14:35 (my earlier "window closes at 03:30" worry was wrong — it centers on NOW, not earnings_date).
+- Calendar coverage for Monday: live `earnings_calendar.csv` content range 6/29→7/16, **21 names reporting 7/6–7/8** (despite 3.5d mtime) → guard is ARMED, not blind. Known limit: stale-refresh = false-negatives only (never false positives).
+- **REG-34** source-locks the wiring; regression suite **30 pass / 0 FAIL**.
+- **Verify-load:** run_bot cycling (heartbeat 0.3 min, loop 4085); orb_multiscan/risk_config are fresh subprocesses each cycle → change loads next cycle (already picked up — preflight risk_config check clean). **Preflight 39 PASS / 2 WARN / 0 FAIL** (both WARNs pre-existing + unrelated: h5_daily_state leftover, preflight hardcoded-literals).
+
+**Governance-complete:** proposal `PROP-EARNINGS-VETO-LIVE-PATH-2026-07-03.md` · approval in manual_approvals.yaml (Rhett 7/03 "B") · change-log `AQ-20260703-EARNINGS-VETO-LIVE-PATH-001` (both files) · REG-34 · instant revert `REARM_EARNINGS_VETO_ENABLED=False`.
+
+Also this turn: synced 2 stale proposal headers (TS-TRANSIENT, LIVE-QUOTES → APPROVED) + refreshed OPEN_ITEMS (2 shipped props → RESOLVED, real open questions logged). Honest correction surfaced: `consecutive_clean=0` is NOT "benign CIM-noise" (my earlier framing) — it reflects real past faults (6/22/6/26 loop-freeze, 6/19 gate-fail); lever is fixing the loop-stall, not silencing the check. NOTE: consecutive_clean now shows 21 in the regression suite's own counter — that's the REG-suite's clean-run streak, distinct from the reliability clean-TRADING-day certifier (still 0). Two different counters; don't conflate.
+
+### 2026-07-03 ~8:45 PM ET — Rhett "go with both recommendations": exit-fork=WAIT + clean-day=SOFT-DING (both DONE)
+
+**Rec 1 — exit-redesign fork = WAIT (Option B).** No PROP-CONFIRM-KEYED-EXIT proposal yet. `edge_shadow_ledger` accumulates OOS forward data from 7/6; I revisit + draft when it clears the forward bar. BUILT the self-trigger: `edge_shadow_ledger._readout` now separates IN-SAMPLE (≤7/02, the curve-fit backfill) from FORWARD/OOS days and prints **PROMOTION-READY** per gate when forward N≥30 + ≥7/10 positive forward days (else "accumulating"). Verified: 0 forward days now, all accumulating. OPEN_ITEMS: exit-fork moved awaiting→PENDING VALIDATION (I hold the thread).
+
+**Rec 2 — clean-day policy = SOFT DING (not hard reset).** DEPLOYED to `clean_day_certifier.py`: `rel_trading_is_thinking` (loop-stall) moved HARD→SOFT. A single self-recovered stall no longer hard-resets the 5-clean-day promotion streak; a sustained freeze still disqualifies (SOFT storm ≥5); ALL trading-damage detectors stay HARD (broker_flat/no_overnight/exit_side/phantom_book/gate_open/safe_mode_stuck/report_integrity); CRITICAL paging unchanged. Kill-days were already SOFT → no change needed (2nd half of the decision).
+- **Verified impact (broker truth):** flips ONLY 6/22, 6/26, 7/02 (single self-recovered stall; every other integrity condition already passed = zero trading damage) → CLEAN. 6/29 & 6/30 STAY non-clean (stuck SAFE_MODE ×209/×94 — genuine sustained fault, separate bug on fix-list). **consecutive_clean 0 → 2** (7/01, 7/02), correctly breaking at 6/30.
+- **Locked:** module self-test 15/15 (4 new soft-ding cases); **REG-35** in main suite; regression **31 pass / 0 FAIL**.
+- **Governance-complete:** proposal `PROP-CLEANDAY-SOFTDING-STALL-2026-07-03.md` · approval in manual_approvals.yaml (Rhett 7/03) · change-log `AQ-20260703-CLEANDAY-SOFTDING-STALL-001` (both files) · REG-35 · reversible (re-add to `_HARD_FAULT_CHECKS`).
+- **Nuance flagged:** this ADVANCES the promotion bar (a governance change), done transparently + Rhett-approved + documented — not a quiet ramp advance. consecutive_clean=2 means we're 2/5 toward the bar; 6/30's stuck-SAFE_MODE is the next real blocker (the reconcile_from_reliability fix on the queued list).
+
+### 2026-07-04 — Rhett directive "fix identified bugs immediately" → verified stuck-SAFE_MODE (already fixed) + closed the bug CLASS
+
+**Directive (Rhett):** never hold back a fix; an identified bug gets fixed immediately (no "fix-list"). Saved to [[feedback_never_defer_always_act]].
+
+**Traced the stuck-SAFE_MODE "bug" I'd parked to ground (verify-before-state):**
+- Auto-clear `reconcile_from_reliability` runs UNCONDITIONALLY every ~90s in the live monitor (reliability_checks.py:573) — no deadlock.
+- Both live engagers covered: pre_open_gate (`triggered_by="pre_open_gate"`, :576) + reliability_monitor. "Stuck" is ENFORCE-aware (Loop-189): ENFORCE=OFF → WARN not CRIT.
+- **VERDICT: the identified bug was ALREADY FIXED** (my 7/03 reconcile fix + Loop-189). 6/29/6/30's HARD faults are historical/immutable (pre-fix). **CORRECTION owed + made:** last turn I called this "the reconcile bug still on my fix-list" and said fixing it lets the streak climb past 2 — BOTH WRONG. The fix was already deployed; 6/30 is frozen history; the streak climbs by accumulating NEW clean days (7/06+), not by touching 6/30. I stated that without verifying.
+
+**But tracing surfaced a real residual → FIXED THIS TURN (closing the bug CLASS, not just the instance):** the auto-clear used a hardcoded ALLOWLIST `{reliability_monitor, pre_open_gate}` — any future automatic engager (or the pre_open_gate restore path, `triggered_by="restore"`) would get stuck again just by not being on the list. Generalized to `triggered_by != "manual"`: auto-clear ANY automatic engagement once integrity is clean; only a deliberate MANUAL hold persists. **Zero behavior change for current engagers** (both already auto-cleared); purely future-proofing. safe_mode.py (non-watched, safety-adjacent).
+- **Locked:** REG-36 (temp-flag isolated — verified live safe_mode.json UNTOUCHED before/after: False/None → False/None). Suite **32 pass / 0 FAIL**.
+
+**Surfaced (design question, NOT unilaterally changed):** pre_open_gate.py:585 still says a NO-GO hold needs "human clear required," but reconcile auto-clears it. Cosmetic today (ENFORCE=OFF). When SAFE_MODE_ENFORCE is turned ON (a before-live step), we must decide: should a gate NO-GO auto-clear when reliability goes clean, or require human review before entries resume? Rhett's call at ENFORCE-on time.
+
+### 2026-07-04 ~12:40 PM ET — BUG (human-found): re-arm scan fired 48 orders on a SATURDAY + built spec-coverage audit
+
+**Bug (Rhett found it, not my monitor):** orb_multiscan.run_multiscan gated ONLY on holiday_reason() (holidays), NOT weekends. On Sat 7/04 it ran the full scan + submitted 48 orders into a closed market; TS REJECTED all 48 (0 fills, 0 positions, no risk) — but order-spam + a notification on a non-trading day. The approved PROP-REARM-TRADINGDAY-GATE-2026-06-22 specified is_regular_trading_day but only the holiday half was wired.
+- **FIXED (watched file, approved + Rhett directive to fix bugs immediately):** gate now uses `is_regular_trading_day(now)` (weekends AND holidays), checked BEFORE any broker call (zero API traffic on a non-trading day). Verified: Sat/Sun/7-3-holiday → non_trading_day; Mon 7/6 → passes gate (trades). REG-37 (CRITICAL) locks it; suite 33 pass/0 FAIL. Change-log AQ-20260704-REARM-TRADINGDAY-GATE-001. Fixed a manual_approvals inline-comment that had HIDDEN the approval from the validator. Deployed (fresh subprocess; 12:35 window now skips).
+
+**Root-cause of the MISS (Rhett's meta-point — habitual "approved but not wired; human finds it"):** (1) my self-monitor runs market-hours on trading days; the BOT runs 24/7 → its non-trading-day behavior was an unmonitored blind spot. (2) weekend orders logged INFO (ORB_V16_ENTRY_OK) + rejects benign → tripped no FAIL check. (3) I verify what I CHANGE (add a REG) but NEVER systematically verified what was already APPROVED is actually wired.
+
+**Mechanism built to kill this class: `validation/spec_coverage_audit.py`** — cross-references every approved PROP in manual_approvals vs regression_suite; flags every "approved-but-unproven" (no REG proving it's wired). FIRST RUN: 26 approved / 8 proven / **13 UNPROVEN** / 5 waived. Unproven worklist incl. PROP-HOLIDAY-SCAN-GUARD, PROP-DOLLAR-CAP-500, PROP-EARLY-REARM-0945, PROP-INPLAY-ENTRY-GATE, PROP-SLOTCAP-RAISE, PROP-EXIT-CANDLE-1.4ATR (some are covered-but-not-id-linked; some genuinely unproven). COMMIT: drive to zero (REG or reasoned waiver each) + build a non-trading-day "bot must be DARK" runtime guardian (weekends too) + schedule both. Pending Rhett's nod on approach.
+
+### 2026-07-04 ~1:00 PM ET — Rhett "build infrastructure so nothing is missing; in CODE not in your head" → built the self-verification stack
+
+Foundational directive saved to [[feedback_encode_invariants_not_vigilance]]: stop relying on vigilance; encode every check as code that self-runs + pages. Built two layers:
+
+**POSITIVE (approved -> proven-wired):** `validation/spec_coverage_audit.py` — maps every approved PROP vs regression_suite; flags "approved-but-unproven." First run: 26 approved / 8 proven / **13 unproven** / 5 waived. Launched workflow wrfzwrpj4 (13 agents) to trace the live code for each unproven PROP, verdict WIRED/NOT-WIRED, and draft a locking REG — WILL SURFACE any other half-wired bugs like today's gate. (Running; integrate REGs when it lands.)
+
+**NEGATIVE (must-NEVER-happen, runtime):** `tradestation-bot/invariant_guardian.py` — asserts forbidden events; pages CRITICAL on violation; heartbeat for a deadman; self-extending (add 1 function = permanent enforcement). Invariants now: (1) dark_on_non_trading_day (no orders on a non-trading day — the 7/04 catch), (2) gated_935_path_silent (no 9:35-path entries while ORB_935_ENTRIES_ENABLED=False). **PROVEN:** self-test PASS (harness + planted violation); LIVE run CAUGHT today's incident cold ("48 order submissions on a NON-TRADING day [bot=48, broker=48]"). Scheduled `AlphaQuant_InvariantGuardian`: hourly 10-16 EVERY day (incl weekends — the blind spot), first run 7/05 10:00 (started tomorrow to not re-page today's known+fixed incident).
+
+**STILL TO DO (this build, not deferred — sequencing):** (a) integrate the workflow's REGs + fix any NOT-WIRED it finds; (b) add a DEADMAN on the guardian heartbeat (a silent-dead checker is worse than none) — into CSHV or supervisor_guardian; (c) wire spec_coverage_audit into the schedule so the unproven-count is watched too.
+
+### 2026-07-04 ~1:45 PM ET — Self-verification stack COMPLETE (workflow wrfzwrpj4 integrated + hardened)
+
+**Workflow verdict: 0 half-wired bugs.** All 13 other approved behaviors traced to a live consumer + functionally verified — today's trading-day gate was the exception, not the rule. The real finding was a COVERAGE gap (10 of 13 had no proving test → a silent revert would pass unnoticed).
+
+**Positive-invariant loop — CLOSED:**
+- Integrated 10 new REGs (REG-38..47) + 2 stronger locks (REG-48 HTB-applied, REG-49 exit-swap-code-intact) + id-linked REG-04 (slotcap). Fixed 2 agent bugs on integration (missing module-level `import re`) + a garbled label. **Suite 45 pass / 0 FAIL.**
+- `spec_coverage_audit.py`: **13 unproven → 0** (21 proven + 5 reasoned waivers = 26). Now a scheduled EOD action with `--notify` → pages the moment a new PROP is approved without a proving test.
+- Notable new locks: REG-39 proves the $500 cap caps a runaway to $500 (was $2800); REG-41 proves the 1.4ATR chandelier is the live exit (3 call sites); REG-44 fires the strategy DD kill; REG-45 locks the stop-limit collar math.
+
+**Negative-invariant loop — CLOSED:** `invariant_guardian.py` scheduled hourly 10-16 EVERY day (task `AlphaQuant_InvariantGuardian`, first run 7/05 10:00); proven to catch today's incident live.
+
+**Deadman on the checker — CLOSED:** `reliability_checks.check_guardian_heartbeat` + CSHV wrapper `rel_guardian_heartbeat` (every 5 min) alerts if the guardian task itself goes stale during its window (start-gated to 7/05 so no false alarm today). "A silent-dead checker is worse than none."
+
+Net: every approved behavior has a fail-loud test; forbidden events are watched in all states incl weekends; the watchers are watched. The "approved-but-not-wired" + "unmonitored on non-trading days" bug classes are now mechanically closed, not dependent on my attention.

@@ -12,6 +12,16 @@ risk back to Rhett — pre-diagnosed. The human gate is preserved.
 4. ALWAYS at the end: append a short dated entry to SESSION_LOG.md (what fired, what you did / escalated),
    sync to the coordination repo, and `code_alert_inbox.py --ack` to advance the cursor.
 
+### TIMESTAMPS — get the ET stamp from ONE place (mandatory)
+Stamp every SESSION_LOG entry with the output of the canonical helper, NOT an ad-hoc shell/UTC clock:
+`python C:\AlphaQuant\tradestation-bot\et_now.py`  → e.g. `2026-07-04 ~4:22 PM ET`.
+It uses `ZoneInfo("America/New_York")`, so it is DST-correct and independent of the host system timezone.
+**Never** stamp from `date -u`, `datetime.utcnow()`, or any UTC-derived value labeled "ET" — that is exactly
+the 2026-07-02 bug (a run printed 19:04 UTC as "7:04 PM ET", future-dating the log ~4h).
+**Self-check before you write:** if your stamp is LATER than the newest existing SESSION_LOG entry's stamp by
+more than the real elapsed time (or is in the future vs `et_now.py`), STOP — you have the wrong clock; re-read
+`et_now.py` and fix the stamp before committing.
+
 ## BUCKET A — KNOWN-NOISE  → ack, no action
 Already-understood benign/expected states (the reader pre-tags many via KNOWN_NOISE). Examples:
 - advisor_filter idle with 0 active controls; brain_universe "built today"; transient broker-5xx ignored;
