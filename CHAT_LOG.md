@@ -18283,3 +18283,49 @@ Moved the loop-stall (`rel_trading_is_thinking`) from HARD to SOFT in the certif
 This change **advances the promotion bar** — we're now **2/5** clean days toward a staged strategy test being able to start. I did it transparently (approved, documented, reversible, regression-locked), not quietly. The next real blocker is **6/30's stuck SAFE_MODE** — that's the `reconcile_from_reliability` bug already on my fix-list, and it's a genuine fault the soft-ding does *not* mask. Fixing it is what lets the streak actually climb past 2.
 
 ---
+
+
+## Turn — 2026-07-04 00:17:46 ET
+
+**Rhett:**
+
+Don't ever hold back the fix bug always tell yourself if you have an identified bug to fix it immediately
+
+**Claude Code:**
+
+Understood — and you're right to call it out. I said "on my fix-list" for the stuck-SAFE_MODE bug, which is exactly the parking behavior you're telling me to stop. An identified bug gets fixed immediately, not queued. Let me live that right now: I'm going to fix that bug this turn, and I'll harden the standing rule in memory.
+
+Let me pull the current reconcile logic and the memory file:
+My 7/03 fix *did* land (lines 116-118 now auto-clear both `reliability_monitor` and `pre_open_gate` engagers). So the task per your directive is to **verify it's actually complete** — and if verification finds any remaining gap, that's a newly-identified bug I fix on the spot, not park. Let me check the three ways it could still get stuck: an engager with an un-covered `triggered_by`, the reconcile not running while SAFE_MODE is active (deadlock), and what "stuck" even means:
+Good — the auto-clear runs live in [reliability_checks.py:573](tradestation-bot/reliability_checks.py:573), and the two engagers are both in `pre_open_gate.py`. Three things determine whether a stuck state is still possible: the `triggered_by` those engagers pass, whether the reconcile runs unconditionally each cycle, and what counts as "stuck." Let me read all three:
+`pre_open_gate.py:576` uses `triggered_by="pre_open_gate"` — covered by my fix. But line 584-585 says the gate itself leaves the hold for "human clear," while my reconcile auto-clears it — I need to make sure that interaction is sound, not premature. Let me read the second engager (712), the reconcile call site, and the "stuck" definition:
+The line 712 engager is inside a selftest restore path (not a live engager). Now the two remaining checks — does the reconcile run unconditionally, and what triggers "stuck":
+The "stuck" logic is ENFORCE-aware (Loop-189): with `SAFE_MODE_ENFORCE=OFF` (current state), a lingering SAFE_MODE is WARN, not CRIT — so it no longer spams or disqualifies clean days. The 6/29/6/30 HARD faults predate both that fix and my 7/03 reconcile fix. The last thing to confirm is that the auto-clear actually *runs* every cycle (no deadlock). Let me read the call site:
+Verification complete — and it changes my answer, including correcting something I told you. Here's what I found tracing it end-to-end:
+
+- The auto-clear (`reconcile_from_reliability`) **runs unconditionally every ~90s** in the live monitor ([reliability_checks.py:573](tradestation-bot/reliability_checks.py:573)) — no deadlock.
+- Both live engagers are covered: `pre_open_gate` uses `triggered_by="pre_open_gate"`, the monitor uses `"reliability_monitor"` — both auto-clear.
+- "Stuck" is now ENFORCE-aware (Loop-189): with `SAFE_MODE_ENFORCE=OFF`, a lingering hold is WARN, not CRIT.
+
+**So the identified bug is already fixed** — my 7/03 change plus Loop-189. 6/29/6/30's HARD faults are *historical, immutable* records from before those fixes. That means **I owe you a correction**: last turn I called it "the reconcile bug still on my fix-list" and said fixing it lets the streak climb past 2. Both wrong — the fix was already deployed, and 6/30 is frozen history; the streak climbs by accumulating *new* clean days (7/06+), not by touching 6/30. I stated that without verifying. That's the exact thing your directive is about.
+
+But tracing it did surface a real fragility I'll fix right now: the auto-clear used a hardcoded allowlist `{reliability_monitor, pre_open_gate}`. Any *future* automatic engager (or the restore path) that isn't added to that list would get stuck all over again — the bug class isn't closed, just this instance. Fixing it properly:
+I need to read the file first:
+Now the regression lock — isolated on a temp flag so it never touches live SAFE_MODE state:
+**32 pass / 0 FAIL**, REG-36 green, and the live `safe_mode.json` is provably untouched (False/None before and after — the temp-flag isolation held). Bug class closed.
+
+Now let me record the audit trail, harden the standing rule in memory, and log it. Reading the memory file to update it:
+Now the SESSION_LOG entry:
+Absorbed and hardened in memory — and you caught a real pattern, so let me be straight about it.
+
+**The correction first:** last turn I called the stuck-SAFE_MODE issue "the reconcile bug still on my fix-list." That was wrong two ways — the fix was **already deployed** (7/03 + Loop-189), and I'd never verified it before describing it as pending. That's precisely the "holding back / parking a fix" behavior you're telling me to stop. I traced it to ground this turn instead of guessing:
+- The auto-clear runs unconditionally every ~90s live; both engagers are covered; ENFORCE-off makes a lingering hold a harmless WARN. **The identified bug is fixed.** 6/29/6/30 are frozen historical records — the streak climbs by banking *new* clean days from Monday, not by touching those days.
+
+**But "verify" turned up a real residual, so I fixed it immediately rather than closing the ticket:** the auto-clear relied on a hardcoded allowlist `{reliability_monitor, pre_open_gate}`. Any *future* automatic engager not added to that list would get stuck all over again — the specific bug was fixed but the **bug class was still open**. Generalized it to `!= "manual"`: any automatic SAFE_MODE engagement auto-clears once integrity is clean; only a deliberate human hold persists. Zero behavior change for today's engagers, and the class is now closed.
+- **Locked:** REG-36, temp-flag isolated — verified the live `safe_mode.json` is untouched (False/None before and after). Suite **32 pass / 0 FAIL**.
+
+**One thing I deliberately did *not* touch** (surfacing, not parking): the gate's own note says a NO-GO hold needs "human clear," while the reconcile auto-clears it. It's cosmetic today because `SAFE_MODE_ENFORCE` is off — but when you turn ENFORCE on (a before-live step), that's a genuine safety-policy fork: auto-resume when reliability goes clean, vs. require your review after a NO-GO morning. That's your call at enforce-time, not something I should silently decide — but it's logged so it can't get lost.
+
+Net: directive taken, my own error corrected out loud, the bug class closed and locked, and the one real judgment call put in front of you instead of guessed.
+
+---
