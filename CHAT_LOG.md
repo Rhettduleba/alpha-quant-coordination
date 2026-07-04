@@ -18215,3 +18215,71 @@ The calendar was last *refreshed* 6/30, so a report **newly scheduled after 6/30
 Two P1 questions remain: the **exit-redesign fork** (draft now vs. let the ledger run a week — I lean wait) and the **clean-day disqualification policy** (loop-stall / kill-day = hard reset or soft ding — I lean soft ding). And one correction I owe you: I'd previously called `consecutive_clean=0` "benign noise" — it's not; it reflects real past loop-stalls, and the fix is repairing that stall, which is the P1 above. Nothing there needs you tonight.
 
 ---
+
+
+## Turn — 2026-07-03 21:55:46 ET
+
+**Rhett:**
+
+Let's go with both of your recommendations
+
+**Claude Code:**
+
+Both recommendations locked in:
+1. **Exit fork → wait** — no proposal yet; let the shadow ledger accumulate OOS data and revisit at N≥30/cell.
+2. **Clean-day policy → soft ding** — a self-recovered loop-stall (or kill-day) counts as a soft ding, not a hard reset of the 5-clean-day streak.
+
+Rec 2 changes governance-sensitive logic (the promotion bar that gates strategy graduation), so I'm going to read the actual certifier before I touch anything — I need to see exactly what resets the streak and whether the incident record even distinguishes "self-recovered" from "hurt a trade." Let me map it:
+The certification logic lives in a `cdc` module. Let me find it:
+The certifier is `validation/clean_day_certifier.py`. Let me read it in full to understand what makes a day clean, what resets the streak, and whether incidents carry recovery/impact info:
+This certifier is well-built — it *already* has a HARD/SOFT/EXEMPT incident model. The key finding: a loop-stall (`rel_trading_is_thinking`) is currently in `_HARD_FAULT_CHECKS` (line 129), so a single one hard-resets the streak. That's exactly the "hard reset" you want changed. Before I touch it, let me capture the current baseline — which days are non-clean and *why* — so I can show you the real impact of the policy change:
+The walk stops at 7/02 (non-clean on `no_critical_incident`), so I only see one day. I need the full picture — which recent days fail, and specifically whether they fail on a self-recovered stall vs. real damage. Let me certify each recent trading day individually with the detail:
+PowerShell mangled the here-string. Let me use a script file instead:
+This is the impact data I needed — and it validates the design perfectly. Here's what moving `rel_trading_is_thinking` to SOFT does to the last 10 trading days:
+
+| Day | Currently | Why | Under soft-ding |
+|---|---|---|---|
+| 6/22 | NON-CLEAN | `rel_trading_is_thinking: 1` (single stall) | **→ CLEAN** |
+| 6/26 | NON-CLEAN | `rel_trading_is_thinking: 1` (single stall) | **→ CLEAN** |
+| 7/02 | NON-CLEAN | `rel_trading_is_thinking: 1` (single stall) | **→ CLEAN** |
+| 6/29 | NON-CLEAN | `rel_safe_mode_not_stuck: 209` + SOFT storm 121 | stays NON-CLEAN ✓ |
+| 6/30 | NON-CLEAN | `rel_safe_mode_not_stuck: 94` (+ 1 stall) | stays NON-CLEAN ✓ |
+
+Exactly right: the three days blocked *only* by a single self-recovered stall flip to clean (and on all three, every other integrity condition — broker-flat, ledger, position-recon, gate — already passed, proving the stall caused zero trading damage). The two days with a genuinely *stuck SAFE_MODE* (a real sustained fault, and a separate bug on my fix-list) correctly stay non-clean. The change is surgical.
+
+Making the edit now — removing the loop-stall from HARD, with the safety rationale documented in-code:
+Now lock the policy in the self-test so it can't silently revert or over-loosen:
+Now verify: run the self-test and recompute the streak to confirm the real 0→2 effect:
+**Verified — exactly as designed:**
+- **Self-test 15/15 pass** (including the 4 new soft-ding locks: single stall = SOFT, storm still disqualifies, trading-damage stays HARD, loop-stall removed from HARD set).
+- **Per-day:** 6/22, 6/26, 7/02 flipped to CLEAN; 6/29 & 6/30 correctly stay NON-CLEAN (stuck SAFE_MODE).
+- **`consecutive_clean`: 0 → 2** (7/01 + 7/02, then correctly breaks at 6/30's stuck-SAFE_MODE fault).
+
+(The exit-code 255 was just pipe truncation on the last command, not a failure — the streak JSON printed `"consecutive_clean": 2`.)
+
+This change advances the promotion bar, so I'm locking it in the main regression suite too (not just the module self-test), then recording full governance:
+**31 pass / 0 FAIL**, REG-35 green. Both changes locked. Now the governance record for the promotion-bar policy change (proposal + change-log + approval), then Rec 1. Writing the proposal and change-log script:
+The validator requires the approval in the yaml first. Let me add it, then re-run:
+Rec 2 is governance-complete (proposal, approval, change-log, REG-35, self-test, verified 0→2, reversible). Now **Rec 1 (exit fork = wait)** — update the tracker to reflect both decisions and move the exit fork to a scheduled revisit:
+I claimed in the tracker that the ledger self-flags PROMOTION-READY — so I need to actually build that (no claiming what isn't true). Adding a forward-only (OOS) promotion evaluation to the ledger readout:
+Let me verify the ledger still runs and shows the forward-tracking (should show 0 forward days, all "accumulating"):
+Ledger now self-flags the promotion bar (0 forward days now, all "accumulating" — it'll trip "PROMOTION-READY" when forward N≥30 + ≥7/10 positive days). Both decisions fully implemented. Logging to SESSION_LOG:
+Both done, verified, and governed. Here's the close-out.
+
+## Rec 1 — Exit fork: WAIT ✅
+No `PROP-CONFIRM-KEYED-EXIT` drafted. The shadow ledger accumulates OOS data from Monday, and I built the **self-trigger** so this can't get dropped: the ledger readout now separates in-sample (the curve-fit backfill) from forward/OOS days and prints **PROMOTION-READY** per gate once forward N≥30 + ≥7/10 positive forward days — otherwise "accumulating" (currently 0 forward days). When it trips, I bring you the proposal with real OOS numbers. Thread is held in the tracker; nothing needed from you.
+
+## Rec 2 — Clean-day: SOFT DING ✅ (deployed)
+Moved the loop-stall (`rel_trading_is_thinking`) from HARD to SOFT in the certifier. **Verified impact on the real tape:**
+- **`consecutive_clean` 0 → 2** (7/01 + 7/02).
+- Flips **only** 6/22, 6/26, 7/02 — each blocked *solely* by a single self-recovered stall, with every other integrity check (broker-flat, ledger, position-recon, gate) already passing, i.e. provably zero trading damage.
+- **6/29 & 6/30 correctly stay non-clean** (stuck SAFE_MODE ×209/×94 — a genuine sustained fault).
+
+**Why it's safe:** every trading-damage detector stays HARD (a stall that carried a position, went naked, broke the book, or corrupted the ledger still resets the streak); a sustained freeze still disqualifies as a storm; and CRITICAL paging is untouched — you still get alerted, it just no longer nukes the promotion streak. Your kill-day question needed no code change — kills were already soft.
+
+**Locked & recorded:** module self-test 15/15, **REG-35** added, suite **31 pass / 0 FAIL**; proposal + `manual_approvals` + change-log `AQ-20260703-CLEANDAY-SOFTDING-STALL-001`; reversible by re-adding one string.
+
+## One thing worth your awareness
+This change **advances the promotion bar** — we're now **2/5** clean days toward a staged strategy test being able to start. I did it transparently (approved, documented, reversible, regression-locked), not quietly. The next real blocker is **6/30's stuck SAFE_MODE** — that's the `reconcile_from_reliability` bug already on my fix-list, and it's a genuine fault the soft-ding does *not* mask. Fixing it is what lets the streak actually climb past 2.
+
+---
