@@ -18559,3 +18559,35 @@ The 7/03 entries had been working around this by switching to PowerShell and bla
 All edits were on the non-watched observability path — no trading code, no orders, no processes touched.
 
 ---
+
+
+## Turn — 2026-07-05 13:20:14 ET
+
+**Rhett:**
+
+so somehow yougot closed on my VPS and that discconected my chat with you on my phone through theremote control process. How do i reconnect the chat on my hone?
+
+**Claude Code:**
+
+Good news first: **none of our work is lost.** This entire conversation is saved on the VPS, so however you reconnect, you can pick right back up where we left off.
+
+It helps to separate two layers, because they reconnect differently:
+
+1. **The remote connection** (your phone → the VPS screen) — whatever app you use to reach the VPS.
+2. **The Claude Code session** (this chat) — it runs in a terminal *on* the VPS. When Claude Code "closed," that terminal ended, but the conversation transcript is saved on disk.
+
+Once you're back on the VPS, to reopen **this exact conversation**, open a terminal and run:
+- `claude --continue` — reopens the most recent conversation, or
+- `claude --resume` — shows a list so you can pick this one by its time/content.
+
+The piece I need from you to give exact steps: **how do you connect to the VPS from your phone?** For example —
+- **Microsoft Remote Desktop / RDP** (most common for a Windows VPS),
+- a **web browser**,
+- the **Claude app**, or
+- something else.
+
+Tell me which one and I'll walk you through the tap-by-tap reconnect — and I'll also show you how to make it more resilient so a closed session doesn't knock your phone off next time (e.g., keeping the session alive so it survives a disconnect).
+
+One thing I'm not sure of from here, so I won't guess: since you're messaging me right now, *something* is connected — are you currently on the VPS directly (or another device) and just want it back on your phone, or did the phone reconnect on its own? That'll tell me exactly what to fix.
+
+---
