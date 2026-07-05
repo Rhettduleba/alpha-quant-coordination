@@ -18962,3 +18962,51 @@ The market itself, and any genuinely new edge case a live day surfaces. That's w
 **My recommendation: let me run that full pre-open verification right now** so Monday's risks surface tonight, and I'll build the auto-firing clean-day gate while I'm at it. Want me to go ahead?
 
 ---
+
+
+## Turn — 2026-07-05 16:39:20 ET
+
+**Rhett:**
+
+Yes run it the build the auto firing
+
+**Claude Code:**
+
+On it — running the verification and building the auto-firing gate. Let me kick off an independent adversarial review in parallel first (today proved an outside check catches my blind spots), then build and run the gate:
+Adversarial review running. Now building the gate itself — a single command that proves the bot will trade correctly and stay clean, GO/NO-GO, pages only on NO-GO:
+Gate built. Now running it forward for Monday 7/06 to surface any blocker tonight (no `--notify` yet — I want to review/fix before it ever pages you):
+**GO-WITH-WARNINGS for Monday** — that's a strong result: 8 green, 1 warning. The important ones are all clean — Monday trades, weekend blocked, the entry path actually scanned and armed candidates in the dry-run (LCID/ISRG/MRNA filtered correctly, deploy at 78.8%), 0945 arms, all exits ON, guardian clean, bot cycling.
+
+The one WARN is a real (low-severity) fix worth doing since you want clean: **the earnings calendar is 5.4 days stale** — the veto is fail-safe and doesn't over-block, but a *newly-scheduled* Monday reporter could slip through. Let me refresh it:
+The refresh reveals something important: the **fresh NASDAQ feed is actually *less* complete** than what's live (10 Monday names vs 21). So promoting it would *reduce* coverage — wrong move. The live calendar already has Monday well-covered. The right action is a **union** — merge so we keep all 21 *and* pick up anything new, and the file becomes fresh:
+The earnings merge worked — 340 rows now (98 new from the fresh feed), Monday coverage held at 21, and the file is fresh. 
+
+The adversarial review came back and flagged a **P0: "earnings veto window logic inverted."** That's a serious claim, so I'm verifying it before touching anything — and on the math, **it's a false alarm.** The check `earnings ∈ [now−18h, now+18h]` is algebraically identical to `now ∈ [earnings−18h, earnings+18h]` (a symmetric ±18h window), and the agent's proposed "fix" is the *same* expression. Its example (Tuesday earnings should block Monday) is also wrong for us: **we flatten every position at EOD**, so a Tuesday reporter is closed Monday afternoon, well before its catalyst — no need to block it. But claims get *tested*, not reasoned about — let me prove it empirically:
+**Verified — the veto works correctly.** WDS (Monday reporter) is blocked at 9:45 AM and 2:00 PM Monday; PENG (Tuesday reporter) is correctly *not* blocked. The adversarial P0 was a false alarm — I did not touch a working veto. (That's the process working: the review surfaced a candidate blocker, and I tested it instead of trusting it — the same discipline that would've caught today's real bugs.)
+
+The agent's other points were minor and either already handled (CSV staleness — just refreshed) or non-blocking (0945 is untested — I'll watch it Monday EOD). Now let me add one guard to the gate (don't page on a holiday) and re-confirm Monday is GO:
+Done — **Monday is a GO**, and clean-day readiness now lives in code, not in a prompt. Let me log it and give you the picture:
+Both done. Here's where Monday stands.
+
+## Monday 7/06 is verified GO
+The gate ran all 9 checks against Monday and came back clean:
+- Regression 45/0, preflight 0-FAIL — everything I changed this session loaded correctly.
+- Trading-day gate allows Monday, blocks the weekend.
+- **Entry path actually scanned and armed candidates** in the dry-run (filters fired, deploy at 78.8%) — Monday will trade.
+- 0945 window arms; all exits ON ($500 cap, 30-min time-stop, chandelier); guardian clean; bot cycling.
+- Earnings veto fail-safe and not over-blocking.
+
+The one warning it caught — a stale earnings calendar — I fixed by refreshing and **merging** (the fresh feed was actually thinner, so I unioned them; 340 names now, Monday coverage intact, file fresh).
+
+## You no longer have to prompt for this
+The gate is now scheduled to **auto-fire at 8:45 AM every weekday** and **pages you CRITICAL only on a NO-GO**. So Monday morning: **silence = the system is clean-day ready.** If anything's wrong, you get one alert with the specific blocker, ~45 minutes before the open, with time to fix it. That's the "in code, not in a prompt" version of what you asked.
+
+## The adversarial review earned its keep — and so did verifying it
+The independent review flagged a **P0: "earnings veto logic inverted."** I tested it instead of trusting it — and it was a **false alarm**: the logic is mathematically correct, and its premise (block next-day reporters) is wrong for us since we flatten every position at EOD. I proved it empirically (a Monday reporter blocks, a Tuesday reporter correctly doesn't) and **did not touch the working veto.** That's the exact discipline that matters: neither blind trust nor blind dismissal.
+
+## The one honest caveat for Monday
+I can ensure the *system behaves correctly*; I can't promise green — and one thing is genuinely unproven: **Monday is the 0945 window's first real live day** (untested in the opening hour). It's live per your call; I'll check its per-window numbers at Monday's close and we pull it if it underperforms the later windows. Everything else is verified.
+
+Net: Monday's readiness is proven tonight and self-checks at 8:45 AM. You'll hear from the system only if it needs you.
+
+---
