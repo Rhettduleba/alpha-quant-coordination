@@ -18619,3 +18619,177 @@ One thing that'll help me pin the exact steps: **when you first set it up, did I
 I've got a check running for the official, current tap-by-tap steps and I'll follow up the moment it's back so I'm not guessing at UI labels.
 
 ---
+
+
+## Turn — 2026-07-05 13:28:34 ET
+
+**Rhett:**
+
+<task-notification>
+<task-id>ad3644b0445770285</task-id>
+<tool-use-id>toolu_01LcWorbS4192sgp7UwjWtJN</tool-use-id>
+<output-file>C:\Users\ADMINI~1\AppData\Local\Temp\claude\C--Users-Administrator-OneDrive---Duleba-Trade-station-Main\3253950a-388c-4a7a-99cc-cec0c4ed9f69\tasks\ad3644b0445770285.output</output-file>
+<status>completed</status>
+<summary>Agent "Claude Code mobile reconnect steps" finished</summary>
+<note>A task-notification fires each time this agent stops with no live background children of its own. The user can send it another message and resume it, so the same task-id may notify more than once.</note>
+<result>Now I have comprehensive information. Let me provide a clear, documented answer based on the official docs and identified issues.
+
+---
+
+## How Claude Mobile App's Code Feature Connects to Claude Code Sessions
+
+Based on the official Claude Code documentation, here are the answers to your specific questions:
+
+### 1. **What Must Be True on the VPS for the Phone to Be "Connected"**
+
+The **Claude Code process on the VPS must be actively running and maintaining an outbound connection to Anthropic's API**. According to the [Remote Control documentation](https://code.claude.com/docs/en/remote-control):
+
+&gt; "When you start Remote Control, it registers with the Anthropic API and polls for work. When you connect from another device, the server routes messages between the web or mobile client and your local session over a streaming connection."
+
+**Key requirements:**
+- The VPS-side `claude` process must be **actively running** (not backgrounded without polling)
+- It maintains **outbound HTTPS-only** connections to `api.anthropic.com` (port 443)
+- The session uses **short-lived, multi-purpose credentials** that expire independently
+- The machine does **not** need to open inbound ports
+
+**If the session was closed/restarted**, the VPS side stopped registering with the API, so the polling link broke. The phone still sees the old session in the list, but the connection status changes to "Disconnected" because the VPS process is no longer polling.
+
+---
+
+### 2. **How to Reconnect: Phone-Side vs. Machine-Side Actions**
+
+**The reconnection requires a MACHINE-SIDE action.** According to the docs:
+
+&gt; "If your laptop sleeps or your network drops, the session reconnects automatically when your machine comes back online."
+
+and:
+
+&gt; "Your local session keeps running without Remote Control. Run `/remote-control` to retry the connection, or start Claude Code without `--resume` to create a new Remote Control session."
+
+**Phone-side actions do NOT reconnect:**
+- Pull-to-refresh on the phone: does NOT work (the docs make no mention of this)
+- Closing/reopening the session in the app: does NOT work if the VPS process isn't running
+- Force-quitting the Claude app: does NOT help
+
+**Machine-side actions that DO reconnect (in order of preference):**
+
+1. **Re-run the Remote Control command on the VPS** (best option):
+   ```bash
+   claude remote-control
+   ```
+   Or, if the previous session is still in the system:
+   ```bash
+   claude remote-control --continue
+   ```
+   Or resume a specific session by ID:
+   ```bash
+   claude remote-control --session-id &lt;id&gt;
+   ```
+
+2. **If you were in an interactive session**, run inside Claude Code:
+   ```
+   /remote-control
+   ```
+
+3. **In VS Code extension**, run:
+   ```
+   /remote-control
+   ```
+
+Once the VPS-side `claude` process is running and re-registering with the API, the phone should automatically detect the session is alive again.
+
+---
+
+### 3. **Can the Phone Reconnect to a CLOSED Session?**
+
+**No.** If the VPS Claude Code session was explicitly closed, the phone **cannot** reconnect to it. However:
+
+- **The closed session stays in the phone's session list** (as a historical entry)
+- **The phone can see history**, but shows "Disconnected" and is **read-only** until reconnected
+- The phone **must attach to a currently-running Remote Control session**
+
+**How to select the active session in the app:**
+1. Open **Claude app → Code** tab (bottom navigation)
+2. You'll see a list of sessions with status icons:
+   - **Green dot + computer icon** = **Currently online** (machine running, VPS process active)
+   - **Grayed out / no dot** = **Disconnected** (session closed or VPS offline)
+3. Tap a session with the green dot to connect to it
+4. If you need to connect to a specific old session, verify the VPS has re-started that session with `--session-id`
+
+**Known issue:** According to the GitHub issues found, *the session does not always appear in the mobile app's session list after you navigate away from it*, and there is **no manual "Disconnect" or "Switch Session" button in the mobile UI**. You must tap a different session in the list to switch.
+
+---
+
+### 4. **Known Gotchas**
+
+| Gotcha | Details |
+|--------|---------|
+| **Network outage &gt; 10 minutes** | If the VPS loses network for more than roughly 10 minutes while awake, the session times out and the Claude process exits. Restart with `claude remote-control`. |
+| **Session history visible but read-only** | A disconnected session shows the chat history on the phone, but you cannot send messages until the machine is back online and the session reconnects. |
+| **Auto-reconnection doesn't always work** | According to identified bugs, automatic reconnection can fail silently, and you may need to manually run `/remote-control` on the machine or refresh the browser. |
+| **Ultraplan disconnects Remote Control** | If you start an ultraplan session, it disconnects any active Remote Control session (only one can hold the claude.ai/code interface at a time). |
+| **Extended absence** | If the machine is offline for an extended time, the session expires and is removed from the session list. The phone will no longer be able to reconnect to it. |
+| **VPS must be online; phone must have network** | Remote Control only works if both the machine and the phone have active internet connections. Airplane mode or WiFi outage on the phone will also show "Disconnected." |
+| **Trusted Devices** | On Team/Enterprise plans with Trusted Devices enabled, the phone must be enrolled and the VPS sign-in must be &lt; 18 hours old. A stale sign-in will also show "Disconnected." |
+
+---
+
+## **Try This First** (Ordered by Likelihood)
+
+1. **On the VPS, verify the `claude` process is running:**
+   ```powershell
+   Get-Process | grep claude
+   ```
+   If nothing, proceed to step 2.
+
+2. **On the VPS, start Remote Control again:**
+   ```bash
+   claude remote-control
+   ```
+   Or if you know the session ID:
+   ```bash
+   claude remote-control --session-id &lt;id&gt;
+   ```
+
+3. **On the phone, open Claude app → Code tab** and verify the session now shows a **green dot** next to the computer icon (online status).
+
+4. **If the session still shows "Disconnected":**
+   - Check the VPS has active internet (can ping `api.anthropic.com`)
+   - Verify phone has active WiFi/cellular (not Airplane mode)
+   - Check VPS Claude Code version is **2.1.51 or later** (`claude --version`)
+
+5. **If you cannot find the session in the list:**
+   - It may have expired and been removed. You'll need to start a new one on the VPS with `claude remote-control --name "My Project Name"` so the phone can discover it fresh.
+
+6. **Last resort:** Restart the VPS entirely (or close and re-open the Claude Code terminal), then re-run `claude remote-control` from the VPS.
+
+---
+
+## **Sources**
+
+- [Continue local sessions from any device with Remote Control](https://code.claude.com/docs/en/remote-control) — official Claude Code Remote Control documentation covering setup, connection, disconnection, and troubleshooting
+- [Claude Code Remote Control: Managing Coding Sessions from Mobile](https://www.vibebrowser.app/blog/2026-05-27-claude-code-mobile-remote-control) — third-party guide on mobile Remote Control workflows</result>
+<usage><subagent_tokens>30257</subagent_tokens><tool_uses>5</tool_uses><duration_ms>41647</duration_ms></usage>
+</task-notification>
+
+**Claude Code:**
+
+The check came back with documented answers — and the key finding flips what I told you earlier: **reconnecting is a machine-side action, not a phone-side one.** The phone can't revive the link itself; this end has to re-register with Anthropic's relay. Let me confirm your version supports the fix, then give you the exact step:
+You're on **2.1.167**, well past what Remote Control needs — so the fix is available. And I owe you a correction to what I said a minute ago: **the phone can't fix this on its own.** The reconnect has to come from this end. Sorry for pointing you at the phone first — the docs are clear that it's machine-side.
+
+## The one-step fix
+On your laptop, at this Claude Code prompt (where you type to me), type **`/remote-control`** and press Enter — as a command, not a message to me. That re-registers this live session with Anthropic's relay. Then on your phone: **Claude app → Code → tap this session** (it should now show an online/green dot) and you're back in.
+
+**Why:** the phone attaches to a session that's *actively registered* from the machine side. When the session closed earlier, that registration dropped — and only the machine can re-establish it. `/remote-control` does exactly that. (I can't run it for you; it's an interactive command that has to be typed at your prompt.)
+
+## Likely why it dropped
+Starting a heavy "ultra" / multi-agent session can bump an active Remote Control connection off — only one client can hold the Code interface at a time. We ran a **lot** of workflows today, so that's the probable culprit. Re-running `/remote-control` re-claims it.
+
+## If it still shows Disconnected after that
+- Confirm both the VPS **and** the phone have internet (phone not on a dead Wi‑Fi / airplane mode).
+- In the app's Code list, tap the session with the **green dot** — the running one. A grayed-out/closed entry will always read Disconnected.
+- If this session ever fully expires (machine offline too long, it drops off the list), start a fresh one from the VPS with `claude remote-control --name "Alpha Quant"` and it'll appear new on the phone.
+
+Give `/remote-control` a try and tell me if the green dot shows up — if it doesn't, that narrows it to a network/sign-in thing and I'll take it from there.
+
+---
