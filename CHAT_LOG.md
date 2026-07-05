@@ -18793,3 +18793,17 @@ Starting a heavy "ultra" / multi-agent session can bump an active Remote Control
 Give `/remote-control` a try and tell me if the green dot shows up — if it doesn't, that narrows it to a network/sign-in thing and I'll take it from there.
 
 ---
+
+
+## Turn — 2026-07-05 13:36:02 ET
+
+**Rhett:**
+
+Ok we are connect again thanks. Can you give me a summary of what we have done over the last few days for me to review.
+
+**Claude Code:**
+
+Glad you're back in. Since this is for you to review, I want it faithful to the actual record — not my memory of it — so I'm pulling the real SESSION_LOG entries, change-logs, proposals, and open-items and having them synthesized into one clean dated recap:
+On it — the review is compiling now from the actual record (SESSION_LOG timeline, the change-logs, proposals, and open-items), so it'll be faithful and complete rather than my recollection. I'll drop the full dated recap here the moment it lands — organized as what's now **live**, what's still **shadow/measuring**, the **key findings**, and the **decisions waiting on you**. Back shortly.
+
+---
