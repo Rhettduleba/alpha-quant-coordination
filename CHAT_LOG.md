@@ -18925,3 +18925,40 @@ This is the *class* of thing to watch: a couple of my new tests call live functi
 Net: warnings resolved, root cause was mine and is closed, and the guardian earned its keep on day one.
 
 ---
+
+
+## Turn — 2026-07-05 16:25:01 ET
+
+**Rhett:**
+
+Biggest thing, I want a clean day tomorrow. How should I prompt you to insure a clean day tomorrow
+
+**Claude Code:**
+
+Honestly? The best answer isn't a clever prompt — it's the same lesson from today: **clean-day assurance should be in code and run tonight, while I can still fix things, not depend on you wording a prompt right at 9 AM.** A good prompt just pulls the trigger on that. Let me give you both — the trigger, and what actually earns the clean day.
+
+## First, what "clean" means (so we're aligned)
+A clean day = the **system behaved correctly**: broker-flat at close, no critical incident, the entry gate enforced, entries fired when they should and exits/stops worked. It is **not** about P&L — per your own standard, a clean day can be a red day. I can work to guarantee correct *behavior*; I can't guarantee green.
+
+## The real insurance (I'll run it tonight, not Monday)
+The single highest-leverage thing is a **pre-open forward verification now**, because the market's closed and anything I find I can fix before it matters. Monday is high-risk specifically because I changed a lot this session — so tonight I'd prove:
+1. The bot will actually **trade** Monday (forward dry-run of the scan, entry path live, run_bot cycling).
+2. The **earnings veto** blocks only real earnings names and doesn't over-block/error (it's brand new on the live path — the biggest behavior change).
+3. The **0945 window** arms and the **trading-day gate** allows Monday.
+4. **Exits/stops** are covered; the **$500 cap** and 30-min time-stop are live.
+5. Every change **loaded** (preflight 46/46, regression 45/0, guardian won't false-fire).
+
+Anything that's a NO-GO, I fix tonight.
+
+## Your prompt (two options)
+**Short version** — Monday ~8–9 AM, just send:
+> "Run the pre-open clean-day gate for today, GO/NO-GO, fix any blocker, then monitor every 15 min and write the clean-day verdict at close."
+
+**Even better — let me encode it** so you barely prompt at all: I'll bundle those checks into one **clean-day gate** that auto-runs pre-open Monday and **pages you only if it's a NO-GO**. Then "clean-day readiness" lives in code, not in your memory or mine — exactly the principle from today. Silence = ready.
+
+## What I can't cover
+The market itself, and any genuinely new edge case a live day surfaces. That's what the 15-min monitor + the guardian are for — catch it fast, act immediately.
+
+**My recommendation: let me run that full pre-open verification right now** so Monday's risks surface tonight, and I'll build the auto-firing clean-day gate while I'm at it. Want me to go ahead?
+
+---
