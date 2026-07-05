@@ -18807,3 +18807,69 @@ Glad you're back in. Since this is for you to review, I want it faithful to the 
 On it — the review is compiling now from the actual record (SESSION_LOG timeline, the change-logs, proposals, and open-items), so it'll be faithful and complete rather than my recollection. I'll drop the full dated recap here the moment it lands — organized as what's now **live**, what's still **shadow/measuring**, the **key findings**, and the **decisions waiting on you**. Back shortly.
 
 ---
+
+
+## Turn — 2026-07-05 13:41:03 ET
+
+**Rhett:**
+
+<task-notification>
+<task-id>w7syu7mj0</task-id>
+<tool-use-id>toolu_01DrW8Cyhdy3iTvTHyQL4VpU</tool-use-id>
+<output-file>C:\Users\ADMINI~1\AppData\Local\Temp\claude\C--Users-Administrator-OneDrive---Duleba-Trade-station-Main\3253950a-388c-4a7a-99cc-cec0c4ed9f69\tasks\w7syu7mj0.output</output-file>
+<status>completed</status>
+<summary>Dynamic workflow "Read the authoritative record (SESSION_LOG, change-logs, proposals, OPEN_ITEMS) and synthesize a dated, reviewable summary of the last few days" completed</summary>
+<result>"# Alpha Quant — Last Few Days Recap (7/01–7/04)\n\n**Headline:** Shipped an unconfirmed-trade time-stop and closed two live-path gaps (earnings veto on the re-arm book, weekend sit-out), then a human-found Saturday order-spam bug triggered a build-out of self-verification infra — while the edge hunt honestly concluded there's no entry edge yet, only an exit edge, all still SIM-only.\n\n---\n\n## What's now LIVE / deployed\n\n**Exits / risk**\n- **7/01 — 30-min unconfirmed time-stop** `WATCHED` `[revert flag]` — exit_bot_v2 flattens any position never confirmed (never crossed +0.15×ATR) ≥30 min after fill (`TIME_EXIT_30M_UNCONFIRMED`); confirmed positions untouched. `UNCONFIRMED_TIME_STOP_ENABLED=True`, REG-29. First live day 7/02 (19 of 20 exits came via this path). In-sample only; keep/promote unproven.\n\n**Calendar / gates**\n- **7/03 — Earnings veto wired onto the live re-arm path** `WATCHED` `[revert flag]` — the veto only guarded the gated-off 9:35 path; the 100%-live re-arm book (orb_multiscan) had zero earnings guard. Now behind `REARM_EARNINGS_VETO_ENABLED=True`, fail-safe ALLOW. Verified (TLX blocked 7/02). REG-34.\n- **7/04 — Weekend sit-out on the re-arm scan** `WATCHED` — fixes the Saturday bug below; scan now gates on `is_regular_trading_day()` before any broker call. REG-37 (CRITICAL).\n- **7/02 — Early-close calendar outage fixed** — a bogus 7/2 early-close entry in market_hours.py was killing the re-arm path pre-12:35; removed, windows re-armed, CSHV self-cleared to FAIL=0.\n- **7/03 — Transient-504 relabel** `WATCHED (alerting-only)` — orb_runner no longer blanket-labels every account-fetch error as `TS_AUTH_FAIL`; 401/403→FAIL, else→`TS_API_TRANSIENT`/WARN. No trading change. REG-33.\n\n**Self-verification infra**\n- **7/04 — invariant_guardian.py** — asserts forbidden events (dark-on-non-trading-day, silent gated-935); scheduled hourly every day; caught the 48-order incident live. Deadman CSHV check watches the guardian itself.\n- **7/04 — spec_coverage_audit.py** — drove 13 UNPROVEN approved behaviors → 0; regression suite now 45 pass / 0 FAIL.\n- **7/03 — clean-day SOFT-DING policy** (non-watched, measurement-only) — a single self-recovered loop-stall no longer hard-resets the clean-day streak; trading-damage detectors stay HARD. Flips 6/22, 6/26, 7/02 to clean → `consecutive_clean 0→2`.\n\n**Untested-but-live (watch closely)**\n- **7/01 — 9:45 AM re-arm window added** `WATCHED` — 6th window (`0945`), same re-arm signal. Genuinely untested; 7/02 wasn't a valid first day (early-close outage). **Governance gap:** deployed via proposal only, no change-log row.\n\n---\n\n## What's SHADOW / measuring (built, NOT trusted)\n\n- **edge_shadow_ledger.py** (8th EOD action) — 2 size-DOWN gates + C-union. In-sample 10-day C-union **+$1,885 is explicitly curve-fit / NOT proven.** Forward/OOS accrual starts **Mon 7/6**; promotion bar N≥30/cell + ≥7/10 forward days + z≥2.0.\n- **Shadow tournament — V8pw_wide** — champion tracked; in-sample +$2,024 / N=138, OOS +$58 / N=20 of 30. Needs ~1–2 more clean days to N=30 before promote.\n- **PROP-LIVE-QUOTES** — live market-data-for-quotes code shipped but **INACTIVE** (flag off, orders hard-wired SIM). Gated on live creds + entitlement + ≥1 shadow session.\n\n---\n\n## Key findings (honest)\n\n- **Edge hunt (N=221, broker-truth): NO deployable ENTRY edge** — best separator AUC 0.398. Edge lives in the **EXIT** (confirmed cohort +$14,894 @96.7% vs unconfirmed −$14,156 @9.1%).\n- **Chop-day hypothesis FALSIFIED; relvol→confirm is a HEAD-FAKE** (anti-correlated with net-$). Both are dead leads, not deployed.\n- **7/04 Saturday bug (human-found):** re-arm scan fired **48 orders into a closed market** — gated only on holidays, not weekends. TS rejected all 48 (0 fills, 0 positions, no risk), but spammed orders + a notification. Fixed same day; the approved 6/22 spec had called for the weekend gate but only the holiday half was ever wired.\n- Trading results: **7/01 +$1,183** (25 RT), **7/02 −$770** (20 RT), 7/03 holiday / 7/04 Saturday both $0. All broker-flat at close.\n\n---\n\n## Decisions waiting on you\n\n**None.** The tracker's \"Decisions Awaiting Rhett\" section is explicitly empty — both open forks (exit-redesign and clean-day policy) were decided 7/03. Nothing in the window is blocked on your input.\n\nTwo things I'd *flag* (not decisions, just governance hygiene I'll fix unless you object):\n- **9:45 re-arm window** is live on watched files with **no change-log row** — same miss class the commit guard caught for the time-stop. I'll backfill the log entry.\n- **PROP-EARNINGS-VETO proposal file still reads \"DRAFT\"** though it's approved + deployed; change-log is authoritative. I'll sync the .md.\n\n---\n\n## Honest state\n\n- **SIM-only, unchanged** — every in-window change is reversible via flag; nothing advanced the system past forward-test. Before-live gates (restore $2k DAILY_MAX_LOSS + DD kill + intraday clamp; 4×-marginable universe) remain OPEN.\n- **Promotion streak: 2 of 5 clean days** (after the SOFT-DING policy). Next real blocker is the historical/frozen 6/30 stuck-SAFE_MODE.\n- **Proven vs not:** the exit edge is *observed* in the tape but nothing is promoted — the time-stop, the edge ledger, the 9:45 window, and the shadow tournament are all in-sample / awaiting OOS forward data starting 7/6. Health: CSHV 48 OK / 1 WARN (known clean-day item) / 0 FAIL; regression 45/0."</result>
+<usage><agent_count>4</agent_count><subagent_tokens>246944</subagent_tokens><tool_uses>26</tool_uses><duration_ms>184569</duration_ms></usage>
+</task-notification>
+
+**Claude Code:**
+
+The review is in — and faithful. It also caught two record-accuracy gaps (a stale proposal header and a missing change-log row for the 9:45 window). Rather than hand those to you as "I'll fix later," let me close them now, then give you the recap. First the proposal header:
+Now the 9:45-window change-log backfill (post-hoc governance reconciliation, same pattern as the time-stop):
+Both record gaps are closed — the earnings-veto proposal header now reads APPROVED+DEPLOYED, and I backfilled the missing change-log row for the 9:45 window (`AQ-20260701-EARLY-REARM-0945-001`). Here's your recap.
+
+---
+
+# Alpha Quant — Last Few Days (7/01–7/04)
+
+**The arc:** shipped an unconfirmed-trade time-stop and closed two live-path gaps (earnings veto on the re-arm book, weekend sit-out); a human-found Saturday order-spam bug then triggered a build-out of self-verification infrastructure; and the edge hunt honestly concluded there's **no entry edge yet, only an exit edge** — all still SIM-only.
+
+## ✅ Now LIVE / deployed
+
+**Exits & risk**
+- **7/01 — 30-min unconfirmed time-stop** *(watched · revert flag)* — flattens any position that never confirmed (never crossed +0.15×ATR) 30 min after fill; confirmed positions untouched. First live day 7/02 (19 of 20 exits went through it). In-sample only.
+
+**Calendar & gates**
+- **7/03 — Earnings veto wired onto the LIVE re-arm path** *(watched · revert flag)* — the veto had only guarded the gated-off 9:35 path; the live re-arm book had none. Fail-safe, REG-34.
+- **7/04 — Weekend sit-out on the re-arm scan** *(watched)* — fixes the Saturday bug below; now gates on `is_regular_trading_day()` before any broker call. REG-37 (critical).
+- **7/03 — Transient-504 relabel** *(alerting-only)* — no more false "auth failing" pages on a TS hiccup. REG-33.
+
+**Self-verification infrastructure (7/04)**
+- **`invariant_guardian.py`** — asserts must-never-happen events (no orders on a non-trading day, no gated-off entries); runs hourly *every day incl. weekends*; caught the 48-order incident live. A deadman check watches the guardian itself.
+- **`spec_coverage_audit.py`** — drove **13 unproven approved behaviors → 0**; regression suite now **45 pass / 0 FAIL**.
+- **Clean-day soft-ding policy** *(measurement-only)* — a single self-recovered loop-stall no longer hard-resets the clean-day streak (damage detectors stay hard) → `consecutive_clean 0→2`.
+
+## 🔬 Shadow / measuring (built, NOT trusted)
+- **`edge_shadow_ledger.py`** — 2 size-down gates + union. In-sample **+$1,885 is curve-fit, not proven.** Forward/OOS accrual starts **Mon 7/6**.
+- **Shadow tournament (V8pw_wide)** — champion tracked; OOS +$58 / N=20 of 30, ~1–2 clean days from promotion review.
+- **PROP-LIVE-QUOTES** — code shipped but **inactive** (flag off, orders hard-wired SIM); gated on live creds + entitlement.
+
+## 🔑 Key findings (honest)
+- **Edge hunt (N=221, broker-truth): NO deployable entry edge** (best AUC 0.398). The edge lives in the **exit** — confirmed cohort +$14,894 @ 96.7% vs unconfirmed −$14,156 @ 9.1%.
+- **Chop-day hypothesis falsified; relvol→confirm is a head-fake** (anti-correlated with $). Both dead leads, not deployed.
+- **7/04 Saturday bug (you found it):** re-arm fired **48 orders into a closed market** — gated on holidays but not weekends. TS rejected all 48 (0 fills, 0 positions, no risk). Fixed same day; the approved 6/22 spec had called for the weekend gate but only the holiday half was ever wired.
+- **Results:** 7/01 **+$1,183** (25 trades), 7/02 **−$770** (20), 7/03 holiday / 7/04 Saturday both $0. Broker-flat every close.
+
+## 🟢 Decisions waiting on you
+**None open.** Both forks (exit-redesign → *wait for OOS*, clean-day policy → *soft ding*) you decided 7/03. The two governance-hygiene items the review flagged, I just closed.
+
+## Honest state
+- **SIM-only, unchanged.** Every in-window change is reversible via flag; nothing advanced the system past forward-testing. Before-live gates (restore $2k daily stop + DD kill + intraday clamp; 4×-marginable universe) remain open.
+- **Promotion streak: 2 of 5 clean days.** Next blocker is the frozen 6/30 stuck-SAFE_MODE (historical).
+- **Proven vs. not:** the exit edge is *observed* in the tape but nothing is promoted — the time-stop, the edge ledger, the 9:45 window, and the shadow tournament are all in-sample / awaiting OOS data starting **Monday 7/6**.
+- **Health:** CSHV 48 OK / 1 benign WARN / 0 FAIL; regression 45 / 0.
+
+The single thing to watch Monday: it's the first real live day for the **9:45 window** and the **first forward row** for the edge ledger. Want me to have a focused readout ready after Monday's close?
+
+---
