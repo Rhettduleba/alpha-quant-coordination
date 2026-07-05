@@ -18873,3 +18873,55 @@ Both record gaps are closed — the earnings-veto proposal header now reads APPR
 The single thing to watch Monday: it's the first real live day for the **9:45 window** and the **first forward row** for the edge ledger. Want me to have a focused readout ready after Monday's close?
 
 ---
+
+
+## Turn — 2026-07-05 15:12:14 ET
+
+**Rhett:**
+
+I just got a couple of warnings. Please check them out report back what they are and fix.
+
+**Claude Code:**
+
+On it — checking the same sources you'd be seeing, right now. Pulling CSHV, bot_alerts, the code inbox, and the guardian log in parallel:
+The date's rolled to Sunday 7/05, and the "couple of warnings" are from the **invariant guardian I built** — it fired two violations. Good news: it's working. But I need to verify whether they're real or a false alarm before I touch anything. The key tell is already visible: `dark_on_non_trading_day` says **bot-logged=4 but broker=0** — no *real* orders hit the broker. Let me see exactly what those 4 logged "entries" are:
+Confirmed — this is a false alarm I created, and it's actually the guardian doing its job correctly. The 4 "entries" are all `symbol="TEST"`, `order_id="REG-CAPTURED"`, `tag="REG_TEST"` — they're written by **REG-45**, the collar-math test I added. It calls the real `submit_stop_limit_entry`, which has a `log_alert("ORB_V16_ENTRY_OK"...)` side effect ([orb_orders.py:292](tradestation-bot/orb_orders.py:292)) that writes to the **live** `bot_alerts.jsonl`. So a *test* is polluting the operational log — `broker=0` proves no real orders. No trading problem, but a real bug I introduced. Let me see the full scope and fix it properly:
+The scope is clear: **REG-45 has polluted the live log 18 times** (it runs every pre-open readiness check at ~6 AM & 9 AM). The other 7/05 events (2× `TS_API_TRANSIENT`) are benign — that's my transient-504 relabel working (a weekend API blip logged as WARN instead of a false auth-fail). So: one root cause, three fixes — stop the test polluting, clean the 18 junk rows, and make the guardian immune to test artifacts. Let me read REG-45 to fix it:
+That's REG-39; let me find REG-45's exact location:
+Found it. The fix: a regression test must never write to the live operational log. Adding a helper that suppresses the `log_alert` side effect around the captured-payload calls (restored on every path):
+Now make the guardian itself immune to test artifacts (defense-in-depth — so no test can ever false-trip it again). Adding a helper and using it in both invariants:
+Now clean the 18 junk rows from the live log (backup first, and it's a quiet Sunday so append-race risk is minimal):
+18 removed, 0 remaining, backup saved. Now the critical verification — run the suite (does REG-45 still pass AND no longer pollute?), then re-run the guardian (does the violation clear?):
+All clear — verified:
+- **REG-45 still passes** (suite 45/0) — the collar test works.
+- **Zero new `REG_TEST` rows** written after a fresh suite run — the log-suppression holds.
+- **Guardian: 0 violations** — both `dark_on_non_trading_day` and `gated_935_path_silent` now green.
+
+Let me log it, then give you the plain-English report:
+Checked, diagnosed, and fixed — and here's the honest version.
+
+## What the warnings were
+Both came from the **invariant guardian I built yesterday** (its first live day was today), firing CRITICAL hourly:
+- `dark_on_non_trading_day` — "4 order submissions on a non-trading day"
+- `gated_935_path_silent` — "4 non-re-arm entries while the 9:35 path is off"
+
+## What actually caused them
+**They were a false alarm I created — not real trading.** The dead giveaway was in the alert itself: `bot-logged=4, broker=0` — **zero real orders hit the broker.** The 4 "entries" were `symbol=TEST, tag=REG_TEST, order_id=REG-CAPTURED` — written by **REG-45**, the collar-math test I added yesterday. It calls the real order function with a fake client to inspect the payload, and that function has a logging side effect that appended fake entries to the live alert log. The pre-open check runs the test suite twice each morning, so 18 of these junk rows had piled up. **The trading path is fine — the weekend gate is working, nothing was submitted.**
+
+**The silver lining:** the guardian did *exactly* its job. It's supposed to scream if anything looks like an order on a day the bot should be dark — and it caught an anomaly within an hour, even though this one turned out to be my own test artifact. That's the system working, not failing.
+
+## The fix (3 parts, all verified)
+1. **REG-45 no longer pollutes** — it now suppresses the logging side effect around its fake-client calls.
+2. **Cleaned the 18 junk rows** out of the alert log (backup saved; 2,369 real rows untouched, 0 junk remaining).
+3. **Guardian made immune** — it now skips any test-tagged entry, so no test can false-trip it again.
+
+**Verified:** suite 45 pass / 0 FAIL (REG-45 still green), a fresh run wrote **0** new junk rows, and the guardian now reports **0 violations**.
+
+*(The other 7/05 log noise — 2× `TS_API_TRANSIENT` — is benign: that's the transient-504 relabel working, a weekend API blip logged as a mild WARN instead of a false "auth failing.")*
+
+## One honest note
+This is the *class* of thing to watch: a couple of my new tests call live functions that have side effects. REG-45 bit; I checked REG-42 (it calls the live 9:35 iteration) and confirmed it isn't polluting, but I flagged it to convert to a side-effect-free check as follow-up hardening. Tests shouldn't be able to touch the operational log at all — that's the real rule I'm tightening.
+
+Net: warnings resolved, root cause was mine and is closed, and the guardian earned its keep on day one.
+
+---
