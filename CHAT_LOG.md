@@ -19288,3 +19288,153 @@ Triage complete. Cursor advanced.
 **Actions taken:** SESSION_LOG entry appended, synced + committed + pushed to coordination repo ([4cb4509](https://github.com/Rhettduleba/alpha-quant-coordination/commit/4cb4509)), inbox `--ack`'d. Per the forward-test freeze: **nothing** edited/placed/restarted on the trading path. Standing observability fix (discount weekend-`OpenedDateTime` rejects in the CSHV count) remains Bucket B, escalated previously, not auto-applied.
 
 ---
+
+
+## Turn — 2026-07-06 12:28:37 ET
+
+**Rhett:**
+
+This session is being continued from a previous conversation that ran out of context. The summary below covers the earlier portion of the conversation.
+
+Summary:
+1. Primary Request and Intent:
+   The overarching project is developing/hardening/finding edge in "Alpha Quant," a SIM-only ORB (Opening Range Breakout) equity day-trading bot on TradeStation, on a Windows VPS at C:\AlphaQuant (account SIM1623888M). Chronological explicit requests this session:
+   - Check current warnings; confirm anything needs discussion; surface any open questions "on the table."
+   - "B" — chose to stage the blunt earnings-veto stopgap on the live re-arm path.
+   - "Let's go with both of your recommendations" — exit-redesign fork = WAIT (don't draft the confirmation-keyed-exit proposal yet, let the shadow ledger accumulate OOS); clean-day disqualification policy = SOFT DING (a self-recovered loop-stall doesn't hard-reset the 5-clean-day streak).
+   - **STANDING DIRECTIVE:** "Don't ever hold back the fix bug always tell yourself if you have an identified bug to fix it immediately."
+   - **FOUNDATIONAL DIRECTIVE:** "build enough infrastructure that there is no missing build it in code so it's in concrete not something that you have to think about cause when you think about things you miss things and that's what is the failure... Why [wire] yourself so you don't miss anything?" → Build self-running self-verification infrastructure.
+   - Help reconnect the phone's Claude Code Remote Control session (support tangent, resolved).
+   - Provide a review summary of the last few days.
+   - Check + fix a couple of warnings the user received.
+   - "Biggest thing, I want a clean day tomorrow. How should I prompt you to ensure a clean day tomorrow" → then "Yes run it the build the auto firing" (run the pre-open verification + build an auto-firing clean-day gate).
+   - "Che k the warnings" (Monday 7/06, first live day).
+   - **FINAL (unanswered):** Explain the difference between the Opus and Fable models; whether Fable is worth the extra credits; how Fable is built differently; and whether using "Fable 5" involves any additional financial obligation beyond the Max subscription's usage reduction (from ~10 hours/day to ~5 hours/day, described as "about 50% more usage"). NOTE: The current turn's instructions override this — I must produce a SUMMARY ONLY (text, no tools). The Fable question is the pending item for the next real turn.
+
+2. Key Technical Concepts:
+   - ORB re-arm strategy: 9:35 entries GATED OFF (ORB_935_ENTRIES_ENABLED=False); LIVE path = re-arm windows ["0945","1035","1135","1235","1335","1435"] via orb_multiscan; 0945 added 7/01, first real live day Monday 7/06.
+   - Exit stack: candle_1.4atr_chandelier (CONFIRM 0.15×ATR, CHANDELIER 1.4), $500 DOLLAR_STOP_CAP (ENABLED), 30-min UNCONFIRMED time-stop (ENABLED, reason TIME_EXIT_30M_UNCONFIRMED).
+   - Subprocess architecture: run_bot spawns fresh subprocesses each cycle → watched-file edits load without run_bot restart.
+   - WATCHED files (never edit mid-session without go): risk_config, bot_loop, exit_bot_v2, candle_close_exit, advisor_filter_engine, symbol_universe, orb_runner, orb_multiscan, short_bot, mover_scanner.
+   - Confirmation: trade "confirmed" when favorable excursion reaches +0.15×ATR.
+   - Positive invariants (approved→proven-wired via REG tests) + Negative invariants (must-never-happen, runtime).
+   - clean_day_certifier: HARD/SOFT/EXEMPT incident model; clean = broker-flat EOD + report_integrity + no critical incident + position recon + gate enforced (NOT P&L).
+   - Governance: strategy-change guard, log_change.py/mk_changelog pattern, manual_approvals.yaml (ids must be on clean lines; inline # comments break the tolerant parser), REG-locking (regression_suite.py).
+   - Edge hunt: AUC (Mann-Whitney), must-not-cut, clean_cohort, N≥30/cell promotion bar.
+   - Claude Code Remote Control (mobile app "Code" tab attaches to a live session; reconnect is machine-side via `/remote-control` or `claude remote-control`).
+
+3. Files and Code Sections:
+   - **strategy-research/edge_shadow_ledger.py** (created/extended): measures 2 must-not-cut-safe size-DOWN gates (A_LATE: half-size entries ≥11:00 ET; B_ATHIGH: half-size at/above trailing-20d high prox≥-0.005; C_union) vs broker truth each EOD. Added `IN_SAMPLE_LAST="2026-07-02"` and forward/OOS promotion evaluation (PROMOTION-READY when forward N≥30 + ≥7/10 positive forward days). Self-stamps headless. In-sample C-union +$1,885 (curve-fit). Wired as 8th action of AlphaQuant_EodReconciliation.
+   - **tradestation-bot/orb_multiscan.py** (WATCHED): (a) Added earnings veto in candidate filter after HTB exclusion, behind `REARM_EARNINGS_VETO_ENABLED`, calling `is_earnings_blackout`, fail-safe ALLOW. (b) Added trading-day gate at top of run_multiscan: `if not _mh.is_regular_trading_day(now): return {"status":"non_trading_day",...}` checked BEFORE any broker call (fixed the 7/04 Saturday 48-order bug where the old gate only checked holiday_reason not weekends).
+   - **tradestation-bot/risk_config.py** (WATCHED): Added `REARM_EARNINGS_VETO_ENABLED = True` (after ORB_EXCLUDE_HARD_TO_BORROW).
+   - **validation/clean_day_certifier.py**: Moved `"rel_trading_is_thinking"` OUT of `_HARD_FAULT_CHECKS` (→ SOFT). Storm ≥5 still disqualifies; trading-damage detectors stay HARD. Added 4 self-test cases (15/15). Verified consecutive_clean 0→2.
+   - **tradestation-bot/safe_mode.py**: reconcile_from_reliability auto-clear generalized from allowlist `in ("reliability_monitor","pre_open_gate")` to `!= "manual"` (auto-clears any automatic engagement; only manual persists).
+   - **tradestation-bot/regression_suite.py**: Added `import re` at module level (fixed REG-39/41 "name 're' is not defined"). Added REG-34 (earnings veto), REG-35 (cleanday soft-ding), REG-36 (safe_mode auto-clear, temp-flag isolated), REG-37 (re-arm trading-day gate, CRITICAL), REG-38..47 (from workflow), REG-48 (HTB applied), REG-49 (exit-swap code intact). Fixed REG-47 garbled label + REG-04 id-linked PROP-SLOTCAP-RAISE. Suite now 45 pass / 0 FAIL. Fixed REG-45 (t_orb_v16_stop_limit_collar) pollution via `_submit_no_oplog` helper that saves/restores `orb_orders.log_alert`:
+     ```python
+     def _submit_no_oplog(**kw):
+         _ol = orb_orders.log_alert
+         orb_orders.log_alert = lambda *a, **k: None
+         try:
+             return orb_orders.submit_stop_limit_entry(**kw)
+         finally:
+             orb_orders.log_alert = _ol
+     ```
+   - **tradestation-bot/invariant_guardian.py** (created): negative-invariant runtime harness. INVARIANTS = [inv_dark_on_non_trading_day, inv_gated_935_path_silent]. Pages CRITICAL on violation, heartbeat for deadman, self-extending. Added `_is_test_artifact(r)` (skips tag=="REG_TEST" / symbol=="TEST" / order_id=="REG-CAPTURED") used in both invariants after REG-45 pollution. Scheduled AlphaQuant_InvariantGuardian hourly 10-16 every day.
+   - **validation/spec_coverage_audit.py** (created): cross-references approved PROPs (manual_approvals.yaml) vs regression_suite; flags approved-but-unproven. Drove 13→0. Added `--notify` (pages WARNING on gap). Scheduled into EOD task.
+   - **tradestation-bot/reliability_checks.py**: Added `check_guardian_heartbeat()` (deadman on invariant_guardian; start-gated to 2026-07-05 10:00; WARN if stale >90min during 10:15-16:15) + registered in CHECKS.
+   - **tradestation-bot/system_health_verifier.py**: Added `@register("Reliability","rel_guardian_heartbeat")` / `chk_rel_guardian_heartbeat()`.
+   - **tradestation-bot/pre_open_clean_day_gate.py** (created): 9-check GO/GO-WITH-WARNINGS/NO-GO gate (chk_regression, chk_preflight, chk_trading_day_gate, chk_entry_path, chk_0945_window, chk_exits_enabled, chk_earnings_veto, chk_guardian, chk_bot_cycling). Pages CRITICAL only on NO-GO, guarded to `str(target)==str(datetime.now(ET).date())`. Scheduled AlphaQuant_CleanDayGate weekdays 8:45 AM ET --notify. Monday 7/06 = GO.
+   - **tradestation-bot/orb_earnings_veto.py** (read only): `is_earnings_blackout(symbol, now_et)` — ±18h window; VERIFIED CORRECT (edate∈[now±18h] ≡ now∈[edate±18h]).
+   - **validation/report_integrity.py** (read only): `run_for_date(date, exit_reasons)` → `_attach_labels` sets exit_reason_code=classify_exit_reason(exit_reason); L276 `_match_exit_reason` join; `fidelity_violations` WARNs on EXIT_UNCLASSIFIED. The 7/06 WARN root cause.
+   - **validation/exit_reason_codes.py** (read only): `classify_exit_reason(raw)`; classifier has "TIME_EXIT"→EXIT_TIME_STOP_UNCONFIRMED; classify(None)=EXIT_UNCLASSIFIED.
+   - **Change-logs created:** AQ-20260703-EARNINGS-VETO-LIVE-PATH-001, AQ-20260703-CLEANDAY-SOFTDING-STALL-001, AQ-20260704-REARM-TRADINGDAY-GATE-001, AQ-20260701-EARLY-REARM-0945-001 (post-hoc backfill).
+   - **Memory files:** feedback_never_defer_always_act (7/04 reinforcement: identified bug fixed THIS turn; verify a fix's real status before calling it pending OR done), feedback_encode_invariants_not_vigilance (7/04 FOUNDATIONAL), project_edge_hunt_2026-07-03.
+   - **SESSION_LOG.md / OPEN_ITEMS.md**: continuously updated. OPEN_ITEMS QUEUED BUILDS item "0" = exit-reason attribution fix (EOD 7/06).
+
+4. Errors and fixes:
+   - **7/04 Saturday order-spam (human-found bug):** orb_multiscan gated only on holiday_reason (holidays), not weekends → fired 48 orders into a closed market Saturday (all REJ, 0 fills). Fixed with is_regular_trading_day gate before any broker call; REG-37. User's meta-feedback: frustrated a human found it, my monitoring didn't; "build infrastructure so nothing's missing, in code not in your head" — led to the full self-verification build.
+   - **Called a done fix "pending":** I described the reconcile stuck-SAFE_MODE fix as "still on my fix-list" when it was already deployed. Corrected; saved memory: verify a fix's real status before stating pending OR done. Triggered by user's "don't ever hold back the fix."
+   - **REG-39/REG-41 "name 're' is not defined":** agents assumed `re` was module-level; fixed by adding `import re` at regression_suite top.
+   - **REG-45 test pollution (7/05):** REG-45's real submit_stop_limit_entry call (fake client) logged fake ORB_V16_ENTRY_OK to live bot_alerts.jsonl (18 rows), tripping the guardian's 2 violations. Fixed: monkeypatch log_alert (_submit_no_oplog), cleaned 18 rows, guardian _is_test_artifact skip.
+   - **Adversarial agent "P0 earnings veto inverted" — FALSE ALARM:** Verified empirically (STANDING RULE #0) — the math is equivalent, agent's fix is a no-op, and a day-trader flattening EOD shouldn't block next-day reporters; WDS(Mon)@9:45&14:00 block, PENG(Tue) doesn't. Did NOT change the working veto.
+   - **Earnings calendar stale (5.4d):** merged live∪fresh (fresh NASDAQ feed was LESS complete, 10 vs 21 Monday names) → 340 rows, Monday coverage 21 held, fresh mtime; gate WARN cleared.
+
+5. Problem Solving:
+   Solved: edge-hunt verdict (no entry edge, edge in exit, chop-day falsified, relvol head-fake); earnings veto on live path; clean-day soft-ding; stuck-SAFE_MODE bug-class closure; the 7/04 Saturday bug; full self-verification stack (spec_coverage_audit 0 unproven, invariant_guardian, guardian deadman, 12 new REGs, 45/0 suite); REG-45 test-pollution fix; phone reconnect (Remote Control machine-side); multi-day review; pre_open_clean_day_gate + Monday GO; adversarial P0 verified false. Ongoing: EOD 7/06 exit-reason attribution fix (deferred deliberately); watch 0945 window Monday EOD; edge ledger OOS accrual from 7/6.
+
+6. All user messages:
+   - (repeated cron) "SELF-MONITORING (daily, every 15 min...)"
+   - "Check the current warnings. Let me know if it's something we need to talk about. Did we leave any questions on the table?"
+   - "B"
+   - "Let's go with both of your recommendations"
+   - "Don't ever hold back the fix bug always tell yourself if you have an identified bug to fix it immediately"
+   - "Yes, move forward. Go ahead and build it is this the best way to self verify yourself if it is move forward if you think there's a better way to propose it I still don't get how you miss things you need to build enough infrastructure that there is no missing build it in code so it's in concrete not something that you have to think about cause when you think about things you miss things and that's what is the failure how could you have missed things? Why are your yourself so you don't miss anything?"
+   - "so somehow yougot closed on my VPS and that discconected my chat with you on my phone through theremote control process. How do i reconnect the chat on my hone?"
+   - "ok, so I am on my laptop, which is connected to my VPS. and i am working with you through that connection. I connected to this chat through the claude remote session process, you helped me walk through getting it connect. So my claude app on my phone, i select code, and this chat is there, it was connected all day, now I can see the chat click on it and see our last conversation but on my phones screen it says diconnected. I want to reconnect this chat from my phone. So i go through the claude app on my phone."
+   - "OK we are connect again thanks. Can you give me a summary of what we have done over the last few days for me to review."
+   - "I just got a couple of warnings. Please check them out report back what they are and fix."
+   - "Biggest thing, I want a clean day tomorrow. How should I prompt you to ensure a clean day tomorrow"
+   - "Yes run it the build the auto firing"
+   - "Che k the warnings"
+   - "OK, so I clearly think that we have the infrastructure and the system completely built out now it's the tuning and finding an edge. Can you explain to me the difference between opus and fable so that I can understand if it's worth the extra credits that are used when you use fable and also explain to me how fable is built differently so I currently have the Max subscription to code or to Claude and I get about 10 hours a day of coding usage. I know that that would be reduced to five hours a day it says about 50% more usage, but is there any other money any other financial obligation involved with using fable five"
+   Security-relevant standing constraints (must remain in effect): SIM-only, never edit the SIM guards or introduce bypass code paths; never edit WATCHED trading files mid-session without explicit go; preserve the one-way advisor→bot channel; no secrets in source (.env only, token_cache.json local); TradeStation tokens are reused not refreshed per call; STANDING RULE #0 (verify before you state); never defer an identified bug; encode checks in code not vigilance.
+
+7. Pending Tasks:
+   - **Answer the user's Opus vs Fable question** (their most recent explicit request): difference between Opus and Fable models, whether Fable is worth extra credits, how Fable is built differently, and whether "Fable 5" involves any financial obligation beyond the Max subscription usage reduction (~10hr→~5hr/day, "50% more usage"). This is a knowledge/product question requiring accurate info (model IDs from system context: Fable 5 = 'claude-fable-5', Opus 4.8 = 'claude-opus-4-8'); should verify against Claude Code / Anthropic docs rather than guess about pricing/credits/financial terms.
+   - EOD 7/06: implement the exit-reason attribution fix in report_integrity.run_for_date (fall back to broker exit_order_type when _match_exit_reason finds nothing) + regression-lock (OPEN_ITEMS QUEUED BUILDS item 0).
+   - Write the Monday 7/06 EOD clean-day verdict/debrief at close; check the 0945 window's per-window expectancy vs 10:35+ (pull if it underperforms).
+   - Continue edge-ledger OOS accrual (from 7/6); revisit exit-redesign at N≥30/cell.
+   - Standing 15-min self-monitoring on the clock.
+
+8. Current Work:
+   Immediately before this summary request, I completed the Monday 7/06 (first live day) warning check per the user's "Che k the warnings." Findings: the day is running clean — clean-day gate GO at 8:45 AM (auto-fired), pre-open readiness GO at 9:00 AM with 0945 window armed=1, 27 ORB_V16_ENTRY_OK entries + 20 SL_OK stops, 0 FAIL, guardian 0 violations, no bot_alerts WARN/FAIL. The ONE CSHV WARN was `report_integrity`: "18 trades pass integrity; 7 WARN — unclassified exit reason." I traced it precisely: the 7 (WDC, DELL, UNH, PYPL, AMT, UPST, S — all single round-trips, not re-entries) exited via broker resting-stop FILLS that write no exit-decision log, so report_integrity's `_match_exit_reason` (run_for_date L276) leaves exit_reason=None → classify_exit_reason(None)=EXIT_UNCLASSIFIED → WARN. Verified BENIGN and NOT-A-REGRESSION (7/01 had 17, 7/02 had 1; pre-existing; does not affect trading or clean-day certification since the certifier skips the exit-code check by design). I logged the monitor line to SESSION_LOG and added item "0" to OPEN_ITEMS QUEUED BUILDS for the EOD fix (attribute via exit_order_type fallback), deliberately deferred to close because correct attribution needs the complete day and right code mapping. I reported all of this to the user, concluding the day was clean and nothing threatens the clean-day goal. That task is CONCLUDED. The user then pivoted to the entirely new Opus/Fable question.
+
+9. Optional Next Step:
+   The most recent completed work (Monday warning check) is concluded and reported. The user's newest explicit message is a new topic: "Can you explain to me the difference between opus and fable so that I can understand if it's worth the extra credits that are used when you use fable and also explain to me how fable is built differently... is there any other money any other financial obligation involved with using fable five". Since the current turn is constrained to a summary only (no tools), the next step in the following turn is to answer this Opus vs Fable question — explaining the model differences, the credit/usage trade-off (Max subscription ~10hr→~5hr/day = "50% more usage"), and clarifying whether any additional financial obligation is involved. Because this concerns product pricing/subscription terms, I should be careful to give accurate, non-fabricated information (verifying against Claude Code / Anthropic documentation where the facts are load-bearing, per STANDING RULE #0) rather than guessing about credits or financial terms. No trading-system action should be started without confirming, as this is a standalone knowledge question unrelated to the Alpha Quant work.
+
+If you need specific details from before compaction (like exact code snippets, error messages, or content you generated), read the full transcript at: C:\Users\Administrator\.claude\projects\C--Users-Administrator-OneDrive---Duleba-Trade-station-Main\3253950a-388c-4a7a-99cc-cec0c4ed9f69.jsonl
+Continue the conversation from where it left off without asking the user any further questions. Resume directly — do not acknowledge the summary, do not recap what was happening, do not preface with "I'll continue" or similar. Pick up the last task as if the break never happened.
+
+**Claude Code:**
+
+Here's the straight comparison, with the pricing verified against the authoritative model reference (not from memory):
+
+## Bottom line
+**Fable 5 is both more capable and more expensive — exactly 2× the per-token rate of Opus 4.8.** On your Max subscription there's no separate bill; that 2× rate is *precisely why* your daily window roughly halves (~10 hr → ~5 hr). There is **no other financial obligation** — you're not billed extra dollars, you just consume the same allowance about twice as fast.
+
+## The two models side by side
+
+| | **Opus 4.8** (what I'm running now) | **Fable 5** |
+|---|---|---|
+| Positioning | Most capable **Opus-tier** model | Anthropic's **most capable widely-released** model |
+| Built for | Highly autonomous long-horizon agentic + knowledge work | The *most demanding* reasoning + long-horizon agentic work |
+| API price (input / output per 1M tokens) | **$5 / $25** | **$10 / $50** |
+| Context / max output | 1M / 128K | 1M / 128K |
+| Family | Opus 4.x line | Claude 5 family |
+
+The price ratio is a clean **2×** on both input and output. That maps directly onto what you're seeing: on a Max subscription your usage allowance is effectively denominated in cost, so a model that costs 2× per unit of work drains the allowance in ~half the time. Your 10 hr → 5 hr is that 2× showing up as fewer hours rather than as a dollar charge.
+
+## How Fable is "built differently"
+Honestly: Anthropic doesn't publish Fable's *architecture* internals, so I won't invent them. What **is** documented is how it behaves and what it's tuned for:
+- **Thinking is always on** — you can't turn it off; it reasons on every request.
+- **Tuned for the hardest reasoning and long-horizon autonomous work** — its edge over Opus shows up most on genuinely hard, multi-step problems, less so on routine work.
+- **Longer turns by default** and it prefers *less prescriptive* prompting (over-scripted prompts actually hurt it).
+- **Same tokenizer as Opus 4.8**, so token counts don't change — only the per-token price does.
+- Stricter safety classifiers (it can decline more around bio/cyber-adjacent topics).
+
+So the real difference you'd feel isn't "a different kind of tool" — it's a higher reasoning ceiling on hard problems, bought at 2× the burn rate.
+
+## Is it worth it — for *our* project specifically
+You framed this right: infrastructure's built, the work now is **tuning + finding an edge.** That splits cleanly:
+
+- **Operational/monitoring work** (the 15-min checks, EOD debriefs, regression-locks, warning triage, governance backfills) — this is the *bulk* of my hours and it is **not** reasoning-bound. Opus 4.8 handles it with room to spare. Running Fable here would burn 2× the rate for zero gain.
+- **The genuinely hard, open problem — finding a real edge** (the edge hunts, the exit-redesign statistics, "is this signal real or curve-fit") — *this* is exactly where Fable's higher reasoning ceiling could actually change the answer.
+
+**My recommendation:** keep **Opus 4.8 as the daily driver** (it's already excellent and it's what's running), and reach for **Fable only on specific, bounded hard-reasoning tasks** — a deep edge hunt, a thorny statistical call — where the extra capability might change the conclusion. You switch models in the **app's model selector** (the terminal `/model` dialog isn't available in this session). That way you spend the 2× rate *only* where it buys you something, and you don't halve your day for work Opus already nails.
+
+## Your direct question — "any other money?"
+**No.** A Max subscription is a flat monthly fee with a usage allowance; there is no metered per-token charge layered on top for using a pricier model — Fable just draws that allowance down ~2× faster. The only way a separate bill enters the picture is if you deliberately wire Claude Code to a pay-as-you-go **API key** instead of the subscription, which you're not doing. (One non-cost footnote: Fable requires 30-day data retention, but that's an org/API setting and a non-issue on a personal Max plan.)
+
+So the whole "cost" of Fable, for you, is: **fewer hours per day, no extra dollars.** Worth it selectively for the edge-hunt work; not worth it as an all-day default.
+
+---
