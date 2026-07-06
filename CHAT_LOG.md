@@ -19010,3 +19010,67 @@ I can ensure the *system behaves correctly*; I can't promise green — and one t
 Net: Monday's readiness is proven tonight and self-checks at 8:45 AM. You'll hear from the system only if it needs you.
 
 ---
+
+
+## Turn — 2026-07-06 09:12:53 ET
+
+**Rhett:**
+
+<scheduled-task name="alphaquant-alert-triage" file="C:\Users\Administrator\.claude\scheduled-tasks\alphaquant-alert-triage\SKILL.md">
+This is an automated run of a scheduled task. The user is not present to answer questions. For implementation details, execute autonomously without asking clarifying questions — make reasonable choices and note them in your output. "write" actions (e.g. MCP tools that send, post, create, update, or delete), only take them if the task file asks for that specific action. When in doubt, producing a report of what you found is the correct output.
+
+AUTONOMOUS ALERT TRIAGE — Alpha Quant (Rhett-approved 2026-06-22; Planning Track A). You are a scheduled Claude Code run on the Alpha Quant VPS (live root C:\AlphaQuant). GOAL: Rhett must NOT be the human pager-relay. You read the SAME actionable alerts he would, auto-suppress known-noise, and ESCALATE anything that genuinely needs a human — pre-diagnosed. The human gate is preserved.
+
+IMPORTANT — FORWARD-TEST FREEZE: autonomous code-fixing is DEFERRED right now (Planning Track B). You DO NOT edit or commit ANY code this run (not even non-watched). You TRIAGE + ESCALATE only. (Auto-fix re-enables after the OOS forward test via a reviewed whitelist.)
+
+SOURCE OF TRUTH: read C:\AlphaQuant\CODE_ALERT_TRIAGE_PLAYBOOK.md and follow it EXACTLY (re-read each run). Procedure:
+1. `git -C C:\repos\alpha-quant-coordination pull` (ignore errors). Read the top stamp of C:\AlphaQuant\SESSION_LOG.md and C:\AlphaQuant\CSHV_FINDINGS.md for current state.
+2. Run: C:\Users\Administrator\AppData\Local\Python\pythoncore-3.14-64\python.exe C:\AlphaQuant\tradestation-bot\code_alert_inbox.py --json  → the NEW actionable CRITICAL alerts since last ack (the feed is already severity-gated to CRIT + de-noised; benign WARNs are handled at source, not here).
+3. For each alert: if it is KNOWN-NOISE (reader pre-tags many; or a state already confirmed benign in SESSION_LOG) → no action. Otherwise ESCALATE it: import notifier (add C:\AlphaQuant\tradestation-bot to sys.path) and call notifier.send_notification(subject="CODE TRIAGE — needs you", body= plain-English diagnosis + the specific proposed fix + whether it needs Rhett's approval (watched/strategy/risk) or just a go-ahead, level="CRITICAL"). For a SAFE non-watched fix you would normally make, STILL escalate it with the proposed fix (do not auto-edit during the freeze).
+4. ALWAYS at the end: append a short dated entry to C:\AlphaQuant\SESSION_LOG.md (what fired + what you escalated, or 'inbox clean'), copy it to C:\repos\alpha-quant-coordination\SESSION_LOG.md, commit + push that repo, then run code_alert_inbox.py --ack to advance the cursor. If nothing actionable, do NOT notify Rhett (silence = handled) — still --ack + one-line log.
+
+HARD RULES (never autonomously): NEVER edit/commit any code during the forward test (escalate fixes instead). NEVER edit a WATCHED strategy file (risk_config.py, bot_loop.py, exit_bot_v2.py, candle_close_exit.py, advisor_filter_engine.py, symbol_universe.py, orb_runner.py, orb_multiscan.py, short_bot.py). NEVER change risk/sizing/universe/stops/time-windows. NEVER place/cancel/modify orders or touch positions. NEVER deploy a strategy change. NEVER restart run_bot/watchdog_supervisor. NEVER touch credentials/.env or refresh TS tokens excessively. WHEN IN DOUBT, ESCALATE — never act on the live/trading path.
+
+ENVIRONMENT: Python = C:\Users\Administrator\AppData\Local\Python\pythoncore-3.14-64\python.exe. Work in C:\AlphaQuant. Keep each run tight + conservative. Your job: keep Discord quiet for Rhett by surfacing ONLY what truly needs him, pre-diagnosed.
+</scheduled-task>
+
+**Claude Code:**
+
+I'll run this autonomous alert triage following the playbook. Let me start with the setup steps.
+Playbook loaded. Now let me read current state and run the alert inbox.
+Six CRITICAL alerts — an invariant violation. This is exactly the "bot active on a non-trading day" class (July 5, 2026 = Sunday). Not noise. Let me get full detail before escalating.
+I need the raw invariant detail. Let me pull it directly from the source log.
+This is a serious must-never-happen invariant: the bot logged 4 order submissions on **Sunday July 5** (a non-trading day). Broker=0 so nothing actually filled, but this is exactly the "bot active on a non-trading day" fault class. This is a WATCHED trading-path concern → I must escalate, not fix. Let me pre-diagnose first.
+The invariant reads `bot_alerts.jsonl` for `ORB_V16_ENTRY_OK` events. Let me examine the actual 4 entries logged on Sunday 7/05.
+The invariant fired on Sunday 7/05 claiming 4 `ORB_V16_ENTRY_OK` entries, but the current file has **zero** — only 2 `TS_API_TRANSIENT`. That's a discrepancy I must resolve. Let me check `ROOT` (possible path mismatch) and the violation log.
+ROOT resolves to `C:/AlphaQuant` — same file. So 4 `ORB_V16_ENTRY_OK` entries dated 7/05 were present during Sunday but are **gone now**. I need to know what those 4 were (real re-arm bug vs. untagged regression-test artifacts vs. mislabeled dates). Let me investigate the file history and regression suite.
+Major finding: weekend `ORB_V16_ENTRY_OK` logging is **recurring** — 6/21 (Sun) 70, 6/27–28 (Sat/Sun) 80 each, 7/04 (Sat) 48. The invariant was built for the 7/04 Saturday miss and now caught 7/05. I need to characterize what these weekend entries actually are before escalating. Let me sample them.
+These are **real entries** — real symbols (RIVN, TSLA, ON, SNOW), real 9-digit TradeStation order IDs (960369529), real `ORBMS` re-arm tags. Not test artifacts. The bot's re-arm path is generating order submissions on weekends repeatedly (6/20–21, 6/27–28, 7/04, 7/05). This is the exact must-never-happen class. Let me pinpoint the gate and what runs it on weekends before escalating.
+Key finding: `orb_multiscan.py:260-267` **already has** a trading-day dark-gate (comment cites "48 REJ on 2026-07-04" — a prior session fixed the re-arm path). But 7/05 still produced 4 **non-ORBMS-tagged** entries — meaning a *different* entry path bypassed the gate. Let me confirm the 9:35/other path gate coverage and the fix timeline.
+The picture is now clear. Let me confirm whether a prior session already logged/handled the 7/04 weekend-order fix, so I don't double-escalate what's resolved.
+I now have a complete, verified picture. Let me confirm the `notifier.send_notification` signature before escalating (avoid a failed page), and double-check the bot_alerts truncation timing.
+`ORB_V16_ENTRY_OK` is emitted from exactly one place — `orb_orders.py:292`, the real order-submission function. So the 7/05 entries went through the live submit path, and `bot_alerts.jsonl` was truncated at 15:10 (last line 09:00), erasing the evidence. Both facts raise the stakes. Let me read the notifier signature and escalate.
+Signature confirmed. Now escalating to Rhett with the full pre-diagnosis.
+Escalation delivered (Discord + Telegram OK). Now the mandatory close-out: log to SESSION_LOG, sync coordination repo, and `--ack`.
+I'll insert my triage entry right after the HEALTH NOW block, before the newest existing entry (line 58).
+Now sync to the coordination repo, commit + push, and `--ack` the inbox.
+Triage complete. Cursor advanced, inbox clean (0/0/0).
+
+## Summary — Alert Triage 2026-07-06 ~9:04 AM ET
+
+**🔴 ESCALATED to Rhett** (CRITICAL, Discord + Telegram delivered OK). Not noise, not self-cleared — this is the exact "bot active on a non-trading day" class the invariant guardian exists to catch, and it touches watched trading-path files, so under the forward-test freeze I escalated pre-diagnosed and edited/placed/restarted **nothing**.
+
+**What fired:** `INVARIANT VIOLATION` ×6, hourly 10 AM→3 PM ET on **Sunday 2026-07-05** — `dark_on_non_trading_day` (4 order-logs on a non-trading day, bot-logged=4 / broker=0) + `gated_935_path_silent` (4 non-re-arm entries while the 9:35 path is disabled).
+
+**Verified diagnosis:**
+1. The *real* weekend problem — the re-arm (ORBMS) path firing on weekends (6/20–21, 6/27–28, 7/04 Sat = up to 80/day, with real symbols + real 9-digit TS order IDs) — was **already fixed midday 7/04** (`orb_multiscan.py:260-267` dark-gate, mtime 7/04 12:31). 7/05 had **0 ORBMS** entries → that fix works.
+2. **Residual/open:** 7/05's 4 **non-ORBMS** entries still tripped it, all funneling through the one live submit fn `orb_orders.py:292`; broker=0.
+3. `bot_alerts.jsonl` was **truncated at 7/05 15:10** (last line 09:00), erasing the 4 entries — source unconfirmable from the file. Most likely a weekend self-test/drill/regression harness writing un-tagged entries to the live log, but **not confidently benign** → escalated per "when in doubt."
+
+**Real-trading impact today (Mon 7/06):** likely low — flood-fix deployed, CSHV **50/0/0** green, bot flat, heartbeat fresh, market opens 9:30.
+
+**Proposed fix I handed Rhett (watched → needs his go):** identify the 4-entry writer; consolidate the dark-gate at the single `orb_orders.py` submit chokepoint so every path is covered in one place; broker-truth check that no weekend order ID rested/filled in SIM; investigate the 15:10 alerts-log truncation.
+
+Close-out done: SESSION_LOG entry appended, mirrored + pushed to the coordination repo ([bac68c6](https://github.com/Rhettduleba/alpha-quant-coordination/commit/bac68c6)), inbox `--ack`'d.
+
+---
