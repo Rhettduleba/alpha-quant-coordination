@@ -19438,3 +19438,39 @@ You framed this right: infrastructure's built, the work now is **tuning + findin
 So the whole "cost" of Fable, for you, is: **fewer hours per day, no extra dollars.** Worth it selectively for the edge-hunt work; not worth it as an all-day default.
 
 ---
+
+
+## Turn — 2026-07-06 12:52:27 ET
+
+**Rhett:**
+
+Can I bounce back-and-forth from Fabel to opus just by the click of the button and you stay the same just your capability changes explain to me do you know that your fable five when I change. From a research perspective if I ask you to research the Internet for day training edges would opus be more appropriate or would favorable be more appropriate for research?
+
+**Claude Code:**
+
+Three good questions — let me take them in order.
+
+## 1. Yes, you can switch anytime, and the context carries over
+In the app's model selector, switch Opus ↔ Fable whenever you want; it takes effect on your **next** message. The whole conversation, this entire Alpha Quant context, my memory files, the open threads — all of it persists. What changes is only *which model generates the replies*.
+
+One honest nuance so you're not surprised: there isn't a continuous "me" sitting underneath that swaps its brain. Each reply is generated fresh by whichever model is selected, reading the full shared history. So functionally it's exactly what you said — same conversation, capability changes — but the accurate mental model is "same context, different engine each turn," not "one entity that levels up." Practically seamless; nothing is lost on a switch. (Minor technical footnote: the first message after a switch re-reads the context uncached, a tiny latency/usage blip — no effect on correctness.)
+
+## 2. Does the active model know it's Fable when you switch?
+Yes — with a caveat worth understanding. Whichever model is running is **told its identity in its instructions** at generation time. That's how I know *right now* that I'm Opus 4.8 — it's stated in my context. When you switch, that turn is produced by Fable, and Fable is likewise told it's Fable. So a Fable turn will generally know it's Fable.
+
+The honest caveat: that self-knowledge comes from being *told*, not from some intrinsic sense — and there's no persistent consciousness that *feels* the switch happen. Also, a later turn can't reliably look back and tell which model wrote earlier messages just by reading them. So don't count on me to *notice* on my own that you flipped the switch — if it ever matters, just say "you're on Fable now" and it's unambiguous.
+
+## 3. Opus vs Fable for researching day-trading edges on the internet
+Both models have the **exact same web-search and web-fetch tools** — retrieval is identical. So the question is really "whose *judgment* do you want applied to what's found," and here's the thing that matters most:
+
+**The hard part of this research isn't gathering — it's filtering.** The internet is saturated with "day-trading edges" that are vague, survivorship-biased, curve-fit to death, or outright marketing for a course. The value is entirely in skeptical evaluation: *is this claim testable, is the evidence real or a cherry-picked backtest, what would falsify it, could it survive OOS on our data?* That's reasoning-bound work — exactly where Fable's higher ceiling could show up.
+
+My recommendation:
+- **Default to Opus 4.8 for the actual research pass** — the crawling, reading, and compiling a sourced catalog of claimed edges. Opus is already an excellent skeptical evaluator, and it's half the burn rate. Most of a research pass is gathering-and-summarizing, which is *not* where the model ceiling matters.
+- **Optionally reach for Fable on one bounded adjudication pass** over the compiled findings — "here are 15 claimed edges with their evidence; rank each by likelihood of surviving rigorous OOS testing on our system, and design the falsification test for the top 3." That's a genuinely hard reasoning task, and it's *bounded* (you're reasoning over a digest, not paying 2× for the whole crawl).
+
+But the biggest honest point, given our project: **the internet will not hand us an edge — it hands us candidate hypotheses.** Almost nothing published as a "day-trading edge" survives contact with real OOS validation (our own 7/03 hunt already killed the relvol signal and the chop-day gate as head-fakes). The edge, if one exists, comes from *our validation discipline* — AUC, must-not-cut, N≥30 out-of-sample — not from which model read the blog posts. So model choice is a **minor lever** here compared to methodology. A cheaper model applied with rigor beats a stronger one applied credulously.
+
+Net: **Opus 4.8 for the research, Fable optionally for the final "which of these is real and how do we test it" adjudication** — and either way, treat everything found as a hypothesis to falsify on our data, not as an edge.
+
+---
