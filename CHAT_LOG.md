@@ -19186,3 +19186,50 @@ A single late-entry stop-through-level reject is normal ORB behavior, not a burs
 **Actions taken:** SESSION_LOG entry appended (ET-stamped via `et_now.py`), synced to coordination repo (commit `27b3fa0`, pushed), inbox `--ack`'d. Per freeze + watched-files: edited / placed / restarted / cleared **nothing** on the trading path.
 
 ---
+
+
+## Turn — 2026-07-06 11:51:46 ET
+
+**Rhett:**
+
+Che k the warnings
+
+**Claude Code:**
+
+It's Monday — the first live day. Let me pull everything you'd be seeing, plus the clean-day gate result and today's trade-liveness:
+Strong Monday so far: **gate GO at 8:45, readiness GO at 9:00 (0945 window armed!), 27 entries + 20 stops placed** — the bot is trading cleanly, zero FAILs, guardian clean, no bot_alerts warnings. The one WARN is CSHV `report_integrity`: **"18 trades pass integrity; 7 WARN — unclassified exit reason."**
+
+That's a reporting/classification WARN, not a trading fault (and it does *not* affect clean-day certification — the exit-code check is explicitly non-fatal). But I won't assume benign — let me see exactly which exit reasons are unclassified:
+The bot's trading cleanly — today's exits are the 30-min time-stop firing 10× (working exactly as designed). The WARN is almost certainly a *naming* gap: the exit logs `TIME_EXIT_30M_UNCONFIRMED` but the integrity classifier may know it under a different code. Let me confirm what the 7 WARNs actually are before I touch anything:
+`report_integrity` lives elsewhere — let me locate it and run it with the right path:
+The direct run shows **n_warn=0** — because the clean-day certifier deliberately skips the exit-reason check (that's why the clean day is safe). CSHV runs the *display* version that includes it, producing the 7 WARN. So this is purely a reporting-classification gap: the live exit logs `TIME_EXIT_30M_UNCONFIRMED`, but the integrity display doesn't recognize that string yet. Let me confirm exactly where and what's unrecognized:
+Now it's crystal clear. CSHV runs the exit-code display check ([system_health_verifier.py:1522](tradestation-bot/system_health_verifier.py:1522) passes `exit_reasons`), and `report_integrity` WARNs when the classifier maps a reason to `EXIT_UNCLASSIFIED` — the message literally says *"(extend classifier)."* The live 30-min time-stop logs `TIME_EXIT_30M_UNCONFIRMED`, but the classifier doesn't recognize that exact string. It's a non-watched reporting fix. Let me find the classifier and confirm:
+My test used the wrong function name — it's `classify_exit_reason`, and the classifier *already* has a `TIME_EXIT` → `EXIT_TIME_STOP_UNCONFIRMED` rule (line 65). So the time-stop exits should classify fine — meaning the 7 unclassified are a *different* string. Let me get the exact strings CSHV sees and classify each:
+My iteration hit the wrong structure (the dict values are lists of tuples). Let me replicate CSHV's exact call and dump the actual 7 WARN rows:
+The 7 WARN are all **"exit reason None → UNCLASSIFIED"** — real tickers (WDC, DELL, UNH, PYPL, AMT, UPST, S) whose exits *worked* (they're closed round-trips) but didn't get a reason attributed. That's a reporting-attribution gap, not a trading fault — and it doesn't touch the clean day. Key question before I decide anything: is this **new** (did my changes break attribution) or pre-existing? Let me check prior days and the likely cause (re-entries):
+Clear diagnosis now, and it's reassuring: **this is pre-existing, not my regression** — 7/01 had 17 of these, 7/02 had 1, today 7. And it's *not* a re-entry issue (each symbol traded once). The root cause: these 7 exited via a **broker resting-stop fill** (the 0.15×ATR/$500 stop filling directly at the broker), which doesn't write an exit-*decision* log, so the reason comes back `None`. The exits worked; only the *attribution* is missing. It does not affect the clean day or trading.
+
+Let me look at the attribution code to see if there's a clean, safe fallback (the round-trip already carries the broker exit order type):
+The WARN fires because the annotate step sets `exit_reason_code = EXIT_UNCLASSIFIED` when the decision-based reason is `None`. The round-trip already carries the broker `exit_order_type` — so a clean, additive fallback (classify the order type when the decision reason is missing) will resolve it. It's pure read-only reporting (can't touch trading), so safe to fix now. Let me read the annotate step:
+I now have the complete picture, and here's the right call: this is **pre-existing, cosmetic, and safe** — but the *correct* fix (attributing these broker-stop-fill exits to the right exit code) needs the complete day's exits and careful code-mapping. Mis-attributing mid-day would be worse than an honest "unclassified," so I'll implement it at the close when I run the debrief anyway — and I'm tracking it so it doesn't drop. Logging the monitor status:
+Let me add it to the living tracker so it's on the EOD list, then report:
+Checked everything — and the headline is good: **Monday is running clean.**
+
+## The day so far (11:45 AM)
+- **Clean-day gate: GO** at 8:45 AM (the auto-gate fired exactly as built).
+- **Pre-open readiness: GO** at 9:00 AM — and notably, **the 0945 window armed** (armed=1). Your first-live-day watch item is live.
+- **27 entries + 20 stops placed**, exits working (the 30-min time-stop fired 10×, as designed).
+- **0 FAIL** everywhere, guardian 0 violations, no bot_alerts warnings, no actionable inbox items.
+
+## The one WARN — verified benign, and not mine
+CSHV shows `report_integrity`: *"18 trades, 7 unclassified exit reason."* I traced it fully:
+- The 7 (WDC, DELL, UNH, PYPL, AMT, UPST, S) exited via a **broker resting-stop fill**, which doesn't write an exit-*decision* log — so the reporting layer can't attribute a reason and stamps it "unclassified." **The exits themselves worked** (all closed cleanly).
+- It's **pre-existing, not a regression from my changes** — 7/01 had 17 of these, 7/02 had 1.
+- It does **not** affect the clean day (the certifier skips the exit-code check by design) or trading. It's purely cosmetic attribution.
+
+**The fix** (attribute broker-stop-fill exits via the broker order type the round-trip already carries) I'll do **at the close** — deliberately, because correct attribution needs the complete day's exits and the right exit code, and a rushed mid-day mis-label would be *worse* than an honest "unclassified." It's logged in SESSION_LOG and on the EOD list so it can't slip.
+
+## Net
+Nothing threatens the clean day. Everything I changed this weekend is behaving — the gate, the earnings veto, the trading-day guard, the 0945 window, the exits, the guardian. I'll keep monitoring on the 15-min clock, watch the 0945 window's per-window numbers, and give you the clean-day verdict at the close.
+
+---
