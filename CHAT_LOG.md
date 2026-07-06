@@ -19130,3 +19130,59 @@ Triage complete. Cursor advanced, inbox now clean (0 total).
 Actions taken: SESSION_LOG entry appended + synced to coordination repo (pushed `81c5436`), inbox `--ack`'d. Touched no orders, positions, or code on the trading path.
 
 ---
+
+
+## Turn — 2026-07-06 11:07:41 ET
+
+**Rhett:**
+
+<scheduled-task name="alphaquant-alert-triage" file="C:\Users\Administrator\.claude\scheduled-tasks\alphaquant-alert-triage\SKILL.md">
+This is an automated run of a scheduled task. The user is not present to answer questions. For implementation details, execute autonomously without asking clarifying questions — make reasonable choices and note them in your output. "write" actions (e.g. MCP tools that send, post, create, update, or delete), only take them if the task file asks for that specific action. When in doubt, producing a report of what you found is the correct output.
+
+AUTONOMOUS ALERT TRIAGE — Alpha Quant (Rhett-approved 2026-06-22; Planning Track A). You are a scheduled Claude Code run on the Alpha Quant VPS (live root C:\AlphaQuant). GOAL: Rhett must NOT be the human pager-relay. You read the SAME actionable alerts he would, auto-suppress known-noise, and ESCALATE anything that genuinely needs a human — pre-diagnosed. The human gate is preserved.
+
+IMPORTANT — FORWARD-TEST FREEZE: autonomous code-fixing is DEFERRED right now (Planning Track B). You DO NOT edit or commit ANY code this run (not even non-watched). You TRIAGE + ESCALATE only. (Auto-fix re-enables after the OOS forward test via a reviewed whitelist.)
+
+SOURCE OF TRUTH: read C:\AlphaQuant\CODE_ALERT_TRIAGE_PLAYBOOK.md and follow it EXACTLY (re-read each run). Procedure:
+1. `git -C C:\repos\alpha-quant-coordination pull` (ignore errors). Read the top stamp of C:\AlphaQuant\SESSION_LOG.md and C:\AlphaQuant\CSHV_FINDINGS.md for current state.
+2. Run: C:\Users\Administrator\AppData\Local\Python\pythoncore-3.14-64\python.exe C:\AlphaQuant\tradestation-bot\code_alert_inbox.py --json  → the NEW actionable CRITICAL alerts since last ack (the feed is already severity-gated to CRIT + de-noised; benign WARNs are handled at source, not here).
+3. For each alert: if it is KNOWN-NOISE (reader pre-tags many; or a state already confirmed benign in SESSION_LOG) → no action. Otherwise ESCALATE it: import notifier (add C:\AlphaQuant\tradestation-bot to sys.path) and call notifier.send_notification(subject="CODE TRIAGE — needs you", body= plain-English diagnosis + the specific proposed fix + whether it needs Rhett's approval (watched/strategy/risk) or just a go-ahead, level="CRITICAL"). For a SAFE non-watched fix you would normally make, STILL escalate it with the proposed fix (do not auto-edit during the freeze).
+4. ALWAYS at the end: append a short dated entry to C:\AlphaQuant\SESSION_LOG.md (what fired + what you escalated, or 'inbox clean'), copy it to C:\repos\alpha-quant-coordination\SESSION_LOG.md, commit + push that repo, then run code_alert_inbox.py --ack to advance the cursor. If nothing actionable, do NOT notify Rhett (silence = handled) — still --ack + one-line log.
+
+HARD RULES (never autonomously): NEVER edit/commit any code during the forward test (escalate fixes instead). NEVER edit a WATCHED strategy file (risk_config.py, bot_loop.py, exit_bot_v2.py, candle_close_exit.py, advisor_filter_engine.py, symbol_universe.py, orb_runner.py, orb_multiscan.py, short_bot.py). NEVER change risk/sizing/universe/stops/time-windows. NEVER place/cancel/modify orders or touch positions. NEVER deploy a strategy change. NEVER restart run_bot/watchdog_supervisor. NEVER touch credentials/.env or refresh TS tokens excessively. WHEN IN DOUBT, ESCALATE — never act on the live/trading path.
+
+ENVIRONMENT: Python = C:\Users\Administrator\AppData\Local\Python\pythoncore-3.14-64\python.exe. Work in C:\AlphaQuant. Keep each run tight + conservative. Your job: keep Discord quiet for Rhett by surfacing ONLY what truly needs him, pre-diagnosed.
+</scheduled-task>
+
+**Claude Code:**
+
+Inbox has 3 CRITICAL alerts, all one group: CSHV FAIL `broker_order_rejections_recent` — the same class triaged at 10:08 AM and 9:04 AM today. Count moved 48→49, so I must verify no *new Monday-RTH* reject slipped in (which would be genuinely live) before calling it known-noise.
+One new reject is **not** the weekend class: **STT opened Monday 7/06 10:35 AM ET (RTH)** — "Invalid Stop Price - Stop Price must be above current market." That's a live-hours protective-stop rejection, which could mean an unprotected position. Investigating before deciding.
+Only one STT row ever exists — a single **BUY StopLimit REJECTED, qty 0, no fill**. That's a rejected *entry* breakout stop (ORB long: buy-stop at the OR high rejected because price was already above 174.09), not a rejected protective stop on an open position. Verifying no STT position exists to be certain there's nothing naked.
+No STT position exists — 0 rows in trade_journal, only the single rejected order in the broker log, and CSHV `position_recon` is passing (no naked positions system-wide). Let me confirm the STT reject's intent from its raw order JSON to fully rule out a protective-stop-on-a-short case.
+Fully confirmed: `Legs[0].OpenOrClose='Open'`, `ExecQuantity=0` → a rejected **ORB long breakout entry** (buy-stop-limit at OR-high 174.09; price already above it → TS rejected). Not a protective stop, no position, no cost, nothing naked.
+
+**Verdict:** all 49 rejects are benign — 48 = known Saturday 7/04 weekend residue (already escalated 9:04 AM + folded 10:08 AM), 1 = benign missed STT ORB entry. No new live problem → **no re-page** (silence = handled). Logging, syncing, and ack'ing.
+Now sync to the coordination repo, commit/push, and ack the inbox.
+Triage run complete. Cursor advanced, nothing escalated.
+
+## Summary — Alert Triage 2026-07-06 ~11:04 AM ET
+
+**Inbox:** 3 CRITICAL / 1 group — CSHV FAIL `broker_order_rejections_recent` ("48–49 rejects in last 90m").
+
+**Verdict: no new escalation — all 49 rejects verified benign.** Rhett stays un-paged (already paged twice today on the reject topic).
+
+The count had ticked 48→49 since the 10:08 AM triage, so I did **not** assume same-class. I re-parsed every reject's broker `OpenedDateTime`:
+
+- **48 = known Saturday 7/04 weekend residue** — same batch already escalated at 9:04 AM and folded in at 10:08 AM. Surfacing on Monday's `logged_at`-lag. Bucket A.
+- **1 = NEW `STT` reject at 10:35 AM ET Monday (RTH)** — looked like it could be a live problem, so I verified it fully:
+  - Raw JSON: `Legs[0].OpenOrClose='Open'`, `ExecQuantity=0`, StopLimit stop 174.09 / limit 174.18 → a **rejected ORB long breakout entry** (buy-stop at OR-high; price already above it → "Stop Price must be above current market"). **Not** a protective stop on a short.
+  - **Zero exposure proof:** only 1 STT row ever in the broker log, **0 STT rows in trade_journal**, and CSHV `position_recon` is passing → nothing filled, no position, no cost, nothing naked.
+
+A single late-entry stop-through-level reject is normal ORB behavior, not a burst — so the CSHV FAIL is entirely benign this run.
+
+**Observability note (unchanged, Bucket B, not auto-applied per freeze):** the CSHV check counts by `logged_at`, so it will keep re-FAILing on weekend residue; proposed fix remains "discount rejects whose broker `OpenedDateTime` is a non-trading day."
+
+**Actions taken:** SESSION_LOG entry appended (ET-stamped via `et_now.py`), synced to coordination repo (commit `27b3fa0`, pushed), inbox `--ack`'d. Per freeze + watched-files: edited / placed / restarted / cleared **nothing** on the trading path.
+
+---
