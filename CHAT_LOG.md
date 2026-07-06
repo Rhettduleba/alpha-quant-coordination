@@ -19233,3 +19233,58 @@ CSHV shows `report_integrity`: *"18 trades, 7 unclassified exit reason."* I trac
 Nothing threatens the clean day. Everything I changed this weekend is behaving — the gate, the earnings veto, the trading-day guard, the 0945 window, the exits, the guardian. I'll keep monitoring on the 15-min clock, watch the 0945 window's per-window numbers, and give you the clean-day verdict at the close.
 
 ---
+
+
+## Turn — 2026-07-06 12:07:23 ET
+
+**Rhett:**
+
+<scheduled-task name="alphaquant-alert-triage" file="C:\Users\Administrator\.claude\scheduled-tasks\alphaquant-alert-triage\SKILL.md">
+This is an automated run of a scheduled task. The user is not present to answer questions. For implementation details, execute autonomously without asking clarifying questions — make reasonable choices and note them in your output. "write" actions (e.g. MCP tools that send, post, create, update, or delete), only take them if the task file asks for that specific action. When in doubt, producing a report of what you found is the correct output.
+
+AUTONOMOUS ALERT TRIAGE — Alpha Quant (Rhett-approved 2026-06-22; Planning Track A). You are a scheduled Claude Code run on the Alpha Quant VPS (live root C:\AlphaQuant). GOAL: Rhett must NOT be the human pager-relay. You read the SAME actionable alerts he would, auto-suppress known-noise, and ESCALATE anything that genuinely needs a human — pre-diagnosed. The human gate is preserved.
+
+IMPORTANT — FORWARD-TEST FREEZE: autonomous code-fixing is DEFERRED right now (Planning Track B). You DO NOT edit or commit ANY code this run (not even non-watched). You TRIAGE + ESCALATE only. (Auto-fix re-enables after the OOS forward test via a reviewed whitelist.)
+
+SOURCE OF TRUTH: read C:\AlphaQuant\CODE_ALERT_TRIAGE_PLAYBOOK.md and follow it EXACTLY (re-read each run). Procedure:
+1. `git -C C:\repos\alpha-quant-coordination pull` (ignore errors). Read the top stamp of C:\AlphaQuant\SESSION_LOG.md and C:\AlphaQuant\CSHV_FINDINGS.md for current state.
+2. Run: C:\Users\Administrator\AppData\Local\Python\pythoncore-3.14-64\python.exe C:\AlphaQuant\tradestation-bot\code_alert_inbox.py --json  → the NEW actionable CRITICAL alerts since last ack (the feed is already severity-gated to CRIT + de-noised; benign WARNs are handled at source, not here).
+3. For each alert: if it is KNOWN-NOISE (reader pre-tags many; or a state already confirmed benign in SESSION_LOG) → no action. Otherwise ESCALATE it: import notifier (add C:\AlphaQuant\tradestation-bot to sys.path) and call notifier.send_notification(subject="CODE TRIAGE — needs you", body= plain-English diagnosis + the specific proposed fix + whether it needs Rhett's approval (watched/strategy/risk) or just a go-ahead, level="CRITICAL"). For a SAFE non-watched fix you would normally make, STILL escalate it with the proposed fix (do not auto-edit during the freeze).
+4. ALWAYS at the end: append a short dated entry to C:\AlphaQuant\SESSION_LOG.md (what fired + what you escalated, or 'inbox clean'), copy it to C:\repos\alpha-quant-coordination\SESSION_LOG.md, commit + push that repo, then run code_alert_inbox.py --ack to advance the cursor. If nothing actionable, do NOT notify Rhett (silence = handled) — still --ack + one-line log.
+
+HARD RULES (never autonomously): NEVER edit/commit any code during the forward test (escalate fixes instead). NEVER edit a WATCHED strategy file (risk_config.py, bot_loop.py, exit_bot_v2.py, candle_close_exit.py, advisor_filter_engine.py, symbol_universe.py, orb_runner.py, orb_multiscan.py, short_bot.py). NEVER change risk/sizing/universe/stops/time-windows. NEVER place/cancel/modify orders or touch positions. NEVER deploy a strategy change. NEVER restart run_bot/watchdog_supervisor. NEVER touch credentials/.env or refresh TS tokens excessively. WHEN IN DOUBT, ESCALATE — never act on the live/trading path.
+
+ENVIRONMENT: Python = C:\Users\Administrator\AppData\Local\Python\pythoncore-3.14-64\python.exe. Work in C:\AlphaQuant. Keep each run tight + conservative. Your job: keep Discord quiet for Rhett by surfacing ONLY what truly needs him, pre-diagnosed.
+</scheduled-task>
+
+**Claude Code:**
+
+I'll run this autonomous alert triage following the playbook. Let me start by pulling the coordination repo and reading current state.
+Now let me read the current state files and run the alert inbox.
+Inbox has **1 CRITICAL**: CSHV FAIL `broker_order_rejections_recent` — "49 broker rejections in last 90m," fired **11:10:15 ET**. This count (49) exactly matches what I already parsed and verified benign at my **11:04 AM** triage (48 Saturday weekend residue + 1 benign STT live-entry reject). And the current CSHV snapshot (12:00 ET) shows this check is now **OK** ("No broker rejections in last 30 min"). But per verify-before-state, I won't assume same-class — let me confirm the 49 composition and that nothing new appeared after 11:10.
+Confirmed exactly. Rejects by broker `OpenedDateTime`: **2026-07-04 (Saturday) = 48** (known weekend residue) + **2026-07-06 (Monday) = 1** = **49 total** — byte-for-byte the same set I verified benign at 11:04 AM. No new reject appeared after the single STT one. Let me confirm that lone Monday reject is the STT benign entry and that no naked position resulted.
+New detail vs my 11:04 triage: STT now has a **second row — a FILLED BUY** at 174.67. So a later STT buy-stop entry *did* fill (normal ORB long entry). That means STT is now a live position. The alert is about the reject, but a new fill = a live position I must confirm is protected (a naked position would be Bucket C). CSHV at 12:00 shows `rel_exit_side` "all 3 positions protected" and `rel_position_recon` "3 reconciled" — let me confirm STT is one of those protected/reconciled positions.
+Broker-truth guardrails confirm no exposure problem. The authoritative CSHV reliability checks (re-run at 12:00:09 ET, 5 min ago) already reconciled broker-vs-bot: `rel_position_recon` = "3 positions reconciled both ways," `rel_exit_side` = "all 3 protected," `rel_phantom_deploy_book` = book == real exposure. So the later STT entry that filled at 174.67 is a normal, protected ORB long — not a naked position. The reject alert has since cleared (`broker_order_rejections_recent` = OK at 12:00).
+
+**Verdict: Bucket A** — the 49-reject burst is the identical set I verified benign at 11:04 AM (48 Saturday weekend residue + 1 benign STT stop-through-level entry reject), now cleared. No new escalation. One correction to note vs 11:04: STT's rejected buy-stop was followed by a *filled* buy-stop entry — a normal protected long, which strengthens rather than weakens the benign verdict.
+
+Let me get the canonical ET stamp and write the log entry.
+Now I'll append the SESSION_LOG entry (inserted right after the CURRENT STATE block, above the prior triage entries).
+Now sync to the coordination repo, commit + push, then ack the inbox.
+Triage complete. Cursor advanced.
+
+## Summary — Alert Triage 2026-07-06 ~12:06 PM ET
+
+**Inbox: 1 CRITICAL** — CSHV FAIL `broker_order_rejections_recent` ("49 rejections in last 90m," fired 11:10:15 ET).
+
+**Verdict: Bucket A — no escalation** (silence = handled). This is the 3rd triage of the identical 49-reject set today; Rhett was already paged twice on the reject topic. I did **not** assume same-class — I re-parsed all 376 rejected rows by broker `OpenedDateTime`:
+
+- **48 = Saturday 2026-07-04 weekend residue** (known, diagnosed, fixed class — `orb_v1_6`, submit_time=NONE, closed-market rejects, 0 executed, zero cost)
+- **1 = Monday STT stop-through-level entry reject** (benign — "Stop Price must be above current market")
+- No new reject after 11:10; CSHV at 12:00 already shows this check back to **OK** (window rolled past the burst)
+
+**One correction vs my 11:04 AM note** (which said STT "nothing filled"): STT now has 2 broker rows — the rejected buy-stop **and a subsequently FILLED BUY @ 174.67**. A later STT ORB long entry did fill. This *strengthens* the benign verdict — it's a normal, **protected** entry, confirmed by broker-truth guardrails at 12:00 (all GREEN): `rel_position_recon` "3 reconciled both ways," `rel_exit_side` "all 3 protected," `rel_phantom_deploy_book` book == real exposure. No naked position anywhere.
+
+**Actions taken:** SESSION_LOG entry appended, synced + committed + pushed to coordination repo ([4cb4509](https://github.com/Rhettduleba/alpha-quant-coordination/commit/4cb4509)), inbox `--ack`'d. Per the forward-test freeze: **nothing** edited/placed/restarted on the trading path. Standing observability fix (discount weekend-`OpenedDateTime` rejects in the CSHV count) remains Bucket B, escalated previously, not auto-applied.
+
+---
