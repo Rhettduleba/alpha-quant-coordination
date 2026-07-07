@@ -20382,3 +20382,27 @@ Both cells get the standard treatment: must-not-cut measured (cost on winners, n
 **So: process approved, one-builder rule added, and I'm ready to implement Fable's cells as soon as it gives you the frozen spec (exact thresholds + cell definitions).** Trace results and the dashboard fix land when the workflow returns — I'll report both here.
 
 ---
+
+
+## Turn — 2026-07-07 12:56:34 ET
+
+**Rhett:**
+
+we specificall chnaged the sysytem so that a symbol could not be traded twice in a session. Should we revisit this decision. You spoke about the fact that during midday, the bot just goes to the best at the time so even low scoring symbols, but you also said we have had mutiple winners even with low scores. we should run a study?
+
+**Claude Code:**
+
+Two things to untangle here, and one correction to your paraphrase of me before it hardens into a "fact." Then yes — a study, and I can run the first half of it right now from data we already have.
+
+**The correction:** I didn't say we've had multiple winners with low scores. I said the *9:45 window* is 70% winners and the *midday windows* arm low-score leftovers and are 0-for-12. Whether low scores themselves predict losses — or it's the time of day, or both — is exactly what we haven't measured. Let me measure it now instead of us both guessing. I'll also check why the re-entry cap was added, so we revisit the actual reasoning and not a memory of it.
+Archived and logged. The complete picture, compactly:
+
+**Your question, answered:** Yes, we should revisit the re-entry cap — its original justification (churn under the old hair-trigger exit) is partially obsolete — but not by flipping the flag on opinion. Phase 1 of the study is done (above); the decisive Phase 2 — replaying all 306 blocked re-entries through the real exit stack on 1-minute bars, split by window and by continuation-vs-revenge — runs after today's close, and until it reports, **the cap stays on** because the blocked signals sit almost entirely in the windows where we lose money.
+
+**And the study already paid for itself twice:**
+1. It killed *my* idea, not yours — the score/RelVol floor I floated on the HONA trade would have cut a net-positive bucket of trades. Retracted, on the record. Your recollection that low-score names have produced winners is what the data shows (20 trades, 60% win rate, +$757).
+2. It sharpened the real target: the problem isn't "midday" or "low scores" — it's specifically the **12:35 window** (30% winners, −$41/trade, N=27). That's the cell to watch toward a pull decision, and it's a much cheaper fix than re-engineering entry signals.
+
+Phase 1 is archived to [study_score_window_reentry_phase1_2026-07-07.md](../../../../../AlphaQuant/outputs/reports/study_score_window_reentry_phase1_2026-07-07.md) so the Opus seat and any future session can see the baseline, and SESSION_LOG carries the one-liner. I'll bring you Phase 2 numbers tonight with the EOD (End Of Day) debrief.
+
+---
