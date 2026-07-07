@@ -20965,3 +20965,45 @@ All four things done — button fix plus the three handoff items, each with evid
 **Status for you in one paragraph:** The system is healthy and trading (CSHV fully green, bot cycling, 23 trades closed today at roughly +$896 net per the dashboard tile as of 2:35 PM — final broker-reconciled number comes with the 4:50 PM debrief), the dashboard now does real multi-day cumulative reviews with a properly-sized button, monitoring is running every 15 minutes in this session with auto-stop at the close, and I'm now the single owner of every open thread — tonight after the close you'll get the re-entry-cap replay results, the frozen (and possibly revised) shadow-cell spec, and the normal EOD review, while the two decisions that remain yours (TW journal-write fix GO, and eventually the sector-cap question once the concentration monitor accrues data) sit flagged in OPEN_ITEMS with no urgency on either.
 
 ---
+
+
+## Turn — 2026-07-07 15:00:24 ET
+
+**Rhett:**
+
+ok, you took away the P&L by hour on the one day review, i would like that back. What im trying to review is a comulative look at what trading times are better and or worse by 30 minute time spans. Can you run the total trades by 30 minutes and show me a P&L?
+
+**Claude Code:**
+
+Two things then: first verify what actually happened to the hourly P&L on the single-day page (I didn't knowingly remove it — let me check whether it's failing to render), then run the 30-minute time-of-day study and wire it into the Period Review permanently.
+First, the correction on "you took it away": **the one-day review never lost anything** — I fetched it live and both blocks render ("Intraday P&L" 5-minute curve and "Deployed capital by hour"). What you were looking at was the new *range* page, which didn't have a time-of-day view. Now it does, permanently — open any range and you'll see **"P&L by time of day (30-min entry-fill bins)"**.
+
+Here are the numbers you asked for (broker truth, equities only, since the 5/26 baseline — and one important honesty note first: I initially binned by *order placement* time and the picture was misleading, because a breakout stop armed at 9:45 can fill hours later. These bins use the actual **broker fill time**; I added that field to the canonical data layer so every future report gets it right):
+
+**All trades since 5/26 (N=416):**
+
+| Fill time | N | Win% | Net $ | $/trade |
+|--|--|--|--|--|
+| 9:30–9:59 | 107 | 55% | −$2,976 | **−$27.82** |
+| 10:00–10:29 | 20 | 50% | −$662 | −$33.08 |
+| **10:30–10:59** | **87** | **67%** | **+$1,607** | **+$18.47** |
+| 11:00–11:29 | 11 | 55% | −$774 | −$70.34 |
+| 11:30–11:59 | 50 | 58% | +$197 | +$3.94 |
+| 12:00–12:29 | 9 | 56% | −$189 | −$21.05 |
+| 12:30–12:59 | 40 | 48% | +$626 | +$15.66 |
+| 13:00–13:29 | 16 | 50% | −$252 | −$15.75 |
+| 13:30–13:59 | 30 | 50% | −$1,234 | **−$41.13** |
+| 14:00–14:29 | 6 | 0% | −$539 | −$89.90 |
+| 14:30–14:59 | 30 | 50% | +$174 | +$5.80 |
+| 15:00+ | 10 | 50% | +$65 | +$6.51 |
+
+**What this says, plainly — three real patterns and one warning:**
+
+1. **The first 30 minutes is our biggest bleed.** N=107, −$28/trade. This is the most statistically solid cell in the table, and it survives in the current-exit-era slice too (post-6/22: −$45/trade). The open is maximum volatility and maximum fake-outs, and we deploy the most capital into it.
+2. **10:30–11:00 is our best window.** N=87, 67% winners, +$18/trade. After the opening dust settles, breakouts that fire actually travel. Also robust post-6/22.
+3. **The new find — late-triggering fills are toxic.** Look at the :00 bins (10:00, 11:00, 12:00, 13:00, 14:00): these are mostly orders that *armed* at a window but only filled well afterward — meaning price took a long time to reach the trigger. Combined: ~68 trades, roughly **−$38/trade**. That's the HONA pattern quantified: a breakout that takes ages to trigger is stale momentum by the time you're in. This is a cleaner "staleness" signal than RelVol ever was, and I've logged it as a candidate for tonight's pre-registered shadow-cell spec — measured forward, out-of-sample, before anyone acts on it.
+4. **The warning:** everything except bins 1–3 has N under 30 — context, not verdicts — and this table mixes exit regimes across six weeks. It's a map of where to *look*, not yet a license to cut time windows.
+
+One definitional note so the dashboard never confuses you: the **"Per entry window"** table answers *"which arm decision pays"* (attribution by the window that armed the trade); this new **time-of-day** table answers *"when is the market actually paying us"* (attribution by when the fill happened). Both are on the page, labeled. Evidence trail: suite 48/0/3 after the data-layer change, dashboard PID 5028 started 2:58:49 PM > all edited mtimes, full-history range (`?start=2026-05-26&end=2026-07-07`) renders all 13 bins with the reconciliation guard clean, and SESSION_LOG has the 3:00 PM entry.
+
+---
