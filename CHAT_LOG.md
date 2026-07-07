@@ -20931,3 +20931,37 @@ Intraday self-monitor tick (session-bound loop, re-armed after Opus seat closed)
 Tick clean at 2:50 PM ET — CSHV **50 OK / 0 WARN / 0 FAIL** (fresh, generated 2:50:10), inbox 0/0/0, heartbeat 7.9s (loop 19393, advancing from 19354 last tick), trade journal 1.6s. No action, no log entry. Next tick ~3:05 PM.
 
 ---
+
+
+## Turn — 2026-07-07 14:54:24 ET
+
+**Rhett:**
+
+first, chnage the button to open the review back to simply "open review" the bigger button does not fit, see screen shot, then : The Opus session is closing permanently — you are now the ONLY session (memory: two-seat-workflow, which you wrote). Three handoff items before you do anything else, then confirm each with evidence (claim→verify→show):
+
+1. **Take over the monitoring loop.** The 15-min intraday self-monitoring loop was armed INSIDE the Opus session and dies when that window closes (Windows scheduled tasks keep running; the in-session loop does not). Check TaskList — if you don't already have one running, arm it now:
+`/loop 15m Run the SELF_MONITORING_PLAYBOOK.md intraday check for the Alpha Quant bot (C:\AlphaQuant). STEPS: (1) Confirm ET time + market state; if past 4:00 PM ET / market closed, do a final EOD-flat check then STOP looping. (2) Read the SAME warnings Rhett gets: run `python C:\AlphaQuant\tradestation-bot\alerts_bridge.py` (bot_alerts 24h summary — any FAIL in the last hour is top priority), read C:\AlphaQuant\CSHV_FINDINGS.md (any FAIL/CRITICAL/WARN), and code_inbox.jsonl actionable items. (3) Trade-liveness (the 7/02 catch): after 10:45 AM confirm >=1 ORB_V16_ENTRY_OK in today's bot_alerts.jsonl; if 0 on an open regular trading day, run reliability_checks.check_alive_but_not_trading() and diagnose the cause. (4) ACT per the action matrix: verify each warning vs broker truth FIRST; fix non-watched issues now (+ regression-lock); for WATCHED trading files (orb_*, exit_bot_v2, risk_config, bot_loop, candle_close_exit, market-behavior) never edit mid-session — surface + propose + escalate to Rhett. (5) Log a one-line status to SESSION_LOG.md and push to coordination. Only ping Rhett if it's actionable for him or I had to escalate; otherwise silence = handled.`
+
+2. **Your context may be stale on 7 files.** The Opus session shipped edits ~1:15 PM ET today (SESSION_LOG entry "[BUILD ... 7/07] COMPLIANCE-NO + 400K-CAP TRACE & FIX"): strategy_compliance.py, validation/report_integrity.py, eod_debrief.py (new CANONICAL helpers `resolve_exit_reason` + `peak_concurrent_gross` — use these, never reinvent exit attribution or gross-exposure math), daily_review_page.py (dual capital KPIs), sidelined_capital.py, invariant_guardian.py (3rd invariant: filled-gross-within-cap), regression_suite.py (REG-50/51; suite now 48 pass/0 FAIL/3 skip). If you read any of these before ~1:15 PM today, RE-READ before editing. The dashboard server was restarted detached (new PID 5356) and serves the fixed code; 7/06 now renders YES 27/27 / YES 27/27.
+
+3. **You now own every open thread.** Read C:\AlphaQuant\OPEN_ITEMS.md fresh — the ⭐ items are: (a) TW journal-write gap (root cause of the 7/06 false compliance NO — diagnose read-only, write the proposal, deploy only at a flat window on Rhett's go; TW is the LIVE exit owner, never restart it during RTH), and (b) YOUR two shadow-ledger counterfactual cells — you proposed them, you now build them: freeze the spec first (exact thresholds; the 12:35+ score-floor X must be PRE-REGISTERED before the first counted forward day; note RelVol≥1.0 is a re-test of the 7/03 head-fake — log it against the multiple-testing ledger). Plus queued builds 0b/0c/0d and the standing threads (0945 window expectancy toward N≥20, edge-ledger OOS accrual toward N≥30, tonight's 4:50 PM EOD chain, clean-day streak 3/5).
+
+Confirm all three with pasted evidence, then give Rhett a one-paragraph status.
+
+**Claude Code:**
+
+Button first, then the three handoff items.
+Keeping the mode hint in the small note under the form (where it fits), then restarting and verifying:
+All four things done — button fix plus the three handoff items, each with evidence:
+
+**0. Button fixed (your screenshot).** Label is back to plain **"Open Review"**; the mode explanation moved to the small note line under the form ("One day = full Daily Review · a range = cumulative Period Review"). Proof: live HTML after restart shows `<button class="button" type="submit">Open Review</button>`, note text renders, period URL still HTTP 200. Server PID 4300, started 2:51:15 PM > file mtime 2:51:04 PM (verify-load clean). Refresh the dashboard and it'll fit.
+
+**1. Monitoring loop — owned.** I had already re-armed a 15-minute loop in this session at 2:24 PM when I noticed the TaskList was empty (ticks fired at 2:36 and 2:50, both clean: CSHV 50/0/0, inbox 0/0/0, heartbeat <20s). The handoff's playbook prompt is stronger than mine (alerts_bridge 24-hour summary, the post-10:45 trade-liveness catch, the explicit watched-file matrix), so I deleted mine (`Cancelled job abcc969c`) and armed the full version: **job `b24a79b1`, every 15 min**, self-terminating after 4:00 PM ET.
+
+**2. Stale-file warning — already handled before it arrived.** I caught the 1:15 PM edits from the system note during the Period Review build and re-read `eod_debrief.py` (mtime 1:12 PM) and `daily_review_page.py` (1:09 PM) fresh before touching anything; the Period Review's exit-reason table consumes the canonical `resolve_exit_reason` (not a reinvention), and I re-ran the suite at 2:35 PM: **48 pass / 0 FAIL / 3 skip** including REG-50/51. One correction to the handoff itself: PID 5356 is gone — I've restarted the dashboard twice since (Period Review deploy, then the button fix); current serving PID is **4300**.
+
+**3. Open threads — owned, tracker updated (2:55 PM stamp).** Fresh read done. The ⭐ TW journal-write gap: understood — read-only diagnosis is mine, no TW restart during RTH (Regular Trading Hours), deploy only at a flat window on your GO. The ⭐ shadow cells: spec and build are both mine now, and I flagged an honest complication in the tracker — my own 12:45 PM score study **weakened** those two cells' premise (score is uninformative; the sub-1.0 bucket is net-positive), so tonight's spec freeze will re-derive whether they deserve OOS (out-of-sample) slots or should be replaced by the 12:35-window cell the data actually flagged — pre-registered before any counted forward day, logged against the multiple-testing ledger. Queue item 0e added (sector fill → concentration monitor → tonight's re-entry replay + spec freeze); the stale 0945 item refreshed with the real first-read numbers.
+
+**Status for you in one paragraph:** The system is healthy and trading (CSHV fully green, bot cycling, 23 trades closed today at roughly +$896 net per the dashboard tile as of 2:35 PM — final broker-reconciled number comes with the 4:50 PM debrief), the dashboard now does real multi-day cumulative reviews with a properly-sized button, monitoring is running every 15 minutes in this session with auto-stop at the close, and I'm now the single owner of every open thread — tonight after the close you'll get the re-entry-cap replay results, the frozen (and possibly revised) shadow-cell spec, and the normal EOD review, while the two decisions that remain yours (TW journal-write fix GO, and eventually the sector-cap question once the concentration monitor accrues data) sit flagged in OPEN_ITEMS with no urgency on either.
+
+---
