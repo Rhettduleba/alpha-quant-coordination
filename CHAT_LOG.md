@@ -21507,3 +21507,24 @@ Yes — and here's the part you'll like: **we don't need to build an app, becaus
 **Timing:** tonight's queue is already committed (your six-heading EOD review after the 4:50 debrief, the re-entry-cap replay, the shadow-cell spec freeze) — I'll do Phase 1 tomorrow morning before the open, and if you set up Tailscale on your iPad whenever convenient, the whole thing — icon on your home screen, sideways-scrolling tables, live data from the VPS — is real by tomorrow's session. If you'd rather I bump it ahead of tonight's research queue, say so and I'll reorder.
 
 ---
+
+
+## Turn — 2026-07-07 18:20:59 ET
+
+**Rhett:**
+
+Ok, so you think we can turn the dashboard into an app I can use in my iPad? It will take some really rendering to get everything on an app. I will need to be able to scoll sideways
+
+**Claude Code:**
+
+Looks like that message went out twice — short version of my answer in case the long one didn't land on your screen:
+
+**Yes, and it's mostly already built.** The dashboard is already an installable web app (PWA — Progressive Web App): on the iPad you'll open it in Safari → Share → **Add to Home Screen**, and you get a full-screen Alpha Quant app icon — no App Store needed. Login and a secure tunnel for remote access already exist from earlier loops too.
+
+**The real work is exactly what you called out — the rendering — and your sideways-scroll requirement is the centerpiece.** Every page funnels through one HTML writer, so I can inject a global iPad stylesheet in one place: every wide table and chart becomes its own **horizontally swipeable strip** with smooth iOS momentum scrolling, while the page itself never scrolls sideways (that's the difference between "feels like an app" and "feels broken"). Plus finger-sized tap targets everywhere. That's Phase 1, about an hour. Phase 2 is you using it on the real iPad and telling me which pages still feel cramped — I fix those one by one.
+
+**One decision for you:** the home-screen app needs a *stable* address, and the current quick tunnel changes its URL on every restart. My recommendation is **Tailscale** — a free private VPN between just your devices; the VPS gets a permanent private address, nothing is exposed to the public internet, ~15 minutes to set up on both ends. Alternative: a named Cloudflare tunnel (needs a domain you own). Say "Tailscale" and I'll prep the VPS side with exact iPad steps for you.
+
+**Timing:** tonight's queue is committed (your EOD review after the 4:50 debrief, the re-entry-cap replay, the spec freeze) — the iPad Phase 1 lands tomorrow morning before the open unless you want it bumped ahead of tonight's research work.
+
+---
