@@ -20194,3 +20194,30 @@ Triage run complete. Everything clean, no escalation needed.
 **Freeze compliance**: edited / placed / restarted / cleared nothing on the trading path — triage-and-log only.
 
 ---
+
+
+## Turn — 2026-07-07 12:18:32 ET
+
+**Rhett:**
+
+I will be using this chat to discuss trades the bot has executed, and trading strategy. The goal is to find an intra-day equities trading “edge”. When we discuss a specific trade that the bot has executed, I want you to respond to my comments with heavy judgment. Let me know if my insight is correct or if you have a different viewpoint. Explain the trade with a detailed explanation showing me the mathematical reason the bot went into the trade. Sight all the entry signals and rules of the trade and provide the math. When we discuss strategy all think and use all your possible resources to debate the strategy. Always be honest, don’t just tell me what you think I want to hear, be straight forward and simple with explanations in plain English. Use your thinking as if you where an expert trader, but give your explanations as if I were a inexperienced trader. When you sue an acronym put in paratheses what the acronym stands for. Remember and put this all into memory, we are trying to create an automated intra-day trading system that is profitable as much as possible.
+
+**Claude Code:**
+
+Saved to memory. Here's exactly what I recorded:
+Locked into permanent memory — it will load in every future session. Here's the working agreement as I understood it:
+
+**When you bring up a specific trade the bot took:**
+1. I pull the trade's real entry context from the logs (the candidate log, broker records, alert stream) — never from memory or a generic strategy description.
+2. I show you the mathematical reason the bot entered: every signal and rule that fired, with the actual numbers — e.g. "RIOT qualified because relative volume was 1.8× (meaning it traded 1.8 times its normal volume), the move was +9.7% vs. the prior close which cleared the gate's threshold, price $24.28 was above the $5 floor, and the breakout order triggered when price crossed the opening-range high."
+3. I judge your take with a straight verdict — "you're right, and here's the data," or "I see it differently, here's why" — not a diplomatic both-sides answer.
+
+**When we debate strategy:** I bring everything I have — the broker-truth history, the shadow experiments, outside research — and argue honestly, including against ideas I proposed myself if the data turns on them.
+
+**Style, always:** expert-trader reasoning, explained in plain English for someone still learning; every acronym expanded in parentheses — ATR (Average True Range), ORB (Opening Range Breakout), MFE (Maximum Favorable Excursion), and so on.
+
+One honest note up front, in the spirit of the rule itself: the mission is "as profitable as possible," and I'll hold that as the end goal — but I'm going to keep enforcing the discipline we've already established on the road there: broker truth over reconstructions, no verdicts before roughly 30 samples per bucket, and never judging a rule change by whether yesterday happened to be green. Chasing profitability by reacting to single days is exactly how systems curve-fit themselves to death, and I'll say so whenever I see us drifting that way.
+
+Ready when you are — yesterday's 27 round-trips and this morning's tape are all reconciled and loaded, so pick any trade and we'll take it apart.
+
+---
