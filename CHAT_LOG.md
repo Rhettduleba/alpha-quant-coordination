@@ -21253,3 +21253,26 @@ Run the SELF_MONITORING_PLAYBOOK.md intraday check for the Alpha Quant bot (C:\A
 Tick clean at 3:20 PM ET — alerts bridge 65 INFO / 0 FAIL in 24h; CSHV **50 OK / 0 WARN / 0 FAIL** (fresh 3:20:10); inbox 0/0/0; heartbeat 20.3s; journal 14.9s; trade-liveness green with 30 `ORB_V16_ENTRY_OK` arms today (the 2:35 and 3:05 PM windows fired since the last count). No action, no log entry, no ping. Next tick ~3:35 PM.
 
 ---
+
+
+## Turn — 2026-07-07 15:26:35 ET
+
+**Rhett:**
+
+When looking at the EOD take into consideration. In general how was this day different than the last? Entries, look at all the winning entries and ask, what did we do right, compare them to trade data, look for the edge. Loseing entries, what could we have done better, what could we shadow and possible chnage. Whats test should we run to examine the entries deeper? Exits, do the same as for entires, but always keep in mind that any chnages either entry or exit could potenialy take winners off the tabel so alwasy run test with examining how the chnage would have effected winners.
+
+**Claude Code:**
+
+This is exactly the right framework, and it's now permanent. Saving it as the standing EOD analysis protocol:
+Locked in. Here's the framework as I'll run it, starting with tonight's close (the 4:50 PM debrief is ~90 minutes out):
+
+1. **Day vs. yesterday** — not the P&L number, the *behavior*: which windows fired, confirm rate, exit mix, slippage, what the market gave us versus what it gave us Monday. (Tonight's is already interesting: Monday was a fade-everything day where 0/27 trades confirmed; today the morning semi cluster confirmed and ran. Same machine, opposite tape — the delta table will make that explicit.)
+2. **Winning entries — what did we do right?** Not "they won" but the common factor: window, fill speed, sector, move freshness, gate context. Hunting the repeatable ingredient is the edge hunt, trade by trade.
+3. **Losing entries — what could we have done better?** Each loser gets a named fault (stale fill, fade tape, chop window, thin volume...) and, where a fault repeats, a shadow-able rule candidate.
+4. **Tests to go deeper** — generated *and run* where the data exists, same-turn, like today's fill-delay study.
+5. **Exits — same treatment** — which exits harvested well, which cut a recoverer, what variant to shadow.
+6. **The invariant, your words, now house law:** every candidate change is priced on **both sides** — losers saved *and* winners it would have cut, side by side. A fix that only shows the loser side doesn't get presented at all. (Today's fill-delay result is the template: +$5,643 saved / −$6,572 winners forgone at X=15, both numbers on the table.)
+
+Two commitments on top: tonight I apply this manually in the post-close review, and this week I fold the computable parts — the day-over-day delta and the winners-common-factor scan — into the automated EOD chain itself (non-watched), so the framework runs even on a day neither of us opens the chat. It joins tonight's post-close queue: EOD review in this format → re-entry-cap replay → shadow-cell spec freeze (fill-delay X=15 as lead cell).
+
+---
