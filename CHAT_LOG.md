@@ -21452,3 +21452,31 @@ Triage run complete. Summary:
 - **Freeze respected:** no code edited, no Rhett ping (silence = handled).
 
 ---
+
+
+## Turn — 2026-07-07 16:07:09 ET
+
+**Rhett:**
+
+Run the SELF_MONITORING_PLAYBOOK.md intraday check for the Alpha Quant bot (C:\AlphaQuant). STEPS: (1) Confirm ET time + market state; if past 4:00 PM ET / market closed, do a final EOD-flat check then STOP looping (CronDelete this job). (2) Read the SAME warnings Rhett gets: run `python C:\AlphaQuant\tradestation-bot\alerts_bridge.py` (bot_alerts 24h summary — any FAIL in the last hour is top priority), read C:\AlphaQuant\CSHV_FINDINGS.md (any FAIL/CRITICAL/WARN), and code_alert_inbox (python C:\AlphaQuant\tradestation-bot\code_alert_inbox.py --json) actionable items. (3) Trade-liveness (the 7/02 catch): after 10:45 AM confirm >=1 ORB_V16_ENTRY_OK in today's bot_alerts.jsonl; if 0 on an open regular trading day, run reliability_checks.check_alive_but_not_trading() and diagnose the cause. (4) ACT per the action matrix: verify each warning vs broker truth FIRST; fix non-watched issues now (+ regression-lock); for WATCHED trading files (orb_*, exit_bot_v2, risk_config, bot_loop, candle_close_exit, short_bot, mover_scanner, advisor_filter_engine, symbol_universe, tape_watcher) never edit mid-session — surface + propose + escalate to Rhett. (5) Log a one-line status to SESSION_LOG.md only if an action was taken. Only ping Rhett if it's actionable for him or I had to escalate; otherwise silence = handled.
+
+**Claude Code:**
+
+**Day closed clean, and the alarm contract is fully deployed.** Summary of this final tick plus the completed "do both":
+
+**Final monitor tick (4:05 PM):** market closed, broker **FLAT** — 0 positions, 0 working orders; CSHV 51 OK / 0 WARN / 0 FAIL; inbox clean. The 15-minute loop is retired for the day (cron deleted). The 4:50 PM EOD chain takes over from here.
+
+**Your phone, from tomorrow morning:**
+1. **Telegram is now CRITICAL-only** at the notifier level — the single change that protects you from every noisy sender, present and future. Discord keeps the complete archive for when you *want* to browse. (Overridable via `NOTIFY_TELEGRAM_MIN_LEVEL` if you ever want more.)
+2. **CSHV pages only when a check fails two runs in a row** — deploy-transients and Monday flaps die silently; a real problem pages at most 5 minutes later than before.
+3. **CSHV warnings only notify when the warning *set changes*** — the four hourly re-pings you screenshotted are structurally impossible now.
+4. **Invariant guardian pages once per distinct violation** — the 7/05 storm would be one message today, and planted self-tests can never page you.
+5. **The 6 AM "GO" message is gone** — a gate that passes sends nothing; only a NO-GO reaches anyone, and only an *enforced hold* reaches your phone.
+
+**Proof:** unit tests for all four gates pass (no live sends used in testing), guardian and gate selftests pass (15/0), the whole contract is regression-locked as **REG-52 (suite now 49 pass / 0 fail)**, and a live CSHV cycle initialized the gate state files cleanly. All four files are non-watched alerting infra; the scheduled tasks run fresh processes, so everything is live on their next cycles — no restarts needed. Also on the record in SESSION_LOG: my earlier "exactly one send today" forensics claim was wrong (the dedup files are subject-keyed, so five sends of one subject leave one file) — your screenshots corrected me, and the new sent-ledger means that class of uncertainty is gone permanently.
+
+**What still reaches your phone:** naked-position/kill-switch/invariant violations (real ones), a persistent CSHV failure, an enforced pre-open hold, and my explicit escalations. Everything else is my job to read — which I do every 15 minutes when a session is live, and the EOD chain covers nightly.
+
+Tonight's remaining queue, unchanged: your six-heading EOD review after the 4:50 PM debrief, the re-entry-cap replay, and the shadow-cell spec freeze.
+
+---
