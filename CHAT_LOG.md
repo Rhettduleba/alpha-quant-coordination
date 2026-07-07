@@ -20756,3 +20756,38 @@ Your fallback ("change the look to a single date") would be the *correct* fix if
 **Queue, updated:** this build goes next (your direct request outranks my self-assigned items) → then sector-data fill + `book_concentration.py` → then tonight's committed jobs (re-entry-cap replay, EOD review). The period view lands today, with the working URL and a screenshot-level walkthrough as proof when I call it done. If you'd rather see anything specific on the period page beyond the list above — say a per-symbol table or week-over-week comparison — tell me now and I'll fold it in; otherwise I'm building to the design as written.
 
 ---
+
+
+## Turn — 2026-07-07 14:22:30 ET
+
+**Rhett:**
+
+im moving on to fable only. Is there anything i should have you prompt to the other chat to completely ramp the other chat up on the entire project?
+
+**Claude Code:**
+
+Yes — and the good news is the heavy lifting is already durable: CLAUDE.md, my memory files, SESSION_LOG, and OPEN_ITEMS all auto-load or sit on disk for any new Code session in this project. What the new chat **can't** get from files is: the session-bound monitoring loop (it dies with this window), the "you own everything now" role change, and the freshest operational state. The prompt below carries exactly that plus forcing-functions to actually read the files.
+
+First, recording the transition in memory so it survives everywhere:
+Here's the prompt — copy the block into the Fable chat. It's deliberately short: that chat already shares the memory files, CLAUDE.md, SESSION_LOG, and OPEN_ITEMS; what it needs is the **loop handoff, the stale-context warning, and explicit ownership of the open threads**:
+
+````markdown
+The Opus session is closing permanently — you are now the ONLY session (memory: two-seat-workflow, which you wrote). Three handoff items before you do anything else, then confirm each with evidence (claim→verify→show):
+
+1. **Take over the monitoring loop.** The 15-min intraday self-monitoring loop was armed INSIDE the Opus session and dies when that window closes (Windows scheduled tasks keep running; the in-session loop does not). Check TaskList — if you don't already have one running, arm it now:
+`/loop 15m Run the SELF_MONITORING_PLAYBOOK.md intraday check for the Alpha Quant bot (C:\AlphaQuant). STEPS: (1) Confirm ET time + market state; if past 4:00 PM ET / market closed, do a final EOD-flat check then STOP looping. (2) Read the SAME warnings Rhett gets: run `python C:\AlphaQuant\tradestation-bot\alerts_bridge.py` (bot_alerts 24h summary — any FAIL in the last hour is top priority), read C:\AlphaQuant\CSHV_FINDINGS.md (any FAIL/CRITICAL/WARN), and code_inbox.jsonl actionable items. (3) Trade-liveness (the 7/02 catch): after 10:45 AM confirm >=1 ORB_V16_ENTRY_OK in today's bot_alerts.jsonl; if 0 on an open regular trading day, run reliability_checks.check_alive_but_not_trading() and diagnose the cause. (4) ACT per the action matrix: verify each warning vs broker truth FIRST; fix non-watched issues now (+ regression-lock); for WATCHED trading files (orb_*, exit_bot_v2, risk_config, bot_loop, candle_close_exit, market-behavior) never edit mid-session — surface + propose + escalate to Rhett. (5) Log a one-line status to SESSION_LOG.md and push to coordination. Only ping Rhett if it's actionable for him or I had to escalate; otherwise silence = handled.`
+
+2. **Your context may be stale on 7 files.** The Opus session shipped edits ~1:15 PM ET today (SESSION_LOG entry "[BUILD ... 7/07] COMPLIANCE-NO + 400K-CAP TRACE & FIX"): strategy_compliance.py, validation/report_integrity.py, eod_debrief.py (new CANONICAL helpers `resolve_exit_reason` + `peak_concurrent_gross` — use these, never reinvent exit attribution or gross-exposure math), daily_review_page.py (dual capital KPIs), sidelined_capital.py, invariant_guardian.py (3rd invariant: filled-gross-within-cap), regression_suite.py (REG-50/51; suite now 48 pass/0 FAIL/3 skip). If you read any of these before ~1:15 PM today, RE-READ before editing. The dashboard server was restarted detached (new PID 5356) and serves the fixed code; 7/06 now renders YES 27/27 / YES 27/27.
+
+3. **You now own every open thread.** Read C:\AlphaQuant\OPEN_ITEMS.md fresh — the ⭐ items are: (a) TW journal-write gap (root cause of the 7/06 false compliance NO — diagnose read-only, write the proposal, deploy only at a flat window on Rhett's go; TW is the LIVE exit owner, never restart it during RTH), and (b) YOUR two shadow-ledger counterfactual cells — you proposed them, you now build them: freeze the spec first (exact thresholds; the 12:35+ score-floor X must be PRE-REGISTERED before the first counted forward day; note RelVol≥1.0 is a re-test of the 7/03 head-fake — log it against the multiple-testing ledger). Plus queued builds 0b/0c/0d and the standing threads (0945 window expectancy toward N≥20, edge-ledger OOS accrual toward N≥30, tonight's 4:50 PM EOD chain, clean-day streak 3/5).
+
+Confirm all three with pasted evidence, then give Rhett a one-paragraph status.
+````
+
+Two operational notes for you:
+- **Close this window only after the Fable chat confirms item 1** — until then nobody is running the 15-minute checks (the scheduled tasks and guardian keep running regardless, so the safety floor stays up either way).
+- Everything else transfers automatically: memory, CLAUDE.md, SESSION_LOG, OPEN_ITEMS, and all 48 regression locks are on disk, not in my head — that was the whole point of the "encode it in concrete" rule.
+
+It's been a good run in this seat. The system's in the best shape it's ever been: 48/0 suite, three self-running invariants, clean streak at 3 of 5, and a dashboard that now tells you the truth.
+
+---
