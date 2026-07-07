@@ -21480,3 +21480,30 @@ Run the SELF_MONITORING_PLAYBOOK.md intraday check for the Alpha Quant bot (C:\A
 Tonight's remaining queue, unchanged: your six-heading EOD review after the 4:50 PM debrief, the re-entry-cap replay, and the shadow-cell spec freeze.
 
 ---
+
+
+## Turn — 2026-07-07 18:20:37 ET
+
+**Rhett:**
+
+Please pick up where you left off.
+
+**Claude Code:**
+
+Yes — and here's the part you'll like: **we don't need to build an app, because we already built one without calling it that.** Three pieces are sitting in the codebase from earlier loops:
+
+1. **The dashboard is already a PWA** (Progressive Web App — a website that installs like an app). Loop 163 shipped the manifest, icon, and service worker. On an iPad: open the dashboard in Safari → Share → **"Add to Home Screen"** → you get an Alpha Quant icon that launches full-screen with no browser chrome. That *is* the app; no App Store, no Apple developer account, no native code. (A true native app would cost weeks and give you nothing extra for a one-user read-only dashboard — I'd argue against it.)
+2. **Login is already enforced** on every route (the password you've been using).
+3. **Secure remote access already exists**: `tunnel_start.ps1` runs a Cloudflare tunnel — outbound-only from the VPS, no firewall holes, and it refuses to start unless the password is set. That's how the iPad reaches the dashboard from anywhere, not just at the VPS.
+
+**What's genuinely missing is exactly what you named: the rendering pass.** The responsive work from Loop 165 only kicks in below 640px (phone width) — an iPad at 768–1024px gets the cramped desktop layout with wide tables spilling off-screen. The fix plan:
+
+**Phase 1 — global "sideways scroll" pass (~1 hour):** every page funnels through one HTML writer, so I can inject a single tablet/touch stylesheet in one place that applies everywhere: every wide table and chart gets its own horizontally scrollable container with iOS momentum scrolling (`-webkit-overflow-scrolling: touch` — the smooth flick-scroll feel), the page body never scrolls sideways as a whole (that's the thing that makes sites feel broken on iPad — you scroll *inside* the table, not the page), and tap targets get sized for fingers (44px minimum). One edit, all pages, including the new Testing and Period Review pages.
+
+**Phase 2 — per-page polish, driven by your thumbs:** after Phase 1 you use it on the real iPad for a day and tell me which pages feel wrong; I fix those specifically (the daily-review trade cards and the TradingView charts are my prime suspects).
+
+**One decision for you, and it's about the address, not the rendering:** an installed home-screen app points at a fixed URL, but the current *quick* tunnel generates a **new random URL every time it starts** — your app icon would go stale on every tunnel restart. Two durable options: **(a) Tailscale** — a private VPN (Virtual Private Network) between just your devices; the VPS gets a permanent private address, nothing is ever exposed to the public internet, free for personal use, ~15 minutes to set up on the VPS + your iPad — this is my recommendation; **(b)** an always-on *named* Cloudflare tunnel (stable URL, needs a domain you own). Either works; Tailscale is safer and simpler for one person.
+
+**Timing:** tonight's queue is already committed (your six-heading EOD review after the 4:50 debrief, the re-entry-cap replay, the shadow-cell spec freeze) — I'll do Phase 1 tomorrow morning before the open, and if you set up Tailscale on your iPad whenever convenient, the whole thing — icon on your home screen, sideways-scrolling tables, live data from the VPS — is real by tomorrow's session. If you'd rather I bump it ahead of tonight's research queue, say so and I'll reorder.
+
+---
