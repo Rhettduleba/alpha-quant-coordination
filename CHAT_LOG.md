@@ -20670,3 +20670,46 @@ So the honest amended sequence: **Phase 0 is now a real build** — populate the
 **Work queue for the rest of today, in order:** (1) populate the sector data and re-run the coverage audit — target ≥90%; (2) build `book_concentration.py` per the spec; (3) after the close: the re-entry-cap Phase-2 replay I committed at lunch, plus the EOD debrief review. Everything non-watched, everything with pasted proof when I call it done.
 
 ---
+
+
+## Turn — 2026-07-07 14:04:40 ET
+
+**Rhett:**
+
+<scheduled-task name="alphaquant-alert-triage" file="C:\Users\Administrator\.claude\scheduled-tasks\alphaquant-alert-triage\SKILL.md">
+This is an automated run of a scheduled task. The user is not present to answer questions. For implementation details, execute autonomously without asking clarifying questions — make reasonable choices and note them in your output. "write" actions (e.g. MCP tools that send, post, create, update, or delete), only take them if the task file asks for that specific action. When in doubt, producing a report of what you found is the correct output.
+
+AUTONOMOUS ALERT TRIAGE — Alpha Quant (Rhett-approved 2026-06-22; Planning Track A). You are a scheduled Claude Code run on the Alpha Quant VPS (live root C:\AlphaQuant). GOAL: Rhett must NOT be the human pager-relay. You read the SAME actionable alerts he would, auto-suppress known-noise, and ESCALATE anything that genuinely needs a human — pre-diagnosed. The human gate is preserved.
+
+IMPORTANT — FORWARD-TEST FREEZE: autonomous code-fixing is DEFERRED right now (Planning Track B). You DO NOT edit or commit ANY code this run (not even non-watched). You TRIAGE + ESCALATE only. (Auto-fix re-enables after the OOS forward test via a reviewed whitelist.)
+
+SOURCE OF TRUTH: read C:\AlphaQuant\CODE_ALERT_TRIAGE_PLAYBOOK.md and follow it EXACTLY (re-read each run). Procedure:
+1. `git -C C:\repos\alpha-quant-coordination pull` (ignore errors). Read the top stamp of C:\AlphaQuant\SESSION_LOG.md and C:\AlphaQuant\CSHV_FINDINGS.md for current state.
+2. Run: C:\Users\Administrator\AppData\Local\Python\pythoncore-3.14-64\python.exe C:\AlphaQuant\tradestation-bot\code_alert_inbox.py --json  → the NEW actionable CRITICAL alerts since last ack (the feed is already severity-gated to CRIT + de-noised; benign WARNs are handled at source, not here).
+3. For each alert: if it is KNOWN-NOISE (reader pre-tags many; or a state already confirmed benign in SESSION_LOG) → no action. Otherwise ESCALATE it: import notifier (add C:\AlphaQuant\tradestation-bot to sys.path) and call notifier.send_notification(subject="CODE TRIAGE — needs you", body= plain-English diagnosis + the specific proposed fix + whether it needs Rhett's approval (watched/strategy/risk) or just a go-ahead, level="CRITICAL"). For a SAFE non-watched fix you would normally make, STILL escalate it with the proposed fix (do not auto-edit during the freeze).
+4. ALWAYS at the end: append a short dated entry to C:\AlphaQuant\SESSION_LOG.md (what fired + what you escalated, or 'inbox clean'), copy it to C:\repos\alpha-quant-coordination\SESSION_LOG.md, commit + push that repo, then run code_alert_inbox.py --ack to advance the cursor. If nothing actionable, do NOT notify Rhett (silence = handled) — still --ack + one-line log.
+
+HARD RULES (never autonomously): NEVER edit/commit any code during the forward test (escalate fixes instead). NEVER edit a WATCHED strategy file (risk_config.py, bot_loop.py, exit_bot_v2.py, candle_close_exit.py, advisor_filter_engine.py, symbol_universe.py, orb_runner.py, orb_multiscan.py, short_bot.py). NEVER change risk/sizing/universe/stops/time-windows. NEVER place/cancel/modify orders or touch positions. NEVER deploy a strategy change. NEVER restart run_bot/watchdog_supervisor. NEVER touch credentials/.env or refresh TS tokens excessively. WHEN IN DOUBT, ESCALATE — never act on the live/trading path.
+
+ENVIRONMENT: Python = C:\Users\Administrator\AppData\Local\Python\pythoncore-3.14-64\python.exe. Work in C:\AlphaQuant. Keep each run tight + conservative. Your job: keep Discord quiet for Rhett by surfacing ONLY what truly needs him, pre-diagnosed.
+</scheduled-task>
+
+**Claude Code:**
+
+I'll run the autonomous alert triage following the playbook. Let me start by pulling the coordination repo and reading current state.
+Playbook loaded. Now let me read current state and run the alert inbox.
+Inbox is clean — **0 alerts, 0 actionable, 0 critical**. CSHV is 50 OK / 0 WARN / 0 FAIL. No escalation warranted (silence = handled). Now the required closing steps: stamp, log, sync, ack.
+Inbox is clean and independently confirmed by live CSHV (all passing). Let me append the triage entry above the most recent one.
+Now sync to the coordination repo, commit, push, and ack the inbox.
+Alert triage complete. Summary of this autonomous run (2026-07-07 ~2:03 PM ET):
+
+**✅ Inbox clean — no escalation, no Rhett ping (silence = handled).**
+
+- **`code_alert_inbox.py --json`** = 0 total / 0 actionable / 0 critical groups (nothing new since the 1:03 PM ack).
+- **Independently confirmed** via live CSHV (generated 2:00:09 PM ET): **OK=50 / WARN=0 / FAIL=0 / INFO=1 / SKIP=2 — "All operational checks passing."** The `report_integrity` WARN from earlier runs has cleared. Lone INFO is the standing-benign `clean_day_certified` (consecutive_clean=4).
+- Broker-truth guardrails all green: heartbeat 20s fresh, trade_journal touched 15s ago, 0 open positions reconciled both ways, SAFE_MODE off, guardian alive, no broker rejections/scan halts, no OneDrive sync conflicts.
+- **Closing steps done:** appended the dated entry to `SESSION_LOG.md`, synced + committed + pushed to the coordination repo (`52af06c`), and `--ack`'d the inbox (cursor advanced).
+
+Per the forward-test freeze and watched-files rules, this run edited / placed / restarted / cleared **nothing** on the trading path.
+
+---
