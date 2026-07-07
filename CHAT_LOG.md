@@ -20713,3 +20713,46 @@ Alert triage complete. Summary of this autonomous run (2026-07-07 ~2:03 PM ET):
 Per the forward-test freeze and watched-files rules, this run edited / placed / restarted / cleared **nothing** on the trading path.
 
 ---
+
+
+## Turn — 2026-07-07 14:21:15 ET
+
+**Rhett:**
+
+so that dashboard has a daily review page. It shows a date range, but you can only look at one day. My question is can we wire the dashboard to show a cumulative of a range of dates? would the data be possible to combine days or weeks? If not we should chnage the look from a date range to a single date.
+
+**Claude Code:**
+
+Good question, and the answer depends on how that page is actually built — let me look at the real code before claiming anything. Finding the daily-review-v2 route:
+Full picture confirmed. Here's the answer:
+
+## Why it currently does what it does
+
+The page builder (`full_daily_review_html`) is **single-day by design** — the handler reads `date` (or just the `start` of your range) and *silently ignores* `end`. The range selector is leftover UI from an older page. So your instinct was right that something's dishonest there: the control promises a range, the code delivers a day.
+
+## Can the data combine across days/weeks? Yes — cleanly, and here's why I'm certain
+
+Everything on that page is built from **one canonical function**: `eod_debrief.round_trips_net(day)`, which reconstructs the day's trades from `broker_orders_unified.csv` — and that file is one continuous broker-truth ledger across all days. A period view is literally: loop that same function over each trading day in the range, then sum. No new data source, no parallel math that could drift from the debrief (that matters — we've been burned before by a second computation of the "same" number diverging, which is why everything reads this one function).
+
+What aggregates cleanly into a **Period Review** when start ≠ end:
+
+- **Cumulative P&L curve** — day-by-day net, running total. The "are we getting better?" line that doesn't exist anywhere today.
+- **Aggregate KPI (Key Performance Indicator) cards** — net/gross, win rate, expectancy per trade, profit factor, total commissions, average slippage, long/short split over the whole period.
+- **Per-window table across the period** — this is the big one for us: the 0945 vs 12:35 expectancy cells accumulate toward N≥30 *on the dashboard*, instead of me re-running ad-hoc studies every time we ask.
+- **Exit-reason × outcome table** — time-stop vs candle-close vs resting-stop performance over weeks, i.e., the "is the exit stack earning its keep" question, standing.
+- **Per-day rows** — one line per day (N, win%, net) that links to that day's full single-day review.
+- **Top 5 winners/losers of the period** — with links to their trade cards.
+
+What should **stay per-day** (and this is why the range never worked before): the TradingView 1-minute chart cards — a 2-week range would render 300+ charts and be unusable — and the once-per-day LLM (Large Language Model) narrative. Those remain on the single-day page; the period page links down into each day.
+
+## So: don't downgrade the UI — make the range real
+
+Your fallback ("change the look to a single date") would be the *correct* fix if aggregation were impossible — an honest control beats a lying one. But aggregation isn't just possible, it's cheap, and the cumulative view directly serves the discipline we already live by: every keep/pull decision we've discussed this week (0945 window, 12:35 window, time-stop, re-entry cap) is a *multi-day cumulative* question we currently answer with one-off scripts. This puts those answers on a page you can open any time.
+
+**Design:** single date → exactly today's page, unchanged. Date range → Period Review as above. Same URL, same form, the `end` parameter finally means something.
+
+**Effort and safety:** a few hours; all non-watched dashboard code (`local_dashboard.py` + a new period builder reusing the canonical loaders); restarting the dashboard server touches nothing on the trading path (it's a separate UI process — the never-restart-during-RTH rule protects the exit owner, not this).
+
+**Queue, updated:** this build goes next (your direct request outranks my self-assigned items) → then sector-data fill + `book_concentration.py` → then tonight's committed jobs (re-entry-cap replay, EOD review). The period view lands today, with the working URL and a screenshot-level walkthrough as proof when I call it done. If you'd rather see anything specific on the period page beyond the list above — say a per-symbol table or week-over-week comparison — tell me now and I'll fold it in; otherwise I'm building to the design as written.
+
+---
