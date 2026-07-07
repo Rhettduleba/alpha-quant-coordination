@@ -20345,3 +20345,40 @@ Saved. Here are my honest thoughts on the setup:
 The setup gets my endorsement. When you're ready for the RelVol-floor and late-window shadow measurements we discussed on HONA, tell me and I'll write the spec block for the Opus seat as the first test of the pipeline.
 
 ---
+
+
+## Turn — 2026-07-07 12:49:45 ET
+
+**Rhett:**
+
+run the trace now. I also want a fix for the dashboard reports no, when the trade hits the broker-side resting stop order. if the trade hit the exit it worked and the dashboard should not lead me to believe me otherwise. Also, do you agree with this process. I have two open chats. I will continue to use you to code and build and run tests. I will use the other chat under Fable 5 for analysisi. I was just discussing a trade with Fable and his recomendation.My recommendation: I add two counterfactual cells to the shadow ledger — (a) "RelVol ≥ 1.0 floor on re-arm windows," (b) "score floor / no arms below X on 12:35+ windows" — and we let them accrue forward with the edge ledger toward N≥30. No live change. Say the word and I'll build the measurement.
+
+**Claude Code:**
+
+Three things in flight — I'll run the trace and build the dashboard fix now (both are in my lane: the files involved are validation/reporting code, **not** watched trading files, so mid-session work is allowed), and answer the process question at the end.
+
+First, fanning out the investigation — one agent traces the capital accounting end-to-end, the other maps the exit-classification pipeline so my fix lands at exactly the right seams:
+The trace is running (two investigators in parallel — capital accounting and the exit pipeline). While that works, here's your process question, because it doesn't depend on the trace:
+
+## Do I agree with the two-chat split? Yes — with one rule added
+
+**The division of labor is right.** Analysis benefits from Fable's reasoning ceiling and a clean context; code/build/test benefits from my loaded context (regression suite, governance conventions, the watched-file discipline, every landmine we've already stepped on). That's exactly the split I recommended when you asked about Fable.
+
+**The one rule: one builder.** Fable ended with *"say the word and I'll build the measurement."* Don't say the word to Fable — say it to me. Two sessions editing the same repo is how you get collisions, double-registrations in the regression suite, and two half-owners of one change. Keep it clean:
+
+> **Fable analyzes and writes the spec → you paste the spec here → I build, regression-lock, and verify → Fable independently audits the result if you want.**
+
+That last step is actually a *strength* of your setup — Fable becomes the independent auditor of my implementation, which is better than either model checking its own work.
+
+## On Fable's actual recommendation — I agree, with two sharpenings
+
+Adding counterfactual **measurement-only** cells to the shadow ledger, no live change, accrue forward to N≥30 — that's fully inside our discipline. It's cheap, read-only, and produces decision-grade OOS data. Two sharpenings before I build it:
+
+1. **The RelVol ≥ 1.0 floor cell is a re-test of something we already killed once.** The 7/03 edge hunt found relvol was a **head-fake** (dead lead, in-sample). That doesn't make Fable's cell wrong — a forward counterfactual is the *honest* way to close the question permanently, and if Fable reached it independently from fresh analysis, that's mildly interesting. But it enters as "second chance for a once-failed hypothesis," and the multiple-testing ledger should record it as such.
+2. **"Score floor / no arms below X on 12:35+ windows" needs X pre-registered before the first forward day counts.** If X gets picked after peeking at forward data, the cell is contaminated. Have Fable commit the exact threshold, the exact windows, and the exact cell definition in the spec — then it's frozen.
+
+Both cells get the standard treatment: must-not-cut measured (cost on winners, not just savings on losers), N≥30 per cell, and they ride the existing `edge_shadow_ledger` EOD action — a small, non-watched extension I can add the same day you hand me the spec.
+
+**So: process approved, one-builder rule added, and I'm ready to implement Fable's cells as soon as it gives you the frozen spec (exact thresholds + cell definitions).** Trace results and the dashboard fix land when the workflow returns — I'll report both here.
+
+---
