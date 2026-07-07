@@ -21369,3 +21369,32 @@ Run the SELF_MONITORING_PLAYBOOK.md intraday check for the Alpha Quant bot (C:\A
 Tick clean at 3:43 PM ET — alerts bridge 66 INFO / 0 FAIL in 24h; CSHV **50 OK / 0 WARN / 0 FAIL**; inbox 0/0/0; heartbeat 15.7s; journal 10.0s; trade-liveness already confirmed this hour (30 arms today). Approaching the close — next tick (~3:58 PM) is likely the last regular one; the first post-4:00 tick does the final EOD-flat check and deletes the cron. No action, no log, no ping.
 
 ---
+
+
+## Turn — 2026-07-07 15:53:49 ET
+
+**Rhett:**
+
+ok, the test pages. They need to be more human friendly and look more professional, make the graphics more like if you were to create a prosenattion to a group of humans, right now it looks like data, add charts ans grahs if you thnk you should be it need to look more like a prsenation of data than just raw data
+
+**Claude Code:**
+
+Fair — right now they're printouts, not presentations. Rebuilding the test pages properly: SVG bar charts generated from structured data (single source with the numbers), stat callout cards, a "bottom line" banner, and presentation styling. The runners get refactored so every future re-run produces charts automatically, not just text. Full rewrite of the runners first:
+Now the presentation-grade page rewrite:
+Path mismatch (git-bash `/tmp` vs Windows Python) — piping directly instead:
+Done — refresh any test page and it reads like a briefing deck now, not a terminal dump. What changed, top to bottom of each test page:
+
+1. **"Bottom line" banner** — the one-sentence conclusion in a bold gradient block at the top, before any numbers. A human skimming on a phone gets the verdict in three seconds.
+2. **Stat cards** — auto-computed headline tiles: total sample size, **best bucket** (green) and **worst bucket** (red), each with its $/trade, win rate, and N (only buckets with N≥10 qualify, so a 4-trade fluke can never be the headline).
+3. **Charts** — proper SVG horizontal bar charts, green bars right for profitable buckets, red bars left for losers, each annotated with `N · win% · $/trade`, hover tooltips included. The 3-minute test shows two (full history + current exit era); the score/window study shows the U-shape and the window ranking; the coarse fill-delay test also charts the skip-rule counterfactual (net saved at each X).
+4. **The prose sections** (what we tested, how) stay, followed by the **Run test again** button with a plain-English note about what it does.
+5. **"Claude's take"** got its own styled panel — visually distinct so opinion never blends into data.
+6. **The raw tables and archived reports are still there** — collapsed behind "The underlying numbers" / "Archived report" expanders. Presentation first, receipts one click away.
+
+One engineering detail that matters for trust: the charts and the text tables are generated **from the same rows in the same runner** — there is no way for a chart to say something the numbers don't. And every future "Run test again" press produces charts automatically, so re-runs inherit the presentation for free.
+
+Proof: server PID 10788 (3:52:47 PM > newest edit 3:52:13 PM), live HTTP checks show banner + stat cards + 2 SVG charts + button + take + collapsible appendix on the 3-minute test page, 2 charts/10 bars on the score study, list at 200, SESSION_LOG 3:55 PM entry.
+
+Heads-up on timing: it's ~3:56 PM — the close is minutes away. My next monitor tick wraps the loop, then the 4:50 PM EOD chain runs, and tonight's committed block follows: your six-heading EOD review, the re-entry-cap replay, the shadow-cell spec freeze, and (pending your GO from earlier) the two alarm demotions.
+
+---
