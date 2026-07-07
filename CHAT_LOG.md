@@ -21398,3 +21398,16 @@ Proof: server PID 10788 (3:52:47 PM > newest edit 3:52:13 PM), live HTTP checks 
 Heads-up on timing: it's ~3:56 PM — the close is minutes away. My next monitor tick wraps the loop, then the 4:50 PM EOD chain runs, and tonight's committed block follows: your six-heading EOD review, the re-entry-cap replay, the shadow-cell spec freeze, and (pending your GO from earlier) the two alarm demotions.
 
 ---
+
+
+## Turn — 2026-07-07 15:54:11 ET
+
+**Rhett:**
+
+Run the SELF_MONITORING_PLAYBOOK.md intraday check for the Alpha Quant bot (C:\AlphaQuant). STEPS: (1) Confirm ET time + market state; if past 4:00 PM ET / market closed, do a final EOD-flat check then STOP looping (CronDelete this job). (2) Read the SAME warnings Rhett gets: run `python C:\AlphaQuant\tradestation-bot\alerts_bridge.py` (bot_alerts 24h summary — any FAIL in the last hour is top priority), read C:\AlphaQuant\CSHV_FINDINGS.md (any FAIL/CRITICAL/WARN), and code_alert_inbox (python C:\AlphaQuant\tradestation-bot\code_alert_inbox.py --json) actionable items. (3) Trade-liveness (the 7/02 catch): after 10:45 AM confirm >=1 ORB_V16_ENTRY_OK in today's bot_alerts.jsonl; if 0 on an open regular trading day, run reliability_checks.check_alive_but_not_trading() and diagnose the cause. (4) ACT per the action matrix: verify each warning vs broker truth FIRST; fix non-watched issues now (+ regression-lock); for WATCHED trading files (orb_*, exit_bot_v2, risk_config, bot_loop, candle_close_exit, short_bot, mover_scanner, advisor_filter_engine, symbol_universe, tape_watcher) never edit mid-session — surface + propose + escalate to Rhett. (5) Log a one-line status to SESSION_LOG.md only if an action was taken. Only ping Rhett if it's actionable for him or I had to escalate; otherwise silence = handled.
+
+**Claude Code:**
+
+Tick clean at 3:54 PM ET — CSHV **50 OK / 0 WARN / 0 FAIL**, alerts bridge 66 INFO / 0 FAIL, inbox 0/0/0, heartbeat 14.5s. Market closes in 6 minutes; the bot's EOD flatten window (3:50 PM) has passed and the book should be going flat. No action, no log, no ping. The next tick fires after 4:00 PM — that one runs the final EOD-flat check against broker truth and then deletes the cron job, handing off to the 4:50 PM EOD chain and tonight's committed work block.
+
+---
