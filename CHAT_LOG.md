@@ -21356,3 +21356,16 @@ Everything else — self-clearing flaps, weekend residue, benign warnings, strea
 One thing I need from you, since I can't read your phone: **paste or screenshot the 5 warnings you got.** I'll disposition each against the contract — "needed" or "killed, here's the change" — and anything that fails the test dies at the source, not just gets muted.
 
 ---
+
+
+## Turn — 2026-07-07 15:43:45 ET
+
+**Rhett:**
+
+Run the SELF_MONITORING_PLAYBOOK.md intraday check for the Alpha Quant bot (C:\AlphaQuant). STEPS: (1) Confirm ET time + market state; if past 4:00 PM ET / market closed, do a final EOD-flat check then STOP looping (CronDelete this job). (2) Read the SAME warnings Rhett gets: run `python C:\AlphaQuant\tradestation-bot\alerts_bridge.py` (bot_alerts 24h summary — any FAIL in the last hour is top priority), read C:\AlphaQuant\CSHV_FINDINGS.md (any FAIL/CRITICAL/WARN), and code_alert_inbox (python C:\AlphaQuant\tradestation-bot\code_alert_inbox.py --json) actionable items. (3) Trade-liveness (the 7/02 catch): after 10:45 AM confirm >=1 ORB_V16_ENTRY_OK in today's bot_alerts.jsonl; if 0 on an open regular trading day, run reliability_checks.check_alive_but_not_trading() and diagnose the cause. (4) ACT per the action matrix: verify each warning vs broker truth FIRST; fix non-watched issues now (+ regression-lock); for WATCHED trading files (orb_*, exit_bot_v2, risk_config, bot_loop, candle_close_exit, short_bot, mover_scanner, advisor_filter_engine, symbol_universe, tape_watcher) never edit mid-session — surface + propose + escalate to Rhett. (5) Log a one-line status to SESSION_LOG.md only if an action was taken. Only ping Rhett if it's actionable for him or I had to escalate; otherwise silence = handled.
+
+**Claude Code:**
+
+Tick clean at 3:43 PM ET — alerts bridge 66 INFO / 0 FAIL in 24h; CSHV **50 OK / 0 WARN / 0 FAIL**; inbox 0/0/0; heartbeat 15.7s; journal 10.0s; trade-liveness already confirmed this hour (30 arms today). Approaching the close — next tick (~3:58 PM) is likely the last regular one; the first post-4:00 tick does the final EOD-flat check and deletes the cron. No action, no log, no ping.
+
+---
