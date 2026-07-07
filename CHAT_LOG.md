@@ -21528,3 +21528,27 @@ Looks like that message went out twice — short version of my answer in case th
 **Timing:** tonight's queue is committed (your EOD review after the 4:50 debrief, the re-entry-cap replay, the spec freeze) — the iPad Phase 1 lands tomorrow morning before the open unless you want it bumped ahead of tonight's research work.
 
 ---
+
+
+## Turn — 2026-07-07 18:24:45 ET
+
+**Rhett:**
+
+Tailscale
+
+**Claude Code:**
+
+Tailscale it is. Doing the VPS side right now so you can do the iPad side whenever you're ready tonight. Checking what's available on the box first:
+Not installed; winget is available. Installing Tailscale (official package, silent):
+Installed, service running. Generating your login link:
+**VPS side is done and waiting on you.** Status:
+
+- ✅ **Tailscale 1.98.8 installed** on the VPS, service running
+- ✅ **Your login link is live:** `https://login.tailscale.com/a/caa6ce10128e0` — do the two iPad steps from my last message (install the Tailscale app, sign in with Google, then open that link and approve the VPS)
+- ✅ **Dashboard server is now reboot-proof** — a scheduled task (`AlphaQuant_Dashboard`, auto-start at boot, self-restarts up to 3× on failure) means your app icon will never point at a dead server after a VPS restart
+
+**When you say "done,"** I finish in one pass: verify the VPS joined your network, switch on `tailscale serve` (which gives the dashboard a **permanent HTTPS address** — proper certificate, exactly what an installed home-screen app needs), and send you the final URL with the Add-to-Home-Screen step. Total remaining work on your end after that: two taps in Safari.
+
+The **sideways-scrolling render pass** (Phase 1) lands tomorrow before the open as planned — so by tomorrow's session you'll have the full experience: app icon → full screen → swipeable tables and charts. Tonight's research queue is untouched and up next: the 4:50 PM EOD debrief fires shortly, then your six-heading day review, the re-entry-cap replay, and the shadow-cell spec freeze.
+
+---
