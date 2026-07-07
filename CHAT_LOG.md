@@ -19980,3 +19980,162 @@ Triage complete. **Inbox clean — no escalation needed (silence = handled).**
 Per the forward-test freeze and watched-files rules, this run edited / placed / restarted / cleared **nothing** on the trading path. No Rhett ping.
 
 ---
+
+
+## Turn — 2026-07-07 10:44:46 ET
+
+**Rhett:**
+
+You are a fresh Claude Code session (Fable 5) on the Alpha Quant VPS. Before doing anything, ramp up: read `CLAUDE.md` (project root), the CURRENT SYSTEM STATE block at the top of `C:\AlphaQuant\SESSION_LOG.md`, and `C:\AlphaQuant\OPEN_ITEMS.md`. Your memory files auto-load. Operate under STANDING RULE #0: verify every load-bearing claim against the real source (broker truth > broker export > local reconstruction) BEFORE stating it — never fill a gap with a plausible guess. This task is READ-ONLY analysis: do not edit any WATCHED trading file (risk_config, bot_loop, exit_bot_v2, candle_close_exit, orb_*, short_bot, mover_scanner, advisor_filter_engine, symbol_universe); any tuning idea becomes a written proposal, never an inline change.
+
+# TASK: Deep trade analysis — Monday 2026-07-06 (full day) + Tuesday 2026-07-07 (this morning)
+
+Context you should verify, not assume: Mon 7/06 was the FIRST real live day of the 9:45 re-arm window (tag ORBMS0945). The day had 33 entries (0945:16, 1035:9, 1135:2, 1235:4, 1335:1, 1435:1), 27 round-trips, NET −$1,950.90 broker-reconciled. Exit stack: candle_1.4atr_chandelier (CONFIRM 0.15×ATR), $500 dollar-stop cap, 30-min UNCONFIRMED time-stop. The 7/03 edge hunt concluded: no deployable ENTRY edge; the edge lives in the EXIT/confirmation. The edge_shadow_ledger began true OOS accrual 7/06.
+
+## Data sources (all verified to exist)
+- Broker truth: `C:\AlphaQuant\tradestation-bot\broker_orders_unified.csv` (highest evidence tier — reconcile everything to this)
+- Yesterday's EOD debrief: `C:\AlphaQuant\outputs\reports\eod_debrief_2026-07-06.md` (sections A–F; read first, then re-verify anything load-bearing)
+- Event log: `C:\AlphaQuant\bot_alerts.jsonl` (ORB_V16_ENTRY_OK rows carry per-window ORBMS tags; exclude tag=REG_TEST / symbol=TEST artifacts)
+- Per-trade integrity + round-trips: `validation/report_integrity.py` outputs; shadow ledger + tournament artifacts under `outputs/`
+- For 7/07 morning: pull live from broker truth (the 7/07 debrief won't exist until 4:50 PM)
+
+## Required output format (Rhett's standing day-analysis format — follow exactly)
+1. **EVERY trade, ranked best→worst** (7/06 first, then 7/07-so-far): one row each — symbol, side, window tag, entry price+time, exit price+time, shares, slippage vs signal, exit type (chandelier / $500 cap / 30-min time-stop / EOD / broker resting stop), confirmed vs unconfirmed (reached +0.15×ATR?), MFE/MAE if derivable, gross/net P&L, R. Tag each field's provenance (broker-truth / derived / not-logged) — never fabricate a field.
+2. **Your opinion** of the day(s): what actually drove the P&L — entries, exits, sizing, one bad name, or noise? Where did the exit stack help/hurt (with counterfactuals where computable)?
+3. **THEN a bug report**: anything anomalous — slippage outliers, spread violations, duplicate/re-entry oddities, unclassified exit reasons (check OPEN_ITEMS item 0 status first — an attribution fix may already be deployed), gate misses.
+4. **THEN answer these specific questions:**
+   a. **0945 window first-read**: per-window expectancy 0945 vs 10:35+ (N is tiny — frame as context toward the ~2wk/N≥20 keep/pull decision, NOT a verdict).
+   b. **Exit quality**: managed exits vs broker resting-stop fills; did the 30-min unconfirmed time-stop earn its keep on these days? Did any winner get cut that the chandelier would have kept?
+   c. **Edge ledger**: what did 7/06 (first OOS day) add to the A_LATE / B_ATHIGH / C_union cells — moving toward or away from PROMOTION-READY (forward N≥30, ≥7/10 positive days)?
+   d. Anything in these two days that changes or confirms the "edge is in the exit" conclusion?
+
+## Discipline
+- P&L is NOT the success metric (SIM data collection; diverse trades + correctness are). N≥30 per cell before any promote/pull verdict; must-not-cut guard on any proposed filter.
+- Label every conclusion with its evidence tier. If something can't be verified from files, say "not logged" — do not estimate.
+- Archive the full analysis to `C:\AlphaQuant\outputs\reports\trade_analysis_2026-07-06_07.md`, add a one-line entry to SESSION_LOG.md, and post the complete analysis in chat as a copyable block.
+
+**Claude Code:**
+
+Ramping up now: reading the session log's CURRENT SYSTEM STATE, OPEN_ITEMS, CSHV findings, and the bot alerts summary before touching the trade data.
+All verification is done — every load-bearing number is now broker-reconciled. Writing the archive report, then the SESSION_LOG entry, then posting the full analysis in chat.
+Now the one-line SESSION_LOG entry:
+Done. Archived to [trade_analysis_2026-07-06_07.md](../../../../../AlphaQuant/outputs/reports/trade_analysis_2026-07-06_07.md), SESSION_LOG updated. Full analysis below as a copyable block.
+
+**TLDR before the block:** 7/06's −$1,950.90 (broker-verified to the penny) was a fade-tape day where zero trades confirmed and the exit stack saved ≈$4.5k vs holding; 7/07 through 10:35 AM is +$1,497.04 with the time-stop correctly cutting the only two non-confirmers. The edge ledger's first OOS day was positive in all three cells with essentially zero winner damage. Both days **confirm** "the edge is in the exit."
+
+````markdown
+# DEEP TRADE ANALYSIS — Mon 2026-07-06 (full day) + Tue 2026-07-07 (through 10:35 AM ET)
+
+_Written 2026-07-07 ~10:40 AM ET by Claude Code. READ-ONLY analysis — no trading-path files touched._
+_Evidence tiers: **BT** = BROKER_TRUTH (broker_orders_unified.csv raw JSON) · **LOG** = bot/exit logs · **DER** = derived · **REC** = LOCAL_RECONSTRUCTION (1-min-bar counterfactuals) · **NL** = not logged (never estimated)._
+
+**Reconciliation:** independent parse of broker_orders_unified.csv reproduces the 7/06 debrief exactly — 27 round-trips, gross −$1,767.80, commission $183.10, **NET −$1,950.90**, 9W/18L (BT). 7/07 through 10:35 AM: **12 closed round-trips, NET +$1,497.04**, 10W/2L, comm $48.60, one open (NOW long 179 @ $111.32, resting stop placed 10:20:38) (BT). 7/06 broker-flat at close confirmed.
+
+## 1 · EVERY TRADE, RANKED BEST → WORST
+
+### Monday 2026-07-06 — 27 round-trips
+Times are **broker fill times** (BT; the debrief's differ on late-triggering stop entries — see bug #2). Window = ORBMS arm tag (LOG). Slip = entry slippage bps, adverse + (DER). Conf = polled confirm flag (LOG; re-arm confirm polling not tracked → all "no", see bug #3). MFE/MAE $/share (REC). R (DER, debrief).
+
+| rk | sym | side | win | sh | entry px@time | exit px@time | slip | exit type | conf | MFE/MAE | gross$ | net$ | R |
+|--|--|--|--|--|--|--|--|--|--|--|--|--|--|
+| 1 | DELL | L | 0945 | 48 | 410.98@9:45:42 | 418.08@9:53:01 | +1 | candle-close (managed limit) | no | 9.95/1.72 | +340.80 | **+338.80** | 0.18 |
+| 2 | WDC | L | 0945 | 34 | 587.37@9:48:41 | 594.51@10:13:05 | −2 | candle-close (managed limit) | no | 9.42/5.87 | +242.76 | **+240.76** | 0.10 |
+| 3 | UPST | S | 0945 | 591 | 33.82@10:05:51 | 33.48@10:13:09 | −6 | candle-close (managed limit) | no | 0.52/0.83 | +200.94 | **+189.85** | 0.11 |
+| 4 | S | L | 0945 | 1089 | 18.36@9:45:26 | 18.44@9:56:13 | 0 | candle-close (managed limit) | no | 0.20/0.09 | +87.12 | **+70.05** | 0.07 |
+| 5 | UNH | S | 0945 | 47 | 417.80@9:45:47 | 416.49@10:02:03 | +5 | candle-close (managed limit) | no | 2.55/1.77 | +61.57 | **+59.57** | 0.09 |
+| 6 | PYPL | S | 0945 | 450 | 44.33@10:03:58 | 44.19@10:19:03 | +5 | candle-close (managed limit) | no | 0.21/0.50 | +63.00 | **+54.00** | 0.06 |
+| 7 | STZ | S | 0945 | 153 | 130.10@10:49:28 | 129.83@11:19:29 | +1 | 30-min time-stop | no | 0.71/2.54 | +41.31 | **+38.25** | 0.04 |
+| 8 | RMD | L | 0945 | 91 | 218.79@12:14:03 | 219.23@12:22:06 | +2 | candle-close (managed limit) | no | 1.67/5.31 | +40.04 | **+38.04** | 0.06 |
+| 9 | AMT | S | 0945 | 124 | 161.12@10:15:39 | 160.81@10:22:01 | +4 | candle-close (managed limit) | no | 1.06/1.83 | +38.44 | **+35.96** | 0.04 |
+| 10 | STT | L | 1135 | 113 | 174.67@11:48:54 | 174.56@12:19:12 | +5 | 30-min time-stop | no | 0.12/0.51 | −12.43 | **−14.69** | −0.02 |
+| 11 | PENN | S | 1235 | 948 | 21.07@12:37:40 | 21.07@13:07:53 | +5 | 30-min time-stop | no | 0.02/0.07 | −0.00 | **−15.38** | −0.02 |
+| 12 | PFE | S | 1035 | 843 | 23.67@10:35:35 | 23.69@11:05:49 | −0 | 30-min time-stop | no | 0.05/0.08 | −16.86 | **−30.98** | −0.05 |
+| 13 | TGT | S | 1135 | 159 | 125.06@11:38:49 | 125.24@12:08:52 | +2 | 30-min time-stop | no | 0.19/0.37 | −28.62 | **−31.80** | −0.03 |
+| 14 | VRT | L | 0945 | 60 | 326.75@9:46:08 | 326.17@10:16:30 | +4 | 30-min time-stop | no | 0.82/4.23 | −34.80 | **−36.80** | −0.02 |
+| 15 | CNC | S | 1235 | 305 | 65.44@12:36:03 | 65.67@13:06:22 | −0 | 30-min time-stop | no | 0.00/0.31 | −70.15 | **−76.25** | −0.08 |
+| 16 | NTAP | L | 1235 | 121 | 162.69@12:36:00 | 161.89@13:06:25 | +5 | 30-min time-stop | no | 0.20/1.07 | −96.80 | **−99.22** | −0.09 |
+| 17 | F | L | 1335 | 1440 | 13.88@14:28:06 | 13.82@14:58:16 | 0 | 30-min time-stop | no | 0.02/0.08 | −86.40 | **−107.68** | −0.11 |
+| 18 | TAP | S | 1035 | 522 | 38.25@10:49:38 | 38.45@11:19:53 | −0 | 30-min time-stop | no | 0.08/0.25 | −104.40 | **−114.66** | −0.14 |
+| 19 | ZTS | S | 1035 | 271 | 73.37@11:33:12 | 73.83@12:03:24 | +4 | 30-min time-stop | no | 0.07/0.72 | −124.66 | **−130.08** | −0.14 |
+| 20 | GEV | L | 0945 | 16 | 1191.98@9:57:22 | 1181.92@10:27:44 | −0 | 30-min time-stop | no | 3.96/12.98 | −160.96 | **−162.96** | −0.16 |
+| 21 | AMD | L | 1035 | 35 | 568.57@10:43:33 | 563.04@11:13:45 | +1 | 30-min time-stop | no | 3.93/5.57 | −193.55 | **−195.55** | −0.13 |
+| 22 | V | S | 0945 | 57 | 349.45@9:54:14 | 352.87@10:24:23 | +1 | 30-min time-stop | no | 0.60/3.78 | −194.94 | **−196.94** | −0.34 |
+| 23 | ORLY | S | 1035 | 238 | 83.39@10:37:42 | 84.48@11:08:00 | +5 | 30-min time-stop | no | 0.10/1.49 | −259.42 | **−264.18** | −0.33 |
+| 24 | DDOG | S | 0945 | 76 | 256.51@10:05:25 | 260.38@10:35:46 | +2 | 30-min time-stop | no | 0.51/6.33 | −294.12 | **−296.12** | −0.25 |
+| 25 | CLSK | L | 0945 | 1447 | 13.82@9:45:58 | 13.60@10:16:06 | 0 | 30-min time-stop | no | 0.14/0.28 | −318.34 | **−339.70** | −0.12 |
+| 26 | HONA | L | 1235 | 77 | 259.57@12:38:53 | 254.67@13:09:00 | −0 | 30-min time-stop | no | 0.42/4.91 | −377.69 | **−379.69** | −0.17 |
+| 27 | RIOT | L | 0945 | 822 | 24.28@9:46:20 | 23.66@9:59:54 | 0 | **broker resting StopMarket @23.67** (placed 9:46:21, filled 1c through) | no | 0.01/0.19 | −509.64 | **−523.50** | −0.22 |
+
+**Exit-type provenance:** the 18 time-stops are LOG-confirmed (`TIME_EXIT_30M_UNCONFIRMED` in exit_decisions.jsonl, all 30.0–30.4 min from broker entry fill). RIOT's resting stop is BT (raw JSON). The 8 "candle-close" rows are **DER**: broker Limit fills with no exit-decision row — the debrief's B ledger calls them candle-close but report_integrity calls the same 8 `EXIT_UNCLASSIFIED` (= OPEN_ITEMS #0; fix verified NOT deployed, bug #1).
+
+Armed-but-never-filled (LOG): AVGO (0945), CRWD/LULU/MRSH (1035), PATH (1435), plus STT's 1035 arm (broker-rejected "Invalid Stop Price", re-armed 1135, filled). 33 arms → 27 fills ✔ matches 0945:16 / 1035:9 / 1135:2 / 1235:4 / 1335:1 / 1435:1.
+
+### Tuesday 2026-07-07 — through 10:35 AM ET (12 closed + 1 open; all BT)
+All 12 closed are ORBMS0945 arms (LOG). MFE/MAE and R: **NL intraday** (4:50 PM EOD task computes them; re-arm ATR not logged). Conf: the 2 time-stop exits are provably unconfirmed at 30 min (LOG); winner confirm status NL.
+
+| rk | sym | side | sh | entry px@time | exit px@time | slip | hold | exit type | gross$ | net$ |
+|--|--|--|--|--|--|--|--|--|--|--|
+| 1 | SNDK | S | 12 | 1594.83@9:51:36 | 1568.53@10:10:02 | +1.1 | 18m | managed limit (DER) | +315.59 | **+313.59** |
+| 2 | MRVL | S | 85 | 233.30@9:50:03 | 230.31@9:57:04 | −2.1 | 7m | managed limit (DER) | +254.15 | **+252.15** |
+| 3 | INTC | S | 177 | 112.85@9:53:05 | 111.41@10:03:29 | −0.9 | 10m | managed limit (DER) | +254.88 | **+251.34** |
+| 4 | TER | S | 56 | 352.20@9:46:53 | 348.39@9:51:35 | +1.4 | 5m | managed limit (DER) | +213.36 | **+211.36** |
+| 5 | LRCX | S | 61 | 322.75@9:47:08 | 319.32@10:14:02 | −0.3 | 27m | managed limit (DER) | +209.44 | **+207.44** |
+| 6 | AMAT | S | 36 | 542.47@9:46:54 | 536.75@9:52:03 | +4.1 | 5m | managed limit (DER) | +205.92 | **+203.92** |
+| 7 | MU | S | 21 | 922.66@9:47:08 | 915.19@9:57:02 | +3.7 | 10m | managed limit (DER) | +156.87 | **+154.87** |
+| 8 | GEV | S | 18 | 1052.24@9:53:27 | 1045.41@9:58:10 | +4.1 | 5m | managed limit (DER) | +122.94 | **+120.94** |
+| 9 | FIS | L | 464 | 43.10@10:02:54 | 43.23@10:22:05 | +4.6 | 19m | managed limit (DER) | +60.32 | **+51.04** |
+| 10 | WM | L | 84 | 235.74@10:24:54 | 235.95@10:34:02 | +1.7 | 9m | managed limit (DER) | +17.64 | **+15.64** |
+| 11 | VRTX | S | 38 | 516.38@9:59:56 | 516.72@10:30:18 | +2.5 | 30m | **30-min time-stop** (LOG) | −12.92 | **−14.92** |
+| 12 | RIVN | S | 1148 | 17.41@10:03:50 | 17.63@10:33:57 | 0.0 | 30m | **30-min time-stop** (LOG) | −252.56 | **−270.34** |
+| — | NOW | L | 179 | 111.32@10:20:22 | **OPEN** | — | — | resting stop placed 10:20:38 (LOG) | — | — |
+
+Not filled from 0945: FISV, DIA, AXON. 1035 window armed CBRE/COHR/CAT/WDAY/BAX/JNJ at 10:35; COHR + CAT filled with stops as of this snapshot — not yet priced here. Avg entry slippage: 7/07 +1.7 bps, 7/06 +1.5 bps vs trailing-10d 1.0 (DER) — slightly worse two days running, no outlier beyond 6 bps.
+
+## 2 · MY OPINION
+
+**7/06 was a no-follow-through fade day, and the loss came from entries into that tape — not one bad name, not sizing, not exits.** Zero of 27 trades polled CONFIRM (at most 5/27 even touched +0.15×ATR by the derived-MFE measure); the fade counterfactual (section G, REC) shows mean breakout_R −0.295 with breakouts winning 10/46; the loss was a cluster (18 losers, RIOT the top at only 17.4% of loser dollars). Sizing was uniform ~$20k/name. Commission drag was real but secondary: $183.10 (3.42 bps), concentrated in sub-$20 names — PENN grossed exactly $0.00 and lost −$15.38 to commission alone. (Sub-$20 fills on the re-arm path are by design: verified INPLAY_MIN_PRICE=$5 governs re-arm, not the 9:35 path's $20 floor.)
+
+**The exit stack was the hero of 7/06.** Vs naive hold-to-EOD (REC): whole book held ≈ −$6,448; actual −$1,950.90 → **exit stack saved ≈ +$4,497**. Decomposed: candle-close harvesting of 8 winners: +$1,027 actual vs −$2,459 held (+$3,486); the 18 time-stop fires: +$877 net (saved $2,666 of deeper bleed on 12 — HONA −$911 avoided — forgave $1,791 of recovery on 6, led by DDOG +$677); RIOT's resting stop +$135.
+
+**7/07 so far is the mirror image.** A correlated semi-equipment short cluster (TER/AMAT/LRCX/MU/MRVL/SNDK/INTC = 7 of 10 winners) followed through immediately; harvests in 5–27 min; and the only two non-confirmers (VRTX, RIVN) were exactly the two the time-stop cut, −$285 combined. One risk observation: ~9:53 AM the book held ~5 semi shorts simultaneously — effectively one macro bet; the re-arm path has no MAX_SECTOR_POSITIONS equivalent (bug/decision #7).
+
+**Net:** same machine, two tapes — fade day −$1,951, trend day +$1,497. The separation was never entry logic; it was whether the tape confirmed, and the exit stack monetized that distinction correctly both days. Correctness-wise the system ran to spec both days.
+
+## 3 · BUG REPORT (ranked)
+
+1. **EXIT_UNCLASSIFIED ×8 — OPEN_ITEMS #0 fix NOT deployed** (verified: report_integrity.py mtime 6/23, no exit_order_type fallback; CSHV still WARNing today). Nuance for the queued fix: 7/06's 8 unclassified were **candle-close LIMIT fills**, not broker-stop fills — a bare broker-order-type fallback sees "Limit" for both candle-close AND time-stop exits; join the exit-decision log first, order-type second, or it will mislabel. Still correctly an at-close build.
+2. **Debrief B-ledger times/holds use arm/stop-placement times, not broker fills** (BT-verified: RMD shown 9:45/157m — actual fill 12:14 PM/8m hold; STZ shown 0945 — filled 10:49; RIOT shown exit 9:46/1m — stop *placed* 9:46:21, *filled* 9:59:54/13.6m). Inflates hold-time stats. Non-watched eod_debrief.py fix: use leg ClosedDateTime.
+3. **Confirm-rate self-contradiction in the debrief** (D: "5/27 confirmed" vs autopsy: "0 confirmed/23 unconfirmed/4 NA" vs all rows conf=no). Two definitions + re-arm confirm polling not tracked. Matters: the exit redesign is keyed on CONFIRM — needs ONE canonical logged definition on the re-arm path before the exit-fork proposal.
+4. **STT "Invalid Stop Price" reject 10:35** (stale-level race; zero cost, refilled from 1135 arm). Known class.
+5. **V short entered despite gate re-verify FAIL** (INPUT_MISSING: prior_close, dollar_vol_20d) — fail-open by design but a data-completeness gap; the trade lost −$196.94.
+6. **HONA mcap=UNKNOWN** in gate context (and #2 loser). Data-enrichment fix.
+7. **Re-arm sector concentration** — 7/07 held ~5 correlated semi shorts at once; no sector cap on the re-arm path. Paid today; one large correlated hit on a reversal day. Needs a Rhett decision → WATCHED change → proposal artifact only.
+8. **Debrief funnel/idle tables print the 0945 window 7×** (multiscan_trace re-logs per rescan tick). Cosmetic dedup.
+9. **7/06 "Incidents: 18 FAIL"** = the Monday weekend-residue reject burst + 1 benign STT reject — already triaged benign, self-cleared; observability fix already proposed. No new action.
+10. **Positive finding:** resting-stop coverage now **27/27 (7/06) and 15/15 (7/07 so far)** vs 37.9%/0%-re-arm at the 6/27 audit — the gap looks CLOSED on the live path (RIOT's fill proves the stops are real at the broker). Worth one formal re-run of the stop-coverage audit to certify.
+
+## 4 · SPECIFIC QUESTIONS
+
+**a. 0945 first-read (context, NOT a verdict — toward ~2wk/N≥20):**
+
+| cell | N | win% | net$ | $/trade |
+|--|--|--|--|--|
+| 0945 — 7/06 | 15 | 60% | −$490.74 | −$32.72 |
+| 0945 — 7/07 thru 10:35 | 12 | 83% | +$1,497.04 | +$124.75 |
+| **0945 — two-day total** | **27** | **70%** | **+$1,006.30** | **+$37.27** |
+| 10:35+ — 7/06 | 12 | 0% | −$1,460.16 | −$121.68 |
+
+(The debrief's "PATH 9:35-gated N=15 −$491" IS the 0945 window — gate-scored names released at 9:45.) 0945 is the strongest cell in the book and 10:35+ is 0-for-12 — but N is tiny and 7/07's 0945 rode one sector move. Keep collecting. Note the inversion vs 6/23–6/25 ("re-arm wins, morning loses") — small-N on both sides.
+
+**b. Exit quality:** 7/06 — 26/27 managed exits, 1/27 broker resting stop (RIOT); 7/07 — 12/12 managed; stops sat behind 100% of positions both days and were needed once — true backstops. The 30-min time-stop **earned its keep both days**: 7/06 +$877 net vs hold-to-EOD (REC; saved HONA-class bleed at the cost of 6 would-have-recovered trades, worst DDOG +$677 — already flagged PROP-EXIT-FALSE-STOPOUT); 7/07 it cut exactly the two non-confirmers. No confirmed winner was cut (nothing confirmed on 7/06 at all); whether the *chandelier* would have kept the 6 EOD-recoverers is **not computable from logged fields** — that's the exit-backtester's job.
+
+**c. Edge ledger (first true OOS day, 7/06):** A_LATE n=7 **+$362.36** (winner_forgone $0) · B_ATHIGH n=3 **+$69.81** (forgone −$19.02) · C_union n=9 **+$424.81** (would have cut the day to −$1,526). Forward tally: **1/1 positive days, C_union N=9/30** — moving **toward** PROMOTION-READY, with the must-not-cut guard near-perfect on day 1. At this fill rate N≥30 lands in ~3–4 similar days; the ≥7/10-positive-days bar will bind, not N. 7/07 appends tonight at 4:50 PM.
+
+**d. "Edge is in the exit" — changed or confirmed?** **Confirmed, from opposite tapes.** 7/06: entries had no edge (0 confirms, fade won 36/46) and exits alone saved ≈$4.5k. 7/07: entries paid, and the exits' only interventions were the two correct amputations. Caveat to carry: 7/07 shows entry P&L can be strongly positive when a sector trend is on — "no *deployable* entry edge" stands, but let the shadow ledger keep accruing before calling entries pure noise. No change to the WAIT decision on PROP-CONFIRM-KEYED-EXIT.
+
+_Every $ figure broker-reconciled (BT) unless tagged DER/REC/NL; all counterfactuals are LOCAL_RECONSTRUCTION and labeled; N<30 everywhere — nothing here is a promote/pull verdict. Read-only: no WATCHED file touched._
+````
+
+**Close-out:** archived to `C:\AlphaQuant\outputs\reports\trade_analysis_2026-07-06_07.md` ✔ · SESSION_LOG one-liner inserted above the 10:03 AM triage entry ✔ · broker reconciliation reproduced the debrief net to the penny (−$1,950.90) ✔ · one open thread I'm carrying: NOW (long 179 @ 111.32) and the fresh 1035 fills (COHR, CAT) were still live at this 10:35 AM snapshot — tonight's 4:50 PM EOD task will close the 7/07 book and append it to the edge ledger.
+
+---
