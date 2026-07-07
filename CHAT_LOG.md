@@ -21077,3 +21077,111 @@ Got it — let me find and start the remote-control capability so this session s
 I've sent that question to the Claude Code guide agent (it has access to the current docs) — it's running now and I'll report the exact mechanism the moment it answers. I want the real command rather than a guess, because this becomes a saved memory: once I know the exact enable step, I'll record "when Rhett asks for remote control, do X" so any future session handles it instantly. One thing I can tell you already: I checked my own toolset and there's no direct "enable remote control" switch I can flip programmatically, so the answer is likely either a slash command you or I can issue in this session, or a button in the desktop app UI — the agent will confirm which.
 
 ---
+
+
+## Turn — 2026-07-07 15:09:40 ET
+
+**Rhett:**
+
+<task-notification>
+<task-id>a18d0db62b1347d79</task-id>
+<tool-use-id>toolu_016p8ecALNhyq12rRop3NX3B</tool-use-id>
+<output-file>C:\Users\ADMINI~1\AppData\Local\Temp\claude\C--Users-Administrator-OneDrive---Duleba-Trade-station-Main\9f6cdefe-ca1b-4b1e-b662-0d26bb7895d8\tasks\a18d0db62b1347d79.output</output-file>
+<status>completed</status>
+<summary>Agent "How to enable remote control" finished</summary>
+<note>A task-notification fires each time this agent stops with no live background children of its own. The user can send it another message and resume it, so the same task-id may notify more than once.</note>
+<result>Perfect. I have the complete answer. Let me provide a clear summary.
+
+---
+
+## Remote Control — Exact Mechanism and Activation
+
+### 1. **What is it called?**
+It's called **Remote Control** (official name; sometimes abbreviated `/rc` in commands).
+
+### 2. **Exact activation method — USER ONLY (not programmatic)**
+
+The assistant **cannot** enable it. Only the user can via one of these CLI or UI commands:
+
+**CLI (terminal) — three modes:**
+
+1. **Server mode** (keeps running, waits for remote connections):
+   ```bash
+   claude remote-control
+   ```
+   Displays a session URL and QR code; press spacebar to toggle QR code.
+
+2. **Interactive session** (full terminal session you can control locally OR remotely):
+   ```bash
+   claude --remote-control
+   ```
+   Or with a custom name:
+   ```bash
+   claude --remote-control "My Project"
+   ```
+
+3. **From an existing session** (already in a Claude Code chat):
+   ```
+   /remote-control
+   ```
+   or
+   ```
+   /rc
+   ```
+   Optionally pass a name: `/remote-control My Project`
+
+**VS Code extension:**
+- Type `/remote-control` or `/rc` in the prompt box, or open the command menu with `/` and select it.
+
+**Desktop app:**
+- Settings → Claude Code → **Enable remote control by default** (toggle)
+- Or use `/config` inside Claude Code and set **Enable Remote Control for all sessions** to `true`.
+
+---
+
+### 3. **Prerequisites**
+
+- **Version**: Claude Code v2.1.51 or later (`claude --version` to check)
+- **Authentication**: Must be logged in via `claude /login` with a claude.ai account (not API key)
+- **Subscription**: Pro, Max, Team, or Enterprise (Team/Enterprise requires an Owner to enable the Remote Control toggle at [claude.ai/admin-settings/claude-code](https://claude.ai/admin-settings/claude-code))
+- **Not available on**: Amazon Bedrock, Google Cloud Agent Platform, Microsoft Foundry, or when `ANTHROPIC_BASE_URL` points to a non-Anthropic host (like a gateway or proxy)
+- **Workspace trust**: Run `claude` in the project directory once to accept the workspace trust dialog
+
+---
+
+### 4. **How to connect from phone/browser once enabled**
+
+- **Open the session URL** directly in a browser at `claude.ai/code`
+- **Scan the QR code** from the terminal with the Claude mobile app
+- **Find it in the session list** at `claude.ai/code` or in the Claude app's **Code** tab (on mobile)
+
+Remote Control sessions show a **green online dot** when the local process is running.
+
+---
+
+### 5. **Key facts**
+
+- **Local execution only** — nothing moves to the cloud; the session runs on the user's machine and Claude polls for work over HTTPS.
+- **Cross-device sync** — the conversation stays in sync; messages can be sent from terminal, phone, or browser interchangeably.
+- **Survives network hiccups** — reconnects automatically if the machine sleeps or network drops (up to ~10 minutes).
+- **Mobile notifications** — can send push to phone when Claude finishes a task or needs input (requires Claude Code v2.1.110+; configure in `/config`).
+- **Desktop app also supports Dispatch** — a separate feature where the user messages a task from the mobile app and it spawns a Desktop session.
+
+**The assistant cannot programmatically trigger this.** It is always a user action in the CLI, VS Code, or Desktop app settings.</result>
+<usage><subagent_tokens>28513</subagent_tokens><tool_uses>3</tool_uses><duration_ms>42220</duration_ms></usage>
+</task-notification>
+
+**Claude Code:**
+
+The answer came back definitive, and it explains your experience exactly. Saving it to memory first so no future session fumbles this:
+Here's the deal, straight from the current docs: **I can't turn it on — only you can.** There's no tool on my side; Remote Control is deliberately a user-only action. But the fix is a two-second thing, and there's a way to never have to ask again:
+
+**Right now, for this session:** type **`/rc`** (short for `/remote-control`) into this chat's message box — same place you type to me. The session will then appear in your phone's Claude app under the **Code** tab with a green dot while this machine is running it.
+
+**The permanent fix (recommended):** in the desktop app go to **Settings → Claude Code → "Enable remote control by default"** and switch it on. After that, *every* session you open shows up on your phone automatically — no prompting me, no `/rc`, ever again.
+
+Worth knowing: it stays fully local (the bot machine does all the work; your phone is just a window into this same conversation), it reconnects on its own through network blips, and if you're on Claude Code 2.1.110+ you can also turn on mobile push notifications in `/config` so your phone pings you when I finish something or need your input — genuinely useful for the "I'm away from the VPS and Claude escalated something" case.
+
+Saved to memory, so any future session answers this instantly instead of hunting for a switch that doesn't exist. Type `/rc` whenever you're ready and check your phone.
+
+---
