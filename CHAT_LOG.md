@@ -21276,3 +21276,29 @@ Locked in. Here's the framework as I'll run it, starting with tonight's close (t
 Two commitments on top: tonight I apply this manually in the post-close review, and this week I fold the computable parts — the day-over-day delta and the winners-common-factor scan — into the automated EOD chain itself (non-watched), so the framework runs even on a day neither of us opens the chat. It joins tonight's post-close queue: EOD review in this format → re-entry-cap replay → shadow-cell spec freeze (fill-delay X=15 as lead cell).
 
 ---
+
+
+## Turn — 2026-07-07 15:34:10 ET
+
+**Rhett:**
+
+doe sthe dashboard currently include all current and primor tests by history? If no add a card on the home apge called testing, when it opens list the test in historicall order with the newest on top, make the test name clickable that will then take me to the test page, which should show me a explanation of the test and the findfinds including your thoughts on the test results.
+
+**Claude Code:**
+
+No — it doesn't. The studies live scattered across `outputs/reports/*.md` files, SESSION_LOG entries, and my analyses in chat; there's no unified test history anywhere on the dashboard. That's a real gap (the multiple-testing ledger discipline practically demands a registry). Building it now: a `Testing` card on home → reverse-chronological test list → per-test detail page with explanation, findings, and my take. First, the home-card structure and the report files I'll backfill from:
+Now wiring the route and the home card:
+**Done — refresh the dashboard home page and you'll see a fourth card: "Testing."** To answer your first question directly: no, the dashboard had nothing like this — our test history was scattered across ~20 report files, SESSION_LOG entries, and chat. Now it's one place.
+
+**What you get:**
+- **Home card "Testing"** → the full registry: **30 tests, newest first**, each name clickable, with a one-line hook and a status chip (DONE / ONGOING / QUEUED / ARCHIVED — so you can see at a glance what's still accruing data vs. settled).
+- **Each test page** shows: *What we tested* (the question in plain English), *How* (method and data), *Findings* (the numbers), and **Claude's take** (my honest opinion — including where a result killed my own idea, like the score study). Where a test has an archived report file, the full original is rendered verbatim below.
+- **Top of the list right now:** tonight's two queued items (shadow-cell spec freeze, re-entry-cap replay), then today's fill-delay study, the time-of-day bins, the score/window study, the 7/06–07 trade analysis, the 7/03 edge hunt, the exit-K sweep, the L1/L2 shadow work, the tournament, and so on back through June.
+
+**One honesty rule I built in:** the 16 older reports that pre-date this registry are labeled **ARCHIVED** and their pages show the *original report text verbatim* — I did not write after-the-fact summaries of tests I'd be paraphrasing from memory. The 14 curated entries with my takes are all tests whose numbers I've verified against broker truth (most of them from this session).
+
+**And it's self-maintaining going forward:** the standing protocol (now in permanent memory) is that every new study appends a curated entry the day it runs — tonight's re-entry replay and spec freeze will flip from QUEUED to DONE with their findings filled in, and you'll be able to follow the whole edge hunt from your phone.
+
+Proof: dashboard PID 7280 (started 3:33:00 PM > all edited files), home card verified in live HTML, list renders all 30 rows in date order, the fill-delay detail page renders all four sections plus the attached trade-analysis report, suite unchanged, no watched file touched, SESSION_LOG 3:35 PM entry written.
+
+---
