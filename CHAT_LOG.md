@@ -20791,3 +20791,117 @@ Two operational notes for you:
 It's been a good run in this seat. The system's in the best shape it's ever been: 48/0 suite, three self-running invariants, clean streak at 3 of 5, and a dashboard that now tells you the truth.
 
 ---
+
+
+## Turn — 2026-07-07 14:36:14 ET
+
+**Rhett:**
+
+# /loop — schedule a recurring or self-paced prompt
+
+Parse the input below into `[interval] <prompt…>` and schedule it.
+
+## Parsing (in priority order)
+
+1. **Leading token**: if the first whitespace-delimited token matches `^\d+[smhd]$` (e.g. `5m`, `2h`), that's the interval; the rest is the prompt.
+2. **Trailing "every" clause**: otherwise, if the input ends with `every <N><unit>` or `every <N> <unit-word>` (e.g. `every 20m`, `every 5 minutes`, `every 2 hours`), extract that as the interval and strip it from the prompt. Only match when what follows "every" is a time expression — `check every PR` has no interval.
+3. **No interval**: otherwise, the entire input is the prompt and you'll self-pace dynamically (see "Dynamic mode" below).
+
+If the resulting prompt is empty, show usage `/loop [interval] <prompt>` and stop.
+
+Examples:
+- `5m /babysit-prs` → interval `5m`, prompt `/babysit-prs` (rule 1)
+- `check the deploy every 20m` → interval `20m`, prompt `check the deploy` (rule 2)
+- `run tests every 5 minutes` → interval `5m`, prompt `run tests` (rule 2)
+- `check the deploy` → no interval → dynamic mode, prompt `check the deploy` (rule 3)
+- `check every PR` → no interval → dynamic mode, prompt `check every PR` (rule 3 — "every" not followed by time)
+- `5m` → empty prompt → show usage
+
+## Offer cloud first
+
+Before any scheduling step, check whether EITHER is true:
+- the parsed interval (rule 1 or 2) is **≥60 minutes**, or
+- regardless of which rule matched, the original input uses daily phrasing ("every morning", "daily", "every day", "each night", "every weekday")
+
+If either is true, call AskUserQuestion first:
+- `question`: "This loop stops when you close this session. Set it up as a cloud schedule instead so it keeps running?"
+- `header`: "Schedule"
+- `options`: `[{label: "Cloud schedule (recommended)", description: "Runs in Anthropic's cloud even after you close this session"}, {label: "This session only", description: "Runs in this terminal until you exit"}]`
+
+If they pick **Cloud schedule**: do NOT call CronCreate. Invoke the `schedule` skill directly via the Skill tool with `args` set to their original input verbatim (e.g. `Skill({skill: "schedule", args: "every morning tell me a joke"})`), then follow that skill's instructions to completion. Do NOT tell the user to run /schedule themselves. **Then stop — do not continue to any section below** (no CronCreate, no ScheduleWakeup, no "execute the prompt now").
+If they pick **This session only**:
+- If the trigger was a parsed ≥60-minute interval (rule 1 or 2): continue below with that interval.
+- If the trigger was daily phrasing only (rule 3, no parsed interval): do NOT call CronCreate. Explain that a daily-cadence loop won't fire before this session closes, so there's nothing useful to schedule locally — suggest they either pick Cloud schedule, or re-run `/loop` with an explicit shorter interval (e.g. `/loop 1h <prompt>`) if they want a session loop. Then stop.
+If neither trigger condition was met: continue below.
+
+## Fixed-interval mode (rules 1 and 2)
+
+Convert the interval to a cron expression:
+
+| Interval pattern      | Cron expression     | Notes                                    |
+|-----------------------|---------------------|------------------------------------------|
+| `Nm` where N ≤ 59   | `*/N * * * *`     | every N minutes                          |
+| `Nm` where N ≥ 60   | `0 */H * * *`     | round to hours (H = N/60, must divide 24)|
+| `Nh` where N ≤ 23   | `0 */N * * *`     | every N hours                            |
+| `Nd`                | `0 0 */N * *`     | every N days at midnight local           |
+| `Ns`                | treat as `ceil(N/60)m` | cron minimum granularity is 1 minute  |
+
+**If the interval doesn't cleanly divide its unit** (e.g. `7m` → `*/7 * * * *` gives uneven gaps at :56→:00; `90m` → 1.5h which cron can't express), pick the nearest clean interval and tell the user what you rounded to before scheduling.
+
+Then:
+1. Call CronCreate with: `cron` (the expression above), `prompt` (the parsed prompt verbatim), `recurring: true`.
+2. Briefly confirm: what's scheduled, the cron expression, the human-readable cadence, that recurring tasks auto-expire after 7 days, and that the user can cancel sooner with CronDelete (include the job ID). Only if you did NOT show the cloud-offer AskUserQuestion above (i.e., neither trigger condition applied), end the confirmation with this exact line on its own, italicized: `_Runs until you close this session · For durable cloud-based loops, use /schedule_`. If the user already answered that question, omit this line.
+3. **Then immediately execute the parsed prompt now** — don't wait for the first cron fire. If it's a slash command, invoke it via the Skill tool; otherwise act on it directly.
+
+## Dynamic mode (rule 3 — no interval)
+
+The user wants you to self-pace. Decide what makes the next iteration worth running — a passage of time, or an observable event.
+
+1. **Run the parsed prompt now.** If it's a slash command, invoke it via the Skill tool; otherwise act on it directly.
+2. **If the next run is gated on an event** (CI finishing, a log line matching, a file changing, a PR comment) and no Monitor is already running for it: arm one now with `persistent: true`. Its events arrive as `<task-notification>` messages and wake this loop immediately — you do not wait for the ScheduleWakeup deadline. Arm once; on later iterations call TaskList first and skip this step if a monitor is already running.
+3. **Briefly confirm**: that you're self-pacing, whether a Monitor is the primary wake signal, that you ran the task now, and what fallback delay you're about to pick. Write this as text *before* calling ScheduleWakeup — the turn ends as soon as that tool returns.
+4. **Then, as the last action of this turn, call ScheduleWakeup** with:
+   - `delaySeconds`: with a Monitor armed this is the **fallback heartbeat** — how long to wait if no event fires (lean 1200–1800s; idle ticks past the 5-minute cache window are pure overhead). Without a Monitor this is the cadence — pick based on what you observed. Read the tool's own description for cache-aware delay guidance.
+   - `reason`: one short sentence on why you picked that delay.
+   - `prompt`: the full original /loop input verbatim, prefixed with `/loop ` so the next firing re-enters this skill and continues the loop. For example, if the user typed `/loop check the deploy`, pass `/loop check the deploy` as the prompt.
+5. **If you were woken by a `<task-notification>`** rather than this prompt: handle the event in the context of the loop task, then call ScheduleWakeup again with the same `prompt` and the same 1200–1800s `delaySeconds` from step 4 — the Monitor remains the wake signal; this only resets the safety net.
+6. **To stop the loop**, omit the ScheduleWakeup call and TaskStop any Monitor you armed (use TaskList to find the task ID if it is no longer in context). Before you stop, send a one-line outcome via PushNotification — the user may be away and waiting to hear it's done. Skip this if you're stopping because the user just told you to; they're already here.
+
+## Input
+
+15m Intraday self-monitor tick (session-bound loop, re-armed after Opus seat closed): follow C:\AlphaQuant\SELF_MONITORING_PLAYBOOK.md — read latest CSHV findings + code_alert_inbox + bot heartbeat/trade_journal freshness; triage per the warning-triage rules (verify vs live truth, fix-safe non-watched or escalate WITH the fix, never auto-edit watched trading files); log any action to SESSION_LOG.md. Silence = healthy. Stop looping after 4:10 PM ET (market closed; EOD tasks take over).
+
+**Claude Code:**
+
+Data layer confirmed. Two more lookups — how `resolve_exit_reason` gets its `reasons_map`, and how the debrief assigns each trade its window/path tag:
+Now the period page module:
+Now wire the route branch in `local_dashboard.py` (single-day path stays byte-identical in behavior):
+Quoting collision with bash — moving the test to a script file:
+Same command line as the running instance. Restarting now (UI-only process — the trading path doesn't touch it):
+401 — the dashboard has an auth layer. Finding how it authenticates so I can verify properly:
+Basic Auth from `.env` — verifying with credentials (password stays out of the transcript):
+The password variable didn't load — reading the auth code to get the exact env name and expected credentials format:
+Password lives in either repo's `.env` (bot repo checked first; username is ignored). Retrying:
+Everything green on the final process. Logging and closing out:
+**Built, deployed, and verified — the range selector is now real.** Open `http://127.0.0.1:8765/daily-review-v2?start=2026-06-22&end=2026-07-07` (or just use the same range form you've always used) and you'll get the new **Period Review**.
+
+**What you'll see for a range:**
+- **KPI cards** — period net, gross, total commissions, round-trips, win rate, expectancy per trade, profit factor, green/red day count, long/short split, average slippage
+- **Cumulative net P&L chart** — blue line for the running total, green/red bars per day
+- **Day-by-day table** — each date links down into its full single-day review (charts + AI narrative stay there, by design)
+- **Per entry window** — the 0945 / 1035 / 1235 expectancy cells, now accumulating toward N≥30 on a page instead of in my ad-hoc scripts, attributed by provable broker order-ID join
+- **Per exit reason** — time-stop vs candle-close vs resting-stop performance over the whole period
+- **Top 5 winners and losers** with links
+
+**Proof (claim → verify → show):**
+- Live HTTP checks on the final server process: range → Period Review renders; single day → unchanged 200 (935KB full page); same-day range → correctly falls back to the daily page
+- Numbers reconcile to broker truth: the 6/22→7/07 view shows 229 round-trips, **net −$4,347.65, profit factor 0.81** — and the per-day rows match three independently-known values exactly (7/06 −$1,950.90, 7/02 −$770.03, 6/25 kill-day −$2,016.93). A loud red banner renders if day totals and trade rows ever disagree; it's not rendering.
+- Regression suite: **48 pass / 0 fail / 3 skip**, including REG-51's 7/06 broker-truth replay, which exercises the exact function I extended
+- Verify-load: server PID 9084 started 2:35:05 PM > newest edited file 2:34:52 PM; no watched trading file touched
+- SESSION_LOG updated (2:36 PM entry)
+
+One honest data note before you look: the period view will show you something my lunch study already hinted at — **the 11-day book is net negative with a 57% win rate**, meaning losers run bigger than winners. That's the exit/confirmation story again, now permanently visible on one page. Also FYI: I re-armed the 15-minute intraday monitor in this session (the old one died with the Opus chat); 2:24 PM tick was fully green.
+
+Still queued behind this: sector-data fill + concentration monitor, then tonight's re-entry-cap replay and EOD review.
+
+---
