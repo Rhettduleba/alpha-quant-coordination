@@ -20557,3 +20557,71 @@ The meta-lesson I'd underline: content like this sells the feeling that the righ
 Want me to write the book-concentration monitor spec as a copyable handoff block for your Opus chat? That's the one concrete thing these images should produce.
 
 ---
+
+
+## Turn — 2026-07-07 13:36:50 ET
+
+**Rhett:**
+
+ok, do the same for these five. Create a plann to move forward with the bridgewater risk information and explainit to me in detail.
+
+**Claude Code:**
+
+Same treatment for 6–10, then the Bridgewater plan. One quick verification first — the plan hinges on whether we already have a symbol→sector data source (the old MAX_SECTOR_POSITIONS=2 rule implies we do), and I want to state that as fact, not assumption:
+Plan archived to [PLAN-BOOK-CONCENTRATION-2026-07-07.md](../../../../../AlphaQuant/outputs/proposals/PLAN-BOOK-CONCENTRATION-2026-07-07.md) and logged. Here's the self-contained handoff for your Opus chat — paste it as-is (he can't see this conversation):
+
+````markdown
+# BUILD REQUEST — Book Concentration Monitor, Phase 0+1 (from Fable analysis seat, 2026-07-07)
+
+Full plan: C:\AlphaQuant\outputs\proposals\PLAN-BOOK-CONCENTRATION-2026-07-07.md — read it first.
+This build is NON-WATCHED and read-only with respect to trading: it must not touch risk_config, bot_loop,
+orb_multiscan, exit_bot_v2, or any watched trading file, and must not place/modify/cancel any order.
+
+## Problem being solved
+The bot manages per-trade risk but is blind to portfolio shape. On 7/07 ~9:53 AM ET the book held ~5
+simultaneous same-direction semiconductor shorts (~$100k correlated exposure = one macro bet). The re-arm
+path (now the entire live book) has no sector cap; the old MAX_SECTOR_POSITIONS=2 governs only the disabled
+9:35 path. Before any cap is even considered, we need to SEE and LOG concentration. Enforcement is Phase 4,
+explicitly gated on a later study + Rhett approval — do NOT build any blocking logic now.
+
+## Phase 0 — sector-map coverage audit (small)
+- Source of truth: tradestation-bot/symbol_universe.py get_sector() (hand-curated intraday-correlation
+  groups + advisor universe channel map, fallback "OTHER"). Verified to exist 7/07.
+- Deliverable: a small report/script that maps every symbol traded in the last 30 days
+  (from tradestation-bot/broker_orders_unified.csv) through get_sector() and prints coverage:
+  N resolved to a real group vs N -> "OTHER" (list the OTHER names). No fixes required this pass —
+  just the honest coverage number. Unknown sector must NEVER block anything anywhere (fail-open).
+
+## Phase 1 — book_concentration.py (new, non-watched, ~half day)
+Location: tradestation-bot/book_concentration.py (or wherever the read-only monitors live — match repo convention).
+Every snapshot (piggyback the existing per-cycle broker positions/orders fetch that reliability_checks uses —
+do NOT add new token refreshes; reuse the cached client per CLAUDE.md rule #4):
+1. Read live positions + working entry orders (broker truth).
+2. Bucket deployed dollars by get_sector() group, overall and PER SIDE (long/short separately —
+   5 semi shorts = one bet; 3 shorts + 2 longs = partially hedged).
+3. Compute and log per snapshot:
+   - top_theme_share: largest group's % of total deployed $ (overall and per-side)
+   - effective_bets: 1 / sum(weight_i^2) over sector weights (inverse HHI), overall and per-side
+   - positions_by_group: {group: {side: count, dollars}}
+   - unknown_share: % of deployed $ in "OTHER" (data-quality signal)
+4. Append one JSON line per snapshot to C:\AlphaQuant\outputs\risk_state\book_concentration.jsonl
+   (ET timestamp via the canonical et_now.py pattern; append-only; safe on empty book — log zeros, don't skip).
+5. Surface: (a) a panel on the operator dashboard, (b) a short section in eod_debrief.py output
+   (peak top_theme_share of the day, min effective_bets, and the worst 5-snapshot window).
+
+## Constraints & acceptance
+- Windows: any subprocess use needs creationflags=0x08000000 (CREATE_NO_WINDOW) — CLAUDE.md rule #14.
+- No new scheduled task if it can run inside an existing cycle/monitor; if a task IS needed, RunAs
+  Administrator like the others and add it to supervisor_guardian's watch list (rule #15/#18).
+- Verify-load discipline (rule #13): after wiring, restart whatever long-lived process hosts it, confirm
+  StartTime > file mtime, re-run _preflight_diagnostic.py, and confirm the first real JSONL rows appear
+  during market hours with plausible numbers (e.g., a flat book at 4:10 PM = zeros).
+- Regression-lock the JSONL schema (one REG test: parse latest line, assert required keys).
+- Do NOT compute return correlations yet (that's v2); sector-group proxy only.
+- When done: SESSION_LOG one-liner + note in the plan file that Phase 1 is live, so the Fable seat can
+  start the Phase 2 pricing study on the accrued data.
+````
+
+Two loose ends I'm carrying so nothing drops: **(1)** the re-entry-cap Phase-2 replay still runs after today's close as committed — it's unaffected by this plan; **(2)** the two cheap ideas salvaged from prompts #9 and #6 (macro-event/day-of-week trade tagging, distance-to-levels entry context) are parked in the plan file's origin note, and I'll bring the event-tagging one back as a concrete spec once the concentration monitor is accruing — one measurement build at a time, in evidence order.
+
+---
