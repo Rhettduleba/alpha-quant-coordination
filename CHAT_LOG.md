@@ -19884,3 +19884,55 @@ Triage complete. Clean run, nothing to escalate.
 - **Closed out:** SESSION_LOG entry appended + copied to coordination repo, committed & pushed ([078bca5](https://github.com/Rhettduleba/alpha-quant-coordination/commit/078bca5)), cursor advanced (`--ack`).
 
 ---
+
+
+## Turn — 2026-07-07 09:58:08 ET
+
+**Rhett:**
+
+ok, so i want to do a lot of anyalisi on yester days trades and on this morining trades and i want you to be in fable 5 mode. Should you give me an opening prompt so that a new chat is ramped up on our conversations and the new chat understand s the project and where we are?
+
+**Claude Code:**
+
+Yes — that's the right procedure, with one important clarification first, then I'll verify the data files exist and hand you the prompt.
+
+**The clarification:** the new chat must be a **Claude Code session on this VPS** (new session in the app's Code tab, with Fable 5 selected as the model) — not a regular claude.ai chat. A regular chat can't read `C:\AlphaQuant`, can't run Python, and can't touch broker truth — it would analyze from memory and vibes, which is exactly what we don't do. A fresh Code session auto-loads CLAUDE.md + my memory files + SESSION_LOG, so it starts 80% ramped; the opening prompt supplies the last 20%: the task, the format you expect, and the exact data sources.
+
+(Also still true: you could just flip *this* session to Fable in the picker and skip the handoff entirely — full context carries. Fresh session is fine too; some prefer the clean slate for analysis.)
+
+Let me verify the exact files the prompt will point at actually exist before I write it:
+Both verified: yesterday's debrief exists at `C:\AlphaQuant\outputs\reports\eod_debrief_2026-07-06.md`, broker truth at `C:\AlphaQuant\tradestation-bot\broker_orders_unified.csv`. Here's your opening prompt — copy everything in the block:
+
+````markdown
+You are a fresh Claude Code session (Fable 5) on the Alpha Quant VPS. Before doing anything, ramp up: read `CLAUDE.md` (project root), the CURRENT SYSTEM STATE block at the top of `C:\AlphaQuant\SESSION_LOG.md`, and `C:\AlphaQuant\OPEN_ITEMS.md`. Your memory files auto-load. Operate under STANDING RULE #0: verify every load-bearing claim against the real source (broker truth > broker export > local reconstruction) BEFORE stating it — never fill a gap with a plausible guess. This task is READ-ONLY analysis: do not edit any WATCHED trading file (risk_config, bot_loop, exit_bot_v2, candle_close_exit, orb_*, short_bot, mover_scanner, advisor_filter_engine, symbol_universe); any tuning idea becomes a written proposal, never an inline change.
+
+# TASK: Deep trade analysis — Monday 2026-07-06 (full day) + Tuesday 2026-07-07 (this morning)
+
+Context you should verify, not assume: Mon 7/06 was the FIRST real live day of the 9:45 re-arm window (tag ORBMS0945). The day had 33 entries (0945:16, 1035:9, 1135:2, 1235:4, 1335:1, 1435:1), 27 round-trips, NET −$1,950.90 broker-reconciled. Exit stack: candle_1.4atr_chandelier (CONFIRM 0.15×ATR), $500 dollar-stop cap, 30-min UNCONFIRMED time-stop. The 7/03 edge hunt concluded: no deployable ENTRY edge; the edge lives in the EXIT/confirmation. The edge_shadow_ledger began true OOS accrual 7/06.
+
+## Data sources (all verified to exist)
+- Broker truth: `C:\AlphaQuant\tradestation-bot\broker_orders_unified.csv` (highest evidence tier — reconcile everything to this)
+- Yesterday's EOD debrief: `C:\AlphaQuant\outputs\reports\eod_debrief_2026-07-06.md` (sections A–F; read first, then re-verify anything load-bearing)
+- Event log: `C:\AlphaQuant\bot_alerts.jsonl` (ORB_V16_ENTRY_OK rows carry per-window ORBMS tags; exclude tag=REG_TEST / symbol=TEST artifacts)
+- Per-trade integrity + round-trips: `validation/report_integrity.py` outputs; shadow ledger + tournament artifacts under `outputs/`
+- For 7/07 morning: pull live from broker truth (the 7/07 debrief won't exist until 4:50 PM)
+
+## Required output format (Rhett's standing day-analysis format — follow exactly)
+1. **EVERY trade, ranked best→worst** (7/06 first, then 7/07-so-far): one row each — symbol, side, window tag, entry price+time, exit price+time, shares, slippage vs signal, exit type (chandelier / $500 cap / 30-min time-stop / EOD / broker resting stop), confirmed vs unconfirmed (reached +0.15×ATR?), MFE/MAE if derivable, gross/net P&L, R. Tag each field's provenance (broker-truth / derived / not-logged) — never fabricate a field.
+2. **Your opinion** of the day(s): what actually drove the P&L — entries, exits, sizing, one bad name, or noise? Where did the exit stack help/hurt (with counterfactuals where computable)?
+3. **THEN a bug report**: anything anomalous — slippage outliers, spread violations, duplicate/re-entry oddities, unclassified exit reasons (check OPEN_ITEMS item 0 status first — an attribution fix may already be deployed), gate misses.
+4. **THEN answer these specific questions:**
+   a. **0945 window first-read**: per-window expectancy 0945 vs 10:35+ (N is tiny — frame as context toward the ~2wk/N≥20 keep/pull decision, NOT a verdict).
+   b. **Exit quality**: managed exits vs broker resting-stop fills; did the 30-min unconfirmed time-stop earn its keep on these days? Did any winner get cut that the chandelier would have kept?
+   c. **Edge ledger**: what did 7/06 (first OOS day) add to the A_LATE / B_ATHIGH / C_union cells — moving toward or away from PROMOTION-READY (forward N≥30, ≥7/10 positive days)?
+   d. Anything in these two days that changes or confirms the "edge is in the exit" conclusion?
+
+## Discipline
+- P&L is NOT the success metric (SIM data collection; diverse trades + correctness are). N≥30 per cell before any promote/pull verdict; must-not-cut guard on any proposed filter.
+- Label every conclusion with its evidence tier. If something can't be verified from files, say "not logged" — do not estimate.
+- Archive the full analysis to `C:\AlphaQuant\outputs\reports\trade_analysis_2026-07-06_07.md`, add a one-line entry to SESSION_LOG.md, and post the complete analysis in chat as a copyable block.
+````
+
+One operational note: when you open the new Code session, confirm the model picker actually shows **Fable 5** for Code sessions and that it's selected *before* you paste — then, as a first sanity check, its ramp-up reply should reference the state block and OPEN_ITEMS (that's how you know it actually read the files rather than winging it). This session stays live with all context if you want the side-by-side afterward — bring Fable's analysis back here and I'll critique it against the same broker truth.
+
+---
