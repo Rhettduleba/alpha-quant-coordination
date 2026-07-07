@@ -20221,3 +20221,68 @@ One honest note up front, in the spirit of the rule itself: the mission is "as p
 Ready when you are — yesterday's 27 round-trips and this morning's tape are all reconciled and loaded, so pick any trade and we'll take it apart.
 
 ---
+
+
+## Turn — 2026-07-07 12:33:04 ET
+
+**Rhett:**
+
+Lets discuss this trade. There was no momentum going into the entry. Is momentum one of our entry signals? Should it be?
+
+**Claude Code:**
+
+Good trade to pick — HONA was the second-worst loser of the day and it's a clean specimen of a specific failure mode. Before I judge your insight, let me pull the actual rule values the bot saw at 12:35, so the math is real and not from memory.
+Your insight is **correct in substance, and this trade is a textbook specimen of the system's weakest entry pattern.** But let me sharpen one technical detail first, then show you exactly why the bot bought it — with the real numbers from the logs — because the precise way you're right matters for what we'd fix.
+
+## 1 · The verdict on your read
+
+There actually *was* a tiny burst of momentum at the entry — there has to be, mechanically. The bot doesn't buy at market; it places a **buy-stop order** (an order that only triggers if price rises up and touches it) above the recent high. HONA had a 3-bar push from ~256.50 to 259.58 that tripped the order. So on a 1-minute microscope, yes, momentum existed for about three minutes.
+
+But on every timescale that matters, you're right — **the momentum was stale, thin, and already dying:**
+
+- **Stale:** HONA's day high was $266.62. Our entry level was $259.58 — **2.6% below the high of the day**. The +4.6% "mover" status that qualified it was earned in the morning, hours earlier. By 12:35 PM the stock was making lower highs off that peak. We bought a "breakout" into a stock that was already rolling over.
+- **Thin:** RelVol (Relative Volume — today's volume pace divided by its normal pace) was **0.98**. That means HONA was trading 2% *below* its average volume. A real midday breakout has fresh buyers showing up; this had nobody.
+- **Dying instantly:** MFE (Maximum Favorable Excursion — the most the trade was ever up) was **+$33 total**, about 43 cents per share. MAE (Maximum Adverse Excursion — the worst it went against us) was **−$378, which equals the final loss**. Read that pairing plainly: the trade peaked within minutes of filling and exited at its low. It never worked for a single bar.
+
+## 2 · The math of why the bot entered (rule by rule, from the actual logs)
+
+The 12:35 PM re-arm window works in four steps. Here's each rule and HONA's actual number against it (pulled from `multiscan_trace.jsonl` and the scanner code — verified, not from memory):
+
+**Step 1 — Liquidity gates (pass/fail):**
+| Rule | Threshold | HONA | Result |
+|--|--|--|--|
+| Price floor | ≥ $5.00 | $259.58 | ✅ (52× over) |
+| Prior-day volume | ≥ 1,000,000 shares | passed | ✅ |
+| Average daily volume | ≥ 500,000 shares | passed | ✅ |
+
+**Step 2 — Mover ranking (relative, no floor):** the scanner ranks the day's gainers and losers by `score = RelVol × exhaustion penalty`. HONA: 0.98 × ~0.96 = **score 0.938**. Here's the critical part: **there is no minimum score.** "Top movers" means top *relative to the rest of the list that hour* — and at 12:35 the list was picked clean. The trace shows 19 candidates, and the highest scorers (RMD 2.61, S 2.09, STZ 1.25, TGT 1.18) were all **blocked by the one-entry-per-name-per-day cap** because we'd already traded them in the morning. Thirteen names were re-entry-capped, two already held. HONA got armed with a 0.938 score because *it was what was left*. Only 4 names armed in that window; HONA was one of them purely by survivorship.
+
+**Step 3 — Vetoes:** earnings blackout — passed; hard-to-borrow — passed; already-crossed-level check — passed. Note the market-cap check returned **UNKNOWN** (data gap on this newer listing, flagged in yesterday's bug report) and the path fails open, so no block.
+
+**Step 4 — Trigger and size:** entry level = the **high of the previous 5 one-minute bars** = $259.58. Sizing = the smaller of a risk-based share count and the ~$20,000 standard slice: 77 shares × $259.58 = **$19,988 notional**. Buy-stop armed 12:35:08, filled at $259.57 at 12:38:53 (broker time — the dashboard's "12:35:18" is the submit time, that's display bug #2 from yesterday's report).
+
+So the mathematical reason the bot entered is uncomfortable but simple: **a below-average-volume stock qualified as a "top mover" on a 4.6% move that was hours old, because the ranking is relative, the good names were used up, and no rule anywhere demands fresh participation.** The dashboard narrative ("had no business being selected") and your eyeball reached the same conclusion, and the data supports both.
+
+## 3 · Is momentum one of our entry signals?
+
+Yes — three forms of it, but notice what's missing:
+
+1. **Day-level price momentum:** the stock must be one of the day's bigger movers vs. yesterday's close (HONA +4.6%).
+2. **Volume interest:** RelVol is the *ranking* key — but it's a ranking, **not a requirement**. 0.98 ranks low but still arms if the list is thin.
+3. **Micro-trigger:** the buy-stop only fills if price is actively pushing up through the 5-minute high.
+
+What we do **not** measure anywhere: whether the move is *fresh* (HONA's was 3 hours old and 2.6% off its peak) and whether volume is *actually elevated* (a floor, not a rank). Your instinct found the exact hole.
+
+## 4 · Should it be? Here's where I'll push back on the obvious fix
+
+The tempting answer is "require RelVol ≥ 1.0 and it's fixed." On 7/06 alone that filter removes HONA (0.98), NTAP (0.9), PENN (0.9) — all losers, ≈ **$494 saved**, zero winners cut. Looks great.
+
+**But I have to be straight with you: we already tested RelVol as an entry edge on 7/03, across 221 trades, and it was a head-fake** — high-RelVol entries did not reliably outperform. One day where the filter looks perfect is exactly how curve-fitting starts. The honest statement is: RelVol as a *general* entry signal is falsified; RelVol < 1.0 as a *disqualifier on midday re-arm windows specifically* is a narrower, untested hypothesis — plausible, cheap, and worth testing **in shadow only**, with the must-not-cut check (prove it wouldn't have removed winners like this morning's semiconductor shorts) and N≥30 before it touches the live path.
+
+And I'd argue the bigger structural finding from this trade isn't RelVol at all — it's **adverse selection in the later windows**. The re-entry cap systematically drains the strong names by midday, and with no score floor, the 12:35/1:35 windows arm the dregs. That mechanism predicts exactly what we've observed: the 10:35-and-later windows are now **0 wins in 12 trades** while the 9:45 window is 70% winners. If that pattern holds at N≥20, the cleaner fix isn't a new indicator — it's pulling or score-flooring the late windows entirely. Fewer moving parts, same protection.
+
+One credit where due: the exit stack did its job here. HONA closed at $237.91 — holding to the close would have lost **−$1,668**. The 30-minute time-stop took −$380 instead, **saving $1,288 on this single trade**, the biggest save of the day.
+
+**My recommendation:** I add two counterfactual cells to the shadow ledger — (a) "RelVol ≥ 1.0 floor on re-arm windows," (b) "score floor / no arms below X on 12:35+ windows" — and we let them accrue forward with the edge ledger toward N≥30. No live change. Say the word and I'll build the measurement.
+
+---
