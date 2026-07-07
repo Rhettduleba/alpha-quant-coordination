@@ -20286,3 +20286,34 @@ One credit where due: the exit stack did its job here. HONA closed at $237.91 �
 **My recommendation:** I add two counterfactual cells to the shadow ledger — (a) "RelVol ≥ 1.0 floor on re-arm windows," (b) "score floor / no arms below X on 12:35+ windows" — and we let them accrue forward with the edge ledger toward N≥30. No live change. Say the word and I'll build the measurement.
 
 ---
+
+
+## Turn — 2026-07-07 12:34:51 ET
+
+**Rhett:**
+
+Explain this screen shot from the dashboard. It would indicate that the bot di not perform under complience, why?
+
+**Claude Code:**
+
+The **NO — 18/27** is the per-trade compliance verifier doing exactly what it should, and 8 of the 9 flags are the **same known logging gap I reported to you Sunday and yesterday** — not the bot breaking a trading rule. Here's the precise breakdown:
+
+## Why it says NO (9 trades flagged, 18/27 pass)
+
+**8 flags — S, RMD, WDC, DELL, UNH, PYPL, AMT, UPST: `exit reason None → EXIT_UNCLASSIFIED`.** The compliance checker asks, for every round-trip: *"can I map this exit to one of the deployed exit rules?"* (chandelier ATR stop, $500 cap, 30-min unconfirmed time-stop, EOD flatten). These 8 exited via the **broker-side resting stop order filling on TradeStation's servers** — the bot's code never made an exit *decision*, so no exit-decision log line was written, so the checker finds `reason: None` and refuses to classify it. **The exits themselves were legitimate** — a resting stop filling IS the deployed protection working — but the checker can't *prove* it from the logs, and it's built to fail-conservative: *unverifiable = non-compliant*. That's the right failure direction (never assume compliance), but here it's flagging a bookkeeping gap, not misbehavior. This is exactly **OPEN_ITEMS build #0** — the fix (fall back to the broker's `exit_order_type` when no decision log exists) reclassifies these 8 and they flip to compliant.
+
+**1 flag is different — V short: `entry: gate re-verify FAILED: INPUT_MISSING: prior_close, dollar_vol_20d`.** This one's at *entry*, not exit: the checker re-verifies each entry against the gate rules after the fact, and for V it couldn't reconstruct the check because two inputs weren't captured in the audit trail. Same honest verdict: **"cannot prove compliant" rather than "proven violated"** — but it's a separate small gap (gate-context capture), not the exit-attribution one.
+
+The footnote line confirms the healthy picture: 27 exits = 18 time-stop-unconfirmed + 8 unclassified (the broker stops) + 1 phase-1 ATR stop. And the green panel — 27/27 symbols in-list — says universe discipline was perfect.
+
+**So: the bot traded fine; the audit trail has two capture gaps.** The compliance NO is the verifier being appropriately paranoid about what it can't prove.
+
+## The thing on this screen that actually deserves attention
+
+Not the compliance panel — this: **PEAK CAPITAL DEPLOYED $434,292 = 108.6% of the $400k cap, with REFUSED (CAPITAL) = 0.** I just verified in [risk_config.py:251](tradestation-bot/risk_config.py): `MAX_DAY_TRADE_GROSS = 400_000` is commented as a **HARD cap (FINRA 4× day-trade max)**. If peak gross truly hit $434k while the cap refused nothing, then enforcement has a timing hole — most plausibly: the pre-entry check sums *currently filled* positions, so a burst of simultaneous stop-limit entries in one window (0945 fired 16) can all pass the check and then all fill, overshooting the cap by the in-flight amount. In SIM this costs nothing; **live, a 4× BP breach is a margin violation** — so it's a before-live must-fix at minimum.
+
+Unverified until I trace it: whether the dashboard's "peak" and the enforcement's "gross" measure the same thing (fills-based concurrent notional vs decision-time estimate) — if they measure differently, the 108.6% could be partly apples-vs-oranges. That trace is read-only and I can run it from here; it does **not** require touching any watched file today. It's also a perfect precise question to hand your Fable analysis session — add to the prompt's question list: *"e. Verify: did concurrent open notional on 7/06 actually exceed MAX_DAY_TRADE_GROSS ($400k), when, by how much, and why did the capital gate refuse 0 — decision-time vs fill-time accounting?"*
+
+Want me to run that trace now, or leave it to the Fable session you're about to open?
+
+---
