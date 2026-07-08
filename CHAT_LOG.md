@@ -21718,3 +21718,43 @@ Agree — so strongly that I already froze it this morning before the open. It's
 One build note so nothing is overpromised: the spec is frozen, but the daily accrual code isn't wired into the EOD chain yet — **I'm building that today so tonight's 4:50 PM run scores today as forward day #1** for both cells (this one and FILL-DELAY-15). It joins today's work queue ahead of everything except monitoring, alongside tonight's re-entry replay.
 
 ---
+
+
+## Turn — 2026-07-08 09:35:46 ET
+
+**Rhett:**
+
+Also, let's run validation on the checker TW is it working correctly is the bot seeing tick by tick. Are there any gaps review yesterday?
+
+**Claude Code:**
+
+Right question at the right time — TW (tape watcher) is the live exit owner, and my SNDK/INTC findings this morning showed its candle stream diverging from official bars. Also, its launch task is *weekly* (Mondays 9:25), which raises the immediate question of whether it's even alive **today**. Checking liveness first, then yesterday's tick coverage:
+Validation done — here's the honest report card on your three questions:
+
+## Is TW working correctly? On its core job — yes, fully.
+
+Yesterday TW decided to fire 17 exits and **all 17 executed** (`would_fire_exit` 17 → `live_exit_fired` 17, a 100% conversion). Compare that to 7/02, its shadow-era test, when it lost 8 of 9 exits — the live-mode plumbing is fixed and doing its job. All 25 positions also got their resting broker stops placed (25/25 `would_place_stop`), so the safety layering was intact all day.
+
+## Is the bot seeing tick-by-tick? No — and now you have the exact numbers.
+
+Yesterday's stream, quantified: **3,716 gap events** (a "gap" = more than 15 seconds between prints on a watched symbol), median gap ~20 seconds, **worst gap 23.4 minutes**, plus **27 stream connects and 20 resubscribes** in one session — the connection is churning, not humming. What TW sees is the SIM feed's *coalesced last-trade prints*: when a stock trades actively it's near-real-time; when it's quiet, TW is blind until the next print; and when the stream hiccups, everything is blind together.
+
+## Were there real gaps yesterday? One real one, and a pile of benign ones.
+
+Two distinct things are mixed in that 3,716:
+1. **Benign quiet-tape** — most of it. WM, D, JNJ, LLY are slow movers; 20-second print gaps on them are the tape being quiet, not TW being broken. (The gap counter treating silence as failure is a known metric flaw — the "honest gap metric" fix has been queued for a week.)
+2. **One genuine outage: the 3:22 PM disconnect during market hours**, and the identical ~1,404-second max gaps on CBRE/VRTX/WDAY/JNJ point to a single stream-wide blind window around it. During that window your protection was the resting broker stops and the polling exit bot — the triple-backstop design existed for exactly this, and it held (CBRE, the only position held late, exited normally at 3:10, just before it).
+
+And connect this to what we found this morning: the SNDK "no green candle" mystery and INTC's lagged limit order are the *same disease* — TW's private view of the tape differs from the official record. Yesterday both quirks were harmless-to-lucky (~$15 cost on SNDK, +$127 luck on INTC). On a different day that luck reverses.
+
+## My judgment and the plan
+
+TW passes on function, **flags on data quality** — exactly what its health check concluded (verdict: FLAG). Three-step response, in priority order:
+
+1. **Today post-close:** ship the queued measurement fixes — reconnect tick-reset, the honest gap metric (distinguish "quiet tape" from "stream dead" by watching a never-quiet reference like SPY), and dense-tick logging. They're classified measurement-only/non-watched, and TW relaunches fresh every morning at 9:25, so tomorrow's session starts instrumented properly. No mid-session restart — TW owns live exits, we never touch it during trading hours.
+2. **Structural truth, unchanged:** TW cannot be materially better than its feed. The real fix is PROP-LIVE-QUOTES (the live-quote entitlement you approved 7/03, inactive pending live credentials) — until then, tick-by-tick is capped at "last-trade prints, coalesced." Worth knowing: this limitation is *SIM-specific pessimism* in one sense (live entitled quotes are denser) — one of the few places where live trading should be mechanically *better* than our test bed.
+3. **Already covered:** the journal-write gap (⭐ awaiting your GO, reporting already fixed around it) and the exit-fidelity question now have a standing daily scorecard — TW's health file writes this verdict card every day at close, so "review yesterday" is a 10-second read from now on.
+
+Today's full queue, so you can see everything in flight: wire the two frozen shadow cells into the 4:50 EOD accrual (must land before the close so today counts) → TW measurement fixes post-close → re-entry replay tonight. Monitoring loop stays on throughout.
+
+---
