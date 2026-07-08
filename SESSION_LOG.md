@@ -6144,3 +6144,5 @@ _Pinned-bar real-time method (l1_mustnotcut_audit), K pinned at 0.75 (never tigh
 _Diagnostic, in-sample. These days are in-sample for any un-promoted rule; a streak of confirming days accumulates N toward >=30 but does not promote anything -- promotion still requires a locked rule + fresh OOS forward test + the gauntlet._
 
 ---
+
+**[ALERT TRIAGE 2026-07-08 ~10:04 AM ET — scheduled autonomous run]** Code-alert inbox CLEAN (n_total=0, n_actionable=0). CSHV 50 OK / 0 WARN / 0 FAIL (bot cycling loop 1342, heartbeat 9s, all 12 positions protected). Nothing to escalate — no Rhett ping (silence=handled). Cursor advanced (--ack).
