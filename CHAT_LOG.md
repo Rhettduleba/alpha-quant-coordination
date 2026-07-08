@@ -21552,3 +21552,46 @@ Installed, service running. Generating your login link:
 The **sideways-scrolling render pass** (Phase 1) lands tomorrow before the open as planned — so by tomorrow's session you'll have the full experience: app icon → full screen → swipeable tables and charts. Tonight's research queue is untouched and up next: the 4:50 PM EOD debrief fires shortly, then your six-heading day review, the re-entry-cap replay, and the shadow-cell spec freeze.
 
 ---
+
+
+## Turn — 2026-07-08 08:39:32 ET
+
+**Rhett:**
+
+lets put the app on the sideline for a minute and talk about yesterday's EOD. lets start with me asking you about the "left on the table" review the EOD and let me know what your thoughts are about the amount we left on the table? Any trading insight, anything worth testing, why did we leave so much?
+
+**Claude Code:**
+
+Good place to dig — "left on the table" on a trend day like yesterday is exactly where our exit philosophy gets stress-tested. Pulling the real numbers from yesterday's EOD debrief first, plus checking whether my evening commitments (replay, spec freeze) actually landed before I answer:
+It's 8:38 AM — pre-open, so I can still freeze the spec this morning and today counts (details at the end). Here's the left-on-the-table review, and the answer has three layers because "left on the table" means three different things — and they point in opposite directions:
+
+## 1 · The three numbers (broker-truth ledger, derived from 1-min bars)
+
+| "Left on the table" definition | 7/07 amount | What it actually means |
+|--|--|--|
+| **vs. holding every trade to the close** | **we GAINED +$4,432 by exiting** | Hold-to-EOD on yesterday's book = **−$3,436** vs our actual **+$995.51**. The implementable alternative was much worse. |
+| **In-trade peak miss (MFE gap)** | **$2,780** | Sum of (each trade's best moment − where we actually exited). We captured **28% of available MFE** (Maximum Favorable Excursion — the best price each trade ever reached while we held it). |
+| **Post-exit fantasy peaks** (section E) | ~$8,100 | Sum of the best ticks *after* our exits. Mostly labeled "reverted by EOD" — a ceiling nobody can trade. |
+
+**So the direct answer to "why did we leave so much": mostly, we didn't.** The number that *feels* like left money (the $8.1k of post-exit peaks) is a perfect-hindsight ceiling; the number that's *real* (versus the naive alternative of holding) says the exits **added** $4.4k. And here's the two-day symmetry that proves the design is working: Monday's fade tape, exits added +$4,497; yesterday's trend tape, exits added +$4,432. **The exit stack has now added ≈$8.9k versus holding across two opposite market regimes.** That is the "edge is in the exit" conclusion, cashing itself twice.
+
+## 2 · But — the real left money is concentrated in TWO specific misses, and one of them is a genuine design gap
+
+**Miss #1, the big one: RIVN, and it's a $1,579 swing on one trade.** Look at what happened: RIVN was the *strongest signal of the entire day* — down 10.9%, relative volume 4.5× (highest on the board). We shorted at $17.41. For 30 minutes it went nowhere (MFE 3 cents!). The 30-minute unconfirmed time-stop did exactly what it's programmed to do and cut it at −$270. Then RIVN fell for the rest of the day: held-to-EOD would have been **+$1,309**. The stop-loss logic wasn't wrong — the trade genuinely hadn't confirmed — but here's my trading insight, in plain terms: **big gappers behave differently from ordinary breakouts.** A stock already down 11% on 4.5× volume tends to *base* — chop sideways while the market digests — before its next leg. A fixed 30-minute confirmation window treats a violent gapper the same as a sleepy $2 mover, and yesterday that cost us the best short of the day. This is a real, testable design gap.
+
+**Miss #2, the smaller chronic one: winner trims.** TER banked +$211 in 6 minutes via the trailing stop, then the stock kept falling (post-exit peak +$1,126, EOD +$296). CVNA +$154 vs +$512 at EOD, INTC +$251 vs +$410. Combined real (EOD-basis, not peak) money left on winners: roughly **$600**. This is the known, deliberate premium of a tight trail — and it's exactly what the shadow tournament's V8pw_wide (a wider trail variant) is testing right now, sitting at N=20 of 30 out-of-sample days with zero winners cut. The answer to this miss is already in the pipeline; it just needs its N.
+
+Also worth your eye: the **0945 window went 77% winners, +$107/trade (N=13)** yesterday vs the later re-arms at 33%, −$33/trade — third straight day the early window is the book's engine.
+
+## 3 · Tests this generates (and one new standing metric)
+
+1. **Conditional time-stop leash (the RIVN test — new, top priority):** shadow counterfactual where the unconfirmed time-stop is 60 minutes instead of 30 *only* for big movers (|day move| ≥ 5% or RelVol ≥ 2.5). Priced both ways per your invariant: RIVN-class saves *versus* the HONA-class bleeds a longer leash re-admits — Monday's 18 time-stop fires are the exact adversarial dataset. All computable from data we already have.
+2. **MFE capture ratio as a standing EOD metric:** yesterday we captured 28% of peak excursion; Monday it was negative. Every exit experiment should move this one number — adding it to the debrief makes "are we leaving less on the table" measurable instead of anecdotal.
+3. **Alternative confirmation signal for gappers:** the 0.15×ATR-in-30-min confirm missed RIVN entirely (it never ticked). Candidate: "new low-of-day break" as confirmation for shorts on big-gap names. Logged as a candidate, *not* frozen — one pre-registered test at a time.
+4. Already running and unchanged: V8pw_wide tournament (the winner-trim answer), the edge ledger, the WAIT on the confirm-keyed exit redesign.
+
+## 4 · Accountability
+
+Three things I owed you last night didn't run — the session went idle after the Tailscale setup: the six-heading EOD review, the re-entry-cap replay, and the shadow-cell spec freeze. The freeze is time-critical (it must precede any counted forward day), and since it's 8:38 AM pre-open, **I'm writing the frozen spec now, this morning, before the open** — fill-delay X=15 as the lead cell, exactly as pre-registered Monday. The replay runs tonight post-close, no excuses attached. Say the word on the RIVN leash test and it joins tonight's block as test #1.
+
+---
