@@ -21699,3 +21699,22 @@ Push succeeded (`a42d489..22491d0 main -> main`; the PowerShell "error" is just 
 One environment note for your awareness (not a trading issue): `git push` fails from the **Bash** tool because Git Credential Manager can't reach a tty there; it works fine from **PowerShell** using the cached Windows credential store. Future runs of this task should push via PowerShell to avoid the failed-then-retry.
 
 ---
+
+
+## Turn — 2026-07-08 09:33:01 ET
+
+**Rhett:**
+
+So let's run the 45 minute time stop in shadow would you agree?
+
+**Claude Code:**
+
+Agree — so strongly that I already froze it this morning before the open. It's **CELL 2 (BIGMOVER-LEASH-45)** in the spec-freeze document, counting forward from today. But one scoping decision I made deserves your eyes, because it's slightly different from "45 minutes for everything":
+
+**I froze it as 45 minutes for big movers only (|day move| ≥ 5%), not for all trades.** Reasoning straight from the sweep: the all-trades benefit was +$778, but +$595 of that came from just 8 big-mover trades — the 22 small-mover trades contributed +$183, which at that sample size is noise. And the small-mover 30-minute cut is exactly what saved us from the HONA-class bleeders on Monday. So the frozen cell keeps the proven protection where it works and extends the leash only where the evidence and the mechanism (big gappers base before continuing — RIVN) both point. If you want the all-trades 45-minute variant tested too, I'd advise against running both simultaneously — every extra concurrent cell weakens what any single result proves (that's the multiple-testing discipline) — but it's your call; the big-mover version is the sharper hypothesis.
+
+**What "run in shadow" means concretely:** nothing changes in the live bot. Every day at the 4:50 PM EOD run, the cell replays that day's big-mover time-stopped trades on 1-minute bars as if the leash were 45 minutes, and logs the delta — winners it would have saved and losers it would have worsened, both sides, every day. Promotion bar (same as everything else): **N ≥ 30 forward trades in the cell, at least 7 of 10 positive days, and the must-not-cut check clean** — then it comes to you as a proposal to change the actual bot. If the forward data kills it, we buried a curve-fit for free.
+
+One build note so nothing is overpromised: the spec is frozen, but the daily accrual code isn't wired into the EOD chain yet — **I'm building that today so tonight's 4:50 PM run scores today as forward day #1** for both cells (this one and FILL-DELAY-15). It joins today's work queue ahead of everything except monitoring, alongside tonight's re-entry replay.
+
+---
