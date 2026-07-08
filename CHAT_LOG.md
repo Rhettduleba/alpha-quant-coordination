@@ -21595,3 +21595,58 @@ Also worth your eye: the **0945 window went 77% winners, +$107/trade (N=13)** ye
 Three things I owed you last night didn't run — the session went idle after the Tailscale setup: the six-heading EOD review, the re-entry-cap replay, and the shadow-cell spec freeze. The freeze is time-critical (it must precede any counted forward day), and since it's 8:38 AM pre-open, **I'm writing the frozen spec now, this morning, before the open** — fill-delay X=15 as the lead cell, exactly as pre-registered Monday. The replay runs tonight post-close, no excuses attached. Say the word on the RIVN leash test and it joins tonight's block as test #1.
 
 ---
+
+
+## Turn — 2026-07-08 09:01:20 ET
+
+**Rhett:**
+
+on the dashboard, my 9:45 P&L candle is way down, why are you telling me that 9:45 was 77% winners? run the time stop test again, we did this before and 30 minutes was the seat spot, run it again to see if 60 minutes is better, again, we dont have that much data. We should run a test on big movers vs smaller movers and think about a stcaling exit, the bigger the mover the more wide the exit? then lets talk about the P&L for the day regarding timeline. Again the 9:45 was down, then a quick comeback and then stale. Think about the 9:45 why has that time, early trading been so poor for us? Then SNDK, i need to understand why we exited this trade, give me the math. in fact, show me the math? On the dashboard I can see no green candles at exit, tell me what exit trigger by timeline this trade exited. This stock went down to $149 from our entry at 159, acording to the chart we left a ton on the table. Lets also inspec INTC, was it a big mover, we would have made more profit if we would have stayed in that trade, give me the math for the exit?
+
+**Claude Code:**
+
+Six asks — taking them in order, but let me gather the raw material first: the exit-rule code (read-only), SNDK/INTC minute bars, and the time-stopped cohort for the sweep. This is a multi-step compute; the market opens at 9:30 so the API-heavy parts run now, pre-open:
+Spec frozen pre-open — today counts. Now every question, with the math:
+
+## 1 · "The 9:45 candle is way down — why are you telling me 77% winners?"
+
+Both numbers are true because they measure different things. The **9:45 candle** on the intraday P&L chart is **mark-to-market** — the paper value of positions entered seconds earlier. Look at the MAE (Maximum Adverse Excursion) column for the 0945 cohort: SNDK went $28.67/share against us before working (−$344 on paper), GEV −$370, INTC −$430, RIVN −$781, MU −$270, TER −$267… **the book was roughly −$2,000 on paper minutes after entry, before the shorts started paying.** That's the red candle you see. The **77%** is the *final grade* of those same 13 positions after their exits (10 winners, +$1,391 net). The candle is the ride; the stat is the destination — and the ride is real information: our stop-entries buy the breakout *tick* of already-extended movers, so immediate adverse excursion is structural. We pay for the confirmation we're demanding.
+
+## 2 · Time-stop re-run: 30 vs 45 vs 60 minutes
+
+Honesty first: I can't find an artifact showing a formal sweep ever picked 30 as the sweet spot — the 30 came from the 7/01 proposal on the pre-deployment cohort. So I ran the sweep fresh on the **actual live cohort: all 30 time-stopped trades from 7/06–7/07**, replayed on 1-minute bars:
+
+| Leash | Total net (cohort) | vs actual 30-min | Big movers (≥5%, N=8) | Small movers (N=22) |
+|--|--|--|--|--|
+| 30 min (actual) | −$3,596 | — | — | — |
+| **45 min** | −$2,818 | **+$778** | **+$595** | +$183 |
+| 60 min | −$3,169 | +$427 | +$468 | −$41 |
+| 90 min | −$3,363 | +$234 | +$242 | −$9 |
+
+Read: **45 beats 30 on this cohort, and nearly all the benefit lives in the big movers** — the small-mover extension is noise. Also: 5 of the 30 would have *confirmed* between minute 30 and 60 (RIVN among them) and graduated to the trail instead of being mercy-killed. Your caution is right — N=30, two days, in-sample — which is why this is now **frozen as a forward shadow cell (BIGMOVER-LEASH-45: 45-minute leash for |move|≥5% names only)**, counting from today. Not a live change.
+
+## 3 · Big vs small movers — your scaling-exit idea
+
+All 52 trades of the two days: **big movers (≥5%) were our best bucket** (−$7/trade, 53% win) while the mid-band (2.5–5%) was worst (−$32/trade). Combined with the sweep above and the SNDK/INTC mechanics below, your intuition — *the bigger the mover, the wider the exit* — now has three independent supporting reads. The leash cell tests the time dimension; the trail dimension (below) goes to the exit tournament as a variant.
+
+## 4 · SNDK — the full math, and your "no green candles" mystery solved
+
+- Short 12 shares @ $1,594.83, filled 9:51:36. **ATR (Average True Range) = $173.33** — this stock swings 11% a day.
+- **Confirmation level** = entry − 0.15×ATR = 1594.83 − 26.00 = **$1,568.83**. SNDK ground down slowly and finally crossed it **at 10:09**.
+- **Exit rule after confirming:** first *green* 1-minute candle close. The exit fired at **10:10:02 @ $1,568.53 — one minute after confirming.**
+- **Your mystery:** on your chart, 10:08 and 10:09 are RED. Correct — the official 10:09 bar (O 1573.00 → C 1563.65) is red. The trigger came from the **tape watcher, which builds candles from its own trade-print stream**, and its minute-candle registered green (its stream missed the early prints of that minute, so its "open" was lower than the official open). Before you worry: the official-rule exit would have been the 10:10 candle (green, C 1569.77), exiting at ~10:11 — **the same price within a dollar a share of nothing.** Cosmetic this time, but it's the known tape-watcher data-fidelity gap on record.
+- **The "ton on the table":** yes and no. SNDK flushed to **$1,485.02 at 10:43** — the $149-region low you saw — which is +$1,002 more *at the perfect bottom tick*. But it then reversed violently and **closed at $1,619.26 — above our entry**. Holding to the close = **−$295** versus our +$313.59. So the chart's "ton" was only collectible by a *better trail*, never by holding. Which leads to the real finding:
+
+**The mechanical insight from SNDK (and it's the day's most important one):** on a $173-ATR stock, 1-minute candles flip color constantly — so "exit on the first green candle" means **a confirmed big mover gets held for roughly one to three minutes before something exits it.** SNDK: confirmed 10:09, exited 10:10. The phase-2 trail, as written, is effectively a take-profit button on precisely the trades with the most continuation in them. That's your scaling-exit thesis, proven mechanically: the trail needs volatility scaling (require the reversal candle to close ≥ some fraction of ATR against us, or two consecutive opposite closes, or 5-minute candles for big movers). Goes to the tournament as a variant — where V8pw_wide (a wider-trail variant) is already at N=20 of 30 OOS days for the same underlying reason.
+
+## 5 · INTC — same disease, luckier symptoms
+
+Big mover? **Yes** — down 6.0% on 2.8× relative volume. Short 177 @ $112.85 (9:53). Confirm level $111.46. INTC printed green minute-candles at 9:57, 9:59, 10:00, and 10:03 *while grinding lower* — that's what a volatile downtrend looks like at 1-minute resolution, and any one of them post-confirm ends the trade. The tape watcher exited ~10:03:29, placing its cover limit at $111.41 (its lagged last-seen price — it got *lucky*: the limit filled on the 10:04 flush at a better price than the market showed at decision time). Result +$251.34, which was **93% of the trade's MFE at that moment** — the exit wasn't bad *at the time*. But INTC kept bleeding all day: close $110.51 → hold-to-close **+$411 net** (we left $159), perfect tick $108.30 at 3:19 PM (+$550). Same lesson as SNDK, milder dose.
+
+## 6 · The bottom line on the day, timeline version
+
+Deep red at 9:45–9:55 (entry MAE, structural) → sharp comeback 9:55–10:15 as the semi shorts paid → **stale-to-fade afternoon** (the 10:35+ re-arms went 33% winners, −$396, grinding the day from ~+$2,100 at mid-morning to +$995.51 at the close). Early trading is "poor" historically (−$28/trade in the 9:30–10:00 fill bucket, N=107) because of exactly what you watched: maximum fake-outs, maximum spread, and our structural buy-the-extension entry — but note the new 0945 *cohort* has now been net-positive two of its three live days. The morning isn't the problem; the *first ten minutes of mark-to-market* and the *afternoon re-arms* are.
+
+**On record from this session:** the spec is frozen (both cells count from today), the RIVN/SNDK/INTC findings and the leash sweep are in SESSION_LOG, and tonight's block owes you the re-entry replay — third time asking myself for it, so it runs first.
+
+---
