@@ -22236,3 +22236,29 @@ Run the SELF_MONITORING_PLAYBOOK.md intraday check for the Alpha Quant bot (C:\A
 Tick clean at 11:16 — CSHV **50 OK / 0 WARN / 0 FAIL**, inbox clear, heartbeat 2.4s, journal fresh. Bot trading normally, 11:35 window arms in ~19 minutes. No action, no log entry, no ping. Next tick ~11:30.
 
 ---
+
+
+## Turn — 2026-07-09 11:21:04 ET
+
+**Rhett:**
+
+we also need to build a TW restart saftey mechanise in case a situation like this morning.
+
+**Claude Code:**
+
+Good news — **this exists as of 10:22 this morning.** After the beacon relapsed and exposed the reboot-orphan class, I built the TW mechanism in the same pass (it's in SESSION_LOG as "REBOOT-ORPHAN CLASS FIXED"). You may have been reading the deadman thread when it went by. Here's what's live, plus proof it's actually running:
+Confirmed running — here's the complete TW safety mechanism now in place, layer by layer:
+
+**Layer 1 — automatic restart within ~2 minutes (built this morning, 10:22).** The Supervisor Guardian (a scheduled task that runs every 2 minutes, survives any reboot by nature) now includes `_recover_tape_watcher()`: during market hours on a trading day, if **no TW process exists**, it re-fires the TW launch task. Evidence it's live: the guardian's last run was 11:20:01 (result 0) on the new code (deployed 10:19:52), and its own log shows the recovery line from this morning's verification test. This covers *both* the reboot-orphan case (this morning's incident) *and* a plain mid-day TW crash — strictly better than a boot trigger alone would have been.
+
+**Layer 2 — single-instance guarantee.** The guardian only acts on *absence*, and TW's launcher owns its own retry loop and 4:35 PM self-end — so two tape watchers fighting over the exit lease is structurally impossible. (That's also why I chose guardian-based recovery over adding a boot trigger to TW's task, which could have raced the daily 9:25 launch into a double-start.)
+
+**Layer 3 — the zombie case.** If TW is *alive but frozen* (process exists, stream dead — the one thing a process check can't see), the exit-ownership lease design already fails open: TW stops renewing its lease and the polling exit bot reclaims exit duty automatically. Slower exits, never absent ones.
+
+**Layer 4 — the floor.** Resting 1.4×ATR broker stops sit under every position at the broker itself, indifferent to whether any of our software is breathing.
+
+**Layer 5 — escalation.** A successful auto-recovery posts a Discord note (no phone, per your alarm contract). If the guardian *fails* to restart TW, that pages your phone CRITICAL — because that's the one state needing a human.
+
+So this morning's failure mode is closed end-to-end: worst case today, TW dies at 10:00 AM and is back by 10:02 with a Discord breadcrumb, exits covered by the poller and resting stops for the gap. Nothing further to build here unless you want a belt on the suspenders — the one enhancement I considered and parked is a TW *stream-quality* re-fire (restart TW when its tick stream goes silent while positions are open), but that's better solved by the PROP-LIVE-QUOTES feed upgrade than by restart churn, and the lease fail-open already covers the exposure.
+
+---
