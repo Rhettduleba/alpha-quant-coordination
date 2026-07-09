@@ -21915,3 +21915,36 @@ Because everything the bot caught today has already been caught and released —
 One design observation worth having in your head: on trend days (yesterday morning) this rhythm prints money fast; on days like today it grinds small losses through commissions and time-stops — that's exactly the regime asymmetry all our current shadow tests (the leash cell, the fill-delay cell, the wider-trail tournament) are trying to price. Today is forward day #1 for both frozen cells, and I'm wiring their daily accrual into the 4:50 PM EOD chain this afternoon so tonight's debrief scores it.
 
 ---
+
+
+## Turn — 2026-07-09 09:34:55 ET
+
+**Rhett:**
+
+i had to reboot the VPS, please check all sysytem and make sure the bot is working
+
+**Claude Code:**
+
+On it — exposure first, then process-by-process. Also getting the reboot time so I know exactly what the outage window was:
+**All systems verified — the bot is trading-ready, and you rebooted at the one moment it cost nothing.** Full report:
+
+## What survived the reboot on its own (boot-started automatically at 9:30)
+- ✅ **run_bot** — fresh process, heartbeat cycling (loop advancing, journal writing)
+- ✅ **watchdog_supervisor** — up
+- ✅ **Dashboard server** — up (the auto-start task I created Tuesday did its job; your iPad URL will be live)
+- ✅ **Tailscale** — service running
+- ✅ **Broker exposure through the outage: zero** — 0 positions, 0 working orders. The reboot landed in the gap before the day's first entry window (9:45), so nothing was unprotected for even a second.
+
+## What I had to fix — one real catch
+- ⚠️→✅ **Tape watcher was down.** Its daily launch task fired at 9:25, and your 9:30 reboot killed it two minutes later — it has no reboot trigger, so it would have stayed dead all day, leaving exits to the slower polling backup and resting stops. Restarted it at **9:33:30**, with the book flat, twelve minutes before the first entries — the live exit owner is back in its seat before anything needs exiting.
+- ✅ **Supervisor guardian** is a scheduled task (fired at 9:34 — it re-spawns anything else missing), invariant guardian runs at 10:00, CSHV was 50/0/0 at its last tick and re-runs every 5 minutes.
+
+## Gate results
+- **Preflight diagnostic: 39 PASS / 2 WARN / 0 FAIL** — both warnings known-benign (the H5 state file that gets created on its first cycle, and the stale-check-meta audit nit from the 6 AM gate).
+- **Monitor loop re-armed** for today (every 15 minutes; first tick will confirm the 9:45 window arms normally and TW is firing).
+
+**One structural takeaway, logged and queued:** today only went smoothly because you told me about the reboot and I caught TW manually — that's vigilance, and our house rule is *encode invariants, not vigilance*. The fix is one line of task config: give `AlphaQuant_TW_LiveExit` a boot trigger so the live exit owner can never be orphaned by a reboot again. It's non-watched task plumbing; I'll add it at today's close (not mid-session — changing the live exit owner's task while it's running RTH is exactly the kind of thing we don't do) and verify it in tomorrow's pre-open.
+
+The 9:45 window fires in about ten minutes — I'm watching it arm on the first monitor tick.
+
+---
