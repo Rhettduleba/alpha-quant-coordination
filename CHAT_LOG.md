@@ -22157,3 +22157,23 @@ Worth saying for the live-trading future: your "tragic news" scenario also has a
 Building the detection invariant now; sweeper proposal lands tonight with the rest of the evening queue (EOD accrual wiring, TW boot trigger, replay, and your OVH decision whenever you've made it).
 
 ---
+
+
+## Turn — 2026-07-09 11:02:29 ET
+
+**Rhett:**
+
+Run the SELF_MONITORING_PLAYBOOK.md intraday check for the Alpha Quant bot (C:\AlphaQuant). STEPS: (1) Confirm ET time + market state; if past 4:00 PM ET / market closed, do a final EOD-flat check then STOP looping (CronDelete this job). (2) Read the SAME warnings Rhett gets: run `python C:\AlphaQuant\tradestation-bot\alerts_bridge.py` (bot_alerts 24h summary — any FAIL in the last hour is top priority), read C:\AlphaQuant\CSHV_FINDINGS.md (any FAIL/CRITICAL/WARN), and code_alert_inbox (python C:\AlphaQuant\tradestation-bot\code_alert_inbox.py --json) actionable items. (3) Trade-liveness (the 7/02 catch): after 10:45 AM confirm >=1 ORB_V16_ENTRY_OK in today's bot_alerts.jsonl; if 0 on an open regular trading day, run reliability_checks.check_alive_but_not_trading() and diagnose the cause. (4) ACT per the action matrix: verify each warning vs broker truth FIRST; fix non-watched issues now (+ regression-lock); for WATCHED trading files (orb_*, exit_bot_v2, risk_config, bot_loop, candle_close_exit, short_bot, mover_scanner, advisor_filter_engine, symbol_universe, tape_watcher) never edit mid-session — surface + propose + escalate to Rhett. (5) Log a one-line status to SESSION_LOG.md only if an action was taken. Only ping Rhett if it's actionable for him or I had to escalate; otherwise silence = handled. EXTRA today (post-reboot 9:30 AM): watch that the 0945 window armed normally and TW (restarted 9:33) is firing exits; supervisor_guardian task fired 9:34.
+
+**Claude Code:**
+
+Tick clean at 11:01 (CSHV 50/0/0, inbox clear, both morning windows traded) — and the promised detection layer is **live and verified**:
+
+- **New invariant #4 deployed:** `inv_no_orphaned_close_orders` — every hourly guardian run now scans broker truth for any working close-side order sitting on a flat symbol (the manual-close debris scenario), with a 3-minute grace window so it can't false-fire on an exit that's mid-fill. If it ever finds one, it pages CRITICAL with the exact symbol and order ID plus the fix instruction.
+- **Proof:** selftest passes (and it correctly reports clean against the live book — 5 positions currently held, no orphans), regression suite still 49/0/3, and the guardian picks it up on its next scheduled run automatically.
+
+So as of now: if you manually close a trade and forget the resting stop, the system *tells us* within the hour instead of silently holding a reverse-fill trap until 3:50 PM. The automatic *cancel* (the sweeper) remains tonight's proposal for your GO, since it acts on live orders. Interim SOP stands: manual close → also cancel that symbol's resting stop in the TradeStation UI.
+
+Also noteworthy from the invariant's live reading: the bot is currently holding **5 positions** from the 10:35 window — a normal mid-morning book. Next tick ~11:15.
+
+---
