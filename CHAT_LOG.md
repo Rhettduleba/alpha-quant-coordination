@@ -22116,3 +22116,16 @@ This is your cloud provider (OVHcloud) telling you they will **force-restart the
 **One decision needed from you: pause tomorrow's morning entries (my recommendation), or trade through the maintenance window and accept the risk?**
 
 ---
+
+
+## Turn — 2026-07-09 10:46:08 ET
+
+**Rhett:**
+
+Run the SELF_MONITORING_PLAYBOOK.md intraday check for the Alpha Quant bot (C:\AlphaQuant). STEPS: (1) Confirm ET time + market state; if past 4:00 PM ET / market closed, do a final EOD-flat check then STOP looping (CronDelete this job). (2) Read the SAME warnings Rhett gets: run `python C:\AlphaQuant\tradestation-bot\alerts_bridge.py` (bot_alerts 24h summary — any FAIL in the last hour is top priority), read C:\AlphaQuant\CSHV_FINDINGS.md (any FAIL/CRITICAL/WARN), and code_alert_inbox (python C:\AlphaQuant\tradestation-bot\code_alert_inbox.py --json) actionable items. (3) Trade-liveness (the 7/02 catch): after 10:45 AM confirm >=1 ORB_V16_ENTRY_OK in today's bot_alerts.jsonl; if 0 on an open regular trading day, run reliability_checks.check_alive_but_not_trading() and diagnose the cause. (4) ACT per the action matrix: verify each warning vs broker truth FIRST; fix non-watched issues now (+ regression-lock); for WATCHED trading files (orb_*, exit_bot_v2, risk_config, bot_loop, candle_close_exit, short_bot, mover_scanner, advisor_filter_engine, symbol_universe, tape_watcher) never edit mid-session — surface + propose + escalate to Rhett. (5) Log a one-line status to SESSION_LOG.md only if an action was taken. Only ping Rhett if it's actionable for him or I had to escalate; otherwise silence = handled. EXTRA today (post-reboot 9:30 AM): watch that the 0945 window armed normally and TW (restarted 9:33) is firing exits; supervisor_guardian task fired 9:34.
+
+**Claude Code:**
+
+Tick clean at 10:46 — CSHV **50 OK / 0 WARN / 0 FAIL** (three consecutive green runs since the beacon fix), inbox clear, heartbeat 19s. **Trade-liveness check passed:** 22 entry arms today across the 0945 and 1035 windows — the post-reboot session is fully normal. No action, no log, no ping. Next tick ~11:00. Still waiting on your call re: tomorrow's OVH maintenance window (pause morning entries vs. trade through) — no rush, the flag wouldn't move until after today's close either way.
+
+---
