@@ -21971,3 +21971,16 @@ Tick report, 9:50 AM — post-reboot trading confirmed live, two findings, both 
 Also queued from this morning, unchanged: the TW-task boot trigger (tonight, at the close), the shadow-cell EOD accrual wiring (before 4:50), and the re-entry replay (tonight). Next tick ~10:05.
 
 ---
+
+
+## Turn — 2026-07-09 10:01:30 ET
+
+**Rhett:**
+
+Run the SELF_MONITORING_PLAYBOOK.md intraday check for the Alpha Quant bot (C:\AlphaQuant). STEPS: (1) Confirm ET time + market state; if past 4:00 PM ET / market closed, do a final EOD-flat check then STOP looping (CronDelete this job). (2) Read the SAME warnings Rhett gets: run `python C:\AlphaQuant\tradestation-bot\alerts_bridge.py` (bot_alerts 24h summary — any FAIL in the last hour is top priority), read C:\AlphaQuant\CSHV_FINDINGS.md (any FAIL/CRITICAL/WARN), and code_alert_inbox (python C:\AlphaQuant\tradestation-bot\code_alert_inbox.py --json) actionable items. (3) Trade-liveness (the 7/02 catch): after 10:45 AM confirm >=1 ORB_V16_ENTRY_OK in today's bot_alerts.jsonl; if 0 on an open regular trading day, run reliability_checks.check_alive_but_not_trading() and diagnose the cause. (4) ACT per the action matrix: verify each warning vs broker truth FIRST; fix non-watched issues now (+ regression-lock); for WATCHED trading files (orb_*, exit_bot_v2, risk_config, bot_loop, candle_close_exit, short_bot, mover_scanner, advisor_filter_engine, symbol_universe, tape_watcher) never edit mid-session — surface + propose + escalate to Rhett. (5) Log a one-line status to SESSION_LOG.md only if an action was taken. Only ping Rhett if it's actionable for him or I had to escalate; otherwise silence = handled. EXTRA today (post-reboot 9:30 AM): watch that the 0945 window armed normally and TW (restarted 9:33) is firing exits; supervisor_guardian task fired 9:34.
+
+**Claude Code:**
+
+Tick clean at 10:01 AM — and the 9:50 fix is **verified closed**: CSHV back to 50 OK / 0 WARN / 0 FAIL (the deadman beacon FAIL cleared after the restart; its alert was the one inbox item, now acknowledged — inbox 0/0/0). Bot healthy and trading: heartbeat 2s, journal 18s. The lone 24-hour WARN in the alerts summary is the earnings-calendar staleness already handled at 9:50 (fresh data staged, live swap gated). Nothing new, no ping. Next tick ~10:15.
+
+---
