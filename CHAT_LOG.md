@@ -22129,3 +22129,31 @@ Run the SELF_MONITORING_PLAYBOOK.md intraday check for the Alpha Quant bot (C:\A
 Tick clean at 10:46 — CSHV **50 OK / 0 WARN / 0 FAIL** (three consecutive green runs since the beacon fix), inbox clear, heartbeat 19s. **Trade-liveness check passed:** 22 entry arms today across the 0945 and 1035 windows — the post-reboot session is fully normal. No action, no log, no ping. Next tick ~11:00. Still waiting on your call re: tomorrow's OVH maintenance window (pause morning entries vs. trade through) — no rush, the flag wouldn't move until after today's close either way.
 
 ---
+
+
+## Turn — 2026-07-09 10:56:07 ET
+
+**Rhett:**
+
+we should probaly put the following in now or code and fire later what ever you recopnmend. The sysytem needs to be able to understand or not fail if i manually close out trades. When we go liv, if some traject news comes out or if i simply want to close out a trade and i do it mainlualy how will that effect the sysytem?
+
+**Claude Code:**
+
+Excellent question to ask *before* it matters — and it has exactly one dangerous answer buried in it. Let me verify what the system actually does today with a manually-closed position before advising (the critical piece: what happens to the bot's resting protective stop after you close by hand):
+Verified — and your instinct found a real hole. Here's the full picture:
+
+**What already tolerates a manual close gracefully (verified):** the accounting pairs your close fill from broker truth automatically (the books stay penny-accurate); the bot's internal position book rebuilds from the broker every cycle, so nothing "argues" with you; the exit engines simply see no position and stand down; the re-entry cap means the bot won't re-buy the name you just closed (1 entry per name per day); and the reports would show the exit honestly as "unclassified" (cosmetic — we can label it MANUAL).
+
+**The one dangerous gap: the orphaned protective stop.** When the bot enters, it parks a resting stop at the broker (the 1.4×ATR safety net). The bot only cancels that stop **when it exits the trade itself.** If *you* close the position by hand, nothing today notices — exit_bot_v2 iterates positions, and your symbol just vanished from its list. The resting stop **stays live at the broker until the 3:50 PM flatten**. If price crosses it in the meantime, it fills — and since you're flat, **it opens a brand-new position in the opposite direction.** Close a long by hand at 11 AM, stock keeps falling, the leftover sell-stop triggers → you're now short without asking. In SIM that's dirty data; live, that's real money in a trade nobody chose. This is the exact class of thing that must be dead before live.
+
+**My recommendation — split it, some now, some tonight (and I've checked the code, so this is grounded, not a guess):**
+
+1. **Detection: deploying today** (non-watched, safe during hours): a fourth invariant in the guardian — *"no working close-side order may exist on a flat symbol"* — with a short grace period for fill races. From its next hourly run, if you manually close and a stop gets orphaned, you and I both get paged within the hour instead of finding out via a surprise position.
+2. **The cure: proposal tonight, deploy at a flat window on your GO** (it cancels live orders → watched-path discipline): an **orphan-stop sweeper** in the exit cycle — every pass, any working close-side order on a flat symbol gets cancelled, with a two-cycle confirmation so it can never race a fill that's mid-flight. Plus the cosmetic piece: manual closes get labeled `MANUAL/HUMAN` in every report instead of "unclassified" (your hand-placed orders carry no strategy tag, so they're cleanly identifiable).
+3. **Until the sweeper ships, one-line SOP for you:** if you manually close a trade, **also cancel the bot's resting stop** for that symbol in the TradeStation UI (it'll be the one working order left on that name). Thirty seconds, closes the hole manually.
+
+Worth saying for the live-trading future: your "tragic news" scenario also has a cleaner lever than closing trades by hand — the advisor channel already speaks `BLOCK_SYMBOL_DUE_TO_NEWS` and `BLOCK_ALL_NEW_ENTRIES` (honored), so "get me out and keep me out" can be: manual close (your judgment, instant) + the block (system stays out) + the sweeper (no debris). That trio is the manual-override story I'd want proven in SIM well before real money.
+
+Building the detection invariant now; sweeper proposal lands tonight with the rest of the evening queue (EOD accrual wiring, TW boot trigger, replay, and your OVH decision whenever you've made it).
+
+---
