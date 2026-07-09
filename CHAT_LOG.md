@@ -21948,3 +21948,26 @@ On it — exposure first, then process-by-process. Also getting the reboot time 
 The 9:45 window fires in about ten minutes — I'm watching it arm on the first monitor tick.
 
 ---
+
+
+## Turn — 2026-07-09 09:49:25 ET
+
+**Rhett:**
+
+Run the SELF_MONITORING_PLAYBOOK.md intraday check for the Alpha Quant bot (C:\AlphaQuant). STEPS: (1) Confirm ET time + market state; if past 4:00 PM ET / market closed, do a final EOD-flat check then STOP looping (CronDelete this job). (2) Read the SAME warnings Rhett gets: run `python C:\AlphaQuant\tradestation-bot\alerts_bridge.py` (bot_alerts 24h summary — any FAIL in the last hour is top priority), read C:\AlphaQuant\CSHV_FINDINGS.md (any FAIL/CRITICAL/WARN), and code_alert_inbox (python C:\AlphaQuant\tradestation-bot\code_alert_inbox.py --json) actionable items. (3) Trade-liveness (the 7/02 catch): after 10:45 AM confirm >=1 ORB_V16_ENTRY_OK in today's bot_alerts.jsonl; if 0 on an open regular trading day, run reliability_checks.check_alive_but_not_trading() and diagnose the cause. (4) ACT per the action matrix: verify each warning vs broker truth FIRST; fix non-watched issues now (+ regression-lock); for WATCHED trading files (orb_*, exit_bot_v2, risk_config, bot_loop, candle_close_exit, short_bot, mover_scanner, advisor_filter_engine, symbol_universe, tape_watcher) never edit mid-session — surface + propose + escalate to Rhett. (5) Log a one-line status to SESSION_LOG.md only if an action was taken. Only ping Rhett if it's actionable for him or I had to escalate; otherwise silence = handled. EXTRA today (post-reboot 9:30 AM): watch that the 0945 window armed normally and TW (restarted 9:33) is firing exits; supervisor_guardian task fired 9:34.
+
+**Claude Code:**
+
+Beacon task fired manually and its schedule re-engaged (next auto-run 9:50). Now the earnings calendar refresh:
+All handled — tick summary (actions were taken, so it's logged):
+Tick report, 9:50 AM — post-reboot trading confirmed live, two findings, both actioned:
+
+**The good:** the 9:45 window armed **16 entries** on schedule — the reboot cost the day nothing. Bot cycling (heartbeat 9s), TW in its seat, and the clean-day streak hit **6 consecutive** (quiet milestone worth knowing about).
+
+**Finding 1 — the CSHV FAIL that paged you (this one was legitimate):** the **deadman beacon** — the little emitter that pings an outside service every 15 minutes to prove the VPS is alive — missed its beats around your 9:30 reboot, so the outside world briefly thought the box might be dead. I fired it manually and its schedule re-engaged; the FAIL should clear on the next 5-minute CSHV run. Note this page passed the new noise contract correctly: it persisted two consecutive runs (real reboot aftermath, not a flap), so it *deserved* your phone. The alarm system working as designed, one day after we built it.
+
+**Finding 2 — stale earnings calendar (warning, not a page):** the earnings-veto's calendar aged past its 3-day freshness bar, meaning a newly-scheduled earnings report could theoretically slip past the blackout. I ran the refresher: **547 symbols across 14 days staged** — but here's the part that needs your eyes eventually, not today: the refresher *deliberately* writes to a staging file and refuses to touch the live calendar the veto reads. Pointing the veto at the fresh feed is a designed-but-gated change (and it has a known prerequisite: the veto assumes earnings hit at 9:30 AM, so after-market-close reports need a wider blackout window first — the "Phase C" carry-note in the module). That pair goes on the decision list with the TW journal fix — no urgency, the current calendar still covers the big names through 7/25.
+
+Also queued from this morning, unchanged: the TW-task boot trigger (tonight, at the close), the shadow-cell EOD accrual wiring (before 4:50), and the re-entry replay (tonight). Next tick ~10:05.
+
+---
