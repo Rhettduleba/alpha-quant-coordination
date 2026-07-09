@@ -22081,3 +22081,38 @@ Run the SELF_MONITORING_PLAYBOOK.md intraday check for the Alpha Quant bot (C:\A
 Tick clean at 10:31 — the one inbox item was the deadman relapse alert from ~10:15, which is the incident already root-caused and fixed at 10:22 (beacon self-firing since, CSHV green two consecutive runs: 50 OK / 0 WARN / 0 FAIL). Acknowledged it; inbox clear. Bot healthy (heartbeat 4.6s, journal 20s), 0945 window traded, 1035 window arms in ~4 minutes. No new action, no ping. Next tick ~10:45 (includes the trade-liveness check).
 
 ---
+
+
+## Turn — 2026-07-09 10:44:12 ET
+
+**Rhett:**
+
+please see this from the VPS and advise me. Dear Valued OVHcloud US customer,
+As part of our continuous security operations, we will deploy a mandatory security patch on the resource names listed below.
+This action is preventive and controlled. The patch has already been tested, and our teams are now overseeing the deployment progressively across our infrastructure.
+This change window will last approximately 8 hours; during which there will be a service interruption lasting 30 minutes or less affecting your PCI instance. Important information: 2 VMs within the same PCI project that would be hosted on different physical hypervisors will not be restarted at the same time. All Public Cloud API will remain available during the operation.
+Project Name	Instance Name	Data Center	Change Window
+[REDACTED]	win-b3-8-us-east-va-1	VIN	2026-07-10, 07:00 - 16:00 UTC
+Need Support? Contact our team using the guide here.
+We remain committed to maintaining a secure, reliable, and transparent infrastructure for our customers.
+Best regards,
+The OVHcloud US Team
+
+**Claude Code:**
+
+This is your cloud provider (OVHcloud) telling you they will **force-restart the VPS sometime tomorrow between 3:00 AM and 12:00 PM ET** (07:00–16:00 UTC), with the box down for **up to 30 minutes** at whatever moment they get to it. You don't get to pick the time. That window covers all of pre-market and the **first 2.5 hours of the trading session** — so the restart could land mid-session with positions open.
+
+**What today's reboot already proved we can survive:** bot, watchdog, dashboard, and Tailscale all auto-start at boot; the deadman beacon and tape watcher are now reboot-proof as of this morning's fixes. A restart at 3 AM or 7 AM would be a complete non-event — everything self-recovers in ~2 minutes and the 6 AM gate/8 AM audit would simply re-run.
+
+**The real risk is narrower but real: a restart between 9:45 AM and noon with a live book.** Three exposures, in order of severity:
+1. **A working entry stop-limit fills while the box is down** → new position with **no bot-placed protective stop for up to 30 minutes** (the bot places stops after it sees the fill). Resting at the broker, unmanaged.
+2. **Open positions over-hold** — resting 1.4×ATR broker stops stay live at the broker (that layer is exactly for this), but the 30-minute time-stop and candle-close trail go blind until the bot returns, then fire late.
+3. **Dirty data** — whatever happens in that window contaminates the forward-test day (both new shadow cells, the edge ledger, the clean-day streak at 6).
+
+**My recommendation: stand down the morning entry windows tomorrow, trade the afternoon.** Since this is SIM, no money is at risk — but a corrupted forward-test day costs us the thing we're actually accumulating (clean evidence), and an unmanaged-position incident would cost a clean-day streak that's now six deep. Concretely: block entries for the 0945/1035/1135 windows, resume at the 12:35 window (OVH's window closes at noon ET, so 12:35 onward is clean). We lose roughly half a day of samples; we keep the day's data honest and the incident risk at zero.
+
+**Mechanically** this is one reversible flag in risk_config (the multiscan enable) — a WATCHED file, so it moves only on your explicit go: I'd set it tonight after the close, and tomorrow at ~12:05 PM (after verifying the patch completed) flip it back so the 12:35 window arms, with verify-load checks both ways and a SESSION_LOG record. The alternative — trade the morning normally and accept the ≤30-min blind spot — is genuinely defensible in SIM if you'd rather keep the samples; today's 9:30 reboot recovery shows the stack handles it, just not gracefully with open positions.
+
+**One decision needed from you: pause tomorrow's morning entries (my recommendation), or trade through the maintenance window and accept the risk?**
+
+---
