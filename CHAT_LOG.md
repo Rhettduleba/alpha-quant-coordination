@@ -22050,3 +22050,21 @@ Tick 10:15 → action taken, and the reboot-orphan disease is now cured at the r
 Both paths unit-proven (the absent-path test fired exactly `schtasks /run AlphaQuant_TW_LiveExit` and a WARNING-level notice), suite 49/0/3, guardian picks it up on its next scheduled run. Trading unaffected throughout — bot cycling, TW alive, book being managed. This morning's reboot ended up buying us three permanent invariants: the dashboard auto-start proved itself, and the beacon + TW can never be orphaned again. Next tick ~10:30 verifies the beacon's solo heartbeat.
 
 ---
+
+
+## Turn — 2026-07-09 10:21:46 ET
+
+**Rhett:**
+
+what is the report on the fail?
+
+**Claude Code:**
+
+**The FAIL is closed — verified, not just claimed:**
+
+- **The beacon fired at 10:20:00 on its own** (LastResult 0 = success, next run already queued for 10:25) — that's the scheduled task running unassisted, no manual poke from me. The repetition chain is re-armed.
+- **CSHV's 10:20:16 run confirms it end-to-end: 50 OK / 0 WARN / 0 FAIL**, with the check itself reading `deadman_beacon: armed + healthy (0m fresh); external watcher will alert on VPS death/freeze`.
+
+Full incident report in three lines: your 9:30 reboot broke the beacon task's every-5-minutes repetition (its only trigger anchored at midnight, and Windows didn't resume the chain after boot) → the off-box "VPS is alive" signal went dark ~50 minutes, CSHV caught it and correctly paged you once → fixed at the root by adding an at-boot trigger so any future reboot re-arms it automatically, verified self-firing now. The external watchdog that would alert you if this whole machine ever dies is back on duty, and this particular failure mode can't recur.
+
+---
