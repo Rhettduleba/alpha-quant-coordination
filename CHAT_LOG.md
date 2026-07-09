@@ -22029,3 +22029,24 @@ Triage complete. Summary of this autonomous run:
 Nothing needed Rhett — no ping sent. Per the forward-test freeze, this run edited / placed / restarted **nothing** on the trading path. SESSION_LOG entry appended, synced + pushed to the coordination repo ([`f614bbc`](https://github.com/Rhettduleba/alpha-quant-coordination/commit/f614bbc)), and the inbox cursor advanced (`--ack`).
 
 ---
+
+
+## Turn — 2026-07-09 10:21:09 ET
+
+**Rhett:**
+
+Run the SELF_MONITORING_PLAYBOOK.md intraday check for the Alpha Quant bot (C:\AlphaQuant). STEPS: (1) Confirm ET time + market state; if past 4:00 PM ET / market closed, do a final EOD-flat check then STOP looping (CronDelete this job). (2) Read the SAME warnings Rhett gets: run `python C:\AlphaQuant\tradestation-bot\alerts_bridge.py` (bot_alerts 24h summary — any FAIL in the last hour is top priority), read C:\AlphaQuant\CSHV_FINDINGS.md (any FAIL/CRITICAL/WARN), and code_alert_inbox (python C:\AlphaQuant\tradestation-bot\code_alert_inbox.py --json) actionable items. (3) Trade-liveness (the 7/02 catch): after 10:45 AM confirm >=1 ORB_V16_ENTRY_OK in today's bot_alerts.jsonl; if 0 on an open regular trading day, run reliability_checks.check_alive_but_not_trading() and diagnose the cause. (4) ACT per the action matrix: verify each warning vs broker truth FIRST; fix non-watched issues now (+ regression-lock); for WATCHED trading files (orb_*, exit_bot_v2, risk_config, bot_loop, candle_close_exit, short_bot, mover_scanner, advisor_filter_engine, symbol_universe, tape_watcher) never edit mid-session — surface + propose + escalate to Rhett. (5) Log a one-line status to SESSION_LOG.md only if an action was taken. Only ping Rhett if it's actionable for him or I had to escalate; otherwise silence = handled. EXTRA today (post-reboot 9:30 AM): watch that the 0945 window armed normally and TW (restarted 9:33) is firing exits; supervisor_guardian task fired 9:34.
+
+**Claude Code:**
+
+A FAIL is back at 10:15 — checking whether the deadman relapsed or it's something new:
+Tick 10:15 → action taken, and the reboot-orphan disease is now cured at the root:
+
+**The deadman beacon relapsed** — my 9:47 manual fire worked once, but the underlying task (daily-at-midnight trigger, repeat every 5 minutes) had its repetition chain broken by the reboot, so it went stale again by 10:15. This was the second symptom of the same class as tape_watcher: **tasks that can't survive a mid-day reboot.** Both are now structurally fixed:
+
+1. **Beacon:** added an at-boot trigger with 5-minute repetition alongside the daily one — any future reboot re-arms the off-box heartbeat automatically. (Next tick verifies it's self-firing without my hand.)
+2. **Tape watcher:** the supervisor guardian now checks every cycle — during market hours on a trading day — whether a TW process exists, and re-fires its launch task if not. Built single-instance-safe (it only acts on *absence*, and TW's launcher owns its own retry and 4:35 PM self-end), because two tape watchers fighting over the exit lease would be worse than none. A successful auto-recovery posts to Discord only; a *failed* recovery pages your phone — per the alarm contract.
+
+Both paths unit-proven (the absent-path test fired exactly `schtasks /run AlphaQuant_TW_LiveExit` and a WARNING-level notice), suite 49/0/3, guardian picks it up on its next scheduled run. Trading unaffected throughout — bot cycling, TW alive, book being managed. This morning's reboot ended up buying us three permanent invariants: the dashboard auto-start proved itself, and the beacon + TW can never be orphaned again. Next tick ~10:30 verifies the beacon's solo heartbeat.
+
+---
