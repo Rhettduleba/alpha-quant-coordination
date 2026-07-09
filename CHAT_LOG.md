@@ -22534,3 +22534,22 @@ Now sync to the coordination repo, commit + push, and ack the inbox cursor.
 Per the forward-test freeze + watched-files rules, this run edited / placed / restarted / cleared **nothing** on the trading path. No Rhett ping — nothing needed him.
 
 ---
+
+
+## Turn — 2026-07-09 14:19:11 ET
+
+**Rhett:**
+
+Run the SELF_MONITORING_PLAYBOOK.md intraday check for the Alpha Quant bot (C:\AlphaQuant). STEPS: (1) Confirm ET time + market state; if past 4:00 PM ET / market closed, do a final EOD-flat check then STOP looping (CronDelete this job). (2) Read the SAME warnings Rhett gets: run `python C:\AlphaQuant\tradestation-bot\alerts_bridge.py` (bot_alerts 24h summary — any FAIL in the last hour is top priority), read C:\AlphaQuant\CSHV_FINDINGS.md (any FAIL/CRITICAL/WARN), and code_alert_inbox (python C:\AlphaQuant\tradestation-bot\code_alert_inbox.py --json) actionable items. (3) Trade-liveness (the 7/02 catch): after 10:45 AM confirm >=1 ORB_V16_ENTRY_OK in today's bot_alerts.jsonl; if 0 on an open regular trading day, run reliability_checks.check_alive_but_not_trading() and diagnose the cause. (4) ACT per the action matrix: verify each warning vs broker truth FIRST; fix non-watched issues now (+ regression-lock); for WATCHED trading files (orb_*, exit_bot_v2, risk_config, bot_loop, candle_close_exit, short_bot, mover_scanner, advisor_filter_engine, symbol_universe, tape_watcher) never edit mid-session — surface + propose + escalate to Rhett. (5) Log a one-line status to SESSION_LOG.md only if an action was taken. Only ping Rhett if it's actionable for him or I had to escalate; otherwise silence = handled. EXTRA today (post-reboot 9:30 AM): watch that the 0945 window armed normally and TW (restarted 9:33) is firing exits; supervisor_guardian task fired 9:34.
+
+**Claude Code:**
+
+**Committed build delivered with time to spare** — the frozen shadow cells now score themselves every day:
+
+- **`shadow_cells_ledger.py` is EOD action #10** (verified in the task: it runs right after the debrief it reads from). Every close, both pre-registered cells accrue automatically: FILL-DELAY-15 and BIGMOVER-LEASH-45, thresholds locked to the 7/08 spec freeze, with winners-cut and losers-saved reported separately per the must-not-cut rule.
+- **First forward day (7/08, backfilled from immutable broker data) is on the books — and it's honestly mixed:** CELL 1 (skip stale fills) would have saved **+$415.94** on its 9 qualifying trades; CELL 2 (45-min leash for big movers) had one qualifying trade and would have been **−$216.96 worse**. Day one saying "not so fast" to the leash is exactly what forward testing is for.
+- **One bug caught and killed before it could lie to us:** my first run scored *today* mid-session — partial data that would have blocked tonight's complete recompute. Added a completeness gate (a day only lands after 4:05 PM), purged the partial row, and verified a mid-session run now adds nothing.
+
+Tonight's 4:50 chain scores today as forward day 2, and the readout self-flags at N≥10 and N≥30 — the "remind me at N10" you asked for, encoded. Monitoring continues; next tick ~2:30.
+
+---
