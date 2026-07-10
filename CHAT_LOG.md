@@ -23774,3 +23774,27 @@ Run the SELF_MONITORING_PLAYBOOK.md intraday check for the Alpha Quant bot (C:\A
 Tick clean at 3:49 PM — CSHV **50 OK / 0 WARN / 0 FAIL**, inbox clear, heartbeat 14.1s. The EOD flatten fires right about now. Next tick (~4:03) is the final one: EOD-flat verification against broker truth, then the loop retires and the 4:50 chain takes over — tonight it scores forward day 3 for the shadow cells and possibly the edge ledger's 5th straight positive day.
 
 ---
+
+
+## Turn — 2026-07-10 16:04:19 ET
+
+**Rhett:**
+
+Run the SELF_MONITORING_PLAYBOOK.md intraday check for the Alpha Quant bot (C:\AlphaQuant). STEPS: (1) Confirm ET time + market state; if past 4:00 PM ET / market closed, do a final EOD-flat check then STOP looping (CronDelete this job). (2) Read the SAME warnings Rhett gets: run `python C:\AlphaQuant\tradestation-bot\alerts_bridge.py`, read C:\AlphaQuant\CSHV_FINDINGS.md, check code_alert_inbox (python C:\AlphaQuant\tradestation-bot\code_alert_inbox.py --json), AND tail outputs/alerts/sent_ledger.jsonl for any send since the last tick. (3) Trade-liveness: after 10:45 AM confirm >=1 ORB_V16_ENTRY_OK today; if 0, diagnose via reliability_checks.check_alive_but_not_trading(). (4) ACT per the action matrix: verify vs broker truth FIRST; fix non-watched now (+regression-lock); WATCHED files never mid-session — surface + escalate. (5) Log one line to SESSION_LOG.md only if action taken. Only ping Rhett if actionable/escalation; silence = handled. EXTRA today (7/10): OVH forced restart may hit ANY TIME before 12:00 PM ET (window active since 3 AM) — each tick, check LastBootUpTime; if it changed, run the full reboot-recovery drill (run_bot/TW/dashboard/beacon/guardian checks per the 7/09 playbook) and verify positions+stops via broker truth immediately.
+
+**Claude Code:**
+
+**Final tick — Friday closed clean.** Market closed, broker **FLAT** (0 positions, 0 working orders), CSHV green, inbox clear. Monitor loop retired for the week (cron deleted).
+
+**The week's closing state, honestly accounted:**
+
+- **Trading:** full sessions every day including through a reboot (Thursday) and a maintenance threat (today, expired harmlessly). All six windows fired daily; zero unprotected positions all week; the clean-day streak keeps building.
+- **Tonight's 4:50 chain** scores today automatically: shadow cells forward day 3, and the edge ledger's C_union cell — positive 4 of 4 forward days, N already past 30 — could log its 5th. Two more positive days after that and you get the project's first data-earned promotion proposal.
+- **Research this week:** re-entry cap vindicated (+$4.8k saved, your SNDK thesis honestly falsified), fill-delay gradient found (your test), scaling-exit direction supported and frozen as CELL 2 (your test), VWAP alignment validated (your instinct), the textbook's "roaring tape" intuition inverted, and the score/RelVol ideas falsified. Six real answers in five days — the registry now shows all 34 studies with their fates.
+- **Dashboard this week:** Period Review, Testing page with charts and re-run buttons, fill-time markers with exit-reason labels, and the 28× load-time fix.
+
+**Carried into the weekend/Monday, so nothing silently drops:** the 1-minute P&L chart + retiring the fossil expectancy card (the two unfinished dashboard items), the manual-close sweeper proposal (needs your GO once written), TW's measurement fixes, and — waiting on your five minutes — the **Tailscale steps 1–4** so the iPad app and sharing go live. The weekend re-arm dark-day gates are proven from prior weekends; I'd expect zero weekend activity, and the guardian pages you if that expectation breaks.
+
+Have a good weekend, Rhett — the machine watches itself until Monday, and everything it can't handle knows how to find your phone.
+
+---
