@@ -23304,3 +23304,44 @@ Triage run complete — clean, nothing to escalate.
 No FAIL/WARN anywhere, no order/position/auth/SAFE_MODE issues, nothing novel or ambiguous. No escalation warranted.
 
 ---
+
+
+## Turn — 2026-07-10 11:05:36 ET
+
+**Rhett:**
+
+should we build this layer? log the tape-aggression
+
+**Claude Code:**
+
+Yes — and we can have the first evidence *today*, because there's a smart sequencing trick: before building a live tick-streamer (new infrastructure, new API load, and honestly hampered by SIM's coalesced feed until your live-quotes entitlement lands), we build the **bar-level tape proxy** — the same "is the push alive or dying?" questions answered from 1-minute bars — because that version is **retro-computable across every trade we've ever taken, right now**. If the proxy shows signal, the live print-level TapeGate earns its build. And I'll fold the VWAP-alignment study into the same pass — one sweep, both of your instincts tested. Building it:
+**Built, run on all 420 historical trades, and the answer reshapes the TapeGate idea entirely.** The full read, honestly:
+
+## Your VWAP instinct: validated
+
+| Entry vs intraday trend | N | Win% | $/trade |
+|--|--|--|--|
+| Aligned (long above VWAP / short below) | 382 | 57% | −$4.07 |
+| **Against the trend** (PRU, META class) | 38 | 47% | **−$35.14** |
+
+Counter-trend entries bleed **9× worse per trade**. The interesting nuance: the system is already naturally aligned 91% of the time (breakouts tend to follow trend) — so this filter is a scalpel, not a sword: it removes ~38 trades over six weeks and saves ~$1,300. Real, mechanism-backed, cheap. It goes to the pre-registration candidate list after a day-consistency check.
+
+## The classic tape-reading intuition: inverted, three independent ways
+
+This is the humbling part, and it's the most valuable thing the study produced:
+
+- **Strong trigger bars** (the push closing powerfully — what a tape reader wants to see): **−$20.58/trade** across 228 fills. Fading bars: **+$5.49**.
+- **Volume bursting** at the fill (≥1.5× normal): **42% win rate, −$19.67/trade**. Normal volume: +$7.08.
+- **Fresh 4-bar push** into the fill: **−$40.66/trade**. No push / rolling over: **+$8.91**.
+
+Why: **a resting stop-order at the 5-minute high gets filled *by* explosions** — so "roaring tape at the trigger" literally means "we just paid the top of a vertical move." The trades a discretionary trader would love at the moment of entry are this system's systematic losers; the quiet, unglamorous crosses are fine. Your eye was right that MO was a bad trade — but the *reason* wasn't weak tape at the trigger (weak-tape fills average positive); it was the stale setup and the counter-trend context. If we'd installed the "require a roaring tape" gate this morning on intuition, we'd have made the system *worse*. The pre-declared composite veto confirms it: net +$4k but only by cutting **60% of all trades including $15,900 of winners** — a meat cleaver, not deployable.
+
+## Where this leaves the "system that watches the tape"
+
+1. **The live tick-streaming TapeGate is deferred** — and re-aimed: if it's ever built, it should detect **exhaustion** at the trigger (burst + vertical bar = wait), the *opposite* of this morning's assumption. That inverted version is logged as a new hypothesis on the multiple-testing ledger — honestly labeled as post-hoc, so it must earn its way like everything else.
+2. **VWAP alignment is the survivor** and advances toward pre-registration.
+3. Everything archived: registry entry #34 (with my full take), per-trade JSON, SESSION_LOG.
+
+Score for the day so far: two of your instincts tested — re-entry falsified, VWAP validated — and one of *the entire trading canon's* instincts falsified for this system class. This is the machine working exactly as designed: everyone's ideas, including the textbook's, get the same trial. Dashboard build block is next; OVH has ~50 minutes left and still hasn't fired.
+
+---
