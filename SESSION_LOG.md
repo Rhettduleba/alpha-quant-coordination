@@ -6845,3 +6845,5 @@ _Diagnostic, in-sample. These days are in-sample for any un-promoted rule; a str
 - `code_alert_inbox.py --json`: **inbox clean** (n_total=0, n_actionable=0, 0 CRITICAL groups). No escalation.
 - CSHV stamp 2026-07-10 14:00:10 ET: OK=49 WARN=1 FAIL=0. Lone WARN = `rel_exit_side` (RUM position, monitor 0.2m fresh, "likely just filled — verify next cycle") — self-resolving CSHV check, outside the code-alert feed; not paged. Silence = handled.
 - Forward-test freeze respected: no code edits, no orders, triage-only. Cursor --ack'd.
+
+**[ALERT-TRIAGE 2026-07-10 ~3:03 PM ET — scheduled autonomous run]** Code-alert inbox clean (n_total=0, n_actionable=0, n_critical_groups=0). CSHV 15:00 run 50/0/0 (OK=50, WARN=0, FAIL=0; 1 INFO clean_day_certified, 2 SKIP pre-close/pre-open windows). Bot cycling (loop 4951, heartbeat 12s), trade_journal touched 7s ago — live + healthy; 1 protected position. Prior 2:00 PM `rel_exit_side` WARN self-resolved. Nothing to escalate — silence = handled. Forward-test freeze respected (no code edits, no orders). Cursor --ack'd.
