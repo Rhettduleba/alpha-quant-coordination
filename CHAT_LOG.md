@@ -22737,3 +22737,29 @@ Triage run complete — clean run, no escalation needed.
 No action required from you.
 
 ---
+
+
+## Turn — 2026-07-10 07:24:21 ET
+
+**Rhett:**
+
+good morning, its 7:22 am did the bot fubction clean yesterday? are we ready for today?
+
+**Claude Code:**
+
+Good morning — checking both, plus the thing that matters most this morning: whether OVH already hit us (their window opened at 3:00 AM):
+**Yesterday: yes, clean — in fact fully compliant.** And we're ready for today, with one asterisk named OVH. The morning brief:
+
+## Yesterday (7/09) report card
+- **Rule compliance: perfect — 25/25 trades traded exactly to strategy, 25/25 on in-play names** (Q1 YES / Q2 YES). Despite the 9:30 AM reboot, the session ran all six windows with zero misses.
+- **P&L: −$651.59 net on 25 round-trips, 60% win rate** — another chop-day grind (winners small, losers slightly bigger). Not the metric; correctness was, and correctness passed.
+- The debrief's "3 FAIL incidents" are the deadman-beacon pages from the reboot morning — root-caused and permanently fixed the same day, not trading faults.
+- **The new shadow-cell automation worked unattended:** the 4:50 chain scored yesterday as forward day 2. Both cells got humbled, which is the system working: CELL 1 (skip stale fills) had a **negative** day (−$186 — it would have cut $205 of winners to avoid $20 of losers), running total +$230 over 2 days. CELL 2 (45-min big-mover leash) had a **positive** day (+$149), running total −$68. One good day and one bad day each — exactly why nothing promotes before N≥30.
+
+## Ready for today?
+- **Bot alive and cycling** (heartbeat 13s), CSHV **47 OK / 0 WARN / 0 FAIL** (the extra SKIPs are normal pre-open), 6 AM gate passed silently (no page = GO, per the new alarm contract). Tape watcher launches at 9:25 as usual — now with guardian backup if anything kills it.
+- **OVH has NOT hit us yet** — boot time is still yesterday 9:30 AM, so their ≤30-minute interruption is still coming, any time before **noon**. Since I didn't get a "pause" from you, the default stands: **the bot trades through it.** The stack is proven reboot-safe as of yesterday; the residual risks are a fill-during-outage sitting without a bot-placed stop for up to 30 minutes, and a potentially messy forward-test day. If you'd rather not carry that, say **"pause"** before ~9:40 and I'll block the morning windows (0945/1035/1135) with your GO, resuming at 12:35 — still a clean half-day of data.
+
+I'll re-arm the 15-minute monitor at 9:15 and keep a specific eye out for the OVH restart — when it lands, the recovery drill from yesterday runs itself, and I'll verify every piece came back before the next window fires.
+
+---
