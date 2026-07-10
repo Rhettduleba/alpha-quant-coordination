@@ -23551,3 +23551,16 @@ Alert triage run complete — **inbox clean, no escalation.**
 **Actions taken:** appended dated SESSION_LOG entry, mirrored to coordination repo, committed + pushed ([f91b8f6](https://github.com/Rhettduleba/alpha-quant-coordination/commit/f91b8f6)), and `--ack`'d the inbox to advance the cursor. Per the forward-test freeze + watched-files rules, this run edited / placed / restarted / cleared **nothing** on the trading path. No Rhett ping (nothing actionable).
 
 ---
+
+
+## Turn — 2026-07-10 13:18:52 ET
+
+**Rhett:**
+
+Run the SELF_MONITORING_PLAYBOOK.md intraday check for the Alpha Quant bot (C:\AlphaQuant). STEPS: (1) Confirm ET time + market state; if past 4:00 PM ET / market closed, do a final EOD-flat check then STOP looping (CronDelete this job). (2) Read the SAME warnings Rhett gets: run `python C:\AlphaQuant\tradestation-bot\alerts_bridge.py`, read C:\AlphaQuant\CSHV_FINDINGS.md, check code_alert_inbox (python C:\AlphaQuant\tradestation-bot\code_alert_inbox.py --json), AND tail outputs/alerts/sent_ledger.jsonl for any send since the last tick. (3) Trade-liveness: after 10:45 AM confirm >=1 ORB_V16_ENTRY_OK today; if 0, diagnose via reliability_checks.check_alive_but_not_trading(). (4) ACT per the action matrix: verify vs broker truth FIRST; fix non-watched now (+regression-lock); WATCHED files never mid-session — surface + escalate. (5) Log one line to SESSION_LOG.md only if action taken. Only ping Rhett if actionable/escalation; silence = handled. EXTRA today (7/10): OVH forced restart may hit ANY TIME before 12:00 PM ET (window active since 3 AM) — each tick, check LastBootUpTime; if it changed, run the full reboot-recovery drill (run_bot/TW/dashboard/beacon/guardian checks per the 7/09 playbook) and verify positions+stops via broker truth immediately.
+
+**Claude Code:**
+
+Tick clean at 1:19 PM — CSHV **50 OK / 0 WARN / 0 FAIL**, inbox clear, heartbeat 19.8s. The 1:35 window is next. No action, no log, no ping. Next tick ~1:33.
+
+---
