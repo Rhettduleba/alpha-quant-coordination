@@ -23039,3 +23039,53 @@ Run the SELF_MONITORING_PLAYBOOK.md intraday check for the Alpha Quant bot (C:\A
 Tick clean at 10:04 — CSHV **50 OK / 0 WARN / 0 FAIL**, inbox clear, heartbeat 15.3s, no sends since yesterday's drill note (nothing has pinged you from the system today, consistent with the 9:38 diagnosis). **OVH still hasn't restarted us** (boot unchanged, ~2 hours left in their window — every tick keeps watching). No action, no log, no ping. Next tick ~10:18.
 
 ---
+
+
+## Turn — 2026-07-10 10:05:30 ET
+
+**Rhett:**
+
+<scheduled-task name="alphaquant-alert-triage" file="C:\Users\Administrator\.claude\scheduled-tasks\alphaquant-alert-triage\SKILL.md">
+This is an automated run of a scheduled task. The user is not present to answer questions. For implementation details, execute autonomously without asking clarifying questions — make reasonable choices and note them in your output. "write" actions (e.g. MCP tools that send, post, create, update, or delete), only take them if the task file asks for that specific action. When in doubt, producing a report of what you found is the correct output.
+
+AUTONOMOUS ALERT TRIAGE — Alpha Quant (Rhett-approved 2026-06-22; Planning Track A). You are a scheduled Claude Code run on the Alpha Quant VPS (live root C:\AlphaQuant). GOAL: Rhett must NOT be the human pager-relay. You read the SAME actionable alerts he would, auto-suppress known-noise, and ESCALATE anything that genuinely needs a human — pre-diagnosed. The human gate is preserved.
+
+IMPORTANT — FORWARD-TEST FREEZE: autonomous code-fixing is DEFERRED right now (Planning Track B). You DO NOT edit or commit ANY code this run (not even non-watched). You TRIAGE + ESCALATE only. (Auto-fix re-enables after the OOS forward test via a reviewed whitelist.)
+
+SOURCE OF TRUTH: read C:\AlphaQuant\CODE_ALERT_TRIAGE_PLAYBOOK.md and follow it EXACTLY (re-read each run). Procedure:
+1. `git -C C:\repos\alpha-quant-coordination pull` (ignore errors). Read the top stamp of C:\AlphaQuant\SESSION_LOG.md and C:\AlphaQuant\CSHV_FINDINGS.md for current state.
+2. Run: C:\Users\Administrator\AppData\Local\Python\pythoncore-3.14-64\python.exe C:\AlphaQuant\tradestation-bot\code_alert_inbox.py --json  → the NEW actionable CRITICAL alerts since last ack (the feed is already severity-gated to CRIT + de-noised; benign WARNs are handled at source, not here).
+3. For each alert: if it is KNOWN-NOISE (reader pre-tags many; or a state already confirmed benign in SESSION_LOG) → no action. Otherwise ESCALATE it: import notifier (add C:\AlphaQuant\tradestation-bot to sys.path) and call notifier.send_notification(subject="CODE TRIAGE — needs you", body= plain-English diagnosis + the specific proposed fix + whether it needs Rhett's approval (watched/strategy/risk) or just a go-ahead, level="CRITICAL"). For a SAFE non-watched fix you would normally make, STILL escalate it with the proposed fix (do not auto-edit during the freeze).
+4. ALWAYS at the end: append a short dated entry to C:\AlphaQuant\SESSION_LOG.md (what fired + what you escalated, or 'inbox clean'), copy it to C:\repos\alpha-quant-coordination\SESSION_LOG.md, commit + push that repo, then run code_alert_inbox.py --ack to advance the cursor. If nothing actionable, do NOT notify Rhett (silence = handled) — still --ack + one-line log.
+
+HARD RULES (never autonomously): NEVER edit/commit any code during the forward test (escalate fixes instead). NEVER edit a WATCHED strategy file (risk_config.py, bot_loop.py, exit_bot_v2.py, candle_close_exit.py, advisor_filter_engine.py, symbol_universe.py, orb_runner.py, orb_multiscan.py, short_bot.py). NEVER change risk/sizing/universe/stops/time-windows. NEVER place/cancel/modify orders or touch positions. NEVER deploy a strategy change. NEVER restart run_bot/watchdog_supervisor. NEVER touch credentials/.env or refresh TS tokens excessively. WHEN IN DOUBT, ESCALATE — never act on the live/trading path.
+
+ENVIRONMENT: Python = C:\Users\Administrator\AppData\Local\Python\pythoncore-3.14-64\python.exe. Work in C:\AlphaQuant. Keep each run tight + conservative. Your job: keep Discord quiet for Rhett by surfacing ONLY what truly needs him, pre-diagnosed.
+</scheduled-task>
+
+**Claude Code:**
+
+I'll execute this scheduled alert triage run following the playbook. Let me start by pulling the coordination repo, reading the playbook, and checking current state.
+CSHV is clean (50 OK, 0 FAIL, 0 WARN). Now let me get the alert inbox and session log stamp.
+Inbox is clean (0 actionable) and CSHV is all-green (50 OK, 0 FAIL/WARN). Nothing to escalate. Let me find where prior triage entries are logged so I append consistently.
+I have the established format. Let me read the tail of the log to append consistently.
+There's a 7/09 EOD summary block after the triage entries. Let me check the very end of the file to see where 7/10 content should go.
+A 7/10 9:04 AM triage entry already exists near the top (line 58). Let me see that region to append today's 10:03 AM entry consistently.
+Everything is clean. I'll append today's 10:03 AM triage entry after the 9:04 AM entry, matching the established format.
+Let me anchor on a smaller, unique string.
+Now copy to the coordination repo, commit + push, then --ack the inbox cursor.
+Triage run complete. Summary:
+
+**ALERT TRIAGE — 2026-07-10 ~10:03 AM ET (autonomous, scheduled)**
+
+- **Coordination repo pull:** already up to date.
+- **Code-alert inbox** (`code_alert_inbox.py --json`): **0 total / 0 actionable / 0 noise / 0 critical groups** — nothing new since the 9:04 AM ack.
+- **CSHV cross-check** (10:00:09 ET, market hours): **OK=50 / WARN=0 / FAIL=0 / INFO=1 / SKIP=2** — "All operational checks passing." Bot cycling loop 4114 (heartbeat 13–15s), all 5 positions protected, book == real exposure ($371,766, no phantom), token cache valid, no broker rejections. Lone INFO = standing-benign `clean_day_certified` intraday context; two SKIPs correct for the hour.
+- **Escalations:** none — nothing actionable, no Rhett ping (silence = handled).
+- **Per forward-test freeze + watched-files:** edited / placed / restarted / cleared **nothing** on the trading path.
+- **Logged + synced:** SESSION_LOG entry appended, copied to coordination repo, committed + pushed (`02e3033`).
+- **Cursor:** `--ack` advanced.
+
+Clean run, no human attention needed.
+
+---
