@@ -22843,3 +22843,61 @@ Three separate things make the chart lie to your eye, and I'm fixing two of them
 **Action list out of this conversation, in execution order:** re-entry-cap replay (now, before the open) → chart marker/label fixes + giveback time bug → day-page caching + lazy charts → retire the 9:35 expectancy card → instant-chase cell to the candidate list. And the standing reminder: **OVH's restart window is open until noon** — no "pause" received, so the bot trades through it; last chance to say otherwise is ~9:40.
 
 ---
+
+
+## Turn — 2026-07-10 08:07:31 ET
+
+**Rhett:**
+
+sharing through tailscale, please walk me through this process step by step, plan it out explain each step in detail
+
+**Claude Code:**
+
+Before writing the walkthrough, let me check where the VPS actually stands (yesterday I issued your login link but never got a "done" — the plan starts from reality, not assumption):
+Fresh link minted (bottom of step 4). Here's the full walkthrough — each step says *what you do* and *why it exists*:
+
+---
+
+## Phase A — Your Tailscale account + your iPad (~5 min, one time ever)
+
+**Step 1 — Install the app.** iPad → App Store → search **Tailscale** (blue/white logo, by Tailscale Inc.) → Get. Free, no card.
+
+**Step 2 — Create your account.** Open the app → **Sign in with Google** → pick your gmail. *Why Google sign-in:* Tailscale doesn't store a password for you — your Google login *is* the identity, which is also what makes sharing safe later (guests are identified by their real accounts, not by a guessable password). This moment creates your **tailnet** — your own private network that only devices you approve can join.
+
+**Step 3 — Turn it on.** The app shows a big toggle → tap it → iOS asks *"Allow Tailscale to add VPN configurations?"* → **Allow**. *What this actually does:* it does NOT route your internet through anyone — it only creates a private tunnel between your devices. Your iPad now has a quiet, encrypted line waiting for the VPS to show up on the other end.
+
+## Phase B — Join the VPS to your network (~2 min)
+
+**Step 4 — Approve the VPS.** On the iPad (or any device where you're now signed into Tailscale), open:
+
+**https://login.tailscale.com/a/12e4e846014ca5**
+
+A page will ask you to approve a machine joining your tailnet — that machine is this VPS. Click **Connect / Approve**. *Why this design is good:* the VPS can't add itself to your network; only you, logged in as you, can admit it. (Link expires after a while — if it's dead when you get there, tell me and I regenerate in seconds.)
+
+**Step 5 — I verify from here.** Say "done" and I'll confirm the VPS shows in the tailnet with its permanent private address, and that your iPad can see it.
+
+## Phase C — The permanent HTTPS address (me, ~5 min, after your step 4)
+
+**Step 6 — You flip two switches in the admin console** (I'll walk you through it live; it's two clicks): at **login.tailscale.com/admin** → *DNS* tab → enable **MagicDNS**, and enable **HTTPS Certificates**. *Why:* MagicDNS gives the VPS a human name instead of an IP; the certificates switch lets Tailscale issue a real TLS certificate for it — which matters because Safari's "Add to Home Screen" app experience (and the dashboard's app shell) wants genuine HTTPS.
+
+**Step 7 — I publish the dashboard onto that address** with Tailscale's built-in reverse proxy (`tailscale serve`): it takes the dashboard that listens only on the VPS's localhost and mirrors it — *without opening any firewall port, without the dashboard ever touching the public internet* — at a permanent URL like `https://win-b3-8-us-east-va-1.your-tailnet.ts.net`. This config survives reboots (OVH included), and the dashboard server itself is already reboot-proof from Tuesday's task.
+
+**Step 8 — Your app icon.** iPad Safari → open that URL → dashboard password → Share button → **Add to Home Screen**. Done: full-screen Alpha Quant app, permanent address, live data, works from anywhere your iPad has internet.
+
+## Phase D — Sharing with another person (~3 min per guest)
+
+**Step 9 — You send the invite.** **login.tailscale.com/admin** → **Machines** → find the VPS row → **⋯ menu → Share…** → type the guest's email → send. *What this grants, precisely:* access to **that one machine only** — not your tailnet, not your other devices, nothing else. Free feature, any number of guests.
+
+**Step 10 — The guest's side** (forward them this): they get an email → Accept → create their own free Tailscale account (Google sign-in) → install the Tailscale app on their device (phone/iPad/laptop) → toggle it on → open your dashboard URL → enter the dashboard password you give them privately. Two locks always: their identity gets them to the door (network), the password opens it (site login).
+
+**Step 11 — Revoking someone** is the same ⋯ → Share menu → remove their email. Instant, no cooperation from them needed.
+
+## The fine print you should actually know
+
+- **Everyone sees everything.** The dashboard has one login and no per-viewer permissions — a guest sees the same P&L, account ID, and trade history you do. Only share with people you'd show your brokerage statement to. (Per-guest limited views would be a build — say the word if you ever want a "public stats only" page.)
+- **It's read-only by design** — the dashboard can't place or touch trades no matter who's holding it — but treat the password like a key anyway; one password serves all guests today.
+- **The lazy alternative exists and I recommend against it:** Tailscale *Funnel* can put the URL on the public internet so guests need no account at all — but then the only lock is the password. For a trading dashboard, guest accounts are worth the five minutes.
+
+**Your move: steps 1–4** (install, sign in, toggle, tap the link above). Say "done" and I finish Phase C the same hour — then sharing is a two-click affair whenever you want it. Meanwhile the re-entry replay is next on my plate as promised, and OVH's window stays open until noon — bot trades through unless I hear "pause" by ~9:40.
+
+---
