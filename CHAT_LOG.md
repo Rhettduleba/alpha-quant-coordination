@@ -23116,3 +23116,37 @@ Run the SELF_MONITORING_PLAYBOOK.md intraday check for the Alpha Quant bot (C:\A
 **Recommendation: keep `ORB_MAX_ENTRIES_PER_NAME=1` exactly as it is, and close this thread.** Registry updated (status: *DONE — CAP VINDICATED*, full per-trade JSON archived), SESSION_LOG carries the entry. The dashboard build block (P&L chart at 1-minute, fill-time markers, exit-reason labels, page cache, the fossil card) is next in the queue, monitor ticks continuing throughout — OVH has ~90 minutes left in its window and still hasn't pulled the trigger.
 
 ---
+
+
+## Turn — 2026-07-10 10:27:41 ET
+
+**Rhett:**
+
+Lets do a deep dive into this trade. tell me what you seel. Lock at the trade from a traders perspective. Give me your thoughts
+
+**Claude Code:**
+
+A live one — even better for a deep dive. Let me pull the bot's actual numbers on this trade (arm record, fill, ATR, confirm math) so the trader-read sits on exact data:
+Great specimen — and the broker record corrects my first chart read in an important way, so let me tell the story as it actually happened. **This trade is already over** — what you're looking at on that chart is its complete life:
+
+## The trade, from broker truth
+
+- **9:45:05** — MO (Altria) armed in the 0945 window: buy-stop-limit 277 shares @ **71.70** (score 1.394, ~$19.9k).
+- **9:45:50** — **filled at 71.70, thirty-eight seconds after arming** — an instant-chase fill. The chart's "Stop Limit 277" label is the resting order; the dotted line connects it to the "**0 Limit**" marker at 10:15, which is **the exit**, not the entry.
+- The protective StopMarket sat at 69.89 (the 1.4×ATR chandelier — Average True Range 1.50, so the leash was ~$1.81 ≈ $500 of risk).
+- Then the round trip you can see: MO rolled over immediately after our fill — three red candles within a minute — and bled to **70.76 by 10:02: a −$0.94 adverse excursion, roughly −$260 on paper, 0.63×ATR against us**, never remotely close to confirming (+0.15×ATR = 71.93 was needed).
+- Then the V-recovery, all the way back — and at exactly minute 30, the **unconfirmed time-stop** cancelled the resting stop (the OUT at 10:15:57) and sold at **71.74 (10:15:58)**. Net: about **+$8**.
+
+## The trader's read — what I see, honestly
+
+**1. This trade should make you ask "why was Altria on the list at all?" — and that's the sharpest question of the day.** MO is a defensive tobacco stock, a mean-reverter by personality, up **+0.16%** on the day at scan time. It qualified because the mover-scan ranks by *relative volume* (the morning whipsaw printed heavy volume), and volume is character-blind — it can't tell "institutional accumulation starting a trend" from "a rangebound name sloshing." Its score, 1.394, lands dead-center in the **1.0–1.5 bucket — the fat losing middle of the score study** (−$21/trade, N=89). The system bought a breakout on a stock whose entire nature is to un-break.
+
+**2. The 15-second chart shows what the bot is structurally blind to: we bought the exhaustion of the push.** The fill printed as the 9:42–9:48 congestion rolled over — a human tape reader watching those 15-second candles would not have taken that fill, because the *aggression had already stopped*. The bot sees "price crossed the 5-minute high"; it doesn't see "on fading momentum into overhead supply" (the entire 71.60–71.80 shelf plus the 72.15 opening high sitting above). Your VWAP-alignment instinct applies here too — MO was below its open and (almost certainly) below VWAP (Volume-Weighted Average Price) at fill time. That study, running today, would score this entry.
+
+**3. The risk geometry was upside-down.** To "win," MO needed to punch through the whole morning shelf *and* approach the opening high — while the leash allowed $1.81 (2.5%) of pain. It took $0.94 of that pain, and the only reason this reads +$8 instead of −$260 is that **the V-recovery happened to crest at exactly minute 30** — look at the last candles on your chart: three minutes after our exit, MO was fading again. That's not exit skill; that's the time-stop getting lucky on timing. The *rule* deserves credit for something narrower and more important: it capped a structurally dead trade at breakeven instead of letting the chandelier ride it for a possible −$500.
+
+**4. Where this trade lands in our running experiments — automatically, tonight:** it does *not* enter CELL 1 (fill delay was 38 seconds, not ≥15 min) and *not* CELL 2 (+0.16% is no big mover) — but it's a textbook data point for the **instant-chase candidate cell** (fills <3 min ≈ breakeven, and here's another breakeven) and for the **score-middle problem**. One trade proves nothing; the machinery will count it with all its siblings.
+
+**The one-sentence trader verdict:** a low-conviction name, bought on a dying push, into supply, with 8× more room to lose than the distance it needed to win — rescued to flat by a rule and a coincidence. The system's *entries* keep generating this class; the *exits* keep bailing them out — which is the whole edge-is-in-the-exit thesis wearing yet another ticker. The fix isn't this trade; it's the three entry filters already in the study pipeline, VWAP-alignment first — it would likely have vetoed this one, and I'll know whether that's true across all 400 historical trades by end of day.
+
+---
