@@ -23844,3 +23844,42 @@ Triage run complete.
 **Actions taken:** appended the one-line entry to SESSION_LOG.md, synced + committed + pushed to the coordination repo (`bdd49ae`), and `--ack`'d the inbox cursor. Per the forward-test freeze: this run edited / placed / restarted / cleared **nothing** on the trading path. No Rhett ping.
 
 ---
+
+
+## Turn — 2026-07-10 17:03:35 ET
+
+**Rhett:**
+
+its 5:02?
+
+**Claude Code:**
+
+Here's the day, in your six headings — with tonight's automated scoring folded in:
+
+## 1 · How was today different from yesterday?
+
+Same machine, same compliance (22/22 rule-perfect, two days running), worse tape: **−$1,349 on 22 trades, 45% win** vs. yesterday's −$652 at 60%. The interesting difference is *where* the loss lived — it **inverted the week's pattern**: the 0945 cohort, usually our best cell, bled **−$133/trade** (N=9) while the later re-arms were nearly flat (−$12/trade, N=13). Confirm rate 23% (5 of 22) — third chop day in a row where three-quarters of entries never proved themselves. The fade counterfactual agrees it was a mild fade day (breakouts won only 19 of 46 candidates), not the violent kind.
+
+## 2 · Winners — what did we do right?
+
+Modest and clean: MRNA short +$142, META long +$87, CCI +$79. The common factor is the boring one that keeps repeating: **all five trades that confirmed got harvested by the candle trail, and they're the entire green side of the ledger.** Confirmation remains the single best predictor we have of anything.
+
+## 3 · Losers — what could we have done better?
+
+One pattern dominates: **COIN −$517 and MSTR −$511, both longs, both crypto proxies, failing together = $1,028, i.e. 76% of the day's net loss in one correlated theme.** That's the third correlated-cluster exhibit in eight days (7/07 semis, 7/09's semi longs, today's crypto pair) — and it's exactly what the book-concentration monitor was designed to see. Honest own-up: that build has slipped all week behind incidents and studies. It moves to the top of Monday's queue; today's specimen makes the case better than I did.
+
+## 4 · Tests to go deeper
+
+Nothing new to invent — today *feeds* the running ones: the crypto-proxy pair goes into the concentration evidence pile; the 0945-vs-later inversion is one day (N=9, no conclusion); and the fill-delay cell just had its best day, which brings me to…
+
+## 5 · Exits — same treatment
+
+The stack did its job on a losing day: 14 time-stops carried out the 17 non-confirmers, 3 ATR stops caught the hard failures. Tonight's automated scoring: **CELL 1 (skip stale fills) had its best forward day: +$393.71** — it would have cut only $134 of winners to avoid $527 of losers, textbook must-not-cut math — cumulative now **+$624, positive 2 of 3 days, N=20/30**. **CELL 2 (45-min big-mover leash) went negative again (−$43; cumulative −$111, positive 1 of 3)** — honest early read: your leash idea is losing its forward test so far. Small N, no verdict, but I won't dress it up.
+
+## 6 · The milestone that outranks the day's P&L
+
+**The edge ledger's C_union cell logged its 5th consecutive positive forward day** (+$7.74 — barely, but positive counts): now **5-for-5 days, N=44, past the N≥30 bar.** It needs 7 of its first 10 forward days positive — meaning **2 positive days out of the next 5** trigger the project's first evidence-earned promotion review. That's likely mid-next-week. A losing Friday that moves the first real exit improvement to the doorstep is a good Friday by this project's accounting.
+
+**Bottom line:** correct behavior, red outcome, one structural lesson re-confirmed (correlated themes are one bet), one of your test ideas thriving (fill-delay), one struggling honestly (the leash), and the first promotion decision of the project now visibly approaching. Monday's queue: concentration monitor first, then the leftover dashboard items, and the weekend stays dark by design.
+
+---
