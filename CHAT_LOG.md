@@ -23451,3 +23451,22 @@ Triage complete. **✅ Inbox clean — no escalation (silence = handled).**
 **Actions taken:** appended dated triage entry to `SESSION_LOG.md`, synced + committed + pushed to the coordination repo (`de85cf4`), and `--ack`'d the inbox cursor. Per the forward-test freeze + watched-files rules, this run **edited / placed / restarted / cleared nothing** on the trading path. No Rhett ping (nothing actionable).
 
 ---
+
+
+## Turn — 2026-07-10 12:22:12 ET
+
+**Rhett:**
+
+Run the SELF_MONITORING_PLAYBOOK.md intraday check for the Alpha Quant bot (C:\AlphaQuant). STEPS: (1) Confirm ET time + market state; if past 4:00 PM ET / market closed, do a final EOD-flat check then STOP looping (CronDelete this job). (2) Read the SAME warnings Rhett gets: run `python C:\AlphaQuant\tradestation-bot\alerts_bridge.py`, read C:\AlphaQuant\CSHV_FINDINGS.md, check code_alert_inbox (python C:\AlphaQuant\tradestation-bot\code_alert_inbox.py --json), AND tail outputs/alerts/sent_ledger.jsonl for any send since the last tick. (3) Trade-liveness: after 10:45 AM confirm >=1 ORB_V16_ENTRY_OK today; if 0, diagnose via reliability_checks.check_alive_but_not_trading(). (4) ACT per the action matrix: verify vs broker truth FIRST; fix non-watched now (+regression-lock); WATCHED files never mid-session — surface + escalate. (5) Log one line to SESSION_LOG.md only if action taken. Only ping Rhett if actionable/escalation; silence = handled. EXTRA today (7/10): OVH forced restart may hit ANY TIME before 12:00 PM ET (window active since 3 AM) — each tick, check LastBootUpTime; if it changed, run the full reboot-recovery drill (run_bot/TW/dashboard/beacon/guardian checks per the 7/09 playbook) and verify positions+stops via broker truth immediately.
+
+**Claude Code:**
+
+**Live — refresh yesterday's review and the LRCX paradox is solved on-screen.** What changed on every trade card:
+
+- **Markers sit on the true fill candles now** (broker fill timestamps): LRCX shows IN at 9:46:04 and OUT at **10:15:24 @ 358.32** — the exit arrow moves half an hour to where the trade actually ended, and the giveback table's phantom "09:46" times are cured by the same fix.
+- **Every OUT marker now says *why***: yesterday's page renders "· 30m time-stop" on 14 exits, "· candle trail" on 7, "· ATR stop" on LRCX-class stops. The green-candle-exit confusion can't recur — the chart explains itself.
+- And the fix upgraded your LRCX diagnosis: it didn't time-stop — its **resting ATR stop fired** at 10:15 as the bounce ticked through the stop level. That's exactly the kind of thing the label makes visible at a glance.
+
+Verified against broker records before deploying (fill times match to the second), server restarted clean (PID 10044 > edit times), SESSION_LOG carries the entry. Remaining dashboard block — 1-minute P&L chart with window markers, day-page caching for the lag, retiring the fossil expectancy card — continues through the afternoon ticks. System green throughout (last tick 12:19, CSHV 50/0/0).
+
+---
