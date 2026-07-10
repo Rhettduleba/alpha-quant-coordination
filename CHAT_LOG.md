@@ -23883,3 +23883,21 @@ The stack did its job on a losing day: 14 time-stops carried out the 17 non-conf
 **Bottom line:** correct behavior, red outcome, one structural lesson re-confirmed (correlated themes are one bet), one of your test ideas thriving (fill-delay), one struggling honestly (the leash), and the first promotion decision of the project now visibly approaching. Monday's queue: concentration monitor first, then the leftover dashboard items, and the weekend stays dark by design.
 
 ---
+
+
+## Turn — 2026-07-10 17:04:43 ET
+
+**Rhett:**
+
+its 5:02 why hast the debrief fired yet?
+
+**Claude Code:**
+
+Good challenge — verify before explaining. The file I just quoted had today's data, so *something* wrote it; checking the task's actual run record and every artifact's timestamp:
+Six sends today — **all INFO/WARNING level, which since Tuesday's alarm contract go to Discord only.** That's the answer to why it *felt* like nothing fired: **your own noise rules working as designed.** Before Tuesday, the 4:50–4:55 stretch would ping your phone with "Account Confirmed Flat" and drill notes; now those land silently in the Discord archive, and Telegram stays reserved for CRITICAL. The chain itself has never sent a "debrief ready" message — its output is the dashboard page and the report files, which are all on disk stamped 4:50, and the daily review page for today is live right now.
+
+So: nothing is broken, nothing is late — but your instinct is pointing at a real gap in the contract we wrote: **there may be exactly one routine message per day that deserves the phone — a single end-of-day digest.** Something like: *"EOD ✓ 4:50 — 22 trades, net −$1,349, compliance 22/22, flat at close, all gates green. Debrief on the dashboard."* One ping, ~4:55 PM, trading days only. It's the difference between "silence = handled" and "silence = did it even run?" — and today shows that distinction matters to you at 5 PM.
+
+Implementation is small (a digest exception through the phone gate, subject-locked so nothing else can sneak through it, fed from the debrief's own totals). **Your call: want the daily 4:55 digest on your phone, or keep evenings fully silent and check the dashboard when curious?** Say "digest" and it ships this weekend, first ping Monday at the close.
+
+---
