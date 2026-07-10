@@ -22941,3 +22941,24 @@ The one prerequisite for all of it is still **your steps 1–4 from the walkthro
 **Today's execution order, confirmed:** re-entry replay (next, before the open) → dashboard build block (P&L chart upgrade, fill-time markers + exit-reason labels, giveback time bug, day-page cache, retire the 9:35 card) → VWAP-alignment study → tonight, the manual-close sweeper proposal. And the last call on OVH: their restart window is open until noon; silence = the bot trades through it.
 
 ---
+
+
+## Turn — 2026-07-10 08:18:44 ET
+
+**Rhett:**
+
+is the tsesting stauts on the dashboard up to date?
+
+**Claude Code:**
+
+Good catch to ask — checking against reality: several are stale, including one embarrassing one (a study I ran but never registered, violating my own append-every-study rule). Let me pull the current truth and fix all of it:
+**No, it wasn't — you caught four stale items and one broken promise, all fixed now (refresh the page: 33 entries).** What was wrong and what changed:
+
+1. **"Shadow-cell spec freeze — QUEUED (tonight)"** → stale by two days. It was frozen yesterday pre-open and is *live and accruing* (EOD action #10 scored two forward days already). Now reads **DONE — FROZEN 7/08, accruing forward**, with the real tallies: CELL 1 +$230.18 (N=12/30), CELL 2 −$67.89 (N=5/30), each humbled once already.
+2. **"Re-entry cap Phase 2 — QUEUED (tonight)"** → now honestly reads **OVERDUE — runs morning 7/10**. It has slipped three times behind incident work, and your SNDK/MARA questions yesterday re-asked exactly what it answers. It's next.
+3. **Two studies I ran on 7/08 but never registered** — violating the append-every-study rule I wrote myself: the **time-stop sweep** (the 30/45/60/90 test you requested — now an entry, status "DONE → became CELL 2") and the **SNDK/INTC exit reconstruction** (the 1-green-candle/hair-trigger-trail finding — "DONE → tournament variant"). Both added with full findings and my takes.
+4. **The edge-ledger entry's numbers were 3 days old** — and refreshing it surfaced the most important status on the whole page: **the C_union cell has now been positive all 4 forward days (+$425, +$28, +$164, +$42) and its N hit 34 — past the N≥30 bar.** It still needs the day-count bar (≥7 of 10 positive days; it's 4-for-4) plus the must-not-cut review, so nothing promotes yet — but this is the first cell in the project's history to reach the first promotion gate. Roughly 3 more positive days decide whether you get the project's first evidence-backed exit-change proposal.
+
+The gap this exposes, honestly: registry statuses were hand-maintained and I fell behind during two incident-heavy days. The durable fix is making the *ledgers write their own status lines* into the registry at each EOD run (the numbers above came from files that were already current — only the display layer lagged). Adding that to today's dashboard build block so this page can't drift again. Replay runs now.
+
+---
