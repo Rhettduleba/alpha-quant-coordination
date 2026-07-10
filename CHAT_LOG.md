@@ -23901,3 +23901,26 @@ So: nothing is broken, nothing is late — but your instinct is pointing at a re
 Implementation is small (a digest exception through the phone gate, subject-locked so nothing else can sneak through it, fed from the debrief's own totals). **Your call: want the daily 4:55 digest on your phone, or keep evenings fully silent and check the dashboard when curious?** Say "digest" and it ships this weekend, first ping Monday at the close.
 
 ---
+
+
+## Turn — 2026-07-10 18:12:28 ET
+
+**Rhett:**
+
+digest
+
+**Claude Code:**
+
+Shipping it now — Friday after the close is the perfect window, and you'll get the **first real digest on your phone in a few minutes** as the end-to-end proof. Three pieces: the subject-locked exception through the phone gate, the digest composer, and the schedule hook.
+Gate proven. Now the schedule hook, the regression lock, and the live first send:
+Suite locked (49/0). Now the live proof — sending today's real digest to your phone:
+**Check your phone — the first digest just landed** (Telegram confirmed OK:200 at 5:12 PM). It reads: today's trade count, net, win rate, compliance verdict, flat-at-close confirmation, the health one-liner, and a pointer to the full debrief.
+
+What shipped, with proof:
+1. **The exception is surgical:** only subjects starting with `DAILY DIGEST` pass the phone gate — unit-tested that ordinary INFO (like "Account Confirmed Flat") stays Discord-only, and **REG-52 now locks that forever** (suite 49/0: if anyone ever loosens the gate or breaks the digest, the suite screams).
+2. **It's chain-fed and self-silencing:** wired as action #11 of the 4:50 EOD task, so it fires ~4:52 with numbers from the artifacts written seconds earlier; skips weekends and holidays on its own; and a digest failure can never break the chain (it swallows its own errors).
+3. **From Monday on, your evening contract is:** one ping at ~4:52 = day closed, here's the score. **No ping by 5:00 on a trading day = something's actually wrong** — which is exactly the signal you reached for today at 5:02, now made real.
+
+That closes the week properly: your phone is quiet all day unless money is at risk, speaks once at the close, and everything else lives on the dashboard. Weekend queue stands (concentration monitor first, Tailscale whenever you do your five minutes). Enjoy the weekend.
+
+---
