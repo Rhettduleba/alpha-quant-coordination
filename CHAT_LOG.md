@@ -22901,3 +22901,43 @@ A page will ask you to approve a machine joining your tailnet — that machine i
 **Your move: steps 1–4** (install, sign in, toggle, tap the link above). Say "done" and I finish Phase C the same hour — then sharing is a two-click affair whenever you want it. Meanwhile the re-entry replay is next on my plate as promised, and OVH's window stays open until noon — bot trades through unless I hear "pause" by ~9:40.
 
 ---
+
+
+## Turn — 2026-07-10 08:16:26 ET
+
+**Rhett:**
+
+The Intraday P&L chart, you mentioned an upgrdae, move forward, can we break this down to a 3 minute candle or even a one mintute candle please. So back to the PRU trade, does this trade and the AMAT trdae need deeper thought? How can we aviod these trdaes? did we entry properly? do you have any thoughts how we can aviod these obviuos bad trdaes? if i want to share the dashboard with someone who will be viewing the dashboard on a loptop or PC who do i do that?
+
+**Claude Code:**
+
+All three, plus the synthesis your trade questions keep pointing at:
+
+## 1 · Intraday P&L chart — yes, and 1-minute it is
+
+Moving forward today with the full upgrade: **1-minute candles** (the underlying account reconstruction is already built from 1-minute bars, so this is pure display resolution — no new data needed, and the chart library handles 390 candles easily), plus **vertical markers at each entry window** (9:45, 10:35…) so you can see "new positions breathing" at a glance, plus a **realized-P&L line overlaid on the mark-to-market candles** — the gap between the line and the candles *is* the open-position risk at that moment, which is the thing you've been squinting at in the 9:45 dive. If 1-minute turns out too noisy to read, dropping to 3 is a one-character change — we'll start at max fidelity and let your eyes vote.
+
+## 2 · PRU and AMAT — yes, they deserve deeper thought, and here's the pattern your eye keeps finding
+
+First the direct answers: **did we enter properly?** Mechanically yes — both passed every live rule (mover ranking, liquidity floors, breakout trigger). Neither was a malfunction. The real question is whether the *rules* should be stricter, and here's what the data says about each:
+
+- **AMAT** filled **61 seconds** after arming — the instant-chase bucket (0–3 min fills ≈ breakeven at best, N=172). Buying the very first push of an extended name = paying top tick for confirmation we never got.
+- **PRU** filled **11 minutes** after arming (the 9–12 minute bucket ran −$77/trade historically), from the **12:35 window** (our worst cell: 30% winners, −$41/trade), *and* — look at your own chart — into a stock making lower highs all day. Three strikes before the fill even landed.
+
+**Now the synthesis, because this is the deeper thought you asked for:** step back across every trade you've flagged in two days — PRU (long in a downtrend), META (short into what became an uptrend), WDC (long, no momentum, never confirmed), AMAT (chase, never confirmed). **The common factor isn't the window or the speed — it's that the entry fired against or without the prevailing intraday trend.** Our system currently checks *day-level* movement (vs. yesterday's close) but never asks "which way is this stock actually going *right now*?" The classic mechanical form of that filter: **longs only when price is above VWAP (Volume-Weighted Average Price — the day's average price weighted by volume, the intraday trend line institutions use); shorts only below it.** PRU was below VWAP when we bought it. That's a testable rule, and unlike most ideas it's *retro-computable on all 400+ historical trades today* — bars are on disk. So: **I'm running the VWAP-alignment study today** as an in-sample screen; if it survives day-consistency and the must-not-cut check (the winners it would have removed get priced, always), it goes on the pre-registration candidate list next to the instant-chase and 12:35-window cells. Your eye generated the hypothesis; the ledger will grade it.
+
+How we *avoid* these trades, concretely and in order of evidence: nothing changes live today; the three candidate filters (instant-chase, 12:35 window, VWAP alignment) each get studied against full history, the survivors get pre-registered and accrue forward, and the first one to hit N≥30 with ≥7/10 positive days comes to you as a proposal. That's the machine we built — your pattern-spotting feeds its front end.
+
+## 3 · Sharing with a laptop/PC viewer
+
+Identical invitation, different device on their end — the whole flow:
+
+1. **You:** login.tailscale.com/admin → **Machines** → the VPS row → **⋯ → Share…** → their email → send. (Same as the iPad-guest flow — the invite is device-agnostic.)
+2. **Them, on the laptop:** accept the email invite → create a free Tailscale account (Google/Microsoft sign-in) → download the desktop app from **tailscale.com/download** (Windows or Mac) → install, sign in, and confirm the toggle is on (Windows: the Tailscale icon appears in the system tray by the clock; Mac: menu bar).
+3. **Them, viewing:** open **any browser** (Chrome/Edge/Safari) → your dashboard URL (the `https://…ts.net` address from Phase C) → enter the dashboard password you give them privately → bookmark it. Everything works the same as your iPad — it's just a website to them, with the network as the first lock and the password as the second.
+
+The one prerequisite for all of it is still **your steps 1–4 from the walkthrough** (your account + approving the VPS with the login link) — sharing hangs off your admin console, so nothing can be shared until the VPS is in your tailnet.
+
+**Today's execution order, confirmed:** re-entry replay (next, before the open) → dashboard build block (P&L chart upgrade, fill-time markers + exit-reason labels, giveback time bug, day-page cache, retire the 9:35 card) → VWAP-alignment study → tonight, the manual-close sweeper proposal. And the last call on OVH: their restart window is open until noon; silence = the bot trades through it.
+
+---
