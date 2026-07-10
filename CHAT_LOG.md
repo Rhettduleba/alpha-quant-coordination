@@ -23150,3 +23150,47 @@ Great specimen — and the broker record corrects my first chart read in an impo
 **The one-sentence trader verdict:** a low-conviction name, bought on a dying push, into supply, with 8× more room to lose than the distance it needed to win — rescued to flat by a rule and a coincidence. The system's *entries* keep generating this class; the *exits* keep bailing them out — which is the whole edge-is-in-the-exit thesis wearing yet another ticker. The fix isn't this trade; it's the three entry filters already in the study pipeline, VWAP-alignment first — it would likely have vetoed this one, and I'll know whether that's true across all 400 historical trades by end of day.
 
 ---
+
+
+## Turn — 2026-07-10 10:28:51 ET
+
+**Rhett:**
+
+explain to me how our scanner works? So the scanns scans the market for 5 minutes before the bot executes correct? Does the bot take into consideration any of the prior data meaning anthing before the last 5 minutes?
+
+**Claude Code:**
+
+Close, but the "5 minutes" part works differently than you're picturing — and the difference matters. Here's the whole machine, plain English, verified from the actual code this week:
+
+## What actually happens at each window (say, 9:45)
+
+**Step 1 — one snapshot, not a 5-minute watch.** At 9:45:05 the scanner takes a *single snapshot* of the whole eligible market (~500+ names: the S&P pool plus every stock with average daily volume ≥ 500k). It doesn't sit and observe for five minutes — it asks one question per stock, *right now*: what's your price, your day-change, your volume so far?
+
+**Step 2 — rank the movers.** From that snapshot it computes, per stock:
+- **Day change** = current price vs. **yesterday's close** (gainers become long candidates, losers become shorts)
+- **Relative volume** = today's volume *pace* vs. yesterday's total (so 2.1M shares by 10 AM in a stock that does 8M/day = "running hot")
+- **Score** = relative volume × an exhaustion penalty (very stretched moves get down-ranked)
+
+Liquidity floors ($5+ price, 1M+ prior-day volume), earnings veto, hard-to-borrow exclusion — then it keeps the top names per side.
+
+**Step 3 — this is where your "5 minutes" lives.** For each selected name, it looks at the **last 5 fully-closed one-minute candles** and takes their high (for a long) — that becomes the *trigger price*. It places a stop-limit order there and walks away. The order then sits — DAY order — and fills whenever price crosses that level: 38 seconds later (MO today), or 2½ hours later (RMD on Monday), or never. That gap between arming and filling is the fill-delay dimension we've been studying all week.
+
+## So what history does the bot actually use?
+
+**It uses:**
+- **Yesterday:** prior close (day-change), prior day's volume (the relative-volume yardstick)
+- **The last ~3 weeks:** ATR — Average True Range over 14 days — which sets position size, the confirm threshold (0.15×ATR), the chandelier stop (1.4×ATR)
+- **The whole session so far, but only as two numbers:** cumulative volume and net day-change. A stock that spiked at 9:32, crashed at 9:50, and recovered by 10:30 looks *identical* to one that ground steadily higher — same day-change, same volume.
+- **The last 5 minutes:** only to set the trigger level. Nothing else.
+
+**It does NOT use — and this list is exactly where this week's losing patterns live:**
+- **Trend quality / path.** No VWAP, no "is this making higher highs or lower highs," no "which side of the open are we on." That's how PRU got bought in a downtrend and MO got bought below its open — the day-change number can't see shape.
+- **Freshness of the move.** A +4.6% move made at 9:35 and a +4.6% move happening *right now* score the same at 12:35 (the HONA lesson).
+- **Momentum at the trigger.** The stop-limit fills on any touch — a dying push and an aggressive breakout look the same to a resting order (the MO 15-second-chart lesson from an hour ago).
+- **Stock personality.** Altria and a small-cap biotech are ranked by the same two numbers; nothing knows one mean-reverts and one trends.
+
+## The honest design summary
+
+The scanner is deliberately a **dumb, wide funnel** — on the 7/06 debrief the numbers were: ~530 scanned → 86 evaluated → 46 selected across the day → 27 filled. Its philosophy is "let volume nominate candidates, let the *breakout itself* be the proof, and let the exits fire everything that doesn't confirm." The week's accumulated evidence says the funnel's blindnesses are systematic and measurable — stale fills, instant chases, wrong-side-of-trend entries, dead-window entries — which is why the candidate filters queued for study (VWAP alignment, instant-chase, fill-delay, window pruning) are all *additions of sight to the entry*, each priced against the winners it would cut before anything changes live. The scanner nominates; today the exits do all the judging; the research program is slowly teaching the front door some judgment too.
+
+---
