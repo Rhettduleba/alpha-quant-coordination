@@ -23748,3 +23748,16 @@ Run the SELF_MONITORING_PLAYBOOK.md intraday check for the Alpha Quant bot (C:\A
 Tick clean at 3:19 PM — CSHV **50 OK / 0 WARN / 0 FAIL**, inbox clear, heartbeat written this instant. No action, no log, no ping. Next tick ~3:33.
 
 ---
+
+
+## Turn — 2026-07-10 15:33:53 ET
+
+**Rhett:**
+
+Run the SELF_MONITORING_PLAYBOOK.md intraday check for the Alpha Quant bot (C:\AlphaQuant). STEPS: (1) Confirm ET time + market state; if past 4:00 PM ET / market closed, do a final EOD-flat check then STOP looping (CronDelete this job). (2) Read the SAME warnings Rhett gets: run `python C:\AlphaQuant\tradestation-bot\alerts_bridge.py`, read C:\AlphaQuant\CSHV_FINDINGS.md, check code_alert_inbox (python C:\AlphaQuant\tradestation-bot\code_alert_inbox.py --json), AND tail outputs/alerts/sent_ledger.jsonl for any send since the last tick. (3) Trade-liveness: after 10:45 AM confirm >=1 ORB_V16_ENTRY_OK today; if 0, diagnose via reliability_checks.check_alive_but_not_trading(). (4) ACT per the action matrix: verify vs broker truth FIRST; fix non-watched now (+regression-lock); WATCHED files never mid-session — surface + escalate. (5) Log one line to SESSION_LOG.md only if action taken. Only ping Rhett if actionable/escalation; silence = handled. EXTRA today (7/10): OVH forced restart may hit ANY TIME before 12:00 PM ET (window active since 3 AM) — each tick, check LastBootUpTime; if it changed, run the full reboot-recovery drill (run_bot/TW/dashboard/beacon/guardian checks per the 7/09 playbook) and verify positions+stops via broker truth immediately.
+
+**Claude Code:**
+
+Tick clean at 3:34 PM — CSHV **50 OK / 0 WARN / 0 FAIL**, inbox clear, heartbeat 12s. EOD flatten in ~16 minutes. No action, no log, no ping. Next tick ~3:48; the first post-4:00 tick closes the loop with the final flat check.
+
+---
