@@ -23924,3 +23924,20 @@ What shipped, with proof:
 That closes the week properly: your phone is quiet all day unless money is at risk, speaks once at the close, and everything else lives on the dashboard. Weekend queue stands (concentration monitor first, Tailscale whenever you do your five minutes). Enjoy the weekend.
 
 ---
+
+
+## Turn — 2026-07-10 18:21:24 ET
+
+**Rhett:**
+
+can you add it to the dashboard also
+
+**Claude Code:**
+
+Good addition — same digest, permanent home on the dashboard. The digest script will write each day's summary to a small history file, and the home page gets a "Daily Digest" card showing today plus the recent days:
+Record written and idempotent (re-runs replace the day, no dupes). Now the home-page card:
+Done and logged. Your end-of-day picture is now three layers deep, all from one record: the **phone ping** at ~4:52 (the pulse), the **dashboard card** (the week at a glance), and the **full debrief** one click below it (the autopsy). Monday it all runs itself.
+
+That wraps the week. Carried into Monday, in order: the book-concentration monitor (three correlated-cluster exhibits now waiting on it), the last two dashboard items (1-minute P&L chart, retiring the fossil card), the manual-close sweeper proposal for your GO, and your five Tailscale minutes whenever suits. The weekend is dark by design — the guardian pages you if that changes. Good weekend, Rhett.
+
+---
