@@ -22763,3 +22763,83 @@ Good morning — checking both, plus the thing that matters most this morning: w
 I'll re-arm the 15-minute monitor at 9:15 and keep a specific eye out for the OVH restart — when it lands, the recovery drill from yesterday runs itself, and I'll verify every piece came back before the next window fires.
 
 ---
+
+
+## Turn — 2026-07-10 07:56:38 ET
+
+**Rhett:**
+
+ok, lets talk about yesterday's review. First please increase dashboard performance, when i click on the dashboard its laggy. Second, how can we build the dashboard so that i can share the dashboard with others? The first thing i see on the review is the "left on the table", give me your thoughts about this figure. Could we have imporved the day? We left a lot on the table. The peak filled broker truth and the peak deploy book commited are far a part please explain? EXplain the largest give back card. Explain "giveback to EOD"? what does this mean? The next card "re-arm ve 9:35 expectancy is old sysytem, we are not starting trading until 9:45 and we removed the gate, please explain why this is still on the dashboard? Agian to my eyes the INtra day P&L always looks like we dive low in the 9:45 time slot. Look at the chart and tells me if it communicates what it should? Is it a valuable metric, expain the chart? SNDK, it lokks like a perfect exit. But i think we should have gotten back in this stock, after our good exit it took a brief dive and then climbed all day. Are we currently revisiting oppotnities to get back into a stock or do we have a rule that says we cant get back in? What are your thoughts about trading a stock multiple times over a day? the next 4 trades look great on the list of best trades until we get to MARA, looks like a proper exit, but then it bounces back, again we missed an opportunity to get back into a stock. A bunch of great exits yestaerday on trdaes that won. The COST  short looks like we should have stayed in that trade longer, your thoughts? The U trade acording to what i see on the chart we exited while the stock was going up? please explain. PRY long looks like a terrible trade, your thoughts?Same with AMAT does not look like any momentum going into the trade? WDC long, please view the exit again, im questioning the entry does ot like like any momentum we should have gotten out of the trade very early We have seen this pattern beforea stock that does no confirm your thought? The META short looks like it should have been a long! stock was on a small pull back and then went up all day? Then the next desaster the LRCX long. I want to adress the dash board and what i see on the minute by minute chart and then what the datat shows. on the chart we entered the trade on a green candlestickand we exited on a green candle stick, so to the human eyes it doesnt make sense that we entered the stock at 367.99 and exited at 358.32. hOW CAN WE MAKE THE CHARTING BETTER OR SOLVE THIS VISUALE PRIOBLEM for the humand reader of the dashboard and how can the candlestick show one thing but the trade was different?
+
+**Claude Code:**
+
+Sixteen questions — taking every one, with data pulled fresh where needed. Quick verification pass on the specific trades first:
+All sixteen, in your order — with the trade data re-pulled fresh so every number is broker-verified. Three of your observations found real bugs or real design questions; several others are the *same* finding wearing different tickers, which is itself the lesson of the day.
+
+## 1 · Dashboard lag — cause found, fix today
+
+Every click rebuilds the page from scratch: 25 trades × (analytics enrichment + 1-minute bar fetches from the broker API) + 25 TradingView chart initializations, all before you see pixel one. **Yesterday is immutable — there's no reason to recompute it per click.** Fix (today, non-watched): completed days get rendered once and served from a disk cache (instant loads), and charts initialize lazily as you scroll instead of all 25 at once. Today's live page keeps rebuilding (it must), but past days will snap.
+
+## 2 · Sharing the dashboard
+
+Two good paths, by audience: **(a) Tailscale sharing** — you can invite a specific person to your tailnet (or share just the VPS node) from the Tailscale admin console; they install the app, sign in, and see the same URL you do, password still required. Free, private, best for 1–3 trusted people. **(b) Cloudflare named tunnel + Access** for non-technical viewers — a real web address gated by email login. The dashboard is already read-only-by-design with whole-site auth, so the plumbing is safe either way. My recommendation: Tailscale sharing, since you're already on it.
+
+## 3 · "Left on the table" — read it again, because the big number is backwards from how it looks
+
+Two different figures wearing similar names: **"Left on table (in)" = +$3,474** is the top-tick fantasy — the sum of every trade's best unrealized moment minus what we banked. Nobody captures 100% of that; a realistic great trail gets maybe a third. **"Left after exit" = −$7,825 is NEGATIVE — that's money the exits SAVED**: had we held every position to the close instead of exiting, the day would have been $7,825 *worse* (−$651 would have been roughly −$8,500). So yesterday's exits were the hero, again. Could we have improved the day? Honestly: the three big 0945 losers (LRCX, AMAT, META = −$1,400) all filled within ~70 seconds of arming — the "instant-chase" bucket the 3-minute study flagged as breakeven-at-best — and the re-entry misses you spotted (below) are the other real lever. Both are already in shadow measurement; neither justifies a hand-tune off one day.
+
+## 4 · Peak filled vs peak deploy-book — why they're far apart, by design
+
+**Peak filled ($176,280, 44.1%)** counts actual simultaneous positions — broker truth, the only number the $400k regulatory cap applies to. **Peak deploy-book committed ($468,907)** adds unfilled entry stop orders *plus* protective stops — and every stopped position gets counted twice in that view (its position and its exit order). It's a "how much have we committed" utilization gauge vs. the $380k target, not exposure. We deliberately split these on 7/07 after the old conflated number false-alarmed "108.6% of cap" on a day the true peak was 39.5%. A source-level cleanup (splitting the snapshot fields) is queued as build 0b.
+
+## 5 · "Largest givebacks" and "giveback to EOD"
+
+That card prices the *cost of exiting* per trade: **"Giveback to EOD"** = what the position would have added (or lost) from our exit until the close — negative means exiting beat holding. **"Peak giveback"** = the single best price *after* we left, i.e. the ceiling any looser exit could have caught. MARA's row: we banked +$175, holding to close would have *lost* $106 more, but at the perfect post-exit tick there was $1,718 available. It exists as the counterweight to the time-stop's savings — proof we look at both sides of every exit rule.
+
+## 6 · "Re-arm vs 9:35 expectancy" card — you're right, it's a fossil
+
+It shows *cumulative history since 5/26*, and the "9:35 gated scan" row is a dead cohort (that path was disabled; we now start at 9:45, ungated). It answered a June question ("which path carries the expectancy") that's already decided. **Action: I'm replacing it with the per-window expectancy table scoped to the current era** (the same view the Period Review already computes) with era boundaries labeled. Today.
+
+## 7 · The Intraday P&L chart and the 9:45 dive
+
+The chart is telling the truth, and yesterday it was telling you something important. It's the account's mark-to-market (realized + open positions' paper value) in 5-minute candles. The 9:45–9:55 dive has two components: the *structural* one (breakout entries on extended movers always show adverse excursion first — we buy the push) and yesterday's *real* one: the trough of −$2,748 at ~9:50 was META/LRCX/AMAT/WDC all failing at once, and unlike Tuesday, they never came back. So: valuable metric, honest chart. Enhancement worth making: split the candle color into realized vs. unrealized and tick-mark the entry windows, so you can tell "new positions breathing" from "the book actually bleeding."
+
+## 8–9 · SNDK and MARA re-entries — yes, there's a rule blocking it, and your eye has found the week's biggest open question
+
+**There is an explicit rule: one entry per symbol per day** (`ORB_MAX_ENTRIES_PER_NAME=1`, which you approved 6/18). It was built to stop churn under the old hair-trigger exit — get stopped, re-enter, get stopped again. Your SNDK and MARA reads are exactly the *other side* of that trade-off: clean exits on winners, then the stock resumed, and the cap forbade returning. The Phase-1 study showed the cap has blocked 306 re-entry signals and that score can't predict which were good — only a full replay through the exit stack can answer it, split by *continuation* (re-enter after a win, your SNDK case) vs. *revenge* (re-enter after a stop-out). **That replay has slipped three times behind incident work; it runs this morning — it's the very next thing I do after this message,** and my prior: your instinct is directionally right for the after-a-win case, wrong for after-a-loss. Multiple entries per day on a trending name is how the best momentum days pay; on chop days it's a commission shredder. The data will price both.
+
+## 10 · COST short
+
+Exited +$8.29 at the 30-minute mark, unconfirmed (never reached +0.15×ATR — Average True Range — in its favor). If it later fell hard, then yes — this is the **U/DDOG class**: the time-stop is deliberately blind to everything except "did you confirm in 30 minutes," and it cuts slow developers. That exact tension is why CELL 2 (the 45-minute leash for big movers) is accruing forward data as of this week.
+
+## 11 · U — "we exited while it was going up"
+
+Correct, and it's the rule working as written, for better or worse: U never confirmed within 30 minutes, so the time-stop fired at 15:07 *regardless of what the current candle was doing*. It banked +$1.22; holding to close was worth ~$72 more. Third member of the same family today. The message from your own review: **the 30-minute time-stop's savings come disproportionately from fast failers, and its costs from slow risers** — which is precisely the split the leash cell and the confirm-keyed redesign exist to arbitrate. The data is accumulating; no hand-tune.
+
+## 12 · PRU — agreed, terrible
+
+Long at 12:46 into a stock making lower highs all day (look at the chart left of the entry — the trend was already down), from the **12:35 window — the worst cell in our book** (−$41/trade, 30% win rate before yesterday). Its MFE was essentially zero (it never went our way at all). The 12:35-window skip cell is on the pre-registered candidate list; PRU is another exhibit.
+
+## 13 · AMAT — "no momentum going into it"
+
+Right again, with a number: AMAT filled **61 seconds after arming** — the instant-chase pattern (0–3 minute fills ≈ breakeven historically, and the HONA lesson: fast triggers on stretched names are chases). It never confirmed; the time-stop took −$378. Between AMAT, LRCX (filled at 53 seconds), and META (72 seconds), yesterday's 0945 window was an instant-chase cluster — I'm adding the "0–3 minute instant-chase" cell to the spec-freeze candidate list with yesterday attached as evidence.
+
+## 14 · WDC — the non-confirmer pattern you keep seeing
+
+You've now named it three times across three days, and you're describing a real, testable signature: **enters, never goes favorable, bleeds slowly, waits for the 30-minute stop.** The test on the agenda for exactly this is the *early-MAE fingerprint*: do eventual losers show adverse movement in the first 3–5 minutes that winners don't? If yes, an early exit (cut at minute 10 if MAE > X and MFE ≈ 0) tightens losers without touching winners — the L1-leash work from June found a version of this (−81% of the loss, zero winners cut, small sample). It's next in the study queue after the re-entry replay.
+
+## 15 · META — "should have been a long!"
+
+Here's where I push back, gently. META broke its opening range *downward* first — the system shorted the direction the market actually broke, which is the strategy. It then reversed violently (a failed breakdown, one of the most reliable reversal patterns in trading — your eye is correct about that). But "should have been long" is only knowable *after* the failure. The honest tradable version of your observation isn't "invert the signal," it's **"a stopped-out failed break may be a valid entry the other way"** — which is a re-entry-class rule, and lands in the same replay running this morning. Note also: the exit saved $564 versus holding the short to the close. And our fade-vs-breakout counterfactual ledger (TUNE-01) accumulates exactly this question daily, so when the fade hypothesis has N, we'll know rather than feel.
+
+## 16 · LRCX and the chart-vs-truth problem — you found a real display bug, and here's the whole answer
+
+Three separate things make the chart lie to your eye, and I'm fixing two of them today:
+
+1. **REAL BUG — markers use order *placement* time, not *fill* time.** LRCX armed at 9:45:11 but **filled at 9:46:04 @ 367.99**; the exit filled **10:15:24 @ 358.32**. The card's giveback row even prints "09:46" as the exit time — entry-time contamination. We fixed this exact class in the *data layer* on 7/07 (`entry_fill_dt`); the *chart markers and card times* never got the upgrade. **Fix today: all markers and times move to broker fill timestamps.**
+2. **Green candles at both ends is genuinely possible and honest** — the entry minute was an up-minute (we buy breakouts — the trigger *is* an up-move), the stock then slid $9.67 over 29 minutes, and the exit was a **30-minute time-stop, which fires on the clock, not on candle color** — it will happily exit during a green bounce minute. Nothing contradictory happened; the chart just doesn't *say why* the exit occurred.
+3. **Fix for the human reader (today):** every exit marker gets its reason labeled on the chart ("30m time-stop", "candle-close trail", "resting stop"), and I'm adding a shaded band connecting entry→exit so the net drop between two green candles is visible at a glance instead of deducible. Plus one caveat worth knowing forever: tape-watcher exits can print at prices from *its* stream that sit inside no official candle (the SNDK finding) — those will get a small "TW" tag.
+
+**Action list out of this conversation, in execution order:** re-entry-cap replay (now, before the open) → chart marker/label fixes + giveback time bug → day-page caching + lazy charts → retire the 9:35 expectancy card → instant-chase cell to the candidate list. And the standing reminder: **OVH's restart window is open until noon** — no "pause" received, so the bot trades through it; last chance to say otherwise is ~9:40.
+
+---
