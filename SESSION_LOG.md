@@ -65,6 +65,10 @@
 >
 > **[ALERT TRIAGE 2026-07-10 ~12:04 PM ET — autonomous run — ✅ INBOX CLEAN, no escalation (silence = handled).]** `code_alert_inbox.py --json` = **0 total / 0 actionable / 0 noise / 0 critical groups** (nothing new since the 10:03 AM --ack). Independently confirmed clean via live CSHV (generated 2026-07-10 12:00:10 ET, market-hours YES): **OK=50 / WARN=0 / FAIL=0 / INFO=1 / SKIP=2 — "All operational checks passing."** Lone INFO = standing-benign `clean_day_certified` (intraday durable clean; full flat-certification at EOD). Broker-truth guardrails green in-session: bot ALIVE + cycling (`rel_trading_is_thinking` loop 4450, heartbeat 4–7s fresh), trade_journal touched 20s ago, advisor 2/2 real runs today, brain_universe 4.5h fresh, research brain ran today (universe 07:30:33 ET), control file 3.9h w/ real tokens (no dry-run markers), no override, 15/15 risk constants loadable (DAILY_MAX_LOSS intentionally SIM-disabled), 142-symbol published universe (0 leveraged ETFs), `rel_phantom_deploy_book` book $338,975 == real exposure $338,975 (no phantom refusals), `rel_exit_side` all 3 positions protected (synthetic + resting stop, highs/lows fresh), `rel_universe_not_shrunk` 530 names, token cache 2/2 valid, no broker rejections in 30m, no scan-failure halts, no OneDrive sync conflicts. Two SKIPs (`eod_flat_at_close` pre-4:05 PM + `no_overnight_positions_morning` not pre-open) correct for the hour. ET stamp from canonical `et_now.py` (ZoneInfo Eastern) = 12:04 PM ET, DST-correct; cross-checked vs CSHV 12:00:10 gen-stamp (~4 min, normal 5-min cadence — not stalled). Cross-note: OVH mandatory-patch window closed cleanly (no VM restart — see Fable entry below). Nothing actionable → no Rhett ping. Per forward-test freeze + watched-files: this run edited / placed / restarted / cleared **nothing** on the trading path. Inbox --ack'd, cursor advanced.
 >
+> **[DIGEST ON DASHBOARD 2026-07-10 ~6:22 PM ET - Fable one-chat]** Daily Digest card added to the dashboard home (top, above the command grid): latest day big + color-coded + last 4 days compact + the phone contract note. Single source: eod_digest.py now writes outputs/reports/daily_digest.jsonl (idempotent per day, written BEFORE the send so phone+dashboard can never disagree; --render-only flag used to backfill today without double-pinging). Injected single-point in the / route (home template untouched). Verified live (PID 3804; card renders 22 trades / compliance YES / flat-at-close from the real record); compile OK. Week closed: digest phone ping + dashboard card both live for Monday.
+>
+> **[DAILY DIGEST SHIPPED 2026-07-10 ~5:12 PM ET - Fable one-chat, Rhett: digest]** THE one routine phone ping: notifier gains a subject-locked exception (_tg_digest_ok: only subjects starting DAILY DIGEST pass the CRITICAL-only Telegram gate); new eod_digest.py composes N/net/win + compliance + flat-at-close + CSHV one-liner from the chain-fresh canonical artifacts (trading days only, never-raise); appended as EOD chain action #11 (fires ~4:52 after the debrief). REG-52 extended to lock the exception (digest passes, ordinary INFO still blocked); suite 49/0/3. FIRST LIVE SEND verified: telegram OK:200 + discord OK:204 at 5:12 PM (Rhett phone ping = end-to-end proof). Context: 4:50 chain ran on time (result 0) - Rhett read the new silence as failure -> the digest closes that gap.
+>
 > **[DASHBOARD CACHE 2026-07-10 ~1:36 PM ET - Fable one-chat]** Completed-day HTML cache shipped (Rhett: dashboard laggy): past days render ONCE to outputs/cache/daily_review_html/<day>_v3.html then serve from disk - MEASURED 11.43s -> 0.41s (28x) on 7/09, byte-identical; today + ?regenerate=1 always build live; cache version-stamped (v3 = fill-markers era) so render upgrades self-invalidate. PID 6944; compile OK. Remaining block: 1-min P&L chart, retire 9:35 fossil card.
 >
 > **[DASHBOARD FIXES 2026-07-10 ~12:22 PM ET - Fable one-chat, Rhett LRCX catch]** Trade-card times + chart IN/OUT markers now use BROKER FILL timestamps (entry_fill_dt/exit_fill_dt) instead of order-placement times, and every OUT marker carries its exit reason (30m time-stop / candle trail / ATR stop / chandelier / EOD). Root cause of the LRCX visual paradox CONFIRMED + fixed: its exit leg was the RESTING STOP placed 9:46 that FIRED 10:15:24 -> placement-time display put the exit on the wrong candle (same class as the giveback-table 09:46 rows, cured by the same fix). Verified vs broker fills (LRCX 09:46:04 in / 10:15:24 out / ATR stop label); live page renders labels; PID 10044 > mtimes. Remaining block: 1-min P&L chart, day-page cache, retire the 9:35 card.
@@ -7123,6 +7127,164 @@ _Pinned-bar real-time method (l1_mustnotcut_audit), K pinned at 0.75 (never tigh
 - Top loser: COIN long $-517.06 = 26.4% of the day's loss $-1,956.49 (scan_move 3.17%)
 - Gap-tops (|scan_move| >= 12.0%) among losers: 0
 - **CLUSTER: the loss is spread across 12 losers (top COIN only 26.4%); not a single MU-class trade.**
+
+### CUMULATIVE TALLY (across available days)
+
+- Days: 2026-06-18, 2026-06-22, 2026-06-23, 2026-06-24, 2026-06-25, 2026-06-26
+- Confirmed N=70 · unconfirmed N=39 · confirm-NA N=29 (progress toward N>=30 confirmed: 70/30)
+- Cumulative early-exit-at-0.75 three-sided net-of-cost: **$458.54**
+- One-trade-dominance guard: WITHOUT the single biggest trade (2026-06-25/MU (bleeder saved), $810.09): **$-351.55**
+
+| date | confirmed N | unconfirmed N | three-sided net$ |
+|--|--|--|--|
+| 2026-06-18 | 7 | 5 | $0.00 |
+| 2026-06-22 | 12 | 4 | $0.00 |
+| 2026-06-23 | 7 | 4 | $0.00 |
+| 2026-06-24 | 14 | 7 | $52.76 |
+| 2026-06-25 | 15 | 8 | $392.76 |
+| 2026-06-26 | 15 | 11 | $13.02 |
+
+### Caveats
+
+- confirm = polled flag -> segment clean-fail vs poll-near-miss (a trade can miss confirm by a hair).
+- EARLY-POLL CAVEAT: the live monitor is blind in the first ~5 min, so Lens B's early-exit numbers are "what an IDEAL early-poll would do," NOT what today's live bot could have fired -- read them as a ceiling, not a live-achievable result.
+
+_Diagnostic, in-sample. These days are in-sample for any un-promoted rule; a streak of confirming days accumulates N toward >=30 but does not promote anything -- promotion still requires a locked rule + fresh OOS forward test + the gauntlet._
+
+---
+
+
+## EOD SUMMARY — 2026-07-11
+
+_Auto-generated by eod_debrief.py at 2026-07-11 4:50 PM ET · broker-truth sourced · 0 round-trip(s)_
+
+## A · DID THE SYSTEM RUN CORRECTLY TODAY?
+
+**Funnel (broker-truth + candidate log):** universe scanned ~530 -> candidates evaluated 0 -> passed in-play gate 0 -> selected 0 -> symbols FILLED 0.
+
+**Re-arm windows (multiscan_trace):**
+- (no re-arm trace entries today)
+
+**Incidents today:** 0 (none).
+**SAFE_MODE:** currently off (no engage today unless an incident above shows it)
+
+**Gate drove entries:** INCONCLUSIVE/FAIL rc=1 -- [INCONCLUSIVE] no candidate-log rows for 2026-07-11 — gate did not run / no scan yet.
+  _(NOTE: verify_gate_drove_entries validates only the 9:35 path; re-arm fills are NOT in the 9:35 SELECTED set by design, so it reports FAIL on re-arm-heavy days. The per-day gate-integrity signal is the gate_not_failing_open reliability check.)_
+
+**Broker reconciliation at close:** FLAT (0 positions, 0 working); position_recon=OK (broker and bot agree both ways (0 position(s) reconciled))
+
+## A2 · STRATEGY-RULE & IN-PLAY COMPLIANCE (did we trade to the rules?)
+
+- no closed round-trips today (nothing to check)
+
+## B · PER-TRADE LEDGER (one row per round-trip; broker-truth)
+
+| # | sym | side | occ | entry(act/intend) | slip bps | delay m | gate (RelVol·mv%·RSvSPY·$tier·mcap·win) | shares | gross$ | 0.15ATR lvl | conf | EXIT REASON/time/px | hold m | MFE | MAE | leftHold$ | gP&L | comm | netP&L | R | order IDs |
+|--|--|--|--|--|--|--|--|--|--|--|--|--|--|--|--|--|--|--|--|--|--|
+
+## C · COST & EXECUTION SUMMARY (edge-survival line)
+
+- Total commission (broker-actual): $0.00  ·  fees: $0.00
+- Commission 0.00 bps + fees 0.00 bps of $1 notional = **0.00 bps avg cost**
+- Avg entry slippage: n/a (adverse +)
+- Slippage trend (prior 10d, adverse + bps): [0.1, 0.6, 0.9, 1.8, 1.9, 1.5, 1.1, 1.9, 0.8, 1.1] · trailing avg 1.2 bps
+- no trades
+
+## D · AGGREGATE  *(context, not a verdict — building toward N>=30)*
+
+- no closed round-trips today
+
+## E · ANOMALIES & DIVERGENCES CODE FLAGGED
+
+- none flagged by code today
+
+## F · PROVENANCE / FIELD-AVAILABILITY MAP
+
+| field | source | note |
+|--|--|--|
+| symbol/side/shares/order IDs/status | BROKER-TRUTH | broker_orders_unified.csv raw_order_json |
+| actual entry/exit price + time | BROKER-TRUTH | FilledPrice/ExecutionPrice + OpenedDateTime (UTC) |
+| intended entry trigger price | LOGGED | signal_trigger_px / intended_price / StopPrice |
+| intended/submission time | LOGGED | submit_time (ET) -- proxy for arm time, not breakout-detect time |
+| entry delay / slippage bps | DERIVED | actual vs intended (above) |
+| commission (per trade) | BROKER-ACTUAL | raw_order_json CommissionFee, summed entry+exit |
+| fees (per trade) | BROKER-ACTUAL | raw_order_json UnbundledRouteFee (0 today) |
+| gross/net P&L, net R | DERIVED | from broker fills + commission; R uses 0.15xATR (9:35 only) |
+| gate ctx (RelVol/move%/RSvSPY/$tier/mcap) | LOGGED (9:35 only) | orb_candidate_log.jsonl selected names; RE-ARM names NOT in candidate log |
+| 0.15xATR protective level | DERIVED (9:35 only) | ATR from orb_daily_state entries_submitted; re-arm ATR NOT-logged |
+| confirm fired? | LOGGED (9:35 only) | bot_alerts ORB_CONFIRM_SWAP; re-arm confirm not tracked |
+| exit type (EOD vs synthetic) | DERIVED | by exit time; fine reason (candle-close vs hard-stop) NOT joined (in bot_alerts) |
+| MFE / MAE | DERIVED from 1-min bars | barcharts over hold window; NOT logged natively (REG-08 INERT without this) |
+| broker-flat + position recon | BROKER-TRUTH (asserted) | reliability_checks.fetch_truth + check_position_recon |
+
+_Never fabricated: any field above marked NOT-logged/NOT-computed is shown as such in the rows._
+
+## G — FADE vs BREAKOUT counterfactual (TUNE-01; context, NOT a verdict — building toward N)
+
+_No breakout candidates logged for the day._
+## H · CAPITAL DEPLOYMENT (by hour + idle attribution)
+
+_(no utilization snapshots for the day)_
+
+**Idle-capital attribution** (why capital sat idle vs the $400k cap; RE-ARM windows):
+- **Qualified trades refused for CAPITAL today: 0** (peak idle below cap $0; gross demand upper-bound $0 at $25k/name). _The only number that justifies raising the deploy target._
+
+- STALE-SLOT (separate; DEPLOYED-but-stuck, NOT idle): $0 in 0 red name(s) held to EOD-flatten -- a tighter exit would have freed the slot.
+- _thin-signal + self-throttle = idle (cap-deployed) per window. Thin-signal idle is CORRECT (no qualified candidate wanted it -- NOT a defect, no floor implied); self-throttle is fixable (our caps). The 9:35 path deploys first; this covers the re-arm windows in the trace._
+
+## I · LOSER ATTRIBUTION (exit-reason x confirm x side)
+
+- no closed round-trips today
+
+## TRADE AUTOPSY — 2026-07-11
+
+_READ-ONLY post-close autopsy · broker-truth sourced · 0 round-trip(s) · generated 2026-07-11 4:50 PM ET_
+
+**Reconciliation:** book NET $0.00 vs broker truth $0.00 (gross $0.00) -> MATCH
+
+### Per-round-trip ledger (one row per RT)
+
+| # | sym | side | path | entry fill | net$ | conf | early MAE 1/2/3/5m (xATR) | early MFE 1/2/3/5m (xATR) | hold m | exit reason | EODflat | rev->bleed |
+|--|--|--|--|--|--|--|--|--|--|--|--|--|
+
+### Day summary — confirmed vs unconfirmed
+
+- CONFIRMED: N=0 · net $0.00 · win None%
+- UNCONFIRMED: N=0 · net $0.00 · win None%
+- **Day net $0.00**
+
+### THE GIVEBACK LINE (3 PM -> close)
+
+- By ~3:00 PM: 0 RT completed = $0.00 (intraday peak).
+- At close: 0 RT = $0.00.
+- **Given back: $0.00** across the 0 late-closer(s) (completed after 3:00 PM, net $0.00).
+
+Per late-closer — early-reversal BLEEDER vs WINNER that gave back into the EOD flatten:
+
+| sym | side | exit | net$ | bucket |
+|--|--|--|--|--|
+
+- BLEEDER bucket sum: $0.00 (0 RT)
+- WINNER-gaveback bucket sum: $0.00 (0 RT)
+
+### LENS A — early-reversal losers
+
+- Day losers: 0 · total loser net $0.00
+- Early-reversal losers: 0 · net $0.00
+- Of those, LATE-CLOSERS (exit after 3:00 PM) in the giveback: 0 · net $0.00
+
+### LENS B — MUST-NOT-CUT: early exit at K=0.75xATR adverse-before-confirm (full book)
+
+_Pinned-bar real-time method (l1_mustnotcut_audit), K pinned at 0.75 (never tighter). EARLY-POLL CAVEAT: the live monitor is blind in the first ~5 min, so these are what an IDEAL early-poll would do, NOT what today's live bot could have fired._
+
+- **Bleeders cut: 0 · $ saved $0.00**
+- **Confirmed winners clipped: 0 · $ given up $0.00**
+- **THREE-SIDED net-of-cost: $0.00** (= saved $0.00 − winners given up $0.00)
+- coverage: 0 safe (never crossed K before confirm), 0 NOT-AVAILABLE (no pin/atr), 0 intrabar-ambiguous (counted worst-case against the leash)
+
+### LENS C — MU-class check (cluster vs one extended/gap-top trade)
+
+- no losers today
 
 ### CUMULATIVE TALLY (across available days)
 
