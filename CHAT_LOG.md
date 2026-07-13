@@ -24420,3 +24420,41 @@ Careful here: on 5/28 you set a rule I consider one of the project's best — **
 **Bottom line:** you've spotted the strategy's central structural tension, the archive agrees with you, and by end of day we'll know whether "how much of the move is already spent" separates our winners from our losers across 450 trades — which would be the most important entry-side result of the project. Study starts now, between ticks.
 
 ---
+
+
+## Turn — 2026-07-13 10:19:32 ET
+
+**Rhett:**
+
+Run the SELF_MONITORING_PLAYBOOK.md intraday check for the Alpha Quant bot (C:\AlphaQuant). STEPS: (1) Confirm ET time + market state; if past 4:00 PM ET / market closed, do a final EOD-flat check then STOP looping (CronDelete this job). (2) Read the SAME warnings Rhett gets: run `python C:\AlphaQuant\tradestation-bot\alerts_bridge.py`, read C:\AlphaQuant\CSHV_FINDINGS.md, check code_alert_inbox (python C:\AlphaQuant\tradestation-bot\code_alert_inbox.py --json), AND tail outputs/alerts/sent_ledger.jsonl for any send since the last tick. (3) Trade-liveness: after 10:45 AM confirm >=1 ORB_V16_ENTRY_OK today; if 0, diagnose via reliability_checks.check_alive_but_not_trading(). (4) ACT per the action matrix: verify vs broker truth FIRST; fix non-watched now (+regression-lock); WATCHED files never mid-session — surface + escalate. (5) Log one line to SESSION_LOG.md only if action taken. Silence = handled. EXTRA today (Mon 7/13, post-7:13AM-reboot): (a) FIRST TICK ONLY — verify the deadman beacon's AUTO-repetition resumed: outputs/validation/deadman_beacon.json mtime must be NEWER than 07:25 AM; if frozen at 07:19 (my manual run), the task repetition is broken again post-boot — rebuild the task cleanly (Register-ScheduledTask fresh, daily+boot triggers, 5-min repetition) and verify the next slot fires. (b) Verify TW launched at 9:25 (guardian covers from 9:26). (c) Watch the 0945 window arms normally.
+
+**Claude Code:**
+
+Everything's in — registering, then the full answer to your paradox:
+**Your paradox is answered, and the answer is the most important entry-side result of the project.** Here it is:
+
+## The finding — intraday travel is the ruler
+
+For 329 historical trades, I measured *how far the stock had already run today* (from the open to our fill, in ATR units) at the moment we entered:
+
+| Move already spent at entry | N | Win% | $/trade |
+|--|--|--|--|
+| **Shallow (<0.25 ATR)** | 65 | **68%** | **+$32.63** |
+| Middling (0.25–0.75) | 126 | 56% | −$8.16 |
+| **Deep run (≥0.75 ATR)** | 138 | 55% | **−$32.60** |
+
+**Perfectly monotone — the cleaner the measure, the earlier in the move we entered, the better we did.** This is your exhausted-mover observation, quantified: SNDK this morning (shorted after a deep −9% flush) sits in the worst bucket; the 7/07 semiconductor winners entered while their moves were *young*. And it unifies everything — the June "extension magnitude" lever, the fill-delay gradient, the tape-study inversions, HONA, MO — all shadows of this one variable.
+
+## Three sharp nuances the study also delivered
+
+1. **The gap is NOT the poison.** Total maturity including the overnight gap *zigzags* (no clean pattern) — a stock that gapped 8% but has traveled little *since the open* is fine to enter. The tradable move's lifespan starts at 9:30, not at yesterday's close. This is why the 0945 window wins on gap days and bleeds on flush-chases.
+2. **The "fresh ground" hypothesis died today** — breaking to new highs vs re-entering old territory made zero difference. Killed, logged.
+3. **Character has an inverted-U:** the "lively" middle class (ATR 3–6% of price) is our profitable habitat; both the wild movers (SNDK-class) and the calm names (MO-class) drag. Weak signal, noted for later.
+
+## The discipline, applied to the good news
+
+Vetoing deep-run entries would have saved **+$4,499 in-sample** ($13.9k of losers avoided vs $9.4k of winners cut — a 1.48 ratio, decent). But day-consistency is **9 of 15 days** — better than fill-delay's coin flip, not slam-dunk — and the known confounder is real: on genuine trend days, extended keeps extending. So it does **not** deploy. It's now **CELL 3 (DEEPRUN-SKIP-075)**, pre-registered in the spec-freeze addendum with the threshold locked at the pre-coded bucket boundary, counting forward from tonight's close. Three concurrent cells now run on the ledger (disclosed) — and notice the poetry: CELL 1 (stale fills), CELL 2 (big-mover leash), CELL 3 (deep runs) are three cuts at the same underlying truth from three different angles. If the truth is real, they should confirm together.
+
+**Tonight's post-close builds:** CELL 3 accrual wiring into the EOD chain + the order-flow/print-size logging. Everything's on the Testing page (entry #36) with the full JSON archived. Your eye found the trap; the ledger measured it; the forward test decides it. That's the machine working exactly as we built it to.
+
+---
