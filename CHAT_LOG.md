@@ -24056,3 +24056,16 @@ Run the SELF_MONITORING_PLAYBOOK.md intraday check for the Alpha Quant bot (C:\A
 Tick clean at 7:45 — and **the beacon loop is proven sustaining**: pings at 7:32:51 → 7:37 → **7:42:52**, exactly on its self-owned 5-minute cadence, healthy every beat. The scheduler-repetition disease is cured for good. CSHV **48 OK / 0 WARN / 0 FAIL**, inbox clear, bot cycling (heartbeat 10.7s). The morning recovery is fully closed: every system green, every Thursday-and-today hardening verified under fire. Advisor runs at 8:00, TW at 9:25, first window 9:45. No action needed, no ping. Next tick ~8:00.
 
 ---
+
+
+## Turn — 2026-07-13 08:00:38 ET
+
+**Rhett:**
+
+Run the SELF_MONITORING_PLAYBOOK.md intraday check for the Alpha Quant bot (C:\AlphaQuant). STEPS: (1) Confirm ET time + market state; if past 4:00 PM ET / market closed, do a final EOD-flat check then STOP looping (CronDelete this job). (2) Read the SAME warnings Rhett gets: run `python C:\AlphaQuant\tradestation-bot\alerts_bridge.py`, read C:\AlphaQuant\CSHV_FINDINGS.md, check code_alert_inbox (python C:\AlphaQuant\tradestation-bot\code_alert_inbox.py --json), AND tail outputs/alerts/sent_ledger.jsonl for any send since the last tick. (3) Trade-liveness: after 10:45 AM confirm >=1 ORB_V16_ENTRY_OK today; if 0, diagnose via reliability_checks.check_alive_but_not_trading(). (4) ACT per the action matrix: verify vs broker truth FIRST; fix non-watched now (+regression-lock); WATCHED files never mid-session — surface + escalate. (5) Log one line to SESSION_LOG.md only if action taken. Silence = handled. EXTRA today (Mon 7/13, post-7:13AM-reboot): (a) FIRST TICK ONLY — verify the deadman beacon's AUTO-repetition resumed: outputs/validation/deadman_beacon.json mtime must be NEWER than 07:25 AM; if frozen at 07:19 (my manual run), the task repetition is broken again post-boot — rebuild the task cleanly (Register-ScheduledTask fresh, daily+boot triggers, 5-min repetition) and verify the next slot fires. (b) Verify TW launched at 9:25 (guardian covers from 9:26). (c) Watch the 0945 window arms normally.
+
+**Claude Code:**
+
+Tick clean at 8:00 — CSHV **48 OK / 0 WARN / 0 FAIL**, inbox clear, heartbeat 8.2s, beacon steady on its 5-minute beat (7:57:53, healthy). The 8:00 advisor run is executing right now; its fresh control file gets picked up by CSHV's `control_file_fresh_and_real` check within minutes, and the 8 AM audit gate follows. No action, no log, no ping. Next tick ~8:15.
+
+---
