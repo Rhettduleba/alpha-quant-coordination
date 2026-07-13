@@ -25333,3 +25333,23 @@ That's a genuine code defect: the reversal candle should have to close *after* c
 Tonight's full six-heading EOD review is still owed — I'll run it next. The digest fired to your phone at 4:50 PM as designed.
 
 ---
+
+
+## Turn — 2026-07-13 17:47:10 ET
+
+**Rhett:**
+
+i also asked you to put the EOD review on the dashbord did yoiu?
+
+**Claude Code:**
+
+You're right — I hadn't. I put the *digest* card on the home page when you said "add it to the dashboard also," but the full EOD debrief was never there — worse, the digest card literally said "full debrief on the dashboard" while the only debrief link was a retired stub. That's on me. It's done now and verified live:
+
+- **New page: `/eod-debrief`** — renders the complete six-section 4:50 PM debrief (A: did-the-system-run-correctly, B: per-trade ledger, C: costs in bps, D: aggregates, E: anomalies, F: provenance) straight from the archived broker-truth file, with proper tables and a date picker across all archived days (newest opens by default; today's loads in 0.7s, older days instantly).
+- **Home page card** — "EOD Trade Debrief / How the day closed" next to the Testing card.
+- **Digest card link** — "Open full EOD debrief →" now sits right on the digest strip, jumping to that day's block.
+- Read-only — the 4:50 chain remains the only writer. Dashboard restarted with verify-load passed (new process 5:46:29 PM > file 5:46:09 PM).
+
+Refresh the home page and you'll see both entry points. The debrief's trade charts still live in the Daily Review; the debrief page links there per day.
+
+---
