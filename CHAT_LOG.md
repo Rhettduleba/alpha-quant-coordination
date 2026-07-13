@@ -24617,3 +24617,18 @@ Run the SELF_MONITORING_PLAYBOOK.md intraday check for the Alpha Quant bot (C:\A
 Tick clean at 11:15 — CSHV **50 OK / 0 WARN / 0 FAIL**, inbox clear, heartbeat 7.5s. The 11:35 window is next; the concentration monitor logged its second snapshot on schedule. No action, no log, no ping. Next tick ~11:30, and the sweeper proposal doc (debt item ⑤) is the next build between ticks.
 
 ---
+
+
+## Turn — 2026-07-13 11:31:29 ET
+
+**Rhett:**
+
+Run the SELF_MONITORING_PLAYBOOK.md intraday check for the Alpha Quant bot (C:\AlphaQuant). STEPS: (1) Confirm ET time + market state; if past 4:00 PM ET / market closed, do a final EOD-flat check then STOP looping (CronDelete this job). (2) Read the SAME warnings Rhett gets: run `python C:\AlphaQuant\tradestation-bot\alerts_bridge.py`, read C:\AlphaQuant\CSHV_FINDINGS.md, check code_alert_inbox (python C:\AlphaQuant\tradestation-bot\code_alert_inbox.py --json), AND tail outputs/alerts/sent_ledger.jsonl for any send since the last tick. (3) Trade-liveness: after 10:45 AM confirm >=1 ORB_V16_ENTRY_OK today; if 0, diagnose via reliability_checks.check_alive_but_not_trading(). (4) ACT per the action matrix: verify vs broker truth FIRST; fix non-watched now (+regression-lock); WATCHED files never mid-session — surface + escalate. (5) Log one line to SESSION_LOG.md only if action taken. Silence = handled. EXTRA today (Mon 7/13, post-7:13AM-reboot): (a) FIRST TICK ONLY — verify the deadman beacon's AUTO-repetition resumed: outputs/validation/deadman_beacon.json mtime must be NEWER than 07:25 AM; if frozen at 07:19 (my manual run), the task repetition is broken again post-boot — rebuild the task cleanly (Register-ScheduledTask fresh, daily+boot triggers, 5-min repetition) and verify the next slot fires. (b) Verify TW launched at 9:25 (guardian covers from 9:26). (c) Watch the 0945 window arms normally.
+
+**Claude Code:**
+
+**⑤ cleared** — the manual-close safety proposal is written and filed: [PROP-MANUAL-CLOSE-SAFE-2026-07-13.md](../../../../../AlphaQuant/outputs/proposals/PROP-MANUAL-CLOSE-SAFE-2026-07-13.md). Two parts: the **orphan-stop sweeper** (auto-cancels the leftover protective stop within 2 exit cycles of a manual close — watched file, so it waits on your word) and **MANUAL/HUMAN exit labeling** (your hand-closes show honestly in every report instead of "unclassified"). Rollback flag, regression lock, and a SIM rehearsal are all specified; the detection invariant from Thursday stays as the independent backstop regardless. **One word from you — "approve both" or "approve sweeper" — and it builds and deploys at the next flat window.**
+
+Debt scoreboard: **⑨①⑧②⑤ cleared, three remain** — all queued for this afternoon/post-close: order-flow logging + TW gap fixes (post-close so tomorrow's TW loads them), the 1-minute P&L chart + fossil card retirement, and the iPad CSS pass. Monitoring green throughout; next tick ~11:45.
+
+---
