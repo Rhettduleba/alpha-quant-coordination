@@ -25193,3 +25193,22 @@ Run the SELF_MONITORING_PLAYBOOK.md intraday check for the Alpha Quant bot (C:\A
 Tick clean at 3:45 — CSHV **50 OK / 0 WARN / 0 FAIL**, inbox clear, heartbeat 16.7s, no new sends. EOD flatten fires in 5 minutes; I'll verify flat + all working orders cancelled on the next tick. No action, no log, no ping. Next tick ~4:00.
 
 ---
+
+
+## Turn — 2026-07-13 16:01:12 ET
+
+**Rhett:**
+
+Run the SELF_MONITORING_PLAYBOOK.md intraday check for the Alpha Quant bot (C:\AlphaQuant). STEPS: (1) Confirm ET time + market state; if past 4:00 PM ET / market closed, do a final EOD-flat check then STOP looping (CronDelete this job). (2) Read the SAME warnings Rhett gets: run `python C:\AlphaQuant\tradestation-bot\alerts_bridge.py`, read C:\AlphaQuant\CSHV_FINDINGS.md, check code_alert_inbox (python C:\AlphaQuant\tradestation-bot\code_alert_inbox.py --json), AND tail outputs/alerts/sent_ledger.jsonl for any send since the last tick. (3) Trade-liveness: after 10:45 AM confirm >=1 ORB_V16_ENTRY_OK today; if 0, diagnose via reliability_checks.check_alive_but_not_trading(). (4) ACT per the action matrix: verify vs broker truth FIRST; fix non-watched now (+regression-lock); WATCHED files never mid-session — surface + escalate. (5) Log one line to SESSION_LOG.md only if action taken. Silence = handled. EXTRA today (Mon 7/13, post-7:13AM-reboot): (a) FIRST TICK ONLY — verify the deadman beacon's AUTO-repetition resumed: outputs/validation/deadman_beacon.json mtime must be NEWER than 07:25 AM; if frozen at 07:19 (my manual run), the task repetition is broken again post-boot — rebuild the task cleanly (Register-ScheduledTask fresh, daily+boot triggers, 5-min repetition) and verify the next slot fires. (b) Verify TW launched at 9:25 (guardian covers from 9:26). (c) Watch the 0945 window arms normally.
+
+**Claude Code:**
+
+Market closed — monitoring loop shut down cleanly. Final EOD check, all verified against broker truth:
+
+- **Flat confirmed**: 0 open positions, 0 working orders. The 9 stale unfilled entries (including the GLW short we discussed) were cancelled by the 3:50 flatten as designed, and the notifier logged "Account Confirmed Flat" at 3:59 PM.
+- **CSHV 49 OK / 0 WARN / 0 FAIL**, inbox clear. A zero-FAIL session end-to-end despite the 7:13 AM reboot, with all six re-arm windows firing — the reboot-resilience work held.
+- Cron 08efbafd deleted; close-out logged to SESSION_LOG.
+
+Still on deck this evening: the 4:50 chain (EOD debrief → **CELL 3's first forward-day score** → daily digest to your phone ~4:52 — I'll verify both), then the six-heading EOD review, and the post-close builds: the fill-quality "FILLED"-at-placement mislabel from the GLW dig, plus the order-flow logging + TW gap fixes so tomorrow's 9:25 TW relaunch loads them.
+
+---
