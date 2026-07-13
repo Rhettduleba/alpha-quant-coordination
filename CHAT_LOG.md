@@ -24544,3 +24544,21 @@ Fair call, and the debt is being paid down — here's the scorecard from the las
 **Remaining, in execution order:** ② concentration monitor Phase 1 (next block — now unblocked by the sector fill), ⑤ the manual-close sweeper proposal doc, ③④ order-flow/print-size logging + TW gap fixes (post-close, so tomorrow's 9:25 TW relaunch loads them), ⑥ 1-min P&L chart + fossil card, ⑦ iPad CSS. All of it lands today — the monitor ticks will interleave, and each completed item gets its evidence line in the log. The deeper fix for the pattern you called out: the commitment audit I just ran becomes part of every morning's ramp-up — first tick of the day checks the promise ledger, not just the bot.
 
 ---
+
+
+## Turn — 2026-07-13 11:02:56 ET
+
+**Rhett:**
+
+Run the SELF_MONITORING_PLAYBOOK.md intraday check for the Alpha Quant bot (C:\AlphaQuant). STEPS: (1) Confirm ET time + market state; if past 4:00 PM ET / market closed, do a final EOD-flat check then STOP looping (CronDelete this job). (2) Read the SAME warnings Rhett gets: run `python C:\AlphaQuant\tradestation-bot\alerts_bridge.py`, read C:\AlphaQuant\CSHV_FINDINGS.md, check code_alert_inbox (python C:\AlphaQuant\tradestation-bot\code_alert_inbox.py --json), AND tail outputs/alerts/sent_ledger.jsonl for any send since the last tick. (3) Trade-liveness: after 10:45 AM confirm >=1 ORB_V16_ENTRY_OK today; if 0, diagnose via reliability_checks.check_alive_but_not_trading(). (4) ACT per the action matrix: verify vs broker truth FIRST; fix non-watched now (+regression-lock); WATCHED files never mid-session — surface + escalate. (5) Log one line to SESSION_LOG.md only if action taken. Silence = handled. EXTRA today (Mon 7/13, post-7:13AM-reboot): (a) FIRST TICK ONLY — verify the deadman beacon's AUTO-repetition resumed: outputs/validation/deadman_beacon.json mtime must be NEWER than 07:25 AM; if frozen at 07:19 (my manual run), the task repetition is broken again post-boot — rebuild the task cleanly (Register-ScheduledTask fresh, daily+boot triggers, 5-min repetition) and verify the next slot fires. (b) Verify TW launched at 9:25 (guardian covers from 9:26). (c) Watch the 0945 window arms normally.
+
+**Claude Code:**
+
+**② cleared — the concentration monitor is live**, six days after it was planned and twenty minutes after its blocker fell. The full accounting:
+
+- **Running:** self-looping 5-minute snapshots during market hours (PID 4736), boot-proof task, guardian-protected (both recovery paths unit-tested), suite 49/0.
+- **First reading is already worth having:** the book right now is $258,601 across 13 legs but only **4.82 effective independent bets**, with a 31% all-long Consumer Discretionary theme on top. From now on, a 7/07-style "five positions, one bet" morning is visible in the log the moment it forms — and after ~a week of snapshots, the Phase 2 study prices whether concentration actually costs us money (both sides, as always) before any cap is even proposed.
+
+**Debt scoreboard today: ⑨ ① ⑧ ② cleared, four to go** — sweeper proposal doc (next), then post-close: order-flow logging + TW fixes, the 1-min P&L chart + fossil card, and the iPad CSS pass. System green throughout (last tick 11:00, CSHV 50/0/0). Next tick ~11:16.
+
+---
