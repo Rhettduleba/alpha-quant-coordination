@@ -24022,3 +24022,24 @@ Good morning — running the full post-reboot drill (same playbook as Thursday's
 **Today's schedule from here:** advisor 8:00 → tape watcher 9:25 (guardian covering from 9:26) → first window 9:45 → digest ~4:52. Monday research queue once the open settles: the concentration monitor (three exhibits waiting), the last two dashboard items, and the sweeper proposal. The C_union cell needs 2 positive days of the next 5 for the project's first promotion review — this week decides it.
 
 ---
+
+
+## Turn — 2026-07-13 07:34:34 ET
+
+**Rhett:**
+
+Run the SELF_MONITORING_PLAYBOOK.md intraday check for the Alpha Quant bot (C:\AlphaQuant). STEPS: (1) Confirm ET time + market state; if past 4:00 PM ET / market closed, do a final EOD-flat check then STOP looping (CronDelete this job). (2) Read the SAME warnings Rhett gets: run `python C:\AlphaQuant\tradestation-bot\alerts_bridge.py`, read C:\AlphaQuant\CSHV_FINDINGS.md, check code_alert_inbox (python C:\AlphaQuant\tradestation-bot\code_alert_inbox.py --json), AND tail outputs/alerts/sent_ledger.jsonl for any send since the last tick. (3) Trade-liveness: after 10:45 AM confirm >=1 ORB_V16_ENTRY_OK today; if 0, diagnose via reliability_checks.check_alive_but_not_trading(). (4) ACT per the action matrix: verify vs broker truth FIRST; fix non-watched now (+regression-lock); WATCHED files never mid-session — surface + escalate. (5) Log one line to SESSION_LOG.md only if action taken. Silence = handled. EXTRA today (Mon 7/13, post-7:13AM-reboot): (a) FIRST TICK ONLY — verify the deadman beacon's AUTO-repetition resumed: outputs/validation/deadman_beacon.json mtime must be NEWER than 07:25 AM; if frozen at 07:19 (my manual run), the task repetition is broken again post-boot — rebuild the task cleanly (Register-ScheduledTask fresh, daily+boot triggers, 5-min repetition) and verify the next slot fires. (b) Verify TW launched at 9:25 (guardian covers from 9:26). (c) Watch the 0945 window arms normally.
+
+**Claude Code:**
+
+First tick — one real catch, root-caused and permanently fixed:
+
+**The catch:** the beacon's auto-repetition froze *again* after this morning's reboot (stamp stuck at my 7:19 manual run through three missed slots). That's two reboots in a row where Windows Task Scheduler's "repeat every 5 minutes" mechanism silently died — Thursday on the daily trigger, today on the boot trigger. Verdict: stop trusting scheduler repetition entirely.
+
+**The architectural fix (deployed and verified):** the beacon is now a **self-looping process** — it launches once at boot and owns its own 5-minute heartbeat internally, the same pattern that runs the tape watcher. The task was rebuilt clean (start-at-boot, no time limit, auto-restart on failure), the **guardian now watches the beacon process 24/7** and re-fires it if it ever vanishes (unit-tested), and the loop is live: PID 8200, first ping **7:32:51 HEALTHY, off-box OK:200**. The next tick confirms the 5-minute cadence is sustaining, but there are now three independent layers keeping this thing alive — the loop itself, the guardian, and healthchecks.io alarming if pings ever actually stop.
+
+Also closed: the weekend's one inbox item — Saturday 9:32 AM the guardian found watchdog_supervisor dead and self-healed it (killed the orphan, relaunched, paged you once, correctly). Acknowledged.
+
+Everything else green: CSHV 47/0/0, flat book, advisor's 8:00 run upcoming, TW launches 9:25. Next tick ~7:45.
+
+---
