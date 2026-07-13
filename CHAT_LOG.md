@@ -25259,3 +25259,32 @@ Triage run complete.
 **Actions taken:** logged entry to `SESSION_LOG.md`, synced + committed + pushed to coordination repo ([96ef430](https://github.com/Rhettduleba/alpha-quant-coordination)), inbox `--ack`'d (cursor advanced). Per forward-test freeze: **nothing** edited/placed/restarted on the trading path. No Rhett ping — nothing needs him.
 
 ---
+
+
+## Turn — 2026-07-13 17:13:43 ET
+
+**Rhett:**
+
+The dashboard i lagging again, please fix. Then look at the visual aspect of the main paige i circled what needs to be fixed.
+
+**Claude Code:**
+
+Two jobs: fix the lag, then clean up that Daily Digest strip. Measuring first so I fix the real bottleneck.
+Both targets identified. Now the fixes — dashboard code only (non-watched):
+Now the digest card redesign — breaking the one-color red blob into individually-colored stat chips:
+Two dashboard processes racing port 8765 again (PIDs 2824, 5796) — the orphan pattern. Kill both, relaunch one:
+Verify-load passed: one process, PID 5948, StartTime 5:11:32 PM > mtime 5:10:31 PM. Now measuring the fix:
+Card verified in the served HTML — exactly as designed. Cleaning up and logging:
+Both fixed and verified live.
+
+**The lag.** The home page was never the problem (0.06s) — it was the Daily Review for **today**. The speed cache I built on 7/10 only cached *past* days; today's page rebuilt from scratch on every click, and with 25 trades that was 10 seconds per click. The fix: today now gets a short-lived cache too — 2 minutes during market hours (so fresh trades still show), 10 minutes after the close — and once the page is rendered after 5:15 PM (when the EOD chain has finished), the file becomes the permanent copy, same as any past day. Measured result: **10.07s → 0.45s** on a repeat click. I also found two dashboard processes racing port 8765 again (a leftover orphan) — killed both and relaunched exactly one via its scheduled task, verify-load passed.
+
+**The circled digest strip.** The problem was that the negative net painted the *entire* line red — including "compliance YES" and "health OK," which made a clean-run day read like a system failure. It's now a proper card matching the rest of the page:
+- The **net (−$2,368.65) is big and red/green by sign** — it's the only thing that carries the P&L color.
+- Trades and win rate sit beside it in neutral navy.
+- Compliance 25/25, Flat at close, and Health clean each render as their own **green ✓ pill** (they flip to red ✗ pills individually if one ever fails).
+- Prior days are tidy rows with each day's net colored by its own sign, and the "lands on your phone ~4:52 PM" note moved to a small right-aligned header line.
+
+Refresh the page and it should be instant with the new card. One honest note on the day itself since the digest is now staring at us: −$2,369 on 32% win rate is the worst day since 7/06 — the six-heading EOD review is next on my list tonight, and today's five stale unfilled orders (the GLW discussion) will be part of the losers analysis.
+
+---
