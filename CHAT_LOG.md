@@ -23991,3 +23991,34 @@ Straight answer, wearing my business-analyst hat and then my trader hat — and 
 And the trader-hat answer to the question hiding inside your question — *would subscribing make a customer profitable?* No. Nothing on that page finds an edge; it finds edges *faster if they exist*. We've proven both halves of that sentence the hard way.
 
 ---
+
+
+## Turn — 2026-07-13 07:24:36 ET
+
+**Rhett:**
+
+good morning. Its 7:14 am on Monday 7/13. I had to reboot the VPS, please check all systems make sure we are green and a go for all sysytem
+
+**Claude Code:**
+
+Good morning — running the full post-reboot drill (same playbook as Thursday's, plus the weekend-darkness check):
+**Good morning — green and GO across every system.** The full board, verified not assumed:
+
+| System | Status |
+|--|--|
+| Bot (run_bot) | ✅ self-recovered <1 min after your 7:13 reboot, cycling normally |
+| Watchdog + Guardian | ✅ both up (guardian ran 7:18, clean) |
+| Dashboard | ✅ auto-started at boot, serving — that task is now 2-for-2 on reboots |
+| Tailscale | ✅ running |
+| Broker exposure | ✅ FLAT, zero positions, zero working orders |
+| Weekend | ✅ fully dark — zero entries Sat/Sun, the dark-day gates held |
+| CSHV health | ✅ **47 OK / 0 WARN / 0 FAIL** at 7:20 |
+| Preflight | ✅ 39 PASS / 2 WARN / 0 FAIL (both the known-benign nits) |
+| 6 AM gate | ✅ GO-WITH-WARNINGS — and **correctly silent**: first live morning under your alarm contract, and the old 6 AM ping is gone by design |
+| EOD chain | ✅ intact, all 11 actions including the digest — your ~4:52 PM phone ping is armed |
+
+**Two Thursday fixes just passed their first real exams:** the beacon's boot trigger fired **4 seconds after boot** (its brief "unhealthy" report was it honestly describing the still-waking stack — cleared to HEALTHY with an OK:200 off-box ping by 7:19), and the dashboard auto-start did its job again. One item stays on watch rather than declared: the beacon's *auto-repetition* after the boot run — the scheduler's display is timezone-ambiguous, so the first monitor tick (~7:45) checks the ping file's actual timestamps and rebuilds the task cleanly if it froze. That check is baked into today's loop, which is armed.
+
+**Today's schedule from here:** advisor 8:00 → tape watcher 9:25 (guardian covering from 9:26) → first window 9:45 → digest ~4:52. Monday research queue once the open settles: the concentration monitor (three exhibits waiting), the last two dashboard items, and the sweeper proposal. The C_union cell needs 2 positive days of the next 5 for the project's first promotion review — this week decides it.
+
+---
