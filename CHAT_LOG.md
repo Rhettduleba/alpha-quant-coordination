@@ -24384,3 +24384,39 @@ Triage run complete — clean, no escalation.
 **Bookkeeping done:** SESSION_LOG entry appended → copied to coordination repo → committed + pushed (`a4eaaa4`) → inbox `--ack`'d (cursor advanced).
 
 ---
+
+
+## Turn — 2026-07-13 10:06:58 ET
+
+**Rhett:**
+
+We gave traded this stock before, we should take a look at the trends we have with certain stocks. so as i look at our startegy it seems we have a bit of a paradox, made i used the wrong work. BUt we can both agree that the opening from 9:30 to 9:45 was not profitable for us. But after the 9:45 time stamp we seem to catch a lot of exehausted movers. Let do some deep anylazation on this subject. Do so thinking and tell me what you come up with on the matter.
+
+**Claude Code:**
+
+This is the sharpest strategic observation you've made yet, and it's not a paradox — it's a trap with a precise mechanical name. Let me lay out the thinking, because seven separate findings we've accumulated all turn out to be describing this one thing from different angles.
+
+## The trap, named
+
+Our scanner ranks candidates by **how much has already happened** — day-change vs yesterday, volume already traded. Then the window arms a trigger at the recent high/low, i.e., a bet on **continuation of what already happened**. Hold those two sentences together and the trap is visible: **by construction, we select the stocks whose moves are most mature, then bet the maturity extends.** The strategy needs a move *established enough to rank* but *young enough to continue* — and nothing in our signal set can tell those apart. That's your paradox: it isn't about 9:30 vs 9:45. Enter at 9:30 and you get chaos and fake breaks (the −$28/trade opening bucket). Enter at 9:45 and the ranking process has *guaranteed* the moves you're offered are 15+ minutes old and often climaxing. Later windows, worse still — the re-entry replay showed re-arms at 11:35+ are maximum-staleness by definition, 75% never confirming.
+
+## The receipts — everything converging on one diagnosis
+
+- **Instant fills ≈ flat, 3–9 minute fills are our best cell (+$38–45/t):** a fill that takes a few minutes means price *coiled* near the trigger then broke — a fresh push. An instant fill means we bought the extension itself.
+- **The tape-study inversions:** volume bursting and vertical bars at the trigger = our *worst* fills. Climax at entry = exhaustion, quantified three ways.
+- **HONA, MO, and SNDK today** are the same autopsy: HONA bought 2.6% off its high hours into the move; MO bought a dying push in a chop name; and this morning we **shorted SNDK at 9:46 within ~1% of the low of a −9.3% day** — the move's ninth inning, statistically the worst possible location to add short exposure. It's bounced $30 against us since, exactly as an exhausted-move short should.
+- **And the buried thread that predicted all of it:** the June 25th red-cluster analysis concluded the L2 lever was **extension magnitude** — MU at 19.5% stretched (skip) vs QCOM at 9.7% (winner). That finding has been sitting in the archive for three weeks while we rediscovered it ticker by ticker.
+
+The reason 7/07's semi shorts won from similar-looking spots is the missing variable: on a *trend day with a sector catalyst*, "extended" keeps extending; on a *reversion day*, it snaps back. Extension alone won't be a clean filter — extension *relative to the stock's normal range* and *time since the extreme was set* might be. That's an empirical question, and we can answer it today.
+
+## The study I'm running this morning — "Extension at Entry"
+
+For all ~450 historical trades, three pre-declared features computed from bars we already have: **(1)** what fraction of the day's range had already been traveled at our entry, direction-adjusted (SNDK today ≈ 99th percentile; the 7/07 winners entered while the range was still *expanding*); **(2)** the move-so-far in ATR units (the June L2 lever, finally formalized); **(3)** minutes since the day's directional extreme was set (are we breaking to *new* ground or chasing old ground?). Buckets vs outcomes, must-not-cut priced, day-consistency checked. If the anecdotes generalize, this becomes the pre-registered cell that finally gives the entry side a real filter — not "when to trade" but "how much life is left in the move." Results by midday; it takes priority over the diurnal-ATR study because it *is* your question, and the two share infrastructure so both land this week.
+
+## On "trends with certain stocks" — a gentle pushback, using your own rule
+
+Careful here: on 5/28 you set a rule I consider one of the project's best — **strategy, not symbols; per-symbol P&L never feeds decisions** — because "SNDK lost for us last time" is exactly how curve-fitting starts (we've now traded SNDK three times in four sessions with +$314, +$260, −$234... and today's short — a coin-flip sequence that means nothing at N=4). What *is* legitimate is symbol **character** as a feature: SNDK is a $170-ATR, gap-prone, recent-listing semi — that's measurable, stable, and the same for everyone. The concentration monitor's sector groups and an ATR-class tag capture character without ever touching "this name owes us money." I'll fold a character dimension (ATR percentile, gap frequency) into the extension study so your instinct gets tested in its legal form.
+
+**Bottom line:** you've spotted the strategy's central structural tension, the archive agrees with you, and by end of day we'll know whether "how much of the move is already spent" separates our winners from our losers across 450 trades — which would be the most important entry-side result of the project. Study starts now, between ticks.
+
+---
