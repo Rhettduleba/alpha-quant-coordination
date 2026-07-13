@@ -25026,3 +25026,16 @@ Autonomous alert triage complete — **inbox clean, no escalation.**
 **Actions taken:** logged the run to [SESSION_LOG.md](C:/AlphaQuant/SESSION_LOG.md), synced + committed + pushed to the coordination repo (`a8b9b6b`), and `--ack`'d the inbox to advance the cursor. Per the forward-test freeze + watched-files rules, this run edited / placed / restarted / cleared **nothing** on the trading path. Silence = handled — no Rhett ping.
 
 ---
+
+
+## Turn — 2026-07-13 14:15:43 ET
+
+**Rhett:**
+
+Run the SELF_MONITORING_PLAYBOOK.md intraday check for the Alpha Quant bot (C:\AlphaQuant). STEPS: (1) Confirm ET time + market state; if past 4:00 PM ET / market closed, do a final EOD-flat check then STOP looping (CronDelete this job). (2) Read the SAME warnings Rhett gets: run `python C:\AlphaQuant\tradestation-bot\alerts_bridge.py`, read C:\AlphaQuant\CSHV_FINDINGS.md, check code_alert_inbox (python C:\AlphaQuant\tradestation-bot\code_alert_inbox.py --json), AND tail outputs/alerts/sent_ledger.jsonl for any send since the last tick. (3) Trade-liveness: after 10:45 AM confirm >=1 ORB_V16_ENTRY_OK today; if 0, diagnose via reliability_checks.check_alive_but_not_trading(). (4) ACT per the action matrix: verify vs broker truth FIRST; fix non-watched now (+regression-lock); WATCHED files never mid-session — surface + escalate. (5) Log one line to SESSION_LOG.md only if action taken. Silence = handled. EXTRA today (Mon 7/13, post-7:13AM-reboot): (a) FIRST TICK ONLY — verify the deadman beacon's AUTO-repetition resumed: outputs/validation/deadman_beacon.json mtime must be NEWER than 07:25 AM; if frozen at 07:19 (my manual run), the task repetition is broken again post-boot — rebuild the task cleanly (Register-ScheduledTask fresh, daily+boot triggers, 5-min repetition) and verify the next slot fires. (b) Verify TW launched at 9:25 (guardian covers from 9:26). (c) Watch the 0945 window arms normally.
+
+**Claude Code:**
+
+Tick clean at 2:15 — CSHV **50 OK / 0 WARN / 0 FAIL**, inbox clear, heartbeat 4.6s, no new sends since last tick (last ledger entry is still the 12:05 WARNING, already resolved — CSHV back to 0 WARN). Final re-arm window (2:35) arms in ~20 minutes. No action, no log, no ping. Next tick ~2:30.
+
+---
