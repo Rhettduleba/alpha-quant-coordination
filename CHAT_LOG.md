@@ -24458,3 +24458,16 @@ Vetoing deep-run entries would have saved **+$4,499 in-sample** ($13.9k of loser
 **Tonight's post-close builds:** CELL 3 accrual wiring into the EOD chain + the order-flow/print-size logging. Everything's on the Testing page (entry #36) with the full JSON archived. Your eye found the trap; the ledger measured it; the forward test decides it. That's the machine working exactly as we built it to.
 
 ---
+
+
+## Turn — 2026-07-13 10:30:42 ET
+
+**Rhett:**
+
+Run the SELF_MONITORING_PLAYBOOK.md intraday check for the Alpha Quant bot (C:\AlphaQuant). STEPS: (1) Confirm ET time + market state; if past 4:00 PM ET / market closed, do a final EOD-flat check then STOP looping (CronDelete this job). (2) Read the SAME warnings Rhett gets: run `python C:\AlphaQuant\tradestation-bot\alerts_bridge.py`, read C:\AlphaQuant\CSHV_FINDINGS.md, check code_alert_inbox (python C:\AlphaQuant\tradestation-bot\code_alert_inbox.py --json), AND tail outputs/alerts/sent_ledger.jsonl for any send since the last tick. (3) Trade-liveness: after 10:45 AM confirm >=1 ORB_V16_ENTRY_OK today; if 0, diagnose via reliability_checks.check_alive_but_not_trading(). (4) ACT per the action matrix: verify vs broker truth FIRST; fix non-watched now (+regression-lock); WATCHED files never mid-session — surface + escalate. (5) Log one line to SESSION_LOG.md only if action taken. Silence = handled. EXTRA today (Mon 7/13, post-7:13AM-reboot): (a) FIRST TICK ONLY — verify the deadman beacon's AUTO-repetition resumed: outputs/validation/deadman_beacon.json mtime must be NEWER than 07:25 AM; if frozen at 07:19 (my manual run), the task repetition is broken again post-boot — rebuild the task cleanly (Register-ScheduledTask fresh, daily+boot triggers, 5-min repetition) and verify the next slot fires. (b) Verify TW launched at 9:25 (guardian covers from 9:26). (c) Watch the 0945 window arms normally.
+
+**Claude Code:**
+
+Tick clean at 10:30 — CSHV **50 OK / 0 WARN / 0 FAIL**, inbox clear, heartbeat 21.1s, trade-liveness green (16 arms). The 10:35 window arms in ~5 minutes. No action, no log, no ping. Next tick ~10:45.
+
+---
