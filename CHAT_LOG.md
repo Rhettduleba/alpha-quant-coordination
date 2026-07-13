@@ -25122,3 +25122,35 @@ Triage run complete — inbox clean, nothing to escalate.
 - **Housekeeping:** appended the dated entry to SESSION_LOG.md, synced + committed + pushed to the coordination repo (`d3c8054`), and advanced the inbox cursor (`--ack`).
 
 ---
+
+
+## Turn — 2026-07-13 15:11:23 ET
+
+**Rhett:**
+
+So the bot takes a scan at 9:40 and then executes trades at 9:45 correct. Look at this trade that was sent and never executed. After the bot scans it should have to take a second look at the performace over the last 5 minutes before entering the trade, as you can see 9:42 this stock boauced in the oposite direction. What are your thoughts?
+
+**Claude Code:**
+
+Great catch, and your instinct is half-right — but the half that's right isn't the half you'd expect. Let me walk through what actually happened with GLW (Corning), from the bot's own logs and the broker's order record.
+
+**First, correcting the premise slightly.** The scan and the order both happen at 9:45, not 9:40-then-9:45. At 9:45:13 the bot scanned the movers (GLW was down 4.29% from the open — a top short candidate, score 3.172), and armed a **stop-limit** short: 111 shares, trigger $178.66, limit $178.57. That $178.66 is the low of the 9:40–9:45 stretch (printed at 9:43). The key word is *armed* — the bot never "executes at 9:45." The order only fills if price **breaks below $178.66 again**, i.e., only if the down-move continues.
+
+**Your proposed "second look" already exists — it's the stop-limit itself, and it's exactly what saved us here.** You're right that GLW bounced at 9:42–9:43 ($178.66 was the bottom tick). Because the entry demands a *new* low before committing money, the bounce meant the order just sat there untouched. Result: **$0 lost on a trade that would have been a disaster.** If the bot had entered short at market at 9:45 (~$179.93), GLW ran to $188.60 — the stop would have cut us for roughly a full R loser (~$400–500 on that position). The mechanism didn't fail; it did precisely the second-look job, mechanically, with no lookback rule needed.
+
+**Why I'd argue against adding a "did it bounce in the last 5 minutes?" filter before arming:** our own fill-delay study (N=221) found that entries filling **3–9 minutes after arm were our best cohort (+$38–45/trade)** — and those are mostly *bounce-then-rollover* fills: price bounces, fails, breaks the level anyway. A pre-arm bounce filter would delete exactly those winners. This is the every-fix-priced-against-the-winners rule, and this one prices badly.
+
+**But your chart did expose a real structural flaw — the armed order never dies.** I checked broker truth just now: that GLW short is **still working at the broker at 3:00 PM**, 5.5 hours after the signal, along with 8 other unfilled entries (5 of them from 9:45 this morning). Two real costs:
+
+1. **Toxic late fills.** If GLW dumped to $178.66 at 3:40 PM, we'd short it on a 9:45 signal — and the same study showed fills **≥15 minutes after arm are toxic** (that's the cohort CELL 1, our pre-registered shadow test, is measuring forward right now).
+2. **Slot crowding.** Working unfilled orders count toward the position budget by design — and at 10:35 today, six fresh candidates (MGM, INTC, ORCL, WDC, QQQ, and GLW itself re-flagged) were skipped "slots_exhausted" while stale 9:45 arms were still occupying budget.
+
+The orders do get cancelled — but only at the 3:50 EOD flatten (verified in eod_watchdog.py).
+
+**The fix your instinct points to is a TTL (time-to-live): cancel any unfilled entry ~15 minutes after arm.** That's exactly the enforcement side of CELL 1, which is already accruing forward evidence toward its N≥30 promotion bar. It touches the watched entry path, so per our rules: no mid-session edit — when CELL 1 hits its bar (or if you want, I can bring the TTL forward as a standalone proposal since the *slot-crowding* argument doesn't even need the P&L evidence), it goes through a proposal + flat-window deploy.
+
+One side finding from digging: the fill-quality log stamped this order "FILLED" at placement while the broker shows 0 shares executed — a status mislabel in the logging (non-watched). I'll fix that post-close tonight along with the order-flow logging work.
+
+Want me to file the entry-TTL proposal now (slot-crowding rationale, 15-min cancel, deploy at a flat window), or hold it until CELL 1 finishes its forward run?
+
+---
