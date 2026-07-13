@@ -25288,3 +25288,48 @@ Both fixed and verified live.
 Refresh the page and it should be instant with the new card. One honest note on the day itself since the digest is now staring at us: −$2,369 on 32% win rate is the worst day since 7/06 — the six-heading EOD review is next on my list tonight, and today's five stale unfilled orders (the GLW discussion) will be part of the losers analysis.
 
 ---
+
+
+## Turn — 2026-07-13 17:36:59 ET
+
+**Rhett:**
+
+i thought we had discussed showing the P&L at one minute candles? Please chnage to P&L chart under the review on one minutes candles. Also, i think we should chnage the sysytem and allow reentry into a stock, how would you do this, would you have a cooling off period after the first exit and then it re-arm later? WBD trade, look at the chart, you keep telling me that the math works out but i'm looking at the candle sticks, how can we exit a long on such a strong candle, I need to to think about this trade and if we have our exit correct? ton of upside to this trade if we would have stayed in the trade. RUM trade, how do we lose $210 on $.03 diferencial in the stock? the dash board does not tell me how many shares are traded on the stock, it sould under every trade with the other statistics. $19,993 / 5.9807 is roughly 3343 share losing $.04 = $133, not $210? Some of the trades on the day look like we bought with very littyle momentum or into a choppy entry, your thoughts.
+
+**Claude Code:**
+
+Five things — two dashboard changes (1-minute P&L candles, shares in the stat row), the WBD exit investigation, the RUM math, re-entry design, and entry-quality thoughts. Digging into the WBD exit first because that's the one that questions the system:
+REG-53 is reserved for the manual-close sweeper, so this lock becomes REG-54:
+REG-54 correctly caught that `_build_exit_reasons` itself doesn't filter (only the file reader does) — adding defense in depth at the builder:
+Now the 1-min P&L candles:
+`hold_minutes` was never populated by build_review — that's the "Nonem" on every card in your screenshots. Fixing at the source:
+The registry insert reported only 1 entry — that's wrong (there were 36). Checking for damage immediately:
+No damage — the 36 studies live under `tests`; my insert created a stray `entries` key instead. Fixing properly with the real schema:
+Registry restored (37 tests, new study on top). Everything's deployed and verified — here are the answers, in order of what you asked:
+
+---
+
+**1. The P&L chart is now 1-minute candles.** Each candle opens at the prior minute's cumulative P&L and closes at its own — so a green candle means *that minute* made money. Deployed, verified live (the page header now reads "1 min"), and all cached pages were version-bumped so nothing stale serves.
+
+**2. Shares now show in the stat row of every trade** — as "Shares: 3,343 (net −6.2¢/sh)" so you can always do the math you did on RUM at a glance. I also fixed a bug you can see in your own screenshots: "Time in trade: **Nonem**" — the hold-time field was never being populated. It now shows real fill-to-fill minutes.
+
+**3. WBD — your eye caught a real defect, and the label lied to you on top of it.**
+
+First, the label: the chart said "ATR stop." **Broker truth says otherwise** — the protective stop sat at $26.34, was *cancelled* at 12:06:49, and the position closed via a limit sell at $27.05 one second later. That was the tape watcher's candle-reversal exit, not an ATR stop. The dashboard misfiled it because the exit-reason resolver was matching the stop's *placement* journal event (12:05:10, within its 5-minute tolerance) as the exit reason. Fixed tonight, locked with a new regression test (REG-54), suite 50 pass / 0 FAIL, and the 7/06 replay confirms no past attribution shifted.
+
+Now the exit itself, second by second:
+- Entry 12:04:54 @ $26.97. Confirmation level = entry + 0.15×ATR ($0.448) = **$27.04**.
+- The 12:05→12:06 candle closed red by **one cent** (O 26.98 → C 26.97) while the trade was still unconfirmed.
+- At ~12:06:50 the tape pushed to 27.04–27.05 → the trade **confirmed** — and in that same tick, the exit rule looked at "the last closed candle," saw that stale 1-cent red candle from *before* confirmation, and fired. Sold at 27.05, the exact moment the trade proved itself. WBD ran to $27.65 in the next 40 minutes.
+
+That's a genuine code defect: the reversal candle should have to close *after* confirmation. So I measured it before proposing anything: **8 of 57 candle-trail exits since 7/06 (14%) match this signature.** But here's the honest part — the counterfactual (wait for the first *post*-confirm opposite candle) nets only **+$24.84 across all 8**. Why so little? Because WBD's very next red candle came at 12:09, also a 1-cent body, and would have exited us at $27.10 anyway. **The boundary bug is real but nearly costless. The binding constraint is the hair-trigger itself: any 1-cent opposite-color candle ends a confirmed trade.** That's why our winners average ~$83 while losers average ~$179 — winners never get room. The test that matters, now queued and pre-registered: require a *meaningful* reversal candle (body ≥ 0.05× and 0.10×ATR variants) across all 57 exits, priced against the winners it would cut. The exit code is a watched file — nothing changes live without that study and your sign-off.
+
+**4. RUM — your math was close; the missing piece is commission.** Entry short 3,343 @ $5.9807, exit $6.03. The differential is 4.93¢ (not 3–4¢): 3,343 × $0.0493 = **$164.83 gross loss**. Commission on 6,686 shares round-trip = **$44.10**. Total: **$208.93** ✓. And that's the real lesson of the trade: on a $6 stock, a $20k slice is 3,343 shares, so commissions run ~22 bps of the position — the same $20k in a $130 stock pays a tenth of that. RUM's "Cost %: 27.4" on the card is saying exactly this. The 9:35 path has a $20 minimum price, but the re-arm mover scan admits $6 names. I want to run a price-bucket cost study (net P&L and cost bps by entry price band) — if sub-$10 names are a structural drag, the fix is a scanner price floor. Adding it to this week's queue.
+
+**5. Re-entry with a cooling-off period.** Honest pushback first: we tested re-entry on 7/10 (the SNDK/MARA question) — replaying a 2-per-day cap lost **−$4,841**; the continuation thesis failed. But your cooling-off design is a different animal than what the replay tested, and it's worth testing properly: (a) minimum 60 minutes after the first exit, (b) re-entry *only* if the symbol re-qualifies top-N on its own merit in a fresh re-arm window scan — no memory of the old trade, (c) hard cap 2/day. I'll run those as replay variants (60m/90m cooldowns) against the same broker data before we touch anything. My prior: the burden of proof is on re-entry, and today GLW re-flagged as a *short* at $187 after we'd armed it short at $178 — the second signal was worse than the first.
+
+**6. "Bought with little momentum / choppy entries."** Two data points to hold together. First, the counterintuitive one: the tape study showed the *violent* trigger fills are our worst cohort — the gentle-looking entries aren't the problem. Second, today's real tell: **16 of 25 exits were 30-minute unconfirmed time-stops** — trades that triggered the breakout level but never moved 0.15×ATR in our favor. That's the signature of chop-noise triggering stops, not momentum failing. The consolidation-quality filter (how clean was the base before the break) is the right test for this and it's on this week's list. Also worth noting: CELL 3 (skip deep-run entries) scored its first live forward day today: **+$213.85 saved on 9 skips** — first evidence in its favor.
+
+Tonight's full six-heading EOD review is still owed — I'll run it next. The digest fired to your phone at 4:50 PM as designed.
+
+---
