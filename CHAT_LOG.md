@@ -24216,3 +24216,16 @@ Sources: [Barardehi & Bernhardt (SSRN)](https://papers.ssrn.com/sol3/papers.cfm?
 This week's research order is now: diurnal-ATR study → concentration monitor → order-flow logging (tonight) → VIX tags. The open is in 15 minutes; monitoring continues.
 
 ---
+
+
+## Turn — 2026-07-13 09:03:32 ET
+
+**Rhett:**
+
+Run the SELF_MONITORING_PLAYBOOK.md intraday check for the Alpha Quant bot (C:\AlphaQuant). STEPS: (1) Confirm ET time + market state; if past 4:00 PM ET / market closed, do a final EOD-flat check then STOP looping (CronDelete this job). (2) Read the SAME warnings Rhett gets: run `python C:\AlphaQuant\tradestation-bot\alerts_bridge.py`, read C:\AlphaQuant\CSHV_FINDINGS.md, check code_alert_inbox (python C:\AlphaQuant\tradestation-bot\code_alert_inbox.py --json), AND tail outputs/alerts/sent_ledger.jsonl for any send since the last tick. (3) Trade-liveness: after 10:45 AM confirm >=1 ORB_V16_ENTRY_OK today; if 0, diagnose via reliability_checks.check_alive_but_not_trading(). (4) ACT per the action matrix: verify vs broker truth FIRST; fix non-watched now (+regression-lock); WATCHED files never mid-session — surface + escalate. (5) Log one line to SESSION_LOG.md only if action taken. Silence = handled. EXTRA today (Mon 7/13, post-7:13AM-reboot): (a) FIRST TICK ONLY — verify the deadman beacon's AUTO-repetition resumed: outputs/validation/deadman_beacon.json mtime must be NEWER than 07:25 AM; if frozen at 07:19 (my manual run), the task repetition is broken again post-boot — rebuild the task cleanly (Register-ScheduledTask fresh, daily+boot triggers, 5-min repetition) and verify the next slot fires. (b) Verify TW launched at 9:25 (guardian covers from 9:26). (c) Watch the 0945 window arms normally.
+
+**Claude Code:**
+
+Tick clean at 9:03 — CSHV **50 OK / 0 WARN / 0 FAIL**, inbox clear, heartbeat 14.3s. TW showing "not running" is **correct for 9:03** — its daily launch task fires at 9:25 (22 minutes from now), with the guardian's absence-check backstopping from 9:26 if the launch misses. That's the checkpoint for the next tick. No action, no log, no ping. Next tick ~9:18, then the market opens at 9:30 and the first window arms at 9:45.
+
+---
