@@ -24189,3 +24189,30 @@ Run the SELF_MONITORING_PLAYBOOK.md intraday check for the Alpha Quant bot (C:\A
 Tick clean at 8:48 — CSHV **50 OK / 0 WARN / 0 FAIL**, inbox clear, heartbeat 2.7s. Pre-market fully green. TW launches at 9:25, first window 9:45. No action, no log, no ping. Next tick ~9:02.
 
 ---
+
+
+## Turn — 2026-07-13 09:03:00 ET
+
+**Rhett:**
+
+run the idea hunt now
+
+**Claude Code:**
+
+On it — first idea hunt runs now. Loading the research tools and sweeping four fronts: academic findings that touch our exact mechanics, practitioner knowledge, market-structure changes that affect us, and evidence for/against the six ideas already on the board:
+The binary saved locally — reading the paper directly:
+**Idea Hunt #1 delivered** — full memo archived and on the Testing page (entry #35). The ranked board:
+
+1. **Diurnal ATR normalization — test first, this week.** The intraday volatility U-shape (violent open, dead lunch) is one of the most replicated findings in market microstructure — and our confirm/stop thresholds use *constant daily ATR all day*. At 12:35, the confirm bar is effectively 2–3× harder in local-volatility terms than at 9:45. That mechanically predicts *both* our open wounds: the 12:35 bleed and the ~23% chop-day confirm rate. If the retro study (all ~440 trades, rescaled thresholds) confirms it, the midday fix becomes "fix the ruler," not "amputate the window."
+2. **VIX-regime tagging** — a (retail-grade) study claims ORB swings ~15 points across VIX regimes; weak source, but it independently converges with the VIX-sizing item on our own June roadmap. Cheap retro test.
+3. **Time-bucketed relative volume** — our relvol compares to yesterday's *total*; the standard compares to the symbol's average *at that minute*. Better candidate ranking for free.
+4. **Order-flow imbalance at the trigger** — literature says predictive over seconds-to-minutes, which is exactly the entry-qualification window and no more. Spec tonight, unlocked by live quotes.
+5–8. **Auction print size, consolidation quality, OpEx tags** (note: **this Friday 7/17 is monthly OpEx** — tagging starts in time to count it), and **activating the never-used PROMOTE_SYMBOL channel**.
+
+**Market-structure watch:** the SEC's half-penny tick reform was *delayed to November 2026* — when it lands, our stop-limit collars and slippage math need re-deriving; October diary item, not urgent. **Kill-on-sight:** L2/queue-imbalance plays, cross-asset flow, anything latency-shaped — wrong species for our infrastructure. And a humbling calibration from the MNQ falsification paper: ORB-class win rates run 47–56% in the literature — **ours are normal for the strategy class**, which is more evidence the money is in exits and selection, not a broken entry engine.
+
+Sources: [Barardehi & Bernhardt (SSRN)](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=3202021), [intraday GARCH (arXiv)](https://arxiv.org/pdf/2111.02376), [diurnal vol (arXiv)](https://arxiv.org/pdf/2601.16613), [MNQ falsification (arXiv)](https://arxiv.org/pdf/2605.04004), [OFI dynamics (arXiv)](https://arxiv.org/abs/2508.06788), [cross-impact OFI](https://arxiv.org/html/2112.13213v4), [QuantConnect ORB](https://www.quantconnect.com/research/18444/opening-range-breakout-for-stocks-in-play/), [VIX-ORB (retail)](https://tosindicators.com/research/vix-opening-range-breakout-orb-strategy-thinkorswim), [Katten on tick reform](https://katten.com/sec-revises-tick-size-access-fees-and-round-lot-definition-and-takes-steps-to-disseminate-odd-lot-and-other-better-priced-orders), [MEMX implementation](https://memx.com/insights/road-to-implementation-what-sec-win-on-tick-size-access-fee-amendments-means-for-u-s-equity-markets).
+
+This week's research order is now: diurnal-ATR study → concentration monitor → order-flow logging (tonight) → VIX tags. The open is in 15 minutes; monitoring continues.
+
+---
