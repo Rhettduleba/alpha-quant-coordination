@@ -26409,3 +26409,27 @@ Also worth remembering what *didn't* make the ledger from that same July 3 hunt 
 Both ledgers are now side by side on the Tracker — section 2 (cells 1–7) and section 2b (the gates above).
 
 ---
+
+
+## Turn — 2026-07-14 16:15:38 ET
+
+**Rhett:**
+
+wire the C-UNION now, i dont want to wait. We have a had multiple days of losing, we have to make some changes. What is the next tune to test as we did for the half size test, and why havnt we been testing other tunes along side. We have talked so much about different exit startegies and we both know the current one we have is shit, we have many trades that should have had better exits,
+
+**Claude Code:**
+
+You own the gate, and 7-for-7 forward days is real evidence — I'll wire it tonight at the flat window, properly: proposal, your approval recorded, flag-gated, regression-locked, verified. One honest caveat first, then execution: the final z-test hasn't run yet (it was scheduled for Friday), so I'm computing it right now as part of the proposal — if it's weak you'll see that number in writing, but the decision stays yours and the gate is halve-only, so the worst case is bounded. Finding the exact wiring point:
+Now the regression lock (REG-56), proposal, and approval record:
+**C-UNION is live.** And one thing made this the right call, not just the fast one: I ran the final z-test before touching code — **z = 2.50 against the 2.0 bar** (gated trades win 35.3% forward vs 54.7% ungated). All three promotion criteria were already met; Friday's review would only have confirmed what the data already says. Full protocol executed at the flat window:
+
+- **The rule, live from tomorrow's 9:45 window:** every re-arm entry at half size when it's late (11:35+ windows) or triggering within 0.5% of the 20-day high. Halves, never skips — a winner can lose half its size but never its existence.
+- Proposal written, your approval recorded in manual_approvals.yaml, **REG-56** locks the wiring (planted test: 0945 arms 400 shares, 1135 arms 200, flag-off restores 400 — the instant-revert path is proven). Suite **51 pass / 0 FAIL**, preflight **39 PASS / 0 FAIL**. Every halving will carry a `sizedown` tag in the trace so tomorrow's debrief shows exactly what it did. Tomorrow morning I verify the first halved orders against broker quantities.
+
+**Your other two questions, honestly:**
+
+**"Why haven't we been testing tunes alongside?"** — Fair hit. Until this week the pipeline tested roughly one idea at a time. It took your escalations to build the parallel machine: as of tonight **ten candidates accrue every single night** — seven shadow cells plus the three edge gates — and four of them score their first forward day in the 4:50 chain that's running now. The structural failure wasn't lack of ideas; it was that nothing forced parallel measurement until the cells existed. That's fixed in the plumbing, not in my good intentions.
+
+**"What's the next tune, and the exit?"** — Two tracks. In the *same proven-safe class as C-union* (size-down, can't cut a winner to zero): half-size on exhausted deep-run entries — CELL 3's skip converted to a halving, which its +$214 first day already supports; it's the natural next promotion candidate. But the honest answer about where the money is: **your fail-fast.** The unconfirmed bleed (−$9,676 over 6 sessions) is roughly five times what C-union recovers, and fail-fast-at-5-minutes recovered +$5,347 of it retro with 6-of-6 positive days. You said the current exit is shit — the data half-agrees: the *confirmed*-trade exit is mediocre and hard to beat (every loosening keeps failing), but the *unconfirmed* handling is objectively terrible and your fix for it is the single best-measured change we have. It scores its first forward day tonight. Same standard we just used: when its forward evidence and z-test line up — days, not weeks, at ~10 events/day — it's the next thing we wire. If tonight and tomorrow score positive and you want it at the Wednesday flat window instead of Monday, that's your gate to open, and I'll have the proposal ready.
+
+---
