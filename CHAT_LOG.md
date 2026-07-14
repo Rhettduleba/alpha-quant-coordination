@@ -26433,3 +26433,29 @@ Now the regression lock (REG-56), proposal, and approval record:
 **"What's the next tune, and the exit?"** — Two tracks. In the *same proven-safe class as C-union* (size-down, can't cut a winner to zero): half-size on exhausted deep-run entries — CELL 3's skip converted to a halving, which its +$214 first day already supports; it's the natural next promotion candidate. But the honest answer about where the money is: **your fail-fast.** The unconfirmed bleed (−$9,676 over 6 sessions) is roughly five times what C-union recovers, and fail-fast-at-5-minutes recovered +$5,347 of it retro with 6-of-6 positive days. You said the current exit is shit — the data half-agrees: the *confirmed*-trade exit is mediocre and hard to beat (every loosening keeps failing), but the *unconfirmed* handling is objectively terrible and your fix for it is the single best-measured change we have. It scores its first forward day tonight. Same standard we just used: when its forward evidence and z-test line up — days, not weeks, at ~10 events/day — it's the next thing we wire. If tonight and tomorrow score positive and you want it at the Wednesday flat window instead of Monday, that's your gate to open, and I'll have the proposal ready.
 
 ---
+
+
+## Turn — 2026-07-14 16:25:01 ET
+
+**Rhett:**
+
+run me a test on unconfirmed winners vs loser and the P&L of each
+
+**Claude Code:**
+
+Here it is — seven sessions (7/06–7/14), all 174 round trips, split by whether the trade ever confirmed (+0.15×ATR in our favor):
+
+| | n | Win rate | Total P&L | Winners | Losers |
+|---|---|---|---|---|---|
+| **UNCONFIRMED** | 69 | **12%** | **−$10,409.85** | 8 trades, **+$272 total** (avg +$34) | 61 trades, −$10,682 (avg −$175) |
+| **CONFIRMED** | 105 | **70%** | **+$2,872.90** | 74 trades, +$7,997 (avg +$108) | 31 trades, −$5,125 (avg −$165) |
+
+Read the winners column of the unconfirmed row closely, because it's the whole argument: **the best trade that ever failed to confirm made $81** (AMD, today). The eight unconfirmed "winners" are $18–$81 scratches — trades that wobbled slightly positive at the 30-minute flush. Meanwhile the unconfirmed losers are stacked with $500-cap max-outs (RIOT, COIN, LRCX, MSTR, META — five different days, same story).
+
+So the trade-off the system currently makes is: hold every unproven trade up to 30 minutes, risking an average of −$175 per loser, for upside that has *never exceeded $81*. That's not an edge decaying — it's a structurally broken bet. The system's entire seven-session loss (−$7,537 net overall) is more than explained by this one cohort; the confirmed side of the book is a **+$2,873, 70%-win business**.
+
+One honest nuance so the numbers aren't oversold: fail-fast can't recover all −$10,410 — plenty of that damage happens in the first five minutes (SNDK hit its full −$508 in under a minute; the $500 floor is what stopped it). That's why the measured recovery of fail-fast-at-5 is +$5,347, not ten thousand — it saves the *slow bleed*, and nothing can save the instant reversals except entering better (CELL 3's territory).
+
+This table goes in tonight's day read, and it's the centerpiece of the fail-fast proposal. CELL 5 and CELL 7 score their first forward day in the chain that's running now — I'll have those numbers for you within the hour, and if they look like this, you'll have PROP-FAILFAST on your desk well before Monday.
+
+---
