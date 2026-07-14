@@ -26366,3 +26366,21 @@ Alert triage run complete. Summary:
 **Actions taken:** logged one-line entry to `SESSION_LOG.md`, copied to the coordination repo, committed + pushed (`6493d6b`), and `--ack`'d the inbox to advance the cursor. Nothing actionable → **no Rhett ping**. Per the forward-test freeze and watched-files rules, this run edited/placed/restarted/cleared **nothing** on the trading path.
 
 ---
+
+
+## Turn — 2026-07-14 16:05:17 ET
+
+**Rhett:**
+
+Run the SELF_MONITORING_PLAYBOOK.md intraday check for the Alpha Quant bot (C:\AlphaQuant). STEPS: (1) Confirm ET time + market state; if past 4:00 PM ET / market closed, do a final EOD-flat check then STOP looping (CronDelete this job). (2) Read the SAME warnings Rhett gets: run `python C:\AlphaQuant\tradestation-bot\alerts_bridge.py`, read C:\AlphaQuant\CSHV_FINDINGS.md, check code_alert_inbox (python C:\AlphaQuant\tradestation-bot\code_alert_inbox.py --json), AND tail outputs/alerts/sent_ledger.jsonl for any send since the last tick. (3) Trade-liveness: after 10:45 AM confirm >=1 ORB_V16_ENTRY_OK today; if 0, diagnose via reliability_checks.check_alive_but_not_trading(). (4) ACT per the action matrix: verify vs broker truth FIRST; fix non-watched now (+regression-lock); WATCHED files never mid-session — surface + escalate. (5) Log one line to SESSION_LOG.md only if action taken. Silence = handled. EXTRA today (Tue 7/14): (a) FIRST TICK ONLY — verify TW launched at 9:25 (guardian covers from 9:26) AND that the 0945 window arms normally. (b) EVENING (post-close): verify CELL4 MEANINGFUL-REVERSAL-005 scores its first forward day in tonight's 4:50 chain, the digest lands, and WRITE THE CLAUDE DAY READ (outputs/reports/claude_day_read_2026-07-14.md) after reading the full debrief — standing duty.
+
+**Claude Code:**
+
+Now the promised Tracker addition — the edge-ledger promotion countdown:
+Market closed — loop shut down for the day. Final checks all green:
+
+- **Broker flat confirmed**: 0 positions, 0 working orders. CSHV 49 OK / 0 WARN / 0 FAIL. Second consecutive zero-FAIL, full-schedule day (all six windows fired).
+- **The Tracker now shows the promotion countdown** I promised an hour ago: the edge-ledger section renders live — C UNION at **N=59, +$1,045.99, 7-of-7 positive forward days**, with the Friday 7/17 review date on the row. Verified rendering after a clean restart.
+- Monitoring cron deleted; a one-shot fires at **4:56 PM** to verify tonight's chain — the big one tonight, since **cells 4, 5, 6, and 7 all score their first forward day together** (your fail-fast, your tape-turn exit, and both reversal challengers) — plus the digest to your phone, and then I write the day read and bring you the full six-heading EOD review.
+
+---
