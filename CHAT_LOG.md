@@ -26577,3 +26577,35 @@ So connecting it to the tests we just ran: the ">30 minute confirmers" in that f
 The live change pipeline maps onto exactly these rules: your fail-fast question is about shortening/smartening the *30-minute clock*, the KMB/WBD fight is about the *any-size candle trail*, and C-union (deployed tonight) sizes down the entries most likely to land in the losing unconfirmed bucket in the first place.
 
 ---
+
+
+## Turn — 2026-07-14 16:38:31 ET
+
+**Rhett:**
+
+this is what you said : Of 119 trades that never confirmed while held: 65 (55%) turned against us by ≥0.15×ATR — and they are the entire disaster: −$13,538. The other 54 (45%) were dead chop that never moved 0.15×ATR in either direction: net +$156, essentially free (the 30-minute flush handles them fine): so why did the .15 ATR exit kick in on those trades?
+
+**Claude Code:**
+
+It didn't kick in because **it doesn't exist** — and that's the exact hole this whole analysis has been circling. The 0.15×ATR in that test was my *measuring stick* (the mirror image of the confirm level), not a live rule. There is no adverse exit at 0.15×ATR in the deployed system. There used to be — and we deleted it on June 18. An unconfirmed trade today can bleed 0.15, 0.5, a full ATR against us, and nothing fires until the $500-cap stop (which sits ~1.4×ATR away — nearly *ten times* farther than the confirm distance) or the 30-minute clock. Between those two backstops there's nothing but hope.
+
+Why it was deleted: the old "phase-1 stop" at −0.15×ATR was murdering trades on normal wiggle in the June config (FISV stopped 1 minute in for −$159, then ran +$594). But that removal was justified on old-system anecdotes — and the question of whether it's right in the *current* system is precisely the must-not-cut test I flagged. Running it now, because your question is the design question:
+The test you just forced answers the June question better than June did. Results, both sides:
+
+**Would the old −0.15×ATR stop hurt today's winners? Barely — the fear that killed it is nearly extinct.** Of 55 trades that confirmed while held, only **4 (7%)** dipped 0.15×ATR against us before confirming (UNH, UAL, AVGO, ISRG — worth +$331 actual; the stop would have taken −$389 from them instead, total cost **−$720**). The other 51 confirmed *clean* — in the current system, **winners go our way almost immediately or not at all**. The FISV-class disaster (stopped on wiggle, then a $594 run) that justified deleting this stop on June 18 essentially doesn't happen in today's config.
+
+**And the other side:** the 65 turned-unconfirmed losers would exit at a defined ~−$155 each instead of bleeding to −$208 average — **saves +$3,473**. Net effect of reinstating the stop, pre-confirmation only: **+$2,753 over 7 sessions**, with the enormous side benefit that every unconfirmed trade's worst case becomes a known, small number instead of "whatever happens before the $500 stop or the clock."
+
+So the honest scoreboard for Phase A now has three pre-registered contenders, all attacking the same −$13,538 wound:
+
+| Variant | Retro (7 sessions) | Character |
+|---|---|---|
+| (a) Fail-fast at 5 min (CELL 5) | +$5,347 | biggest number, but kills slow confirmers blindly |
+| (b) Tape-turn + fail-fast (CELL 7) | +$5,394 | best measured, reads the tape |
+| (c) Anti-confirm −0.15×ATR stop | +$2,753 | smallest number, but bounded risk on every unproven trade and only 4 false stops in 7 sessions |
+
+They overlap — a turned trade gets caught by all three at different moments — so the proposal needs one head-to-head on identical trades, including combinations (the stop *plus* the 5-minute clock is the natural pairing: level catches the movers, clock flushes the drifters). That bake-off is the heart of PROP-PHASE-A, and (c) only exists because you asked why the exit didn't fire. Third origination this week credited to you on the Testing page.
+
+The evening chain is running now — CELL 5/7's first forward day lands in minutes, and the full day read with all of today's tests comes with it.
+
+---
