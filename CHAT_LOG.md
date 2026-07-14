@@ -25637,3 +25637,26 @@ Run the SELF_MONITORING_PLAYBOOK.md intraday check for the Alpha Quant bot (C:\A
 Tick clean at 9:33 AM — market open, CSHV **50 OK / 0 WARN / 0 FAIL**, inbox clear, heartbeat 19s, and **TW launched on schedule at 9:25:01** (PID 168) — the live exit owner is in its seat, guardian covering from 9:26. The 9:45 window arms in 12 minutes; I'll confirm the arm on the next tick. No action, no log, no ping. Next tick ~9:48.
 
 ---
+
+
+## Turn — 2026-07-14 09:45:29 ET
+
+**Rhett:**
+
+so you saying this is our exit plan candle_close_exit.py is that on confirmed or un confimed? Multiple green candle in this short, why didnt we get out, and as i stated one candle is way too tighht, do we do a study before we deplaoyed this?
+
+**Claude Code:**
+
+APP is actually the perfect trade to answer all three questions, because it's the *counterweight* to KMB. Here's the full mechanics, verified from bars and the fire log:
+
+**1. Confirmed or unconfirmed?** [candle_close_exit.py](tradestation-bot/candle_close_exit.py) contains both phases, but the one-candle exit rule is **confirmed-only** (phase 2). Before a trade confirms, no candle can exit it — the only things protecting an unconfirmed trade are the $500-cap resting stop underneath and the 30-minute time-stop. That's by design, and APP is the proof of why.
+
+**2. Why didn't the green candles get us out?** Because APP hadn't confirmed yet — the candle rule wasn't switched on. Follow the numbers: short at $459.82, and APP's ATR is a monster **$31.50**, so confirmation required price to reach $455.09 — a $4.73 drop. Every green candle you circled (10:36 through 10:50) happened *before* that. The trade wandered against you to $462.55, survived on the wide floor, then broke: the 10:53 bar plunged to $454.48, crossing $455.09 — **confirmed at minute 17.6**. The very next candle (10:54) closed green — rule now active — fired, filled at $455.43. And here's the part that matters for your "one candle is way too tight" argument: **that hair-trigger sold within 94 cents of the morning's low.** APP bounced to $456+ immediately after. In yesterday's studies, every loosening variant made APP *worse* — waiting for a bigger reversal candle cost −$270, and your fail-fast would have cut it at minute 5 for −$304 (it confirmed at 17.6). The same rule that robbed you on KMB banked the bottom tick here. That's not a defense of the rule — it's the reason single charts can't settle it and the CELL 4 / CELL 6 forward race exists.
+
+Also worth seeing: if APP had *kept* chopping and never hit $455.09, the 30-minute time-stop would have flushed it at 11:05. The green candles were living on borrowed time either way.
+
+**3. Did we do a study before deploying this? Honest answer: half of it.** What Rhett-approved on 6/18 (PROP-EXIT-CANDLE-1.4ATR) was the **floor** change — dropping the tight 0.15×ATR pre-confirm stop that was demonstrably murdering trades (FISV, COHR), replacing it with the wide 1.4×ATR chandelier. That half had evidence. The **one-candle trigger was inherited** from the original late-May candle-close design and was never separately backtested — and worse, its weakness was already written down *two days before* that approval (PROP-EXIT-FALSE-STOPOUT, 6/16: "for a trending name a single counter-candle is noise, not a reversal," with fix candidates listed). It rode along untested for 28 days until you forced the question this week. That's the process failure I logged in the doctrine, and the reason "open proposals with untested fix candidates" is now a standing weekly sweep.
+
+Where the fix stands: the two challengers (fixed 0.05×ATR body = CELL 4, adaptive 3×local-median = CELL 6) started scoring forward last night alongside your fail-fast (CELL 5). The doctrine's promise holds — whichever clears the bar ships with the boundary-bug fix as one proposal for your approval; if neither clears, then KMB-type trades are the tuition the rule charges for APP-type bottoms, and I'll say exactly that with the numbers in hand.
+
+---
