@@ -25704,3 +25704,16 @@ The plan has the full evidence map (what's proven, what's accruing in cells 4–
 On the communication point — you didn't fail to communicate. You said "opposite candle exit" three days ago and my job was to respond "a 1-cent candle is noise; here's the design around your actual idea." The doctrine and this plan exist so that the next theory you bring gets that treatment on the first pass, not the fourth.
 
 ---
+
+
+## Turn — 2026-07-14 10:03:36 ET
+
+**Rhett:**
+
+Run the SELF_MONITORING_PLAYBOOK.md intraday check for the Alpha Quant bot (C:\AlphaQuant). STEPS: (1) Confirm ET time + market state; if past 4:00 PM ET / market closed, do a final EOD-flat check then STOP looping (CronDelete this job). (2) Read the SAME warnings Rhett gets: run `python C:\AlphaQuant\tradestation-bot\alerts_bridge.py`, read C:\AlphaQuant\CSHV_FINDINGS.md, check code_alert_inbox (python C:\AlphaQuant\tradestation-bot\code_alert_inbox.py --json), AND tail outputs/alerts/sent_ledger.jsonl for any send since the last tick. (3) Trade-liveness: after 10:45 AM confirm >=1 ORB_V16_ENTRY_OK today; if 0, diagnose via reliability_checks.check_alive_but_not_trading(). (4) ACT per the action matrix: verify vs broker truth FIRST; fix non-watched now (+regression-lock); WATCHED files never mid-session — surface + escalate. (5) Log one line to SESSION_LOG.md only if action taken. Silence = handled. EXTRA today (Tue 7/14): (a) FIRST TICK ONLY — verify TW launched at 9:25 (guardian covers from 9:26) AND that the 0945 window arms normally. (b) EVENING (post-close): verify CELL4 MEANINGFUL-REVERSAL-005 scores its first forward day in tonight's 4:50 chain, the digest lands, and WRITE THE CLAUDE DAY READ (outputs/reports/claude_day_read_2026-07-14.md) after reading the full debrief — standing duty.
+
+**Claude Code:**
+
+Tick clean at 10:03 AM — CSHV **50 OK / 0 WARN / 0 FAIL**, inbox clear, heartbeat 11.5s, and the 9:45 window submitted **22 entries** (last: CRM short). System trading normally. No action, no log, no ping. Next tick ~10:18.
+
+---
