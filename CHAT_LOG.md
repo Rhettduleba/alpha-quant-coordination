@@ -26300,3 +26300,27 @@ Run the SELF_MONITORING_PLAYBOOK.md intraday check for the Alpha Quant bot (C:\A
 Tick clean at 3:48 PM — CSHV **50 OK / 0 WARN / 0 FAIL**, inbox clear, heartbeat 5.5s. Flatten fires in 2 minutes; final EOD-flat check on the next tick, then the loop closes for the day. Next tick ~4:03.
 
 ---
+
+
+## Turn — 2026-07-14 15:52:32 ET
+
+**Rhett:**
+
+we are getting close to promoting one of our stregy tunes, remind me what it isd and tell me if yesterday got that tune one day closer?
+
+**Claude Code:**
+
+The verified answer, straight from tonight's ledger — and yes, yesterday moved it closer in a big way.
+
+**The tune: "C union" — the pair of size-down gates from the July 3 edge hunt.** In plain English: the bot keeps taking every trade, but takes **half size** when either of two conditions is true —
+
+- **A (late entry):** the entry fills at or after 11:00 AM. The data behind it: trades before 11:00 win 67.7%; after, only 47.9%.
+- **B (at the highs):** the entry is within 0.5% of the stock's trailing 20-day high — chasing a stock at its recent peak. This is the one signal that would have caught the MU disaster (−$1,670 on 6/25).
+
+Because it only *halves* size and never skips a trade, it can't cut a winner to zero — that's why it was allowed to accrue while everything else from that hunt was killed.
+
+**Did yesterday help? Yes — second-best forward day yet: +$234.93** across the 10 trades it touched. And today already scored **+$144.32** more (computed after the flatten). The forward record is now **7 positive days out of 7, N=59 trades, +$1,046 total** — versus the promotion bar of N≥30 (cleared) and positive on ≥7 of the last 10 forward days. Here's the arithmetic that matters: with 7 positives already banked, even three straight losing days would still read exactly 7-of-10 — **the day-consistency criterion locked in mathematically today.** What's left is the final statistical check (a z-score ≥ 2.0 on the forward win split) at the review, which lands after **Friday's close — the 10th forward day.** If it passes, PROP-SIZEDOWN-C-UNION goes to you Friday evening or Monday morning as the project's **first promoted tune**.
+
+One thing your last question exposed: the Tracker page I built an hour ago shows the seven exit/entry shadow cells but *not* this edge ledger — which is embarrassing given it's the closest thing to promotion we have. Adding it to the Tracker's pipeline table now so Friday's countdown is visible on the dashboard; it'll be there next time you open `/tracker`.
+
+---
