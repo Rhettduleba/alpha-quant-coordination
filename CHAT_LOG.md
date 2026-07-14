@@ -26547,3 +26547,33 @@ Yes — and now it's verified precisely, with one correction to my own script's 
 So the clean, corrected picture for the tables you've been building: **47 true confirms while held (+$5,543 at ~96% win), ~11 confirmation-instant exits that belong with them, and 34 trades that never confirmed on our watch and crossed later — the time-stop's leftovers.** The ">30 minute" row was never evidence that slow confirmation is bad; it was the unconfirmed cohort photobombing the confirmed table. The in-trade-only version of the analysis (the second test) is the one all design decisions will use.
 
 ---
+
+
+## Turn — 2026-07-14 16:34:53 ET
+
+**Rhett:**
+
+ok now im really confused your saying we have a hard exit on any trade we have at 30 minutes what is the current rule?
+
+**Claude Code:**
+
+No hard 30-minute exit on *every* trade — only on trades that haven't proven themselves. Here's the complete current rulebook, verified from the live code just now (the comment at [exit_bot_v2.py:343](tradestation-bot/exit_bot_v2.py:343) literally reads "a confirmed position falls through untouched"):
+
+**From the moment we fill, every trade is in one of two states:**
+
+**UNCONFIRMED** — the trade hasn't yet moved 0.15×ATR in our favor (for WBD that was 7 cents; for APP, $4.73 — it scales with how much the stock normally moves). While unconfirmed, two things can end it:
+1. **The $500-cap resting stop** — sitting at the broker the whole time, ~$500 of risk below/above entry. This is what took SNDK out in under a minute.
+2. **The 30-minute clock** — if 30 minutes pass and the trade *still* hasn't confirmed, exit at market. This is the rule that produced 16 of yesterday's 25 exits, and CMG's exit on a green candle — the candle was irrelevant; the clock hit 30.
+
+**CONFIRMED** — the moment price touches +0.15×ATR in our favor, **the clock is removed entirely.** A confirmed trade has no time limit; it can run from 9:46 AM to the close. From then on, three things can end it:
+1. **The candle trail** — the first 1-minute candle that closes the opposite color, *any size* (the 1-cent-candle rule we've been fighting about — KMB, WBD).
+2. **The 1.4×ATR chandelier** — a wide floor trailing beneath the highest favorable price; almost never the binding exit, pure catastrophe insurance.
+3. **The $500 stop stays resting at the broker** underneath everything, in case our software dies.
+
+**EVERYONE, both states:** flattened at 3:50 PM, no positions held overnight.
+
+So connecting it to the tests we just ran: the ">30 minute confirmers" in that first table *couldn't exist as held trades* — anything unconfirmed at minute 30 is already gone by rule. That's exactly how we knew those 34 trades had crossed the level after we'd left. And APP is the rulebook in one trade: green candles at minute 2–15 couldn't touch it (unconfirmed = no candle rule), the 30-minute clock was 12 minutes from firing when it confirmed at minute 17.6, and one minute later a green candle ended it — because confirmation switched the candle rule on.
+
+The live change pipeline maps onto exactly these rules: your fail-fast question is about shortening/smartening the *30-minute clock*, the KMB/WBD fight is about the *any-size candle trail*, and C-union (deployed tonight) sizes down the entries most likely to land in the losing unconfirmed bucket in the first place.
+
+---
