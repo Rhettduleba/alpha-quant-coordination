@@ -25399,3 +25399,28 @@ What became of each:
 One honest caution the document itself makes, and the data since backs up: every attempt so far to loosen exits (the confirm-keyed gauntlet, the managed-exit variants vs the $500 floor) has failed to beat the deployed config out-of-sample — the eager exit also *saves* us on the losers. That's why Issue 2 gets a pre-registered study with must-not-cut accounting, not a hand-tune.
 
 ---
+
+
+## Turn — 2026-07-14 08:21:17 ET
+
+**Rhett:**
+
+Explain why it says other listed as the exit? second screen shot is clear, we got killed on the "other" for an exit. third screen shot no valuabel information in the cpolumn, explain this? what i want on the review somewhere you pick is your narrative of the day, i want you to read the EOD and comment about the days trading. If you acually would have read the EOD as i am you would notioce the things i just brought up. I need a partner in the project not just a machiner that does coding, i need you to Think! we have been doing this too long for you to feed me in valuablable information
+
+**Claude Code:**
+
+You're right on every count, and the sharpest one is the last: I told you last night "the six-heading EOD review is next" — and never did it. If I had actually read the 7/13 debrief the way you just did, I'd have caught both broken columns myself. Let me fix the data, then give you the read. First, why "other":
+Now the fixes. First `_bucket` and `_trade_attribution` in eod_debrief.py:
+Imports are fine. Now carry `early_src` into the row and rendering, then regenerate the 7/13 debrief:
+The known cp1252 print quirk — check whether the file write landed before the print crashed:
+You were right to be angry, and the sharpest part is that I *promised* the 7/13 EOD read Sunday night and didn't do it — if I had read the debrief the way you did, I'd have found all three broken columns myself. Here's what each one was, all fixed and the 7/13 debrief regenerated:
+
+**Why "other" — and what it was hiding.** The exit×confirm table's bucket map only knew three exit types and was *missing the 30-minute time-stop entirely* — so all 16 time-stops fell into "other." Your instinct that "we got killed on other" was exactly right, and now it has a name: **16 unconfirmed time-stop trades, −$2,447 at 6% win — the entire day's loss in one bucket.** Meanwhile the 7 candle-close exits (confirmed trades) went **7-for-7, +$650**. I also fixed the "0.15ATR-stop" label — a legacy misnomer; the deployed stop is the $500-cap floor, and it now says so.
+
+**The worthless autopsy columns.** Three separate rots, all from the same root — when the tape watcher took over exits on 7/06, nobody rewired the debrief's data sources: the EXIT REASON column was literally hardcoded to print "monitor/other" (never wired to the resolver — the standing "deployed but not wired" bug class); CONFIRM read a file the bot stopped writing; and the early MAE/MFE marks came from polls that no longer exist. Fixes: EXIT now uses the same canonical resolver the compliance verdict uses; CONFIRM is derived from the exit rule itself where polls are silent (a 30m-unconfirmed stop is unconfirmed *by rule*, a candle trail is confirmed *by rule* — marked `Y*/N*` so derived values are honest); MAE/MFE falls back to official 1-min bars (marked `bars*`). The regenerated 7/13 autopsy now has real values in every column.
+
+**Your narrative — built, and the first one is live.** There's now a **"Claude's day read"** card on the Daily Review page (below the digest, above the KPIs): my written read of the day, produced by actually reading the full debrief — day vs prior day, the winners' common factor, the losers' faults with the shadow-cell evidence, what to test next, exits, and every candidate priced against the winners it would cut. The 7/13 read is up now; open the review and it's the purple card. And it's a standing duty in OPEN_ITEMS: every evening after the 4:50 chain, I read the debrief end-to-end and write the day read *before anything else* — because that's the exact discipline whose absence caused this.
+
+The short version of the 7/13 read, since you should hear it from me directly: this wasn't 25 mistakes — it was one pattern 16 times. On a broad risk-off day, two-thirds of our breakout triggers never confirmed, and unconfirmed trades went 1-for-16. Everything that confirmed, won. The three levers pointed at exactly that loser class are already accruing forward evidence — CELL 3 (skip exhausted deep-run entries) saved +$214 on its first live day, the 30-minute time-stop again beat the looser leash (CELL 2 −$219, trending toward kill), and the meaningful-reversal exit study will decide whether winners like WBD get room without giving back the $650 the eager exit banked.
+
+---
