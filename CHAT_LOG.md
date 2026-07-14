@@ -25673,3 +25673,34 @@ Run the SELF_MONITORING_PLAYBOOK.md intraday check for the Alpha Quant bot (C:\A
 Tick clean at 9:48 AM — **the 9:45 window armed on schedule** (multiscan state rolled to today, `0945` fired), CSHV **50 OK / 0 WARN / 0 FAIL**, inbox clear, heartbeat 8.6s. Both first-tick checks are now done: TW alive since 9:25:01, window firing normally. No action, no log, no ping. Next tick ~10:03.
 
 ---
+
+
+## Turn — 2026-07-14 10:00:40 ET
+
+**Rhett:**
+
+ok, this is probably my fault becasue i did not communicate correctly. The oposite candle exit should exit on unconfiormed! because its a trade that went against us quickly. Run a test on impelenting a candle in the wrondg direction before confimeation, what effect on the P&L. The problem is that you have not come up with what i'm asking for and i dont know how to communciate this to you. I want you to take a theroy like the candlestick exit and make a very detailed thought full plan. Insead you just say, ok, and put the candle stick exit in. What youy should do is think and stuyd and research the theroy, and come up with a very detailed exit around a simple thought. What you should have said was, a $.01 candle in the wrong direct is ridiculous to exit on, that not a move it noise, and create a thought full plan around creating a sysytem that gauges the candle and the mnopvment together. Agion, if i new how to do this i would i rely on you to be the thinker, and you dont think, you just react. We need a bot the reads the momentum on a trade. We get in, it puts a value on evry tick, "where is the stock going? with us? against us? if with us good, next tick and so on until, ok, we have move ment, mementum in the other direction, the get out. I dont know thet triggers or siugnals behind that but that is the way it works. Take any looser from yesterday, the boit should know " the stock is going in the worng direct sell, i'm just not capable of tell you what the amount of movement should be before we get out. But you, you should be able to backtest all trades and look for a make sense even ground between getting out to soon and cutting winners, you should be able to come up with a senseable bar that has nuances like the longer we are in a trade the metreics change. The exit should be a symphony of detailed signalks that chnage during the trade, if you are a winner, be loose, if your a looser get out. You need to be able to come up with a detailed plan to perfect exits, use what you have you ahve data, study the data, act like a trader and come up with a detaiuled plan that changes during the day, during a trade
+
+**Claude Code:**
+
+You're communicating fine — the failure was mine: my job was to take "exit on opposite candle" and come back with "a 1-cent candle is noise, not a move — here's a design that gauges the candle *and* the movement together." That's what this turn delivers: your pre-confirmation test first (with the movement-gauged variants a thinking partner should have proposed), then the full momentum-exit design document. Running the test:
+His literal rule *works* — and the movement-gauged version works with far less winner damage. Now the design document and the forward cell (CELL 7) so Phase A races on live data:
+Now the design document — the symphony, written as a real plan:
+First, your test — and you were right, twice. Then the plan you've been asking me for.
+
+**Your test: opposite candle exits on UNCONFIRMED trades.** I ran it three ways on all 155 trades since 7/06, because "a candle in the wrong direction" needed the movement gauge you described:
+
+- **Your literal rule** (any opposite candle, any size, before confirmation): **+$5,544**, positive 5 of 6 days. It works — but it fires on 143 of 155 trades, usually within the first two minutes, and damages 57 winners. It's right about the *direction* and too twitchy about the *trigger*.
+- **The movement-gauged version** — opposite candle only counts if its body is at least **2× the median body of the ten bars around it** (so "a real move against us," self-calibrating by time of day), plus your 5-minute fail-fast as the backstop: **+$5,394 with 6 of 6 days positive and half the winner damage.** That's the "gauge the candle and the movement together" rule, and it's now **CELL 7**, scoring forward nightly against CELL 5 (pure fail-fast). The race answers a real question: does *reading the tape* beat *reading the clock*. Either way the money is the same conclusion you reached by eye: **the unconfirmed phase is where the entire bleed lives.**
+
+**The design: [PLAN-MOMENTUM-EXIT-2026-07-14.md](C:/AlphaQuant/outputs/proposals/PLAN-MOMENTUM-EXIT-2026-07-14.md).** Your symphony, made precise. Every trade lives in one of three states, and every threshold is measured against the *local tape* (median 1-minute body of the last ten bars — your "value on every tick: with us or against us" is the signed sum of bodies in that unit):
+
+- **State A — UNPROVEN (fill → confirm, max 5 min).** Tightest. The tape turns against you by a real amount (2× ruler) → out. Not confirmed by minute 5 → out. Your words: *if you're a loser, get out.* Evidence: +$5.3–5.6k retro, the biggest lever we've ever measured.
+- **State B — CONFIRMED.** Looser. One-cent candles ignored; a reversal must be 3× the local ruler (the adaptive rule from this morning, +$971 retro) — and it must close *after* confirmation (the WBD bug fix rides along).
+- **State C — MATURE WINNER (MFE ≥ 0.5×ATR or 60+ minutes confirmed).** Loosest: exit only on a structural break (close beyond the last swing point), with a give-back cap so a winner never surrenders more than half its peak. *If you're a winner, be loose.* This is the one untested piece — its retro study runs this week.
+
+The plan has the full evidence map (what's proven, what's accruing in cells 4–7, what's untested), the honest limits (1-minute bars, not ticks, in retro — live TW reads prints so the real implementation can be tick-level), and the sequencing: **Phase A goes to you as a proposal around Monday** when its cells hit N≥30, then Phase B when the reversal race resolves, then Phase C. Each with the must-not-cut table and a full end-to-end replay of the whole machine — because the pieces interact, and I won't ship parts that were only tested alone.
+
+On the communication point — you didn't fail to communicate. You said "opposite candle exit" three days ago and my job was to respond "a 1-cent candle is noise; here's the design around your actual idea." The doctrine and this plan exist so that the next theory you bring gets that treatment on the first pass, not the fourth.
+
+---
