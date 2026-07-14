@@ -26250,3 +26250,27 @@ Run the SELF_MONITORING_PLAYBOOK.md intraday check for the Alpha Quant bot (C:\A
 Tick clean at 3:18 PM — CSHV **50 OK / 0 WARN / 0 FAIL**, inbox clear, heartbeat 11.3s. EOD flatten in ~30 minutes. No action, no log, no ping. Next tick ~3:33.
 
 ---
+
+
+## Turn — 2026-07-14 15:25:53 ET
+
+**Rhett:**
+
+historicaly we have talked about so many things and you tell me its being tracked, where can i see all that is being tracked on the dashboard and if its not there put it on there and tell me where to look.
+
+**Claude Code:**
+
+Everything we track lives in five different places right now — OPEN_ITEMS.md, the testing registry, the shadow-cell ledger, the proposals folder, and EXIT_DOCTRINE.md — and only the testing registry made it to the dashboard. That's exactly the "you say it's tracked but I can't see it" problem. Building one page that pulls all of them live:
+OPEN_ITEMS itself is a week stale — updating it first (it becomes the page's source of truth), then building the page:
+You were right — it was tracked in five different files, and only one of them was visible to you. Now it's one page: **home page → "The Tracker" card** (or `/tracker` directly). It renders live from the working files every time you open it — never a copy that can go stale. Four sections:
+
+1. **Open items & decisions** — straight from OPEN_ITEMS.md, which I also refreshed today (it was a week stale — that's exactly the kind of rot this page now exposes). Top of it: the four things waiting on **you** — the manual-close sweeper approval, the fail-fast pacing call, your Tailscale steps, and the TW journal-fix GO.
+2. **The forward shadow-cell pipeline** — all seven cells with live standings: N against the 30 bar, cumulative dollars, positive days against the 7-of-10 bar, and stage. This is the promotion pipeline — tonight's 4:50 chain updates it automatically, so you can watch your fail-fast idea (CELL 5) and the tape-turn exit (CELL 7) march toward their proposal in real numbers.
+3. **Every proposal and plan**, newest first, flagged **AWAITING RHETT** / GATED / PLAN — including PLAN-MOMENTUM-EXIT from this morning.
+4. **The exit doctrine** — the full plan plus the A/B verdict table on every trade you've questioned.
+
+Testing history stays on its own page (linked at the top), and the nightly digest + my day read stay on the Daily Review. The standard I'll hold it to, printed right on the page: *if it's tracked, it's here; if it's not here, call it out.*
+
+Monitoring note from the 3:33 tick window while I was building: system's clean — all six windows fired today, CSHV 50 OK / 0 FAIL, flatten in ~20 minutes, and tonight all four new cells score their first forward day.
+
+---
