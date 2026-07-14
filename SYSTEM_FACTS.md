@@ -1,6 +1,6 @@
 # SYSTEM_FACTS — live mechanics, machine-generated from the running code/config/broker-truth
 
-> **Generated:** 2026-07-14 08:17:58 Eastern Daylight Time · **coordination-repo HEAD:** `1cc6344` · by `strategy-research/system_facts.py` (read-only).
+> **Generated:** 2026-07-14 16:50:47 Eastern Daylight Time · **coordination-repo HEAD:** `c881d75` · by `strategy-research/system_facts.py` (read-only).
 > Every value below is READ from a real source (the live import for the VALUE; a fresh file scan for the SOURCE file:line). Nothing is hand-typed. A field that can't be derived says `UNVERIFIED`.
 > If this contradicts memory, THIS wins — regenerate it (re-run the script) rather than trusting recall.
 
@@ -53,11 +53,11 @@
 | Fact | Live value | Source |
 |---|---|---|
 | ** AS-OF | figures below are HISTORICAL (pre-Loop-155). Re-arm 0% is FIXED Loop 155 (LIVE Mon 6/29); re-arm coverage rises + latency drops from Monday once re-arm stops register + TW owns exits. | `SESSION_LOG.md Loop 155` |
-| Entries with a broker resting stop | 345/520 = 66.3% | `strategy-research/stop_coverage_audit.py (re-derived from broker_orders_unified.csv)` |
-| 9:35 cohort coverage | 195/199 = 98% | `stop_coverage_audit.py` |
-| Re-arm/late cohort coverage | 150/321 = 47% | `stop_coverage_audit.py` |
-| Median placement latency | 310s (~5.2 min) | `stop_coverage_audit.py` |
-| PRIMARY protection mechanism | software poll (exit_bot_v2 + chandelier)  (mechanisms: {'resting_stop_HIT': 39, 'candle/chandelier': 417, 'eod_flatten': 64}) | `stop_coverage_audit.py exit-mechanism tally` |
+| Entries with a broker resting stop | 364/539 = 67.5% | `strategy-research/stop_coverage_audit.py (re-derived from broker_orders_unified.csv)` |
+| 9:35 cohort coverage | 207/211 = 98% | `stop_coverage_audit.py` |
+| Re-arm/late cohort coverage | 157/328 = 48% | `stop_coverage_audit.py` |
+| Median placement latency | 306s (~5.1 min) | `stop_coverage_audit.py` |
+| PRIMARY protection mechanism | software poll (exit_bot_v2 + chandelier)  (mechanisms: {'resting_stop_HIT': 41, 'candle/chandelier': 434, 'eod_flatten': 64}) | `stop_coverage_audit.py exit-mechanism tally` |
 
 ## COSTS
 | Fact | Live value | Source |
