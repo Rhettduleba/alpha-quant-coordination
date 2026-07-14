@@ -26682,3 +26682,39 @@ And the honest discipline before this ships: these floors were read off 7 sessio
 The second prong of the wand — *foreseeing* before entry — also got unlocked by tonight's reframe: every past entry study asked "does this predict profit?" and drowned in noise. The right question is "does this predict *confirmation*?" — a cleaner target sitting mechanically closer to the features we already measure (travel, time-of-day, fill delay, 20-day-high proximity, consolidation quality). That scorecard study runs this week as the entry-side wand: don't take (or half-size) the trades least likely to ever confirm. Registered both; the glide-path table goes in tonight's day read.
 
 ---
+
+
+## Turn — 2026-07-14 16:58:15 ET
+
+**Rhett:**
+
+Alpha Quant EVENING BLOCK (Tue 7/14, one-shot). (1) Verify tonight's 4:50 chain completed: outputs/reports/eod_debrief_2026-07-14.md exists + reconciles; shadow_cells_ledger.jsonl has the 2026-07-14 row with CELLS 4, 5, 6, AND 7 all scoring their FIRST forward day (report each cell's n/delta); daily digest row written + telegram send OK in sent_ledger (~4:52 PM). (2) READ the full 2026-07-14 debrief end-to-end, then WRITE the Claude day read to outputs/reports/claude_day_read_2026-07-14.md (six headings: day vs prior / winners' common factor / losers' faults + shadow evidence / tests deeper / exits same treatment / every candidate priced vs winners; include an A/B verdict on any questionable exit). (3) Update the edge-ledger C_union countdown: today's forward day scored +$144.32 (verify final post-chain number), note days remaining to the Friday 7/17 review. (4) Give Rhett the six-heading EOD review in chat. (5) Log to SESSION_LOG.md. Then CronDelete nothing (this job is one-shot).
+
+**Claude Code:**
+
+Evening block complete — chain verified, day read written and live on the Daily Review. The six-heading review of today:
+
+**1. The day vs yesterday.** 19 trades, **−$1,075, 53% win** — half of Monday's loss on visibly better behavior (25 trades, −$2,369, 32%). Debrief reconciles to the penny; digest hit your phone at 4:51.
+
+**2. Winners' common factor — the law held again.** All 8 confirmed trades won: **8-for-8, +$939** (IBM short, S long, HCA short, CRWD long...). Mixed sides, mixed sectors — the only shared trait is they crossed 0.15×ATR our way. The confirmed engine is now ~96% win across eight sessions.
+
+**3. Losers.** The whole loss was, once again, the unconfirmed cohort: −$2,014. Nine time-stop stalls (−$995) — textbook glide-path victims, one push then dead — plus CLSK −$519 and LITE −$500, instant reversers where the $500 floor did its job (verdict: **A, system working; the fix is entry-side, CELL 3's territory**).
+
+**4. The headline you've been waiting for — your ideas scored their first live forward day, on exactly today's losers:**
+
+| First forward day | n | Delta |
+|---|---|---|
+| **CELL 7 — tape-turn + fail-fast (yours)** | 14 | **+$507.88** |
+| **CELL 5 — fail-fast at 5 min (yours)** | 14 | **+$487.23** |
+| CELL 4 — fixed-body reversal | 8 | +$29.37 |
+| CELL 6 — adaptive reversal | 8 | −$301.70 |
+
+Both Phase-A cells would have recovered roughly **half of today's entire unconfirmed bleed**, with the winner-side cost visible and priced (improved ~$1,200 / worsened ~$690). One day — but it's live confirmation of the retro, on tape it had never seen. The reversal race (4 vs 6) split on day one; no verdict there. CELL 1 had a bad day (−$472) — that's why day-consistency is the bar, not one good week.
+
+**5. Exits.** Candle trail 8-for-8, average hold 26 minutes. Nothing questionable today — the two ugly exits were the instant reversers, and those are entries wearing exit costumes.
+
+**6. C-UNION: forward day 7 of 7, +$144.32** (saved $213 of losers, forgone $68 of winners) — and it's already live for tomorrow's 9:45 window. First thing I verify in the morning: halved share counts on late-window orders at the broker.
+
+The week now has a shape: Wednesday the joint Phase-A replay (fail-fast vs tape-turn vs anti-confirm stop vs the new glide-path gauntlet, one population, floors fit on old data and validated out-of-sample), Friday the proposal lands on your desk with today's and tomorrow's live forward days in it. The wand hunt produced its first real artifact tonight — stall detection — and it was your "how do we foresee unconfirmed" that named the target.
+
+---
