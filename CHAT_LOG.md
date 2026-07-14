@@ -26526,3 +26526,24 @@ And that "unless it dips first" is the landmine: **an anti-confirm stop is exact
 That companion test is next — I'll run it tonight with the 4:50 chain results and fold both into the day read. Between this table, the confirm-time table, and CELL 5/7's first forward day, Phase A's real design is going to be chosen by data, not by which anecdote yelled loudest — which is precisely what you asked me for this morning.
 
 ---
+
+
+## Turn — 2026-07-14 16:33:03 ET
+
+**Rhett:**
+
+the first test, are you saying the >30 minutes trades in the chart where confirmed after we exited ?
+
+**Claude Code:**
+
+Yes — exactly that, and let me verify the precise breakdown from the data rather than assert it:
+Yes — and now it's verified precisely, with one correction to my own script's label. Of the 92 whole-day "confirmed" trades (7/06–7/13):
+
+- **47 crossed the confirm level while we still held** — the genuinely confirmed cohort: **+$5,543**.
+- **45 crossed it after we were already out: −$2,329.** These split into two very different groups:
+  - **34 crossed more than 30 minutes after entry** — these are your ">30 min" bucket. The 30-minute time-stop had already flushed us as unconfirmed, and the stock crossed the level later in the day without us. That's why that bucket "wins" only 24% — it's not slow confirmers, it's *unconfirmed losers whose thesis eventually played out after we left*. (Worth noting: that's also a measure of what the time-stop walks away from — some of those late crossers went on to be real moves.)
+  - **11 crossed within 30 minutes but "after" exit — and these turn out to be a measurement artifact, not a real category.** Look at the samples: TER +$211, INTC +$251, COF +$73, PSKY +$81 — all *winners*, all exited by the tape watcher's candle trail, which only fires post-confirmation. What happened: TW confirms on its live print stream mid-minute and exits within seconds (several of these are the stale-candle instant exits we've discussed — PSKY, COF, SW are literally on that list), while my test reads *official bars*, which stamp the level-cross at the bar's end a few seconds after the fill. So these 11 confirmed and exited essentially simultaneously; the "after exit" label is second-level timing skew, not economics. My script printed "$500 stop had taken us out" for them — that label was wrong, and the positive P&L is what exposed it.
+
+So the clean, corrected picture for the tables you've been building: **47 true confirms while held (+$5,543 at ~96% win), ~11 confirmation-instant exits that belong with them, and 34 trades that never confirmed on our watch and crossed later — the time-stop's leftovers.** The ">30 minute" row was never evidence that slow confirmation is bad; it was the unconfirmed cohort photobombing the confirmed table. The in-trade-only version of the analysis (the second test) is the one all design decisions will use.
+
+---
