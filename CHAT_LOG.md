@@ -26384,3 +26384,28 @@ Market closed — loop shut down for the day. Final checks all green:
 - Monitoring cron deleted; a one-shot fires at **4:56 PM** to verify tonight's chain — the big one tonight, since **cells 4, 5, 6, and 7 all score their first forward day together** (your fail-fast, your tape-turn exit, and both reversal challengers) — plus the digest to your phone, and then I write the day read and bring you the full six-heading EOD review.
 
 ---
+
+
+## Turn — 2026-07-14 16:05:49 ET
+
+**Rhett:**
+
+the edge legger, do we have anything else on it that was being tested?
+
+**Claude Code:**
+
+Yes — the edge ledger carries exactly three lines, and the two component gates are tested individually alongside the union. Verified standings as of tonight's run:
+
+| Gate | Forward N | Cum delta | Positive days |
+|---|---|---|---|
+| **A — half size after 11:00 AM** | 49 | strong | **6/7** |
+| **B — half size within 0.5% of the 20-day high** | 17 | weaker | **4/7** |
+| **C UNION — half size if either** | 59 | **+$1,046** | **7/7** |
+
+What that split tells us: **gate A is carrying the union.** A alone is nearly as consistent as the union (6-of-7), while B alone is a coin flip so far (4-of-7, and only 17 trades because we rarely enter right at a 20-day high). B earns its seat mainly through one class of trade — it's the gate that would have caught the MU −$1,670 chase — so it's cheap insurance that rarely fires. At Friday's review I'll show all three separately; if the z-test passes for the union but B's line still looks like noise, the honest recommendation may be to promote A alone or the union with B kept on probation.
+
+Also worth remembering what *didn't* make the ledger from that same July 3 hunt — tested and killed before accruing a single forward day: the **chop-day entry gate** (falsified outright), the **relative-volume filter** (a head-fake — the low-relvol bucket turned out net *positive*), and the **12:35 score floor** (killed when the score study showed score is U-shaped and uninformative). The fill-delay idea from that era survived by moving into the other ledger as CELL 1.
+
+Both ledgers are now side by side on the Tracker — section 2 (cells 1–7) and section 2b (the gates above).
+
+---
