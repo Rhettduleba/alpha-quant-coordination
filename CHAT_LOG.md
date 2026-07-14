@@ -25886,3 +25886,18 @@ Run the SELF_MONITORING_PLAYBOOK.md intraday check for the Alpha Quant bot (C:\A
 Tick clean at 11:33 AM — CSHV **50 OK / 0 WARN / 0 FAIL**, inbox clear, heartbeat 3.2s. The 11:35 window arms in ~2 minutes. No action, no log, no ping. Next tick ~11:48.
 
 ---
+
+
+## Turn — 2026-07-14 11:49:29 ET
+
+**Rhett:**
+
+Run the SELF_MONITORING_PLAYBOOK.md intraday check for the Alpha Quant bot (C:\AlphaQuant). STEPS: (1) Confirm ET time + market state; if past 4:00 PM ET / market closed, do a final EOD-flat check then STOP looping (CronDelete this job). (2) Read the SAME warnings Rhett gets: run `python C:\AlphaQuant\tradestation-bot\alerts_bridge.py`, read C:\AlphaQuant\CSHV_FINDINGS.md, check code_alert_inbox (python C:\AlphaQuant\tradestation-bot\code_alert_inbox.py --json), AND tail outputs/alerts/sent_ledger.jsonl for any send since the last tick. (3) Trade-liveness: after 10:45 AM confirm >=1 ORB_V16_ENTRY_OK today; if 0, diagnose via reliability_checks.check_alive_but_not_trading(). (4) ACT per the action matrix: verify vs broker truth FIRST; fix non-watched now (+regression-lock); WATCHED files never mid-session — surface + escalate. (5) Log one line to SESSION_LOG.md only if action taken. Silence = handled. EXTRA today (Tue 7/14): (a) FIRST TICK ONLY — verify TW launched at 9:25 (guardian covers from 9:26) AND that the 0945 window arms normally. (b) EVENING (post-close): verify CELL4 MEANINGFUL-REVERSAL-005 scores its first forward day in tonight's 4:50 chain, the digest lands, and WRITE THE CLAUDE DAY READ (outputs/reports/claude_day_read_2026-07-14.md) after reading the full debrief — standing duty.
+
+**Claude Code:**
+
+A WARN appeared — investigating before classifying:
+The WARN is MSTR — flagged with no resting stop, but CSHV itself notes "likely just filled — verify next cycle." Verifying against broker truth right now:
+Tick at 11:48 AM — one WARN, triaged and cleared: CSHV's 11:45:09 run flagged MSTR with no protective stop, but broker truth shows the stop **was placed at 11:45:22** — thirteen seconds after the snapshot. Classic fill-race timing: MSTR filled off the 11:35 window, and CSHV ran in the gap between fill and stop placement (the check even self-annotates "likely just filled"). Both open positions (MDT short, MSTR long) are protected, MSTR's stop distance verifies exactly to the $500 cap ($2.44 × 205 shares). Classified transient false positive, logged, no ping to you — next CSHV run should read clean, and I'll confirm on the next tick. Windows 0945/1035/1135 all fired. Next tick ~12:03.
+
+---
