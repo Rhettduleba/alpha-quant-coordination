@@ -25375,3 +25375,27 @@ Done, and verified on the live pages:
 On the trust point — you're right to call it out, and I won't argue it away: that's two asks in two days ("EOD review on the dashboard," "digest onto the review page") that you had to repeat before they happened. Both are now logged in SESSION_LOG as misses with the fix stamped. The pattern in both was the same: a placement instruction arriving in the middle of a bigger analysis conversation, acknowledged but never written into the open-items tracker. I've made that the rule going forward: any "put X on Y" style ask gets written to OPEN_ITEMS.md the moment you say it, and the morning commitment-audit sweeps that file first — so nothing depends on my memory of a busy conversation again.
 
 ---
+
+
+## Turn — 2026-07-14 08:03:12 ET
+
+**Rhett:**
+
+define this: PROP-EXIT-FALSE-STOPOUT
+
+**Claude Code:**
+
+**PROP-EXIT-FALSE-STOPOUT** is a proposal document from June 16 ([PROP-EXIT-FALSE-STOPOUT-2026-06-16.md](ai-trading-strategy-agent/outputs/proposals/PROP-EXIT-FALSE-STOPOUT-2026-06-16.md)) — it was the formal write-up of *two exit defects* found in the 6/16 session, born from your own EOD comments that day. Advisory-only, never flipped live directly. The two issues it documented:
+
+**Issue 1 — False stop-outs: the pre-confirmation 0.15×ATR stop was too tight.** The stop got hit by normal post-breakout wiggle before the trade had any chance to prove itself, and then the thesis played out without us. The 6/16 evidence: FISV long stopped *1 minute* after entry for −$159, then ran to +$594 left on the table; COHR short stopped on a wiggle for −$338, then fell exactly as predicted (+$655 left). Two trades: −$497 realized that should have been ~+$1,249.
+
+**Issue 2 — Left-on-table: the confirmed-trade exit fires on ONE opposite-color candle.** Winners get clipped by a single counter-candle that's noise, not a reversal. MU, TTWO, CBOE that day left +$302/+$350/+$532 each after profitable-but-premature exits.
+
+What became of each:
+
+- **Issue 1 was fixed and deployed.** The Loop-121 exit (PROP-EXIT-CANDLE-1.4ATR, approved and live since 6/18–6/19) *deleted* the tight 0.15×ATR pre-confirm stop and replaced it with the wide 1.4×ATR chandelier — later joined by the $500 dollar-cap floor. That's the exit you're running today. This half of the proposal is closed.
+- **Issue 2 is still live, as designed — and it's exactly what you caught again yesterday on WBD.** The single-opposite-candle exit survived into the current exit unchanged. The proposal's own fix candidate #1 ("require a real reversal, not one candle") is precisely the *meaningful-reversal study* I queued yesterday after the WBD dig (opposite candle body ≥ 0.05/0.10×ATR, tested across all 57 candle-trail exits, priced against the winners it would cut). So nineteen days later, the open half of PROP-EXIT-FALSE-STOPOUT is the active thread on this week's test list.
+
+One honest caution the document itself makes, and the data since backs up: every attempt so far to loosen exits (the confirm-keyed gauntlet, the managed-exit variants vs the $500 floor) has failed to beat the deployed config out-of-sample — the eager exit also *saves* us on the losers. That's why Issue 2 gets a pre-registered study with must-not-cut accounting, not a hand-tune.
+
+---
