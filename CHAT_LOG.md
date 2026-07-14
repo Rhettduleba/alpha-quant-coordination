@@ -25424,3 +25424,41 @@ You were right to be angry, and the sharpest part is that I *promised* the 7/13 
 The short version of the 7/13 read, since you should hear it from me directly: this wasn't 25 mistakes — it was one pattern 16 times. On a broad risk-off day, two-thirds of our breakout triggers never confirmed, and unconfirmed trades went 1-for-16. Everything that confirmed, won. The three levers pointed at exactly that loser class are already accruing forward evidence — CELL 3 (skip exhausted deep-run entries) saved +$214 on its first live day, the 30-minute time-stop again beat the looser leash (CELL 2 −$219, trending toward kill), and the meaningful-reversal exit study will decide whether winners like WBD get room without giving back the $650 the eager exit banked.
 
 ---
+
+
+## Turn — 2026-07-14 08:29:31 ET
+
+**Rhett:**
+
+1. this is exacly the type of shot exit i cant stand, we need to figure a sensible way to tune this, the exit was a red 1 minute candle, how in plain english did it hit our exit? why did the trade not confimr? It certainly would have if we would not have jumped out of the trade while it was going down! stock went down to 108.80 before it ticked up, thats the exit! 2. 
+2. this is a perfect exit out of a short when it turns against us. 3. 
+3. aniother compelet exit disaster we exited on a long trade during its run to the top. There HAS to be something wrong in our sysytem, no why the bot exited this under our exit sugnals, prove it to me. This is the third distater exit.
+4. perfect exit, now why its the same as the bad exits? did this trade confiorm? because the exit was tight but justifgied
+5. another long that exited on a green opne minute candle stocked peak at 37.05. : if you watch our trades as a human it looks like an idiot is making these trades. We have to fix this. it not rocket sience you watch momentum get in when the stock is going one way and get out when it goes the other. Our sysytem misses on many trades, why?
+
+**Claude Code:**
+
+Every one of these five deserves a mechanical proof, not an opinion. Pulling the data for KMB, MGM, and CMG (WBD I proved yesterday — I'll restate it), then the tuning answer:
+Both thresholds measured — and the honest result matters. Pre-registering the viable one as a forward shadow cell (CELL 4) so it accrues real evidence like the others:
+Here's each trade proven from broker truth and official bars — and then the honest answer about the fix, because I ran the study you're demanding this morning before replying.
+
+**1. KMB short — you're right, and here's the plain-English mechanics.** The trade **did** confirm — that's the first correction. Short at $110.41, confirmation = 0.15×ATR ($0.38) in our favor = $110.03, and KMB fell through that within two minutes. So the trade was confirmed and in phase 2, where the rule is "exit on the first *green* candle close." That candle was the 12:08 bar: open $109.93, close $109.94 — **a one-cent green candle in a stock with a $2.53 daily range.** That microscopic uptick ended the trade at $109.98. KMB then fell to $108.80 — another **$213 on your 181 shares** that the rule handed back. You called the 108.80 tick-up "the exit" — a human is weighing the *size* of the counter-move; our rule only reads its *color*. That's the whole defect in one sentence.
+
+**2. TROW — agreed, textbook.** Same rule: confirmed short, and the green candles at 11:49 were *real* reversal candles, so the exit at $113.46 caught the actual turn.
+
+**3. WBD — proven, yesterday, to the second.** Broker records: the protective stop sat at $26.34 and was **cancelled** at 12:06:49; a limit sell filled at 12:06:50 — the tape watcher's candle-reversal exit. The trade confirmed at $27.04 at that exact moment, and the code then looked at the "last closed candle" — a one-cent red candle that closed *before confirmation existed* — and fired instantly. It's a genuine code defect (the reversal candle should have to close *after* confirmation), 8 of 57 exits since 7/06 share the signature, and it's in the pre-registered fix pipeline. WBD ran to $27.65 without us.
+
+**4. MGM — here's the uncomfortable truth: it's the *same mechanism* as WBD, not a different one.** Yes, it confirmed ($47.625, touched ~11:16). It then exited 12 seconds into confirmation off the prior minute's candle — mechanically identical to the WBD defect. The only difference is what happened next: MGM chopped down, so the hair-trigger looked like genius. Same coin, other side. This is exactly why I won't hand-tune off the trades that anger us — the rule that robbed you on KMB paid you on MGM.
+
+**5. CMG — different mechanism entirely, and it's the midday problem.** That exit wasn't a candle signal — it was the **30-minute unconfirmed time-stop** (the green candle it landed on is coincidence). CMG needed to reach $36.79 to confirm (entry $36.62 + 0.168); in its 30 minutes the high was $36.65. At lunch, CMG's one-minute bars move 2–5 cents — asking for a 17-cent advance in 30 quiet minutes is structurally unconfirmable, because the 0.15×ATR bar is calibrated by *daily* ATR, which is built mostly from open-hour volatility. This is the diurnal-ATR miscalibration from last Friday's idea hunt, and CMG is its poster child. That retro study (time-of-day-scaled confirm threshold) is this week's top test — it likely explains a chunk of "the system misses many trades."
+
+**Now the tune — I ran it this morning, all 57 candle-trail exits since 7/06, no cherry-picking.** Rule tested: post-confirm, ignore opposite candles unless the body is at least K×ATR (and it must close after confirmation — the WBD fix included). Two pre-registered thresholds:
+
+- **K=0.10: killed.** −$4,283. Winners stop exiting at all and decay into the 3:50 flatten (GLW gave back $841 alone).
+- **K=0.05: +$785 total — but only 2 of 6 days positive, and it makes 31 of the 57 trades worse.** Two big saves (TER +$722, SNDK +$388) carry the whole result. WBD improves +$333, exactly as your eye said. But APP −$270, MRVL −$144 — the eager exit also banks money the loose rule bleeds back.
+
+So the honest verdict, as your partner and not a yes-man: **your three catches are real defects, and the aggregate still doesn't clear our bar yet.** This is the same shape as every exit-loosening attempt since June — anecdotes scream, totals whisper. So K=0.05 is now **CELL 4**, a fourth forward shadow cell scoring live from today under the same rules as the others (N≥30 and ≥7/10 positive days to promote). If the forward tape looks like the TER/SNDK days, it promotes and we deploy it through a proposal; if it looks like APP/MRVL, the deployed exit survives another challenger with receipts. Meanwhile the diurnal-ATR confirm study attacks the CMG class, which the retro suggests is the bigger dollar pool anyway (−$2,447 of unconfirmed time-stops yesterday vs +$650 of candle exits).
+
+Monitoring loop is re-armed for today's session; tonight's chain scores CELL 4's first forward day, and my day read — written after actually reading the debrief — will be on the review page.
+
+---
