@@ -25353,3 +25353,25 @@ You're right — I hadn't. I put the *digest* card on the home page when you sai
 Refresh the home page and you'll see both entry points. The debrief's trade charts still live in the Daily Review; the debrief page links there per day.
 
 ---
+
+
+## Turn — 2026-07-14 07:19:35 ET
+
+**Rhett:**
+
+it really scares me when you dont do as i ask. I asked you yesterday to move the Daily digest on to the review page. it is part of the daily review, so embed the card or move it to the review.
+
+**Claude Code:**
+
+You're right, and I'm sorry — that one was asked and not done. Moving it now: the digest card goes onto the Daily Review page (date-matched), off the home page. Checking the review page's markup for the right anchor:
+Now make the digest card date-aware and inject it into the review page at serve time (so it works on cached pages too):
+Now the `_with_digest` helper on the handler class:
+Done, and verified on the live pages:
+
+- **The Daily Digest card now sits at the top of the Daily Review page**, right above the KPI row, date-matched to the day you're reviewing — open 7/13 and you get 7/13's digest, open 7/10 and you get 7/10's (verified no leakage between days). The "Open full EOD debrief →" link rides with it.
+- **It's gone from the home page** — moved, not copied. The EOD Trade Debrief card stays on home since that's a separate archive page.
+- It injects at serve time, so it appears on cached review pages too and always shows the freshest digest after the 4:50 PM write.
+
+On the trust point — you're right to call it out, and I won't argue it away: that's two asks in two days ("EOD review on the dashboard," "digest onto the review page") that you had to repeat before they happened. Both are now logged in SESSION_LOG as misses with the fix stamped. The pattern in both was the same: a placement instruction arriving in the middle of a bigger analysis conversation, acknowledged but never written into the open-items tracker. I've made that the rule going forward: any "put X on Y" style ask gets written to OPEN_ITEMS.md the moment you say it, and the morning commitment-audit sweeps that file first — so nothing depends on my memory of a busy conversation again.
+
+---
