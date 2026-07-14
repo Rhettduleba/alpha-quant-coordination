@@ -26493,3 +26493,36 @@ Two big findings, and I'll give them to you straight:
 I'm running that adaptive variant retro right now against pure M=5 and M=15 — same population, pre-registered — and it goes into tonight's numbers alongside CELL 5/7's first forward day. If the adaptive version dominates, *that's* what goes in the fail-fast proposal instead of the blunt cut. This is exactly why the forward-cell week matters before wiring the exit: C-union had seven days of forward proof; Phase A earns its version of the same, just faster.
 
 ---
+
+
+## Turn — 2026-07-14 16:30:02 ET
+
+**Rhett:**
+
+run a test on how many unconfimed turned agaist us and how long it took to turn against us
+
+**Claude Code:**
+
+55% turned, and the timing kills the simple story — plus there's a landmine in this data I have to flag before we design anything. The numbers:
+
+**Of 119 trades that never confirmed while held: 65 (55%) turned against us by ≥0.15×ATR — and they are the entire disaster: −$13,538.** The other 54 (45%) were dead chop that never moved 0.15×ATR in *either* direction: net **+$156, essentially free** (the 30-minute flush handles them fine).
+
+| Turned against us in | n | % of turned | Cumulative | Net |
+|---|---|---|---|---|
+| ≤1 min | 4 | 6% | 6% | −$437 |
+| 1–2 min | 3 | 5% | 11% | −$358 |
+| 2–3 min | 5 | 8% | 18% | −$756 |
+| 3–5 min | 11 | 17% | 35% | −$2,995 |
+| 5–10 min | 14 | 22% | 57% | −$2,902 |
+| 10–20 min | 17 | 26% | 83% | −$3,870 |
+| >20 min | 11 | 17% | 100% | −$2,220 |
+
+Median time to turn: **9.3 minutes.** Only **35% turn within 5 minutes.**
+
+What this says about the design, thinking it through as a trader: **the clock is the wrong trigger — the level is the trigger.** Fail-fast-at-5 misses 65% of the turns (they happen after minute 5) while killing the slow confirmers we just proved are 96% winners. But an exit at the *anti-confirm level* — unconfirmed trade goes 0.15×ATR against us → out — catches every one of these 65 at the moment they turn (average value afterward: −$208/trade), never touches the dead chop, and never touches a slow confirmer *unless it dips first*.
+
+And that "unless it dips first" is the landmine: **an anti-confirm stop is exactly the old 0.15×ATR phase-1 stop we deleted on June 18** — removed because it was stopping out trades like FISV (−$159, then +$594 without us) on normal wiggle. That removal was justified by old-config anecdotes, not a both-sides backtest on the current system. So before this becomes the Phase-A proposal, the must-not-cut question has to be answered on current data: **of the 55 trades that confirmed while held, how many dipped ≥0.15×ATR against us *before* confirming — and what were they worth?** If that number is small, we deleted the right rule for the wrong reason and reinstating it (pre-confirm only, with the wide chandelier untouched) is the biggest fix available. If it's large, the trigger needs to be level-plus-time, not level alone.
+
+That companion test is next — I'll run it tonight with the 4:50 chain results and fold both into the day read. Between this table, the confirm-time table, and CELL 5/7's first forward day, Phase A's real design is going to be chosen by data, not by which anecdote yelled loudest — which is precisely what you asked me for this morning.
+
+---
