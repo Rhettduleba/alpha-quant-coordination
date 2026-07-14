@@ -26459,3 +26459,37 @@ One honest nuance so the numbers aren't oversold: fail-fast can't recover all �
 This table goes in tonight's day read, and it's the centerpiece of the fail-fast proposal. CELL 5 and CELL 7 score their first forward day in the chain that's running now — I'll have those numbers for you within the hour, and if they look like this, you'll have PROP-FAILFAST on your desk well before Monday.
 
 ---
+
+
+## Turn — 2026-07-14 16:27:26 ET
+
+**Rhett:**
+
+run a test on how may minutes each confirmed trade took to confirm
+
+**Claude Code:**
+
+This one changes the picture — look at the middle of the table before celebrating fail-fast:
+
+| Confirmed in | n | % | Win% | Net | Avg |
+|---|---|---|---|---|---|
+| 0–1 min | 2 | 2% | 100% | +$162 | +$81 |
+| 1–2 min | 3 | 3% | 100% | +$271 | +$90 |
+| 2–3 min | 4 | 4% | 75% | −$318 | −$79 |
+| 3–5 min | 10 | 10% | 100% | +$1,467 | +$147 |
+| **5–10 min** | **17** | **16%** | **100%** | **+$2,008** | +$118 |
+| **10–15 min** | **15** | **14%** | **93%** | **+$1,609** | +$107 |
+| **15–30 min** | **16** | **15%** | **100%** | **+$1,897** | +$119 |
+| >30 min | 38 | 36% | 24% | −$4,223 | −$111 |
+
+Median time to confirm: **17.6 minutes.** Only **18% of confirmed trades confirm within 5 minutes.**
+
+Two big findings, and I'll give them to you straight:
+
+**1. The ">30 min" row is an illusion that actually confirms yesterday's split.** Those 38 trades "confirmed" *after* the 30-minute time-stop had already flushed them — the level crossed later in the day without us. Economically they belong to the unconfirmed-loser cohort (24% win, −$4,223). Strip them out and the real rule is stunning: **a trade that confirms while we still hold it wins ~96% of the time (+$7,095 across 67 trades).** Confirmation isn't just an edge — it's nearly a guarantee, whenever it arrives inside the hold window.
+
+**2. This puts a real dent in fail-fast-at-5 — your instinct to keep testing was right.** The 5-to-30-minute slow confirmers are 48 trades at ~97% win worth +$5,513 — and a hard 5-minute cut kills every one of them before they prove themselves. The aggregate still came out +$5,347 because cutting at minute 5 usually exits near flat (small scratch, not the lost win) and the >30 bucket gets salvaged — but the blunt version is leaving the best cohort's money on the table. The smarter Phase A your "metrics change during the trade" idea points at: **at minute 5, cut only if the trade is *adverse*; if it's flat-or-favorable (making progress toward confirm), give it to 15.** That preserves the slow grinders while still killing what's actually dying.
+
+I'm running that adaptive variant retro right now against pure M=5 and M=15 — same population, pre-registered — and it goes into tonight's numbers alongside CELL 5/7's first forward day. If the adaptive version dominates, *that's* what goes in the fail-fast proposal instead of the blunt cut. This is exactly why the forward-cell week matters before wiring the exit: C-union had seven days of forward proof; Phase A earns its version of the same, just faster.
+
+---
