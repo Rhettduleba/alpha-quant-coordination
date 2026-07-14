@@ -25475,3 +25475,16 @@ Run the SELF_MONITORING_PLAYBOOK.md intraday check for the Alpha Quant bot (C:\A
 Tick clean at 8:33 AM (pre-market) — CSHV **50 OK / 0 WARN / 0 FAIL**, inbox clear, heartbeat 6.1s, last send is yesterday's digest (as expected, no overnight noise). TW launch check and 0945 arm verification come on the post-9:25 ticks. Also corrected a sloppy timestamp on my last SESSION_LOG entry. No action, no ping. Next tick ~8:45.
 
 ---
+
+
+## Turn — 2026-07-14 08:48:35 ET
+
+**Rhett:**
+
+Run the SELF_MONITORING_PLAYBOOK.md intraday check for the Alpha Quant bot (C:\AlphaQuant). STEPS: (1) Confirm ET time + market state; if past 4:00 PM ET / market closed, do a final EOD-flat check then STOP looping (CronDelete this job). (2) Read the SAME warnings Rhett gets: run `python C:\AlphaQuant\tradestation-bot\alerts_bridge.py`, read C:\AlphaQuant\CSHV_FINDINGS.md, check code_alert_inbox (python C:\AlphaQuant\tradestation-bot\code_alert_inbox.py --json), AND tail outputs/alerts/sent_ledger.jsonl for any send since the last tick. (3) Trade-liveness: after 10:45 AM confirm >=1 ORB_V16_ENTRY_OK today; if 0, diagnose via reliability_checks.check_alive_but_not_trading(). (4) ACT per the action matrix: verify vs broker truth FIRST; fix non-watched now (+regression-lock); WATCHED files never mid-session — surface + escalate. (5) Log one line to SESSION_LOG.md only if action taken. Silence = handled. EXTRA today (Tue 7/14): (a) FIRST TICK ONLY — verify TW launched at 9:25 (guardian covers from 9:26) AND that the 0945 window arms normally. (b) EVENING (post-close): verify CELL4 MEANINGFUL-REVERSAL-005 scores its first forward day in tonight's 4:50 chain, the digest lands, and WRITE THE CLAUDE DAY READ (outputs/reports/claude_day_read_2026-07-14.md) after reading the full debrief — standing duty.
+
+**Claude Code:**
+
+Tick clean at 8:48 AM — CSHV **50 OK / 0 WARN / 0 FAIL**, inbox clear, heartbeat 13.7s. Pre-open readiness gate fires shortly; TW launches 9:25. No action, no log, no ping. Next tick ~9:00.
+
+---
