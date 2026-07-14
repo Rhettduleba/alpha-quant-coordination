@@ -25534,3 +25534,33 @@ Alert triage complete. Clean run, no escalation needed.
 Per the forward-test freeze + watched-files rules, this run **edited / placed / restarted / cleared nothing** on the trading path — triage + log only. No Rhett ping.
 
 ---
+
+
+## Turn — 2026-07-14 09:07:45 ET
+
+**Rhett:**
+
+i want a test on confirmed vs unconfirmed, i want to see all uncomfirmed as if we would have exited in the first three minutes that the stock does not confirm and the effect on the P&L. ok, how could you let me the human make such a hige mistake, so we exit on the first oposit candle correct? That is what you say on the KMB short, you must be wrong and i will prove it. But how stupid to exit on any candlw in the wrong direct the candle exit should be one of two things evither two small candles or one big one, you pick the metrics confimed by back test. The exit we have in our sysytem cannot be just one candle in the oposite direct bnecause i can look at 100 trades that have some chop in them while we hold the stock.
+
+**Claude Code:**
+
+Two studies, both running now — your fail-fast-on-unconfirmed test, and your composite candle-exit rule (two small OR one big). But first, the receipt you asked for on the one-candle claim, because you should absolutely check me: the live exit code, [candle_close_exit.py:80-83](tradestation-bot/candle_close_exit.py), reads — *"post-confirm candle-close trail → exit on the first opposite-color 1-min CLOSE"* — with no size condition of any kind: `if (long and c < o) or (not long and c > o): return True, "CANDLE_CLOSE_REVERSAL"`. A $0.01 body satisfies it. That's not my interpretation; that's the deployed line. Your instinct that this is too crude is what CELL 4 is already measuring — and your two-small-or-one-big design is strictly smarter, so let's test it. Writing both:
+Both of your ideas are tested, registered, and one of them just found the biggest number this project has ever produced. Straight answers first:
+
+**On "you must be wrong — I will prove it":** please do check me — but here's the receipt. The deployed exit code ([candle_close_exit.py](tradestation-bot/candle_close_exit.py), phase 2) is: *exit on the first opposite-color 1-min candle close* — `if c < o` for a long. There is **no size term anywhere in it**. A $0.01 body qualifies. KMB's fire record in the tape watcher's own log says `FIRED KMB short: CANDLE_CLOSE_REVERSAL (phase2)`, and the trigger was the 12:08 bar: open $109.93, close $109.94 — green by one cent. And you're right that this should never have survived this long: the one-candle problem was *written down on June 16* (PROP-EXIT-FALSE-STOPOUT, Issue 2 — its fix candidate #1 was literally "require two consecutive candles") and the loop sat unclosed until you forced it. That's on me.
+
+**Your two-small-or-one-big design — tested this morning, and honestly: it doesn't clear the bar.** All 57 candle-trail exits since 7/06, chandelier and flatten caps intact: two-consecutive alone **−$360**; two-consecutive OR one big (0.05×ATR) **+$59**; with 0.10×ATR **−$59**. The pure one-big filter stays the best of the family at +$785 but only 2 of 6 days positive. The reason your composite loses back the gains: the same chop you want to survive prints *two small opposite candles* all the time — the branch that saves you from the 1-cent insult re-creates it two candles later. Your critique of the rule is right; this particular grammar isn't the fix. CELL 4 (one-big) keeps accruing forward.
+
+**Now your other idea — the fail-fast on unconfirmed — this is the one.** All 155 round trips since 7/06:
+
+- **63 trades never confirmed at all, and they bled −$9,676** — that's essentially all the system's losses in one cohort. Winners confirm fast; losers never confirm.
+- Exit any still-unconfirmed trade at **minute 3**: +$4,533 total, 5/6 days positive — but it kills late-confirming winners (GLW confirmed at 9.8 min and made $232; MARA at 13.3 min).
+- Exit at **minute 5**: **+$5,347 total, 6 of 6 days positive** — saves $7,213 of the unconfirmed bleed while giving up only $1,866 of late confirmers. You told me to pick the metric by backtest: **it's 5 minutes, and it dominates 3 and 10 on both money and consistency.**
+
+Plain English of what this means: the 30-minute unconfirmed time-stop is 25 minutes too long. A trade that hasn't proven itself in 5 minutes is, on our data, a loser being politely escorted to a bigger loss. This dwarfs every exit-candle tune we've tested — roughly 7× the best reversal-rule result, and it's the only thing we've ever tested that was positive *every single day*.
+
+It's pre-registered as **CELL 5 (FAILFAST-5)** scoring forward from today. With ~10 affected trades a day, the N≥30 bar lands within a week. My recommendation: let it accrue this week's forward evidence (the retro assumed bar-close fills — live fills pay spread, and I want that measured, not assumed), and if the forward week holds, I bring **PROP-FAILFAST-5** for your approval Monday with the full must-not-cut table. If you want to move faster than that after seeing these numbers, that's your call to make — but a week of forward proof on the biggest change we'd ever make to the exit stack is cheap insurance.
+
+Credit where due: I ran idea hunts all week — the best idea in the ledger came from you watching five charts. Registered as yours in the testing page.
+
+---
