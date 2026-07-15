@@ -26911,3 +26911,38 @@ Triage run complete. Summary:
 - **Freeze honored:** edited/placed/restarted/cleared nothing on the trading path. SESSION_LOG appended, synced + pushed to coordination repo (`4a85a3e`), inbox `--ack`'d.
 
 ---
+
+
+## Turn — 2026-07-15 10:30:18 ET
+
+**Rhett:**
+
+forgive me as you answer my questions i have to take them one at a time. So all confirmed trdaes lose money after confirmation. This means that the exit we loosened for confirmed trades acually wokred against us correct. This is interestig and a step backwards. Run a study on all confimed and how long it took them to confirm. I said from the begining that short trades are better than long trades, but this will tell us. why not run the minute by minute study now?
+
+**Claude Code:**
+
+Three answers. First the correction on "we loosened it and it backfired" — **not quite, and the distinction matters for what we fix.** What got loosened on June 18 was the *pre-confirmation floor* (the tight 0.15 stop → wide chandelier) — that part is fine. The post-confirmation exit — the one-candle trail — **was never loosened; it was never anything.** The −$1,241 isn't a loosening that backfired, it's a trail that adds *zero* value after confirmation: it usually fires within pennies of the confirm touch (you can't exit at the touch itself — you exit on the next candle close, which on average sits slightly below it). So it's not a step backwards — it's the discovery that our "confirmed trade management" phase effectively doesn't exist. All edge is the cushion; the trail just hands the cushion's edges back. That's precisely what Phase B has to earn.
+
+Second and third together — you're right, no reason to wait: running the time-to-confirm study **and** the minute-by-minute study now, on the certified baseline (353 trades, full era), with the long-vs-short split you've been predicting since the beginning:
+You called it from the beginning, and now it's on the record with N=262 certified trades. The full results:
+
+**Long vs short — you were right, decisively:**
+
+| | n | Win | Net | Avg |
+|---|---|---|---|---|
+| Short confirmed | 72 | 93% | +$9,513 | +$132 |
+| Short unconfirmed | 56 | 27% | −$7,860 | −$140 |
+| **Shorts overall** | 128 | | **+$1,653** | |
+| Long confirmed | 61 | 97% | +$7,071 | +$116 |
+| Long unconfirmed | 73 | **14%** | **−$13,248** | −$181 |
+| **Longs overall** | 134 | | **−$6,176** | |
+
+**The short book is a profitable business over the whole certified era.** Shorts confirm more often (56% vs 46%), confirm *faster* (median 12.1 min vs 18.1), and fail cheaper (−$140 vs −$181). And the single cell that contains the entire system loss is now named: **long-unconfirmed, −$13,248 at 14% win.** One honest caveat before we crown it a law: this era leaned risk-off — shorts were swimming with the tape. The follow-up study (this week, certified data) splits each side by the day's market direction; if "longs on red days" turns out to be the tax core, the fix is a regime-alignment gate — and that would be a bigger finding than "shorts are better."
+
+**Time to confirm (certified era):** median 14.2 minutes overall — longs 18.1, shorts 12.1. Only 13–22% confirm within 5 minutes, which re-confirms why the blunt 5-minute fail-fast needs the glide-path envelope rather than a bare clock.
+
+**The minute-by-minute study — ran now, as you said, and it added one thing the 7-session version couldn't see:** in the first ~3 minutes, *everyone looks identical* — confirmers and failures both take about the same early heat (−0.42 vs −0.43 units of adverse). Early pain does **not** predict failure. What separates them starts at minute 3–5: confirmers *advance* (44% of the confirm distance by minute 5, 57% by 7) while failures **stall at ~25% and their adverse excursion deepens forever** (−0.51 at minute 5 → −0.88 at 15 — they don't just stop advancing, they sink on a schedule). So the signature of a doomed trade is the *pair*: stalled progress AND deepening lows — and the signature of a keeper is advancement even while still underwater. That two-condition version goes into the gauntlet spec for Wednesday's bake-off, now with side-aware floors too, since shorts march up the path faster than longs.
+
+And your first question, answered precisely: no — the June loosening didn't backfire, because the post-confirm trail was never loosened. What we discovered is that it was never doing anything: the cushion is the whole paycheck, the trail just decides how much of the cushion's edge we hand back. Phase B's job, in one sentence, is to make the after-confirmation leg worth something — and your pyramid capital is waiting on the other side of that door. 91 of the 353 certified trades couldn't be analyzed tonight (bar/ATR fetch gaps — disclosed, not hidden); I'll backfill them before the Wednesday replay.
+
+---
