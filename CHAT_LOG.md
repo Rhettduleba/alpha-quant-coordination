@@ -27215,3 +27215,27 @@ Triage run complete. Summary:
 Per the forward-test freeze + watched-files rules, this run edited/placed/restarted/cleared **nothing** on the trading path. The only outstanding escalation remains the 9:19 AM `manager_alerts_clear` atomic-write fix awaiting Rhett's go-ahead.
 
 ---
+
+
+## Turn — 2026-07-15 15:50:06 ET
+
+**Rhett:**
+
+i have check TS in the afternoon for the last few days and we have not had any open positions, check and se that all the scanner times have been firing when they should.
+
+**Claude Code:**
+
+Scanner's clean — every window fired on schedule all three days. The empty afternoons are real, but they're not a malfunction; they're two design rules compounding. Verified:
+
+**1. All six windows fired every day** (timestamps in the trace: 9:45, 10:35, 11:35, 12:35, 1:35, 2:35 — including yesterday's and today's post-reboot sessions). The 9:45 window shows a retry quirk — it runs 2–3 times over the first minute until the mover feed is fully ready (the early passes see 0–1 candidates, the real pass sees 15–18) — benign, no duplicate arming, but noted.
+
+**2. Why you see no positions in the afternoon — two rules stacking:**
+
+- **The afternoon windows arm almost nothing.** Look at the counts: 1:35 PM armed 1 / 2 / 1 across the three days; 2:35 PM armed 1 / 1 / **0** — despite seeing 11–19 candidates each time. The reason is the **re-entry cap**: by early afternoon, nearly every name the scanner likes has already traded once today and gets refused (`reentry_capped` was 9–12 refusals per window). The scanner is looking; the cap is saying no.
+- **Exits are fast.** Median holds run ~30 minutes (unconfirmed die at the 30-minute stop, confirmed candle-trails average ~26 minutes), so the morning book drains by lunch. Today the last position closed at **1:05 PM — the account sat flat from 1:06 to the close.** Yesterday, one position (BIIB) survived to the 3:50 flatten; Friday, the last exit was 3:07.
+
+**3. Is it a problem?** Split answer. As *risk*, no — flat afternoons on a system whose late entries win 47.9% (vs 67.7% pre-11) is the data protecting you; it's the same evidence that just got C-union promoted. As *capital utilization*, it's a fair observation: the machine is idle roughly the last 2–3 hours of every session. Whether those hours contain harvestable edge is exactly what two queued studies answer: Thursday's **winner re-entry** test (your point — the names that paid us in the morning re-signal in the afternoon, and the cap currently refuses them) and the afternoon-window slot question that C-union's forward data will settle (halve vs skip entirely). If winners' afternoon re-entries test positive, the dead afternoons become the growth lane; if not, flat-after-lunch is simply what a disciplined version of this strategy looks like, and the capital argument moves to sizing the mornings harder.
+
+Nothing to fix tonight — the system is doing what its rules say. The question your observation raises is whether the rules should let proven winners back in, and that has a test with its name on it in two days.
+
+---
