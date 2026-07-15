@@ -26718,3 +26718,67 @@ Both Phase-A cells would have recovered roughly **half of today's entire unconfi
 The week now has a shape: Wednesday the joint Phase-A replay (fail-fast vs tape-turn vs anti-confirm stop vs the new glide-path gauntlet, one population, floors fit on old data and validated out-of-sample), Friday the proposal lands on your desk with today's and tomorrow's live forward days in it. The wand hunt produced its first real artifact tonight — stall detection — and it was your "how do we foresee unconfirmed" that named the target.
 
 ---
+
+
+## Turn — 2026-07-15 09:20:46 ET
+
+**Rhett:**
+
+<scheduled-task name="alphaquant-alert-triage" file="C:\Users\Administrator\.claude\scheduled-tasks\alphaquant-alert-triage\SKILL.md">
+This is an automated run of a scheduled task. The user is not present to answer questions. For implementation details, execute autonomously without asking clarifying questions — make reasonable choices and note them in your output. "write" actions (e.g. MCP tools that send, post, create, update, or delete), only take them if the task file asks for that specific action. When in doubt, producing a report of what you found is the correct output.
+
+AUTONOMOUS ALERT TRIAGE — Alpha Quant (Rhett-approved 2026-06-22; Planning Track A). You are a scheduled Claude Code run on the Alpha Quant VPS (live root C:\AlphaQuant). GOAL: Rhett must NOT be the human pager-relay. You read the SAME actionable alerts he would, auto-suppress known-noise, and ESCALATE anything that genuinely needs a human — pre-diagnosed. The human gate is preserved.
+
+IMPORTANT — FORWARD-TEST FREEZE: autonomous code-fixing is DEFERRED right now (Planning Track B). You DO NOT edit or commit ANY code this run (not even non-watched). You TRIAGE + ESCALATE only. (Auto-fix re-enables after the OOS forward test via a reviewed whitelist.)
+
+SOURCE OF TRUTH: read C:\AlphaQuant\CODE_ALERT_TRIAGE_PLAYBOOK.md and follow it EXACTLY (re-read each run). Procedure:
+1. `git -C C:\repos\alpha-quant-coordination pull` (ignore errors). Read the top stamp of C:\AlphaQuant\SESSION_LOG.md and C:\AlphaQuant\CSHV_FINDINGS.md for current state.
+2. Run: C:\Users\Administrator\AppData\Local\Python\pythoncore-3.14-64\python.exe C:\AlphaQuant\tradestation-bot\code_alert_inbox.py --json  → the NEW actionable CRITICAL alerts since last ack (the feed is already severity-gated to CRIT + de-noised; benign WARNs are handled at source, not here).
+3. For each alert: if it is KNOWN-NOISE (reader pre-tags many; or a state already confirmed benign in SESSION_LOG) → no action. Otherwise ESCALATE it: import notifier (add C:\AlphaQuant\tradestation-bot to sys.path) and call notifier.send_notification(subject="CODE TRIAGE — needs you", body= plain-English diagnosis + the specific proposed fix + whether it needs Rhett's approval (watched/strategy/risk) or just a go-ahead, level="CRITICAL"). For a SAFE non-watched fix you would normally make, STILL escalate it with the proposed fix (do not auto-edit during the freeze).
+4. ALWAYS at the end: append a short dated entry to C:\AlphaQuant\SESSION_LOG.md (what fired + what you escalated, or 'inbox clean'), copy it to C:\repos\alpha-quant-coordination\SESSION_LOG.md, commit + push that repo, then run code_alert_inbox.py --ack to advance the cursor. If nothing actionable, do NOT notify Rhett (silence = handled) — still --ack + one-line log.
+
+HARD RULES (never autonomously): NEVER edit/commit any code during the forward test (escalate fixes instead). NEVER edit a WATCHED strategy file (risk_config.py, bot_loop.py, exit_bot_v2.py, candle_close_exit.py, advisor_filter_engine.py, symbol_universe.py, orb_runner.py, orb_multiscan.py, short_bot.py). NEVER change risk/sizing/universe/stops/time-windows. NEVER place/cancel/modify orders or touch positions. NEVER deploy a strategy change. NEVER restart run_bot/watchdog_supervisor. NEVER touch credentials/.env or refresh TS tokens excessively. WHEN IN DOUBT, ESCALATE — never act on the live/trading path.
+
+ENVIRONMENT: Python = C:\Users\Administrator\AppData\Local\Python\pythoncore-3.14-64\python.exe. Work in C:\AlphaQuant. Keep each run tight + conservative. Your job: keep Discord quiet for Rhett by surfacing ONLY what truly needs him, pre-diagnosed.
+</scheduled-task>
+
+**Claude Code:**
+
+I'll execute this scheduled alert triage run following the playbook. Let me start by pulling the coordination repo and reading current state.
+Now let me read the current state stamps and run the alert inbox.
+Alerts came in overnight (3:20–4:00 AM ET). Current live CSHV (9:10 AM) shows **FAIL=0**, so both overnight FAILs have self-resolved. Let me verify the root cause before classifying — I don't want to state "benign" without checking.
+The CSHV FAIL alerts feed from a different source than code_inbox.jsonl. Let me find where the reader pulls them and get the full bodies.
+The reader returns CSHV alerts not in code_inbox.jsonl — let me read the reader source to find the real feed.
+I was reading the wrong file path. The reader uses `C:\AlphaQuant\outputs\alerts\code_inbox.jsonl`. Let me read the correct one.
+Now I have the full picture. Let me investigate the root cause of the `manager_alerts_clear: status file unreadable` — it fired 4× over 40 min then recovered. I need to determine if it's a genuine transient or a real write-race worth flagging.
+Root cause found. `check_alerts.py:87` writes the status JSON **non-atomically** (`write_text` truncates-then-writes) — any CSHV read landing mid-write sees an empty file → the FAIL. It's an observability helper, non-watched, non-trading. Before I classify, let me verify the bundled `clean_day_certified` FAIL isn't a *new* trading-path fault today (vs. the known standing item).
+Critical finding: `manager_alerts_clear` FAILed on **11 consecutive CSHV runs** (3:20–4:05 AM ET), not intermittently — the status file was left **persistently empty** for ~45 min. And it's what tripped `clean_day_certified` FAIL (the downstream `no_critical_incident` condition). So today's clean-day break is caused by this write bug, not a real trading fault. Let me check whether this is a new recurrence or a known daily pattern.
+This is a **first-ever occurrence** (7/15 only, not a chronic pattern), and it's a genuine latent bug that tripped the clean-day certification metric. This is a Bucket B item → escalate with the proposed fix (freeze = no auto-edit). Let me confirm the notifier signature before sending.
+Notifier confirmed. Sending the consolidated escalation to Rhett.
+Escalation delivered (Discord 204 + Telegram 200). Now appending the SESSION_LOG entry, syncing to the coordination repo, then acking the cursor.
+Now sync to the coordination repo, commit, push, then ack the cursor.
+Cursor advanced (4 processed), inbox now clean. Run complete.
+
+## Alert triage complete — 7/15, 9:19 AM ET
+
+**1 item escalated** to Rhett (Discord 204 + Telegram 200). Nothing touched on the trading path — forward-test freeze honored, no code edited.
+
+### What fired (all overnight, 3:20–4:05 AM ET)
+- CSHV `manager_alerts_clear` FAILed on **10–11 consecutive runs** (~45 min): *"status file unreadable: Expecting value: line 1 column 1 (char 0)"* — the status JSON was read **empty**, a persistent window, not a sub-millisecond race.
+- That downstream tripped `clean_day_certified` FAIL at 3:35. **Key finding: today's clean-day break is caused by this observability bug, not a trading fault** — no loop-stall, no gate-fail-open, no bot crash.
+
+### Root cause (verified in code, not guessed)
+[check_alerts.py:87](ai-trading-strategy-agent/check_alerts.py) writes the status file **non-atomically** — `STATUS.write_text(...)` truncates to 0 bytes then writes. A read mid-write, or a truncate-then-interrupted-write leaving a 0-byte file, yields the parse error. It's the **first-ever occurrence** (not in `incidents.jsonl` any prior day) and **fully self-resolved** by open (live 9:10 AM CSHV = OK=48 / WARN=3 / **FAIL=0**; status file good since ~4 AM).
+
+### Why I escalated rather than silent-acked
+It's non-watched and non-trading, **but** it corrupts `clean_day_certified` / `consecutive_clean` — the forward-test graduation metric — and there's a clean, safe fix. That clears the Bucket B bar ("recurs noisily → escalate with proposed fix").
+
+### Proposed fix (human applies per freeze)
+1. **Primary:** atomic write in check_alerts.py — temp file + `os.replace()`.
+2. **Optional:** reader-side retry-once/empty→WARN in `chk_manager_alerts_clear` so one transient can't trip clean_day.
+
+Non-watched → needs only Rhett's go-ahead, ~10-min edit. The other current WARNs (`universe_margin_eligibility_sample` AACB delisting; `pre_open_gate_ran` NO-GO with the known-benign preflight risk_config-mtime FAIL) are standing/known — not escalated. Pre-open readiness 9:00 AM = **GO**.
+
+SESSION_LOG updated, synced to coordination repo ([009ccdb](https://github.com/Rhettduleba/alpha-quant-coordination/commit/009ccdb)), inbox ack'd (cursor advanced, now 0 actionable).
+
+---
