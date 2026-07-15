@@ -26782,3 +26782,55 @@ Non-watched → needs only Rhett's go-ahead, ~10-min edit. The other current WAR
 SESSION_LOG updated, synced to coordination repo ([009ccdb](https://github.com/Rhettduleba/alpha-quant-coordination/commit/009ccdb)), inbox ack'd (cursor advanced, now 0 actionable).
 
 ---
+
+
+## Turn — 2026-07-15 09:28:24 ET
+
+**Rhett:**
+
+good morning, a littel house keeping. You have scheduled tasks, those tasks start a new chat in claude code, do they have to, can they run behind the senese? It makes it difficult because i have for extra lines to look at when i wokr with you remotely.
+
+**Claude Code:**
+
+Good morning! Let me verify how your scheduled tasks are actually set up here and get the authoritative answer on whether they can run without spawning a visible chat — rather than guess at product behavior.
+Verified against both the live config and the official docs. Here's the straight answer.
+
+## Short version: no, there's no built-in "run invisibly" switch — but there's a clean workaround
+
+Both flavors of native Claude Code scheduling **always create a visible session** each time they fire, and there is **no setting, flag, or config to hide them from the list** (including the remote/mobile view). I checked the docs specifically for this — it doesn't exist. Sessions can only be archived/deleted *after* the fact.
+
+You have exactly **one** Claude Code scheduled task doing this to you:
+
+| Task | Schedule | Sessions/day |
+|---|---|---|
+| `alphaquant-alert-triage` | hourly, 9 AM–4 PM, Mon–Fri | up to **8** |
+
+That's your clutter. (Your other automation — `AlphaQuant_EodReconciliation` and friends — are plain Windows Task Scheduler jobs running Python; those *don't* spawn Claude sessions. Only this triage task does, because it needs Claude's judgment to triage/escalate.)
+
+## Two levers
+
+**1. Kill the ping noise (I can do this right now, safe, reversible):** set `notifyOnCompletion: false` on the task. This stops it notifying your active session every run. **Caveat — honest:** it stops the *interruption*, but it does **not** remove the session line from the list. So it only half-solves your complaint.
+
+**2. Actually make it invisible (the real fix):** move the triage off the desktop scheduled-task mechanism and onto **Windows Task Scheduler running `claude -p` (headless/print mode)** — same triage prompt, same hourly cadence, but it runs as a background CLI process and does **not** create a sidebar session. This is the only way to get what you're really asking for.
+
+Let me confirm the headless route is actually viable in your environment before recommending you commit to it:
+Confirmed — `claude.exe` v2.1.167 is installed at `C:\Users\Administrator\.local\bin\`, so the headless route works here.
+
+## My recommendation: do lever 2 (headless), it's the only thing that actually solves your complaint
+
+I'd build a Windows Task Scheduler job that runs:
+```
+claude -p "<the triage prompt>" --dangerously-skip-permissions  >> triage_run.log 2>&1
+```
+on the same hourly-RTH schedule, then **disable** the desktop `alphaquant-alert-triage` task. Result: identical triage + escalation behavior, **zero sidebar sessions**, remote view stays clean.
+
+Three honest caveats before you say go:
+- It runs **headless with permissions skipped** (no human to approve prompts) — same autonomy level it already has, just no session UI.
+- If a run itself errors, you'd see it in a **log file**, not the session list. That's actually consistent with your "silence = handled" design, and real problems still reach you via the Discord/Telegram escalation (that path is plain Python + notifier, so it works fine headless).
+- I'd do **one test run** and verify it triages + escalates correctly and doesn't hang on a permission prompt, *before* disabling the desktop task — so you're never without coverage.
+
+**One quick thing I can do right now regardless:** if you'd rather not migrate yet, I can set `notifyOnCompletion: false` so it stops interrupting your active session on every run — but that only kills the *ping*, the session line still appears.
+
+Want me to build the headless version (test it, then disable the desktop task) — or just flip off the notifications for now?
+
+---
