@@ -27424,3 +27424,46 @@ I escalated one CRITICAL (Discord 204, Telegram 200) with four proposed fixes, *
 Logged to SESSION_LOG line 58, pushed to coordination repo as `8d0ee2a`, cursor acked. This run edited, placed, restarted, and cleared nothing on the trading path.
 
 ---
+
+
+## Turn — 2026-07-16 11:07:02 ET
+
+**Rhett:**
+
+<scheduled-task name="alphaquant-alert-triage" file="C:\Users\Administrator\.claude\scheduled-tasks\alphaquant-alert-triage\SKILL.md">
+This is an automated run of a scheduled task. The user is not present to answer questions. For implementation details, execute autonomously without asking clarifying questions — make reasonable choices and note them in your output. "write" actions (e.g. MCP tools that send, post, create, update, or delete), only take them if the task file asks for that specific action. When in doubt, producing a report of what you found is the correct output.
+
+AUTONOMOUS ALERT TRIAGE — Alpha Quant (Rhett-approved 2026-06-22; Planning Track A). You are a scheduled Claude Code run on the Alpha Quant VPS (live root C:\AlphaQuant). GOAL: Rhett must NOT be the human pager-relay. You read the SAME actionable alerts he would, auto-suppress known-noise, and ESCALATE anything that genuinely needs a human — pre-diagnosed. The human gate is preserved.
+
+IMPORTANT — FORWARD-TEST FREEZE: autonomous code-fixing is DEFERRED right now (Planning Track B). You DO NOT edit or commit ANY code this run (not even non-watched). You TRIAGE + ESCALATE only. (Auto-fix re-enables after the OOS forward test via a reviewed whitelist.)
+
+SOURCE OF TRUTH: read C:\AlphaQuant\CODE_ALERT_TRIAGE_PLAYBOOK.md and follow it EXACTLY (re-read each run). Procedure:
+1. `git -C C:\repos\alpha-quant-coordination pull` (ignore errors). Read the top stamp of C:\AlphaQuant\SESSION_LOG.md and C:\AlphaQuant\CSHV_FINDINGS.md for current state.
+2. Run: C:\Users\Administrator\AppData\Local\Python\pythoncore-3.14-64\python.exe C:\AlphaQuant\tradestation-bot\code_alert_inbox.py --json  → the NEW actionable CRITICAL alerts since last ack (the feed is already severity-gated to CRIT + de-noised; benign WARNs are handled at source, not here).
+3. For each alert: if it is KNOWN-NOISE (reader pre-tags many; or a state already confirmed benign in SESSION_LOG) → no action. Otherwise ESCALATE it: import notifier (add C:\AlphaQuant\tradestation-bot to sys.path) and call notifier.send_notification(subject="CODE TRIAGE — needs you", body= plain-English diagnosis + the specific proposed fix + whether it needs Rhett's approval (watched/strategy/risk) or just a go-ahead, level="CRITICAL"). For a SAFE non-watched fix you would normally make, STILL escalate it with the proposed fix (do not auto-edit during the freeze).
+4. ALWAYS at the end: append a short dated entry to C:\AlphaQuant\SESSION_LOG.md (what fired + what you escalated, or 'inbox clean'), copy it to C:\repos\alpha-quant-coordination\SESSION_LOG.md, commit + push that repo, then run code_alert_inbox.py --ack to advance the cursor. If nothing actionable, do NOT notify Rhett (silence = handled) — still --ack + one-line log.
+
+HARD RULES (never autonomously): NEVER edit/commit any code during the forward test (escalate fixes instead). NEVER edit a WATCHED strategy file (risk_config.py, bot_loop.py, exit_bot_v2.py, candle_close_exit.py, advisor_filter_engine.py, symbol_universe.py, orb_runner.py, orb_multiscan.py, short_bot.py). NEVER change risk/sizing/universe/stops/time-windows. NEVER place/cancel/modify orders or touch positions. NEVER deploy a strategy change. NEVER restart run_bot/watchdog_supervisor. NEVER touch credentials/.env or refresh TS tokens excessively. WHEN IN DOUBT, ESCALATE — never act on the live/trading path.
+
+ENVIRONMENT: Python = C:\Users\Administrator\AppData\Local\Python\pythoncore-3.14-64\python.exe. Work in C:\AlphaQuant. Keep each run tight + conservative. Your job: keep Discord quiet for Rhett by surfacing ONLY what truly needs him, pre-diagnosed.
+</scheduled-task>
+
+**Claude Code:**
+
+I'll start by reading the playbook and checking current state.
+Board is clean. Verified independently rather than trusting the inbox — here's the check before I log it:
+**Triage run 2026-07-16 ~11:04 AM ET — clean. No escalation sent, nothing edited.** Silence = handled.
+
+This was the first run using the direct `bot_alerts.jsonl` scan that the 10:09 blind-spot finding demands, so I checked three feeds instead of one:
+
+- **Inbox:** 0 total / 0 actionable.
+- **Live CSHV** (11:00:21 ET, market hours): OK=50 / WARN=0 / FAIL=0. The lone INFO is `clean_day_certified`, now honestly reading `consecutive_clean=0` — consistent with the 10:09 correction.
+- **`bot_alerts.jsonl` scanned directly** (the feed the inbox is blind to): 35 rows today, 34 INFO + 1 WARN, zero FAIL. **The auth storm has not recurred** — `TS_AUTH_FAIL` count since 7/15 07:31 is 0.
+
+One thing looked like a real problem and wasn't. Today logged 16 entries but only 13 stop-loss placements — the naked-position class, so I chased it rather than waving it off. The three-way gap (UBER at 9:45, JBHT and NOW at 10:35) is **unfilled working entry stop-limit orders**: none appear in `broker_orders_unified.csv` in any state, and the stop-loss is only placed after an entry fills. Broker truth confirms zero exposure — `rel_position_recon` says broker and bot agree both ways on 2 positions, `rel_exit_side` says both are protected. The two open names are MRNA and CIEN; 11 round-trips closed today at a reconciled net of −$1,149.89.
+
+**The one WARN I logged but deliberately did not page you about:** `ORB_EARNINGS_STALE` — the earnings calendar is 10.7 days old against a 3-day threshold, so the earnings veto can miss a name reporting today. It's not novel (40 firings, daily since the feed last refreshed around 7/05) and it's already open decision (3) on your list, so re-paging it 55 minutes after the 10:09 CRITICAL would be exactly the noise this loop exists to kill. But my read is that the risk is rising, not flat: we're now in mid-July earnings season, so the same staleness is materially more dangerous than it was in late June. It needs a decision, not a page.
+
+Still awaiting you, not re-pinged and not withdrawn: fixes A–D from 10:09 and the 7/15 atomic-write escalation. A symptom going quiet isn't the same as the fix landing.
+
+---
