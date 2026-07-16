@@ -27570,3 +27570,56 @@ Two things I re-verified rather than inheriting the earlier run's verdict:
 Per the forward-test freeze and watched-files rules, this run edited, committed, placed, cancelled, restarted, or cleared nothing on the trading path — read-only throughout. The SESSION_LOG entry is stamped from canonical `et_now.py`, mirrored to the coordination repo and pushed (`c63b405`), and the inbox cursor is `--ack`'d.
 
 ---
+
+
+## Turn — 2026-07-16 14:06:16 ET
+
+**Rhett:**
+
+<scheduled-task name="alphaquant-alert-triage" file="C:\Users\Administrator\.claude\scheduled-tasks\alphaquant-alert-triage\SKILL.md">
+This is an automated run of a scheduled task. The user is not present to answer questions. For implementation details, execute autonomously without asking clarifying questions — make reasonable choices and note them in your output. "write" actions (e.g. MCP tools that send, post, create, update, or delete), only take them if the task file asks for that specific action. When in doubt, producing a report of what you found is the correct output.
+
+AUTONOMOUS ALERT TRIAGE — Alpha Quant (Rhett-approved 2026-06-22; Planning Track A). You are a scheduled Claude Code run on the Alpha Quant VPS (live root C:\AlphaQuant). GOAL: Rhett must NOT be the human pager-relay. You read the SAME actionable alerts he would, auto-suppress known-noise, and ESCALATE anything that genuinely needs a human — pre-diagnosed. The human gate is preserved.
+
+IMPORTANT — FORWARD-TEST FREEZE: autonomous code-fixing is DEFERRED right now (Planning Track B). You DO NOT edit or commit ANY code this run (not even non-watched). You TRIAGE + ESCALATE only. (Auto-fix re-enables after the OOS forward test via a reviewed whitelist.)
+
+SOURCE OF TRUTH: read C:\AlphaQuant\CODE_ALERT_TRIAGE_PLAYBOOK.md and follow it EXACTLY (re-read each run). Procedure:
+1. `git -C C:\repos\alpha-quant-coordination pull` (ignore errors). Read the top stamp of C:\AlphaQuant\SESSION_LOG.md and C:\AlphaQuant\CSHV_FINDINGS.md for current state.
+2. Run: C:\Users\Administrator\AppData\Local\Python\pythoncore-3.14-64\python.exe C:\AlphaQuant\tradestation-bot\code_alert_inbox.py --json  → the NEW actionable CRITICAL alerts since last ack (the feed is already severity-gated to CRIT + de-noised; benign WARNs are handled at source, not here).
+3. For each alert: if it is KNOWN-NOISE (reader pre-tags many; or a state already confirmed benign in SESSION_LOG) → no action. Otherwise ESCALATE it: import notifier (add C:\AlphaQuant\tradestation-bot to sys.path) and call notifier.send_notification(subject="CODE TRIAGE — needs you", body= plain-English diagnosis + the specific proposed fix + whether it needs Rhett's approval (watched/strategy/risk) or just a go-ahead, level="CRITICAL"). For a SAFE non-watched fix you would normally make, STILL escalate it with the proposed fix (do not auto-edit during the freeze).
+4. ALWAYS at the end: append a short dated entry to C:\AlphaQuant\SESSION_LOG.md (what fired + what you escalated, or 'inbox clean'), copy it to C:\repos\alpha-quant-coordination\SESSION_LOG.md, commit + push that repo, then run code_alert_inbox.py --ack to advance the cursor. If nothing actionable, do NOT notify Rhett (silence = handled) — still --ack + one-line log.
+
+HARD RULES (never autonomously): NEVER edit/commit any code during the forward test (escalate fixes instead). NEVER edit a WATCHED strategy file (risk_config.py, bot_loop.py, exit_bot_v2.py, candle_close_exit.py, advisor_filter_engine.py, symbol_universe.py, orb_runner.py, orb_multiscan.py, short_bot.py). NEVER change risk/sizing/universe/stops/time-windows. NEVER place/cancel/modify orders or touch positions. NEVER deploy a strategy change. NEVER restart run_bot/watchdog_supervisor. NEVER touch credentials/.env or refresh TS tokens excessively. WHEN IN DOUBT, ESCALATE — never act on the live/trading path.
+
+ENVIRONMENT: Python = C:\Users\Administrator\AppData\Local\Python\pythoncore-3.14-64\python.exe. Work in C:\AlphaQuant. Keep each run tight + conservative. Your job: keep Discord quiet for Rhett by surfacing ONLY what truly needs him, pre-diagnosed.
+</scheduled-task>
+
+**Claude Code:**
+
+I'll start by reading the playbook, then pull the coordination repo and check current state.
+Playbook read. Now checking current state and the alert inbox.
+Inbox is empty (0 alerts). But per the known blind spot — `code_inbox` is notifier-fed only and never sees `bot_alerts.jsonl` FAILs — I'm scanning all three feeds directly, using the real `ts`/`severity` schema.
+Zero FAILs today, auth storm still not recurring. Entry/stop counts moved (22 entries vs 20 stops) — re-verifying that gap against broker truth rather than inheriting the earlier verdict, plus live CSHV.
+Same two symbols as earlier runs (UBER, NOW). Querying broker truth fresh for both order IDs and checking the position-protection checks.
+Both order IDs return zero hits in broker truth in any state — still unfilled working entry stop-limits, so no stop is expected yet. Confirming the position-protection checks.
+Everything checks out clean. Writing the log entry now.
+Push landed (`dc60efe..83454f5`) — the red text is the known PowerShell 5.1 native-stderr quirk, not a failure. Now advancing the cursor.
+**Triage clean — nothing escalated to Rhett (silence = handled).** No notification sent.
+
+I checked all three feeds rather than trusting the inbox alone, since `code_inbox` is notifier-fed and structurally blind to `bot_alerts.jsonl` FAILs:
+
+1. **`code_alert_inbox.py --json`** — 0 total, 0 actionable, 0 critical groups.
+2. **Live CSHV** (14:00:20 ET) — OK=50, WARN=0, FAIL=0, INFO=1, SKIP=2. The INFO is the honest `consecutive_clean=0`; both SKIPs are expected for the time of day.
+3. **`bot_alerts.jsonl` scanned directly** — 3,665 rows, 48 today: 47 INFO, 1 WARN, **zero FAIL**. The auth storm has not recurred (`TS_AUTH_FAIL` today = 0; last occurrence still 7/15 at 7:31 AM ET).
+
+**The entry/stop gap re-verified, not inherited.** Today shows 22 entry-OK events against 20 stop-OK events. A per-symbol diff isolated the same two names as prior runs — UBER (962049543) and NOW (962086896). Both order IDs return zero hits in the 2,039-row broker CSV in *any* state (no FILLED, no UROUT, no REJECTED), meaning they're unfilled working entry stop-limits; the stop is only placed after an entry fills, so a missing stop is the correct state here. Broker truth confirms no unprotected exposure: `rel_position_recon` agrees both ways on 1 position, `rel_exit_side` reports it protected, and the daily review reconciles at 18 round-trips, net −$1,149.56.
+
+One method note worth flagging: my first broker query failed with FileNotFoundError because the CSV lives under `tradestation-bot\`, not the project root. I located the real file rather than let a failed read pass as "no hits found" — an errored query and a legitimately empty one look identical if you don't check. That's the third distinct way a hand-rolled parse has stumbled in three runs, which strengthens the case for proposed fix **A**.
+
+**The one WARN, logged but deliberately not paged:** `ORB_EARNINGS_STALE` — the earnings calendar is 10.7 days old, past the 3-day threshold, so the earnings veto may have false negatives. This is standing, not novel: first fired 6/03, daily since the feed last refreshed around 7/05, and it's already OPEN DECISION (3) awaiting Rhett. This is the fourth consecutive run surfacing it; paging a known open decision a fourth time in four hours is exactly the pager noise this loop exists to eliminate. That said, **the underlying risk is rising** — we're in mid-July earnings season, so the same staleness is materially more dangerous than it was in late June. It needs a decision from Rhett, not another alert.
+
+**Still awaiting Rhett** (not re-pinged, not withdrawn — a quiet symptom isn't a landed fix): fixes A (bridge FAILs into the inbox), B (named CSHV auth-storm check), C (streak mislabel), D (watched `orb_runner.py` 401 back-off, needs a proposal); the 7/15 atomic-write escalation; and the two open questions.
+
+Per the forward-test freeze and watched-file rules, this run was read-only throughout — no code edited, no orders touched, no restarts. Session log appended with the canonical `et_now.py` stamp, pushed to the coordination repo, and the inbox cursor advanced.
+
+---
