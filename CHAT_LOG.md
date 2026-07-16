@@ -27467,3 +27467,56 @@ One thing looked like a real problem and wasn't. Today logged 16 entries but onl
 Still awaiting you, not re-pinged and not withdrawn: fixes A–D from 10:09 and the 7/15 atomic-write escalation. A symptom going quiet isn't the same as the fix landing.
 
 ---
+
+
+## Turn — 2026-07-16 12:06:44 ET
+
+**Rhett:**
+
+<scheduled-task name="alphaquant-alert-triage" file="C:\Users\Administrator\.claude\scheduled-tasks\alphaquant-alert-triage\SKILL.md">
+This is an automated run of a scheduled task. The user is not present to answer questions. For implementation details, execute autonomously without asking clarifying questions — make reasonable choices and note them in your output. "write" actions (e.g. MCP tools that send, post, create, update, or delete), only take them if the task file asks for that specific action. When in doubt, producing a report of what you found is the correct output.
+
+AUTONOMOUS ALERT TRIAGE — Alpha Quant (Rhett-approved 2026-06-22; Planning Track A). You are a scheduled Claude Code run on the Alpha Quant VPS (live root C:\AlphaQuant). GOAL: Rhett must NOT be the human pager-relay. You read the SAME actionable alerts he would, auto-suppress known-noise, and ESCALATE anything that genuinely needs a human — pre-diagnosed. The human gate is preserved.
+
+IMPORTANT — FORWARD-TEST FREEZE: autonomous code-fixing is DEFERRED right now (Planning Track B). You DO NOT edit or commit ANY code this run (not even non-watched). You TRIAGE + ESCALATE only. (Auto-fix re-enables after the OOS forward test via a reviewed whitelist.)
+
+SOURCE OF TRUTH: read C:\AlphaQuant\CODE_ALERT_TRIAGE_PLAYBOOK.md and follow it EXACTLY (re-read each run). Procedure:
+1. `git -C C:\repos\alpha-quant-coordination pull` (ignore errors). Read the top stamp of C:\AlphaQuant\SESSION_LOG.md and C:\AlphaQuant\CSHV_FINDINGS.md for current state.
+2. Run: C:\Users\Administrator\AppData\Local\Python\pythoncore-3.14-64\python.exe C:\AlphaQuant\tradestation-bot\code_alert_inbox.py --json  → the NEW actionable CRITICAL alerts since last ack (the feed is already severity-gated to CRIT + de-noised; benign WARNs are handled at source, not here).
+3. For each alert: if it is KNOWN-NOISE (reader pre-tags many; or a state already confirmed benign in SESSION_LOG) → no action. Otherwise ESCALATE it: import notifier (add C:\AlphaQuant\tradestation-bot to sys.path) and call notifier.send_notification(subject="CODE TRIAGE — needs you", body= plain-English diagnosis + the specific proposed fix + whether it needs Rhett's approval (watched/strategy/risk) or just a go-ahead, level="CRITICAL"). For a SAFE non-watched fix you would normally make, STILL escalate it with the proposed fix (do not auto-edit during the freeze).
+4. ALWAYS at the end: append a short dated entry to C:\AlphaQuant\SESSION_LOG.md (what fired + what you escalated, or 'inbox clean'), copy it to C:\repos\alpha-quant-coordination\SESSION_LOG.md, commit + push that repo, then run code_alert_inbox.py --ack to advance the cursor. If nothing actionable, do NOT notify Rhett (silence = handled) — still --ack + one-line log.
+
+HARD RULES (never autonomously): NEVER edit/commit any code during the forward test (escalate fixes instead). NEVER edit a WATCHED strategy file (risk_config.py, bot_loop.py, exit_bot_v2.py, candle_close_exit.py, advisor_filter_engine.py, symbol_universe.py, orb_runner.py, orb_multiscan.py, short_bot.py). NEVER change risk/sizing/universe/stops/time-windows. NEVER place/cancel/modify orders or touch positions. NEVER deploy a strategy change. NEVER restart run_bot/watchdog_supervisor. NEVER touch credentials/.env or refresh TS tokens excessively. WHEN IN DOUBT, ESCALATE — never act on the live/trading path.
+
+ENVIRONMENT: Python = C:\Users\Administrator\AppData\Local\Python\pythoncore-3.14-64\python.exe. Work in C:\AlphaQuant. Keep each run tight + conservative. Your job: keep Discord quiet for Rhett by surfacing ONLY what truly needs him, pre-diagnosed.
+</scheduled-task>
+
+**Claude Code:**
+
+I'll follow the triage playbook. Starting by pulling the coordination repo and reading current state.
+CSHV is fully green (50 OK / 0 WARN / 0 FAIL). Now the inbox plus a direct `bot_alerts.jsonl` scan — the blind spot found this morning.
+My field-name assumptions were wrong — 3,657 rows but "today = 0" and no timestamps. Let me read the actual schema rather than trust my guess.
+The keys are `ts`/`severity`, not `timestamp`/`level` — my earlier "0 today, 0 FAIL" output was an artifact of the wrong field names, not a clean feed. Re-running against the real schema.
+Today is 40 rows: 39 INFO + 1 WARN, zero FAIL. Auth storm has not recurred (last one still 7/15 07:31:09). There's an 18-entry vs 16-stop gap — checking that against broker truth rather than assuming it's the same benign class as this morning.
+The two gapped entries (UBER 962049543, NOW 962086896) are absent from the broker CSV in **any** state — unfilled working entry orders, and the stop is only placed after a fill. CSHV's broker-truth checks agree: 2 positions reconciled, all 2 protected. Benign, same class as this morning.
+Everything checks out — no escalation warranted. Writing the log entry with the canonical ET stamp.
+Entry is in at line 58 with the canonical stamp. Now syncing to the coordination repo and advancing the cursor.
+## Alert triage 2026-07-16 ~12:05 PM ET — clean, nothing escalated to Rhett
+
+No notification sent. Silence = handled, per the playbook. All three feeds check out:
+
+- **`code_alert_inbox.py --json`** — 0 total, 0 actionable, 0 critical groups.
+- **Live CSHV** (12:00:22 ET, market hours) — 50 OK / 0 WARN / 0 FAIL / 1 INFO / 2 SKIP. Both SKIPs are expected for the time of day; the INFO is the known `clean_day_certified` streak mislabel (proposed fix C, still open).
+- **`bot_alerts.jsonl` scanned directly** — 40 rows today: 39 INFO, 1 WARN, zero FAIL. The auth storm has **not** recurred; last `TS_AUTH_FAIL` is still 7/15 07:31:09.
+
+**One thing worth flagging about my own method.** My first scan of `bot_alerts.jsonl` keyed on `timestamp`/`level` and reported "0 rows today, 0 FAIL, auth last: None." That was a false all-clear from wrong field names — the real schema is `ts`/`severity`. I caught it because "0 rows today" contradicted the 11:04 run's 35, and because `TS_AUTH_FAIL total 727` alongside `last: None` is self-contradictory. Re-ran against the real schema before concluding anything. The lesson is that a probe reporting zero deserves more scrutiny than one reporting problems, because a green light from a broken probe looks identical to a green light from a healthy system. This is also a second, independent argument for pending fix **A**: every triage run currently hand-rolls its own parse of that file, so each run can silently mis-key it. Bridging FAILs into `code_inbox.jsonl` puts one tested reader in the path instead of N ad-hoc ones.
+
+**The entry/stop gap I did not wave off.** Today shows 18 `ORB_V16_ENTRY_OK` against 16 `ORB_SL_OK`. The two without stops are UBER (962049543, 9:45) and NOW (962086896, 10:35). That shape resembles the naked-position class, so I checked it against broker truth rather than assuming it matched this morning's benign finding: both order IDs are absent from `broker_orders_unified.csv` in any state — no FILLED, no UROUT, no REJECTED. They're unfilled working entry stop-limits, and the stop is only placed after a fill. Broker truth confirms zero unprotected exposure: 2 positions reconciled both ways, both protected, 14 round-trips reconciling at NET −$1,205.25.
+
+**The one WARN, logged but deliberately not paged:** `ORB_EARNINGS_STALE` at 9:36 — the earnings calendar is 10.7 days old against a 3-day threshold. I verified this is standing rather than novel: it has fired 40 times since 6/03, daily since the feed last refreshed around 7/05 (8.7d → 9.7d → 10.7d over the last three sessions), and it's already OPEN DECISION (3) awaiting Rhett. Re-paging it an hour after the 11:04 run is exactly the pager noise this loop exists to eliminate. My read for when he picks it up: the risk is rising, not flat — a stale calendar means the earnings veto can miss a name reporting today, and mid-July earnings season makes the same staleness materially more dangerous than it was in late June. It needs a decision, not a page.
+
+Still awaiting Rhett, not re-pinged and not withdrawn (symptom quiet ≠ fix landed): fixes **A**, **B**, **C**, and **D** (D is watched `orb_runner.py`, needs a proposal), the 7/15 atomic-write escalation, and the two open questions.
+
+Per the forward-test freeze, this run was read-only throughout — nothing edited, placed, cancelled, restarted, or cleared on the trading path. SESSION_LOG updated, pushed to the coordination repo as `8644fae`, inbox `--ack`'d.
+
+---
