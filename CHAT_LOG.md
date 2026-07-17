@@ -28146,3 +28146,20 @@ Run the SELF_MONITORING_PLAYBOOK.md intraday check for the Alpha Quant bot (C:\A
 Tick clean at 12:50 — CSHV **50 OK / 1 WARN** (standing), inbox clear, heartbeat 1.3s. No action, no log, no ping. Next tick ~1:05.
 
 ---
+
+
+## Turn — 2026-07-17 13:01:23 ET
+
+**Rhett:**
+
+go
+
+**Claude Code:**
+
+**Approved and locked in.** Your "go" is recorded in manual_approvals.yaml with the full scope, and the deploy is scheduled for **4:07 PM today** — not now, deliberately: the scanner loads fresh code at every window, so editing the watched files mid-session would hot-deploy into the 1:35 window untested. At 4:07, with the book flat and verified: both fixes go in (advisor filter wired into the live arming loop + the Phase-C veto widening), REG-57/58 lock them, full suite + preflight must be green, and a planted-control drill runs Monday pre-open before the first live window at 9:45.
+
+Until the close, the interim protections hold: re-entry cap bars NFLX/ISRG, and I'm checking every window's arms against the reporter list (three windows so far: zero reporters armed, and C-union halving verified on all seven late arms).
+
+Tonight's slate after the deploy: the Phase-A joint replay → PROP-PHASE-A draft for you, C-union's 10th-forward-day formal review, cells 4–8 chain verification (CELL 8's first forward day), the Friday idea hunt, and the day read. Next tick ~1:05.
+
+---
