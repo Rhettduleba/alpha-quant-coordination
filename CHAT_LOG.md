@@ -27800,3 +27800,29 @@ Fixed and verified. What you received, why, and what I did:
 **One decision for you, so this can't rot silently again:** the daily refresh should auto-promote after passing the same validation I just ran by hand (schema match + row count sane + window covers today) — that's the "Phase D" the quarantine was waiting for, now with ten days of clean fresh-file production behind it. It's a small, non-watched change to the refresh script with the validation as a hard gate and the WARN kept as backstop. Say "go" and it ships today; until then I've added a daily manual check so the calendar can't age past a session on my watch.
 
 ---
+
+
+## Turn — 2026-07-17 10:20:21 ET
+
+**Rhett:**
+
+go: i asked you a long time ago to complete every that needs completed, you siad you did yet we had this out there unfinished. Review all your memory and make sure nothing is left off the table and that you are confident in the sysytem. This is frustrating because we keep haveing things like stale information come up. I want to go live siometime in the future and this cant happen if we still have system bugs
+
+**Claude Code:**
+
+Go received — shipping the auto-promote, then the full sweep. And you're naming a real *class* of bug, not an instance: today was "two-part design where part 2 was deferred and nothing watches the gap." So the sweep ends with that class encoded as a machine check, not a promise. First the fix:
+Here's the honest state of the table, Rhett — everything found, everything owned:
+
+**Shipped on your "go" (all verified):**
+- **Auto-promote (Phase D)** is live: the daily 7 AM refresh now validates (exact schema, ≥200 rows, window covers today) and promotes to the live calendar, with backup and a WARN alert if any gate blocks. Tested — promoted 1,395 rows.
+- **And the sweep immediately found the *next* buried phase:** the same module's docstring documented "Phase C" — the veto assumes reports land at 9:30 AM, so after-hours reporters are unprotected *the next morning*. That was live today: **NFLX and ISRG — both reported Wednesday night — armed and traded at 9:45 this morning.** Both round-tripped already; no open exposure. Interim protection is in: 52 typed `BLOCK_SYMBOL` controls (every 7/16–7/17 reporter) through the advisor channel, validated through the bot's own parser; I verify enforcement at the 10:35 window. The proper fix (widen the veto window) comes to you as a proposal for today's 4 PM flat window.
+
+**The audit's ugliest finding is about me, and it validates your complaint exactly:** 7/15 and 7/16 had **no working session at all** — only the autonomous alert-triage ran. The Wednesday Phase-A bake-off I promised you never happened, and a 724-error auth-failure storm on 7/15 got escalated but never postmortemed. My promises lived in conversation, and conversations end. The certified scrub (re-run through yesterday: 406 clean / 4 excluded) shows the storm didn't overlap any trade lifecycles, so the data survived — but the process didn't.
+
+**The cure is now a machine, not a promise:** [DEFERRED_WORK.yaml](C:/AlphaQuant/DEFERRED_WORK.yaml) — 23 entries covering *every* deferred, gated, or half-shipped thread I could find across memory, proposals, and session logs: the TW detection fixes queued since 7/03, the order-flow logging promised 7/13, the missed replay, the auth-storm postmortem, a stray "TEST" symbol in today's journal, the fossil-card check, all of it — each with an owner and a review-by date. And a new **CSHV check enforces it**: any item past its date is a FAIL on your dashboard, same severity as a dead bot. It's already working — its first act was to flag *me* for the two items due today. The rule going forward: **deferring work without an entry in that file is itself the bug.**
+
+**For going live, the registry has a dedicated `before_live` blocker entry** so it can never be hand-waved: restore the $2k daily stop + real-time clamp, re-enable the account/strategy drawdown kills, day-wide gross-cap enforcement, broker BP gate + sector cap, and the SIM→live gate review — the go-live decision reviews that list item by item, and CSHV won't let it rot quietly in the meantime.
+
+Am I confident in the system? Honestly: confident in the *trading path* (two zero-FAIL weeks, reconciliation to the penny nightly, guards tested) — and *newly* confident in the completeness machinery, because today it caught a live gap within hours of existing. Due today and on the clock: the Phase-C proposal, the Phase-A joint replay (post-close), C-union's 10th-forward-day review, and the Friday idea hunt. The monitor loop is re-armed with all four baked into its prompt, so they happen even if this conversation doesn't.
+
+---
