@@ -28025,3 +28025,16 @@ Tick at 11:35, and it's a milestone one: **C-union's production debut verified e
 Still waiting on your **"approve shield"** for the 4:05 PM deploy that makes the advisor channel real on this path. Next tick ~11:50.
 
 ---
+
+
+## Turn — 2026-07-17 11:50:55 ET
+
+**Rhett:**
+
+Run the SELF_MONITORING_PLAYBOOK.md intraday check for the Alpha Quant bot (C:\AlphaQuant). STEPS: (1) Confirm ET time; if past 4:00 PM ET, do final EOD-flat check then CronDelete this job. (2) Read what Rhett gets: CSHV_FINDINGS.md, code_alert_inbox --json, tail outputs/alerts/sent_ledger.jsonl since last tick. (3) After 10:45 confirm entries fired. (4) ACT per matrix: verify broker truth first; fix non-watched now; WATCHED never mid-session. (5) Log only if action taken. TODAY (Fri 7/17, OpEx): (a) at the 10:35+ windows VERIFY the 52 BLOCK_SYMBOL earnings controls actually refuse reporters (advisor_filter_engine.log should show block=true rows; if a 7/16-7/17 reporter arms anyway, escalate). (b) C-UNION live verification: late windows (1135+) must show halved shares + sizedown tag in multiscan_trace. (c) DUE TODAY per DEFERRED_WORK.yaml: earnings Phase-C proposal to Rhett + the joint Phase-A replay (variants a/b/c/d + hard-15) -> run post-close with PROP-PHASE-A draft; also tonight C_union 10th-forward-day review + Friday idea hunt #2. (d) Evening: chain verify (cells 4-8 incl CELL8 first day), digest lands, Claude day read written.
+
+**Claude Code:**
+
+Tick clean at 11:50 — CSHV improved to **50 OK / 1 WARN** (the idle-filter WARN cleared; the remaining one is the deferred-work due-today reminder, which is accurate — the shield proposal and tonight's replay are still on the clock). Inbox clear, heartbeat fresh. No action, no log, no ping. Next tick ~12:05.
+
+---
