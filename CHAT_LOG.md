@@ -28460,3 +28460,24 @@ Run the SELF_MONITORING_PLAYBOOK.md intraday check for the Alpha Quant bot (C:\A
 Tick clean at 3:50 — flatten is firing now. CSHV **50 OK / 1 WARN** (standing), heartbeat 17.5s. Next tick lands post-close: final flat check, loop shutdown, then the 4:07 shield deploy kicks off the evening stack. Next tick ~4:05.
 
 ---
+
+
+## Turn — 2026-07-17 15:59:41 ET
+
+**Rhett:**
+
+just got a warn saying flatten is in jeopardy research report fix
+
+**Claude Code:**
+
+Research done — here's the report, and the fix is already nine minutes from deploying.
+
+**The flatten itself was never in jeopardy tonight — it ran perfectly.** Broker-truth evidence: positions were already flat *before* the window even opened (the last trade closed intraday; "No positions found" at 3:50:05), the watchdog then swept all 15 working entry orders with clean HTTP 200 cancels in six seconds, the supervisor's independent safety net re-verified every minute as designed, and `ORB_EOD_OK` confirmed at 3:55:14. I verified at the broker directly: **flat, zero working orders.** Third consecutive clean flatten this week.
+
+**What you actually received:** our notifier has sent nothing to any channel since 11:40 AM — so the message on your phone is almost certainly one of the two **CRITICALs from 10:19/10:27 this morning** (sent by the autonomous triage): *"the 52 earnings BLOCK_SYMBOL controls are a NO-OP"* — the advisor-wiring gap I reported to you at 10:45. Read quickly, "the emergency halt would be ignored" reasonably comes across as "flatten in jeopardy" — but they're different machines: the **EOD flatten** (watchdog + safety net, working, proven again tonight) versus the **advisor emergency controls** (`BLOCK_ALL_NEW_ENTRIES` / `BLOCK_SYMBOL`), which are the thing that's currently disconnected from the entry path.
+
+**The fix for the real gap is your already-approved shield** — it deploys at **4:07 PM** (about now): advisor filter wired into the live arming loop + the earnings-veto widening, with regression locks and a planted-control drill Monday pre-open. When that lands, the emergency halt is real again, and the noisy morning CRITICAL class dies with it.
+
+One process note going on the list: the triage's CRITICAL duplicated what I'd already told you in chat — two channels yelling the same thing at different volumes is how "flatten in jeopardy" confusion happens. I'll dedupe the triage against the session log so the phone only rings for things you haven't already been told. Deploy report follows in minutes.
+
+---
