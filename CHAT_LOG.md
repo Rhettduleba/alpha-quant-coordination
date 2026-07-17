@@ -27826,3 +27826,73 @@ Here's the honest state of the table, Rhett — everything found, everything own
 Am I confident in the system? Honestly: confident in the *trading path* (two zero-FAIL weeks, reconciliation to the penny nightly, guards tested) — and *newly* confident in the completeness machinery, because today it caught a live gap within hours of existing. Due today and on the clock: the Phase-C proposal, the Phase-A joint replay (post-close), C-union's 10th-forward-day review, and the Friday idea hunt. The monitor loop is re-armed with all four baked into its prompt, so they happen even if this conversation doesn't.
 
 ---
+
+
+## Turn — 2026-07-17 10:31:03 ET
+
+**Rhett:**
+
+<scheduled-task name="alphaquant-alert-triage" file="C:\Users\Administrator\.claude\scheduled-tasks\alphaquant-alert-triage\SKILL.md">
+This is an automated run of a scheduled task. The user is not present to answer questions. For implementation details, execute autonomously without asking clarifying questions — make reasonable choices and note them in your output. "write" actions (e.g. MCP tools that send, post, create, update, or delete), only take them if the task file asks for that specific action. When in doubt, producing a report of what you found is the correct output.
+
+AUTONOMOUS ALERT TRIAGE — Alpha Quant (Rhett-approved 2026-06-22; Planning Track A). You are a scheduled Claude Code run on the Alpha Quant VPS (live root C:\AlphaQuant). GOAL: Rhett must NOT be the human pager-relay. You read the SAME actionable alerts he would, auto-suppress known-noise, and ESCALATE anything that genuinely needs a human — pre-diagnosed. The human gate is preserved.
+
+IMPORTANT — FORWARD-TEST FREEZE: autonomous code-fixing is DEFERRED right now (Planning Track B). You DO NOT edit or commit ANY code this run (not even non-watched). You TRIAGE + ESCALATE only. (Auto-fix re-enables after the OOS forward test via a reviewed whitelist.)
+
+SOURCE OF TRUTH: read C:\AlphaQuant\CODE_ALERT_TRIAGE_PLAYBOOK.md and follow it EXACTLY (re-read each run). Procedure:
+1. `git -C C:\repos\alpha-quant-coordination pull` (ignore errors). Read the top stamp of C:\AlphaQuant\SESSION_LOG.md and C:\AlphaQuant\CSHV_FINDINGS.md for current state.
+2. Run: C:\Users\Administrator\AppData\Local\Python\pythoncore-3.14-64\python.exe C:\AlphaQuant\tradestation-bot\code_alert_inbox.py --json  → the NEW actionable CRITICAL alerts since last ack (the feed is already severity-gated to CRIT + de-noised; benign WARNs are handled at source, not here).
+3. For each alert: if it is KNOWN-NOISE (reader pre-tags many; or a state already confirmed benign in SESSION_LOG) → no action. Otherwise ESCALATE it: import notifier (add C:\AlphaQuant\tradestation-bot to sys.path) and call notifier.send_notification(subject="CODE TRIAGE — needs you", body= plain-English diagnosis + the specific proposed fix + whether it needs Rhett's approval (watched/strategy/risk) or just a go-ahead, level="CRITICAL"). For a SAFE non-watched fix you would normally make, STILL escalate it with the proposed fix (do not auto-edit during the freeze).
+4. ALWAYS at the end: append a short dated entry to C:\AlphaQuant\SESSION_LOG.md (what fired + what you escalated, or 'inbox clean'), copy it to C:\repos\alpha-quant-coordination\SESSION_LOG.md, commit + push that repo, then run code_alert_inbox.py --ack to advance the cursor. If nothing actionable, do NOT notify Rhett (silence = handled) — still --ack + one-line log.
+
+HARD RULES (never autonomously): NEVER edit/commit any code during the forward test (escalate fixes instead). NEVER edit a WATCHED strategy file (risk_config.py, bot_loop.py, exit_bot_v2.py, candle_close_exit.py, advisor_filter_engine.py, symbol_universe.py, orb_runner.py, orb_multiscan.py, short_bot.py). NEVER change risk/sizing/universe/stops/time-windows. NEVER place/cancel/modify orders or touch positions. NEVER deploy a strategy change. NEVER restart run_bot/watchdog_supervisor. NEVER touch credentials/.env or refresh TS tokens excessively. WHEN IN DOUBT, ESCALATE — never act on the live/trading path.
+
+ENVIRONMENT: Python = C:\Users\Administrator\AppData\Local\Python\pythoncore-3.14-64\python.exe. Work in C:\AlphaQuant. Keep each run tight + conservative. Your job: keep Discord quiet for Rhett by surfacing ONLY what truly needs him, pre-diagnosed.
+</scheduled-task>
+
+**Claude Code:**
+
+I'll start by reading the playbook and current state, then check the alert inbox.
+Inbox returns zero. Per the standing blind-spot rule, the inbox is notifier-fed only — I'll scan CSHV and `bot_alerts.jsonl` directly rather than trust that zero.
+The `detail` field is where the content lives — my first print used the wrong key. Re-reading it properly, plus CSHV.
+14 entry orders, 8 stop-losses — a 6-order gap. Prior runs classified this pattern as benign (unfilled entry stop-limits owe no stop), but "unprotected position" is a Bucket C escalation, so I'm checking it against broker truth rather than inheriting the verdict.
+Every FILLED entry has a matching stop. The 6 stopless ones are absent from the broker file entirely — consistent with still-working stop-limits, but absence isn't proof, so I'll confirm against live CSHV position/protection checks.
+Everything reconciles. Let me confirm the full picture of the day's fills before I write the log.
+The earnings feed mtime just changed — it was 11.7 days stale when the 9:35 scan fired, but the file was written at 9:47 AM. That's new since every prior run. Checking whether it's a real refresh or an empty touch.
+The standing risk just changed state — the earnings feed auto-refreshed at 9:46:34 AM from `nasdaq_public_calendar` (1,395 rows, 7/14→7/31). But the entries fired at **9:45:18 — 76 seconds before the refresh landed**, so today's trades were vetoed against the stale file. I can now test the false-negative directly.
+NFLX and ISRG both reported earnings **yesterday (7/16)** — and both were shorted this morning and filled. This is the silent false-negative that's been flagged for seven runs, now materialized. Before I call it that, I need the actual veto rule — whether it covers day-after names at all.
+The veto anchors earnings at 9:30 AM on the earnings date with an 18-hour after-window. Let me run the real function at the actual entry timestamp rather than reason about the arithmetic myself.
+This is a **logic bug, not staleness**. The fresh calendar still doesn't block NFLX/ISRG. Let me verify the veto is actually wired into the path that took these trades.
+Veto confirmed **enabled and wired** (`REARM_EARNINGS_VETO_ENABLED = True`), and it ran on these names — it returned `block=False` on its own logic. Now checking whether those two positions are still open right now.
+Both earnings names are already **closed and were winners** (NFLX +$96 gross, ISRG +$115) — so there's no live exposure and the bug cost nothing today. That's luck, not protection. Let me check why the refresh landed *after* the entries.
+The refresh module's docstring says it **refuses to write the live file** — yet the live file now has NASDAQ data. It also independently documents my exact bug as "Phase C". Let me find who wrote it.
+A Phase D promotion happened at 9:47 AM today — fresh data was copied into the live veto file, with the old file backed up. Let me confirm whether the accompanying "Phase C" logic fix was ever recorded or approved.
+This is now decisive. The project's own gate says Phase D was **conditional on Phase C** (widening the veto window). Today the data half was promoted without it. Let me prove the resulting hole with the live function.
+Definitive: **17/17 today-reporters blocked, 0/35 yesterday-reporters blocked.** NFLX and ISRG were two of those 35. This is a real, pre-diagnosed gap in a live risk guard that needs Rhett — escalating.
+Escalation sent. Now logging it and advancing the cursor.
+A concurrent working session found the same Phase-C gap at 10:20 AM and shipped an interim mitigation — 52 typed `BLOCK_SYMBOL` controls. My page overlaps, but it's worth verifying that interim fix actually holds, since it's a live trading-path change made minutes ago.
+`control_type` came back `None` for all 52 — either I'm reading the wrong key or the controls are malformed. Checking the raw structure against what the engine actually parses.
+My key lookup was wrong — it's `type`, not `control_type`. The 52 blocks are real and include NFLX/ISRG. But the file has **both** `active_controls` and `controls` keys, so I need to confirm which one the engine actually reads before calling this enforced.
+The engine reads `active_controls`. The 52 blocks were written to `controls`. If that's right, the interim mitigation is a **no-op**. Verifying decisively by running the real engine.
+`active_controls` is an **empty list**. The 52 blocks sit in `controls`, which the engine never reads. Proving it end-to-end with the real entry gate.
+Confirmed: every supposedly-blocked name returns **`ALL_CONTROLS_PASSED`**. The interim mitigation is a complete no-op. Let me pin the exact key the engine expects so the fix is precise.
+Two independent defects, either one fatal. Paging Rhett now — this is time-critical while re-arm windows are still live.
+Now logging both escalations and advancing the cursor.
+**Not a clean run — two CRITICAL escalations sent.** The inbox returned 0, and that zero was wrong again: the real findings were in files it structurally cannot read.
+
+**The important one (entirely new):** the 52 earnings `BLOCK_SYMBOL` controls shipped at 10:20 this morning are a **no-op**. I ran the 10:35 enforcement verify early and it fails — `should_block_entry()` returns `ALL_CONTROLS_PASSED` for every one of the 52 names Rhett believes are blocked. Two independent fatal defects, either sufficient alone:
+
+1. **Wrong key** — the controls went to top-level `controls`; the engine reads only `active_controls` ([advisor_filter_engine.py:354](tradestation-bot/advisor_filter_engine.py:354)). Live file: `active_controls=[]`, `controls=52`.
+2. **Wrong field** — items use `"type"`, the engine reads `control_type` ([:110](tradestation-bot/advisor_filter_engine.py:110)) → no branch matches → silently ignored.
+
+The trap worth naming: the file genuinely reports `CONTROL_VALID`, because it passes every envelope gate (SIM_ONLY, `live_allowed=false`, not expired). That's true and meaningless — validity proves the envelope is well-formed, not that any control is enforced. The 10:20 session checked validity; enforcement was the actual question. Fix is 2 lines of JSON, but it's the advisor→bot control channel, so under the freeze I proposed it rather than applying it.
+
+**The second one:** the Phase-C veto gap, proved against the live function rather than inferred — at the actual 9:45:18 entry timestamp, against the newly-promoted fresh calendar, the veto blocks **17/17 today-reporters but 0/35 yesterday-reporters**. It anchors every report at 09:30 on the earnings date ±18h, so an AMC print expires at 03:30 the next morning — before the open the market actually reacts in. It bit live today: NFLX and ISRG both reported 7/16 and were shorted at 9:45. A concurrent session found this gap independently at 10:20; my addition is the quantified proof and the cost side.
+
+Both earnings names **already closed as winners** (NFLX +$96, ISRG +$115 gross) — no exposure, and the bug cost nothing today. That was luck, not protection. I flagged the honest cost side too: Phase C *would* have cut both winners (−$211 today), so it needs a must-not-cut backtest, not a same-day patch. I also warned that the auto-promote shipped today permanently silences `ORB_EARNINGS_STALE` — removing the last visible indicator while the hole stays open.
+
+Right now both layers are open simultaneously with re-arm windows still live. Otherwise healthy: CSHV 50 OK / 0 FAIL, 4 positions open and all protected, recon agrees both ways, zero auth FAILs today.
+
+Read-only throughout — nothing edited, committed, restarted, or ordered. Logged to `SESSION_LOG.md`, pushed (`39fe2a3`), inbox acked.
+
+---
