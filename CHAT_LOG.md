@@ -28434,3 +28434,16 @@ Run the SELF_MONITORING_PLAYBOOK.md intraday check for the Alpha Quant bot (C:\A
 Tick clean at 3:20 — CSHV **50 OK / 1 WARN** (standing), inbox clear, heartbeat 6.7s. No action, no log, no ping. Next tick ~3:35.
 
 ---
+
+
+## Turn — 2026-07-17 15:35:50 ET
+
+**Rhett:**
+
+Run the SELF_MONITORING_PLAYBOOK.md intraday check for the Alpha Quant bot (C:\AlphaQuant). STEPS: (1) Confirm ET time; if past 4:00 PM ET, do final EOD-flat check then CronDelete this job. (2) Read what Rhett gets: CSHV_FINDINGS.md, code_alert_inbox --json, tail outputs/alerts/sent_ledger.jsonl since last tick. (3) After 10:45 confirm entries fired. (4) ACT per matrix: verify broker truth first; fix non-watched now; WATCHED never mid-session. (5) Log only if action taken. TODAY (Fri 7/17, OpEx): (a) at the 10:35+ windows VERIFY the 52 BLOCK_SYMBOL earnings controls actually refuse reporters (advisor_filter_engine.log should show block=true rows; if a 7/16-7/17 reporter arms anyway, escalate). (b) C-UNION live verification: late windows (1135+) must show halved shares + sizedown tag in multiscan_trace. (c) DUE TODAY per DEFERRED_WORK.yaml: earnings Phase-C proposal to Rhett + the joint Phase-A replay (variants a/b/c/d + hard-15) -> run post-close with PROP-PHASE-A draft; also tonight C_union 10th-forward-day review + Friday idea hunt #2. (d) Evening: chain verify (cells 4-8 incl CELL8 first day), digest lands, Claude day read written.
+
+**Claude Code:**
+
+Tick clean at 3:35 — CSHV **50 OK / 1 WARN** (standing), inbox clear, heartbeat 12.3s. Flatten in 15 minutes, shield deploy at 4:07. No action, no log, no ping. Next tick ~3:50.
+
+---
