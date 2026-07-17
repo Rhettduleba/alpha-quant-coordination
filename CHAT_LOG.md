@@ -28530,3 +28530,18 @@ All three feeds checked, all clean:
 **Actions taken:** SESSION_LOG entry appended → synced to coordination repo → committed + pushed ([152ef26](https://github.com/Rhettduleba/alpha-quant-coordination)) → inbox `--ack`'d, cursor advanced. Per the forward-test freeze, this run edited/committed/placed/cancelled/restarted **nothing** on the trading path — read-only throughout.
 
 ---
+
+
+## Turn — 2026-07-17 16:06:00 ET
+
+**Rhett:**
+
+Run the SELF_MONITORING_PLAYBOOK.md intraday check for the Alpha Quant bot (C:\AlphaQuant). STEPS: (1) Confirm ET time; if past 4:00 PM ET, do final EOD-flat check then CronDelete this job. (2) Read what Rhett gets: CSHV_FINDINGS.md, code_alert_inbox --json, tail outputs/alerts/sent_ledger.jsonl since last tick. (3) After 10:45 confirm entries fired. (4) ACT per matrix: verify broker truth first; fix non-watched now; WATCHED never mid-session. (5) Log only if action taken. TODAY (Fri 7/17, OpEx): (a) at the 10:35+ windows VERIFY the 52 BLOCK_SYMBOL earnings controls actually refuse reporters (advisor_filter_engine.log should show block=true rows; if a 7/16-7/17 reporter arms anyway, escalate). (b) C-UNION live verification: late windows (1135+) must show halved shares + sizedown tag in multiscan_trace. (c) DUE TODAY per DEFERRED_WORK.yaml: earnings Phase-C proposal to Rhett + the joint Phase-A replay (variants a/b/c/d + hard-15) -> run post-close with PROP-PHASE-A draft; also tonight C_union 10th-forward-day review + Friday idea hunt #2. (d) Evening: chain verify (cells 4-8 incl CELL8 first day), digest lands, Claude day read written.
+
+**Claude Code:**
+
+Market closed — final flat check **PASS** (0 positions, 0 working orders), CSHV **51 OK / 0 FAIL**, monitoring loop shut down for the week. Day summary: full six-window schedule, C-union's production debut verified on every late arm, zero earnings reporters traded past the morning pair, clean flatten.
+
+The 4:07 shield deploy fires momentarily — then tonight's stack: Phase-A joint replay → PROP-PHASE-A draft, C-union's 10th-forward-day formal review, the Friday idea hunt, cells 4–8 chain verification, and the day read. Deploy report next.
+
+---
