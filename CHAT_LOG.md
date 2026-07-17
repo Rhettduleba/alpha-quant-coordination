@@ -27930,3 +27930,16 @@ Run the SELF_MONITORING_PLAYBOOK.md intraday check for the Alpha Quant bot (C:\A
 Tick clean at 10:50 — CSHV **49 OK / 0 FAIL** (the 2 WARNs are the known governance flags: idle advisor filter awaiting your shield approval, and the due-today deferred items), inbox clear, heartbeat 19.6s. Next tick covers the 11:35 window: C-union's first live half-size verification and the reporter watch. Awaiting your word on **"approve shield."** Next tick ~11:05.
 
 ---
+
+
+## Turn — 2026-07-17 11:05:55 ET
+
+**Rhett:**
+
+Run the SELF_MONITORING_PLAYBOOK.md intraday check for the Alpha Quant bot (C:\AlphaQuant). STEPS: (1) Confirm ET time; if past 4:00 PM ET, do final EOD-flat check then CronDelete this job. (2) Read what Rhett gets: CSHV_FINDINGS.md, code_alert_inbox --json, tail outputs/alerts/sent_ledger.jsonl since last tick. (3) After 10:45 confirm entries fired. (4) ACT per matrix: verify broker truth first; fix non-watched now; WATCHED never mid-session. (5) Log only if action taken. TODAY (Fri 7/17, OpEx): (a) at the 10:35+ windows VERIFY the 52 BLOCK_SYMBOL earnings controls actually refuse reporters (advisor_filter_engine.log should show block=true rows; if a 7/16-7/17 reporter arms anyway, escalate). (b) C-UNION live verification: late windows (1135+) must show halved shares + sizedown tag in multiscan_trace. (c) DUE TODAY per DEFERRED_WORK.yaml: earnings Phase-C proposal to Rhett + the joint Phase-A replay (variants a/b/c/d + hard-15) -> run post-close with PROP-PHASE-A draft; also tonight C_union 10th-forward-day review + Friday idea hunt #2. (d) Evening: chain verify (cells 4-8 incl CELL8 first day), digest lands, Claude day read written.
+
+**Claude Code:**
+
+Tick clean at 11:05 — CSHV **49 OK / 0 FAIL** (same two known WARNs), inbox clear, heartbeat 1.3s. The 11:35 window — with C-union's first live half-size orders and the reporter watch — is 30 minutes out. No action, no log, no ping. Next tick ~11:20.
+
+---
