@@ -27896,3 +27896,24 @@ Right now both layers are open simultaneously with re-arm windows still live. Ot
 Read-only throughout — nothing edited, committed, restarted, or ordered. Logged to `SESSION_LOG.md`, pushed (`39fe2a3`), inbox acked.
 
 ---
+
+
+## Turn — 2026-07-17 10:37:39 ET
+
+**Rhett:**
+
+Run the SELF_MONITORING_PLAYBOOK.md intraday check for the Alpha Quant bot (C:\AlphaQuant). STEPS: (1) Confirm ET time; if past 4:00 PM ET, do final EOD-flat check then CronDelete this job. (2) Read what Rhett gets: CSHV_FINDINGS.md, code_alert_inbox --json, tail outputs/alerts/sent_ledger.jsonl since last tick. (3) After 10:45 confirm entries fired. (4) ACT per matrix: verify broker truth first; fix non-watched now; WATCHED never mid-session. (5) Log only if action taken. TODAY (Fri 7/17, OpEx): (a) at the 10:35+ windows VERIFY the 52 BLOCK_SYMBOL earnings controls actually refuse reporters (advisor_filter_engine.log should show block=true rows; if a 7/16-7/17 reporter arms anyway, escalate). (b) C-UNION live verification: late windows (1135+) must show halved shares + sizedown tag in multiscan_trace. (c) DUE TODAY per DEFERRED_WORK.yaml: earnings Phase-C proposal to Rhett + the joint Phase-A replay (variants a/b/c/d + hard-15) -> run post-close with PROP-PHASE-A draft; also tonight C_union 10th-forward-day review + Friday idea hunt #2. (d) Evening: chain verify (cells 4-8 incl CELL8 first day), digest lands, Claude day read written.
+
+**Claude Code:**
+
+Tick at 10:35 delivered a serious finding, Rhett — the new completeness machinery caught it within one window of existing:
+
+**The advisor channel is disconnected from the live entry path.** CSHV's idle-filter WARN fired because the filter engine never ran during the 10:35 scan — and the code confirms why: `should_block_entry` (the *only* interpreter of advisor controls) is wired into the 9:35 path (disabled) and the legacy loop, but **never into the re-arm scanner, which is where 100% of today's entries come from.** That means my 52 earnings blocks from this morning are inert on the live path — and much worse: **`BLOCK_ALL_NEW_ENTRIES`, the emergency halt, would be silently ignored by every re-arm window.** The one-way valve isn't connected to the machine it was built to control.
+
+No damage today so far: the 10:35 window armed 9 names, none of them reporters — NFLX and ISRG were refused by the re-entry cap, and no other 7/16–7/17 reporter qualified. I verify every remaining window the same way.
+
+**Your decision, one word — "approve shield":** [PROP-EARNINGS-SHIELD-2026-07-17](C:/AlphaQuant/outputs/proposals/PROP-EARNINGS-SHIELD-2026-07-17.md) closes **both** of today's holes in one deploy at the 4:05 PM flat window: (1) wire `should_block_entry` into the re-arm arming loop (~10 lines, mirrors the proven call, fail-safe unchanged — restores the emergency halt and makes every typed control real), and (2) the Phase-C veto widening (after-hours and unknown-time reporters stay blocked through the *end of the next session* — the NFLX-this-morning fix). Both changes can only refuse entries, never add risk; both get regression locks (REG-57/58) and Monday-morning live verification. It's on the Tracker and in DEFERRED_WORK with today's date — the machinery won't let it slide even if we both get distracted.
+
+Otherwise clean: CSHV 49 OK / 0 FAIL (both WARNs are the new governance checks doing their job), heartbeat 16s, two windows fired, C-union's first live half-size verification comes at the 11:35 window. Next tick ~10:50.
+
+---
