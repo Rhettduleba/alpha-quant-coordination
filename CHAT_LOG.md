@@ -28545,3 +28545,25 @@ Market closed — final flat check **PASS** (0 positions, 0 working orders), CSH
 The 4:07 shield deploy fires momentarily — then tonight's stack: Phase-A joint replay → PROP-PHASE-A draft, C-union's 10th-forward-day formal review, the Friday idea hunt, cells 4–8 chain verification, and the day read. Deploy report next.
 
 ---
+
+
+## Turn — 2026-07-17 16:10:53 ET
+
+**Rhett:**
+
+DEPLOY PROP-EARNINGS-SHIELD (Rhett-approved 12:55 PM, recorded in manual_approvals.yaml). Market is closed; flat window. STEPS: (1) Verify broker flat (0 positions, 0 working orders) FIRST. (2) EDIT C:\AlphaQuant\tradestation-bot\orb_multiscan.py: in _arm's candidate loop, immediately after the reentry_capped check, consult the advisor filter: import should_block_entry from advisor_filter_engine (module-level try/except import, fail-safe = no block); for each candidate call should_block_entry(sym, c["side"]) -- if it returns a block, _dec(c, "skipped", f"advisor_block: {reason}") and continue. Mirror the proven orb_runner.py callsite semantics exactly (check its signature/return before writing). (3) EDIT C:\AlphaQuant\tradestation-bot\orb_earnings_veto.py Phase C: when earnings_time is AMC or UNKNOWN, extend the blackout window through the END of the next regular session (earnings_date+1 next-trading-day 16:00 ET); BMO behavior unchanged. (4) Add REG-57 (planted BLOCK_SYMBOL control blocks a candidate in _arm dry-run; engine-invalid fail-safe arms normally) and REG-58 (AMC/UNKNOWN reporter blocked next morning; BMO day-after allowed; non-reporter allowed) to regression_suite.py + TESTS list. (5) Run: py_compile both files, full regression suite (must be green incl REG-57/58), _preflight_diagnostic. (6) Verify NFLX-class protection: is_earnings_blackout on an AMC/UNKNOWN 7/16-style reporter date-shifted scenario returns block=True next morning. (7) SESSION_LOG the deploy with evidence; mark advisor-wire-rearm + earnings-phase-c-veto-window done in DEFERRED_WORK.yaml (status: done). Subprocess model = live at Monday 7/20 9:45; Monday pre-open readiness must include a planted-control drill.
+
+**Claude Code:**
+
+**PROP-EARNINGS-SHIELD is deployed** — full protocol, flat window, everything verified:
+
+- **Broker flat confirmed first** (0 positions, 0 orders), then both edits landed.
+- **The advisor channel is real again**: every candidate at every re-arm window now passes through `should_block_entry` — `BLOCK_SYMBOL`, `BLOCK_SYMBOL_DUE_TO_NEWS`, and critically the **`BLOCK_ALL_NEW_ENTRIES` emergency halt** all function on the live entry path for the first time since the re-arm became the only path. Fail-safe unchanged: any engine error → allow.
+- **The NFLX hole is closed**: after-hours and unknown-time reporters are now blacked out through the *end of the next full session* (weekend-aware — a Friday AMC reporter stays blocked Monday). Verified against the real calendar: NFLX and ISRG at 10:00 this morning would have returned `block=True`. The false code comment that claimed 18 hours covered the next open is corrected and documented.
+- **Locked**: REG-57 (planted block skips / allow arms / engine-crash fail-safes to allow) and REG-58 (the exact NFLX scenario plus the weekend case). Suite **53 pass / 0 FAIL**, preflight **39 PASS / 0 FAIL**. Live at Monday's 9:45 window; a planted-control drill runs in Monday's pre-open readiness before any real arming.
+
+**One thing you need to know that the deploy surfaced:** the advisor's daily control file also emits `BLOCK_ENTRIES_AFTER_TIME 14:30` — a control that's been silently ignored along with everything else. Now that the channel works, **the 2:35 PM window will be advisor-blocked starting Monday** as long as the advisor keeps writing that control. The data actually supports it (post-11 win-rate decay, C-union, and the 2:35 window armed zero today anyway) — but it's your call, not a side effect to discover later: say the word if you want the advisor config changed to drop that control instead.
+
+Tonight's remaining stack now runs: the Phase-A joint replay → PROP-PHASE-A draft, C-union's 10th-forward-day review, the idea hunt, cells 4–8 verification, and the day read.
+
+---
