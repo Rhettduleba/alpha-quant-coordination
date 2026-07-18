@@ -28567,3 +28567,24 @@ DEPLOY PROP-EARNINGS-SHIELD (Rhett-approved 12:55 PM, recorded in manual_approva
 Tonight's remaining stack now runs: the Phase-A joint replay → PROP-PHASE-A draft, C-union's 10th-forward-day review, the idea hunt, cells 4–8 verification, and the day read.
 
 ---
+
+
+## Turn — 2026-07-18 09:19:19 ET
+
+**Rhett:**
+
+many failure warning check the sysytem, review, report, fix
+
+**Claude Code:**
+
+Report, Rhett — reviewed, two real bugs found and fixed, and the overdue work is running:
+
+**1. The trading system is completely clean.** Zero bot alerts since Friday's close, account flat, market closed. Nothing about money is failing.
+
+**2. What paged you "many failures":** the deferred-work enforcement we built yesterday caught exactly what it was designed to catch — the Phase-A replay I owed you Wednesday went past its deadline when Friday's session died before the evening stack ran. Right catch, wrong volume: it re-sent the *same* CRITICAL every 20 minutes — 8 identical pages since 6:50 AM. That's the alarm-contract violation, and it's fixed: a persistent FAIL now pages **once on appearance, once every 6 hours as a heartbeat, and immediately if the failure set changes** — never every run. Unit-tested all three behaviors and seeded the state, so your phone went quiet the moment I shipped it.
+
+**3. Doing the overdue work surfaced a second, sneakier bug worth your attention:** my first attempt at the joint replay produced numbers I refused to sign — the data coverage was silently gutted. Root cause: **TradeStation rate-limiting** — every study this week has been re-fetching the *same* historical bars hundreds of times per run, and this morning the API started returning empty after ~60 calls, which a less suspicious read would have reported as real results. Fixed structurally: a permanent disk cache for historical bars (past days are immutable — fetch once, forever), plus pacing and retries. That also protects the API key, which your own project rules flag as a disable risk.
+
+**4. The Phase-A replay is re-running now** — paced, cached, on the corrected certified baseline (re-scrubbed to include all of Friday: 416 trades). One preview from the partial first run that I *will* be verifying rather than asserting: the fail-fast family looked strongly positive on the recent config window but **negative on the older June days** — if that regime-sensitivity holds on full data, it goes in PROP-PHASE-A as a deployment condition, not a footnote. Full results, the proposal draft, C-union's 10th-day review, and the rest of the missed evening stack land when the run completes — I'll report without being asked.
+
+---
