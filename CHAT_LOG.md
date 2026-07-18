@@ -28588,3 +28588,32 @@ Report, Rhett — reviewed, two real bugs found and fixed, and the overdue work 
 **4. The Phase-A replay is re-running now** — paced, cached, on the corrected certified baseline (re-scrubbed to include all of Friday: 416 trades). One preview from the partial first run that I *will* be verifying rather than asserting: the fail-fast family looked strongly positive on the recent config window but **negative on the older June days** — if that regime-sensitivity holds on full data, it goes in PROP-PHASE-A as a deployment condition, not a footnote. Full results, the proposal draft, C-union's 10th-day review, and the rest of the missed evening stack land when the run completes — I'll report without being asked.
 
 ---
+
+
+## Turn — 2026-07-18 09:32:13 ET
+
+**Rhett:**
+
+<task-notification>
+<task-id>bhlabvse0</task-id>
+<tool-use-id>toolu_01BRSEao6ZQ7JdpDcBrD7qjy</tool-use-id>
+<output-file>C:\Users\ADMINI~1\AppData\Local\Temp\claude\C--Users-Administrator-OneDrive---Duleba-Trade-station-Main\9f6cdefe-ca1b-4b1e-b662-0d26bb7895d8\tasks\bhlabvse0.output</output-file>
+<status>completed</status>
+<summary>Background command "Wait out rate window; rerun replay paced+cached" completed (exit code 0)</summary>
+</task-notification>
+
+**Claude Code:**
+
+Everything from this morning's storm is resolved, and the week's biggest decision is now on your desk. The full report:
+
+**The storm: cause found, fixed, quiet.** The failures were the governance machine correctly flagging my missed Phase-A replay — but re-paging you every 20 minutes. Fixed with a proper storm gate (page once, 6-hour heartbeat, instant re-page only if something *new* fails), unit-tested, and your phone went silent immediately. The FAIL itself is now cleared the honest way: **the overdue work is done** — CSHV reads 0 FAIL.
+
+**Doing it properly caught a third bug that would have poisoned the results:** TradeStation was silently rate-limiting my studies (wholesale empty responses after ~60 fetches) — the first replay run was missing most of its data and I nearly reported it. Now every study reads from a permanent disk cache of historical bars: faster, honest, and safe for the API key.
+
+**The Phase-A verdict (304 certified trades, six variants, one set of books):** On the system as it exists today (7/06 onward, 10 days out-of-sample), **your fail-fast wins — +$3,943, positive 8 of 10 days** — beating every fancier alternative including my gauntlet. The live forward cell agrees independently: N=46, +$3,193, positive every active day. But the replay also surfaced the uncomfortable truth I previewed: on June's config and tape, the same rule would have lost ~$15k. So [PROP-FAILFAST-5](C:/AlphaQuant/outputs/proposals/PROP-FAILFAST-5-2026-07-18.md) proposes the rule **with a pre-committed regime kill encoded as a machine check**: three consecutive negative sessions or $1,500 of drawdown versus the old-rule counterfactual → auto-alert and revert review. One constant changes (30 → 5); everything else stays. **Say "approve failfast"** and it deploys this weekend, live Monday.
+
+**Also ratified and closed today:** C-union passed its formal 10-day review — 8 of 10 forward days positive, N=85 — so Tuesday's early wiring is now certified by the exact bar it was promoted against. And the honest other side: all three confirmed-phase challengers (both reversal tunes and my cushion harvest) are *negative* in their first forward days — the eager exit keeps beating its critics, Phase B stays unproposed, and your pyramid idea stays gated exactly as the doctrine says it should.
+
+Remaining today, already on the enforcement clock: the 7/15 auth-storm postmortem, fencing the stray TEST symbol, the Friday idea hunt (a day late, owned), and Friday's day read. I'll work through them and report.
+
+---
