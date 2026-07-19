@@ -28617,3 +28617,28 @@ Everything from this morning's storm is resolved, and the week's biggest decisio
 Remaining today, already on the enforcement clock: the 7/15 auth-storm postmortem, fencing the stray TEST symbol, the Friday idea hunt (a day late, owned), and Friday's day read. I'll work through them and report.
 
 ---
+
+
+## Turn — 2026-07-19 07:16:29 ET
+
+**Rhett:**
+
+Review the last week of trading. Do a deep think on each trade and tell me what you would change going into this weeks trading.
+
+**Claude Code:**
+
+The full week, deep-read from broker truth — 110 round trips, all five days, per-trade table saved to [week_review_2026-07-17.md](C:/AlphaQuant/outputs/reports/week_review_2026-07-17.md). Here's the thinking:
+
+**The scoreboard:** −$2,369 / −$1,075 / **+$1,689** / −$1,104 / −$2,117 = **−$4,976 on the week, 46% win.** And underneath all five days, the same law held without a single exception: **trades that confirmed went 35-for-36 (97%) for +$3,514; trades that never confirmed went 30% for −$8,490.** The week wasn't 110 separate stories — it was three:
+
+**Class 1 — the $500-stop instant reversers: 8 trades, −$4,119. This is 83% of the week's loss and the thing I'd change first.** CIEN and SNPS Friday, GLW and SNDK Thursday, XYZ Wednesday, CLSK and LITE Tuesday, SNDK Monday — every one entered 9:45–10:35 at maximum extension and hit the full $500 floor within 8–23 minutes. Two details from the deep-think that matter: **SNDK did it twice in four days** — same symbol, same setup, same outcome — and **GLW is the perfect teaching pair**: short GLW made +$308 on Wednesday and maxed out −$514 on Thursday, same symbol, same side, one day apart. The difference wasn't the name or the direction — it was *how far the stock had already traveled when we chased it*. That's the deep-run signature, and no exit rule can fix it because these trades are dead before any exit logic matters (the floor did its job). The fix is not entering at full size: **CELL 3 (deep-run size-down) is at N=40, +$718, 4-of-5 forward days — one day from its promotion bar. I'll have that proposal ready around Monday night, C-union-style: halve, never skip.**
+
+**Class 2 — the 30-minute bleeders: 58 trades, −$5,670.** More than half the week's trades were breakouts that triggered, stalled, and were escorted to minute 30. This is exactly what **PROP-FAILFAST-5 — sitting on your desk — was built for** (+$3,943, 8-of-10 days out-of-sample, with the regime kill-switch attached). The honest cost side showed up this week too: 21 winners confirmed *after* minute 5 (+$2,298), so fail-fast isn't free — but that cost is already inside the net numbers. This is the single biggest lever available and it's one word from you away.
+
+**Class 3 — the engine: 36 confirmed trades, 97%, +$3,514.** BB short (+$360), RIVN long (+$308), WDC short (+$255) — all early entries, all candle-trail exits. And the discipline finding of the week: all three challengers to the confirmed-phase exit (both reversal tunes and my cushion harvest) went *negative* in their first forward days. **The eager exit earned its crown again, so I'm changing nothing there** — and your pyramid idea stays properly gated behind it.
+
+Two smaller observations worth carrying: Wednesday's green day (+$1,689, 76% win) was *not* a high-confirm day — its confirm rate was ordinary; the difference was that unconfirmed trades scratched out instead of bleeding. Don't chase that; it's what fail-fast manufactures mechanically. And the sides came out even this week (longs −$2,682 / shorts −$2,295), which supports treating your "shorts are better" as regime-dependent — the alignment study runs this week.
+
+**What changes Monday morning, concretely:** the earnings shield goes live at 9:45 (emergency halt restored, reporter blocks real, next-session veto — with a planted drill pre-open before any real arming); the advisor's 2:35 PM cutoff is now honored (I recommend keeping it two weeks, then reviewing); C-union keeps halving late entries with its 10-day review now formally passed. **Waiting only on you: "approve failfast"** — and when CELL 3 rings its bar, the deep-run halving follows, which together attack both loss classes that made this week red.
+
+---
