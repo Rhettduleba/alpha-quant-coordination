@@ -28642,3 +28642,47 @@ Two smaller observations worth carrying: Wednesday's green day (+$1,689, 76% win
 **What changes Monday morning, concretely:** the earnings shield goes live at 9:45 (emergency halt restored, reporter blocks real, next-session veto — with a planted drill pre-open before any real arming); the advisor's 2:35 PM cutoff is now honored (I recommend keeping it two weeks, then reviewing); C-union keeps halving late entries with its 10-day review now formally passed. **Waiting only on you: "approve failfast"** — and when CELL 3 rings its bar, the deep-run halving follows, which together attack both loss classes that made this week red.
 
 ---
+
+
+## Turn — 2026-07-19 12:45:30 ET
+
+**Rhett:**
+
+so how do we study when a trade is exhausted, so we can put in a metric that stops the bot from entering an exhausted trade? First, what caracteristics does an exhausted trade have and entry? Study all traded in our history. Look at any trades you would consider to be exhausted when we entered, find simalities. what we are winning percentage on exhausted trades when we entered. what metrics would you put in to stop the bot from getting in an exhausted trade? Would that metric kill any winners, how many. We should be able to identify this exhausted trend and steer clear of it. Approve failfast, why not wire Cell 3 now?
+
+**Claude Code:**
+
+Three orders received — the exhaustion study first (it sets CELL 3's exact metric), then both deploys in one weekend batch. Checking the bars cache module name from yesterday's replay, then running the study:
+The study's done and it corrects something I told you this morning — taking the honest finding first, then both deploys.
+
+**What an exhausted entry looks like, from all 416 certified trades:** the surprise is that exhaustion **doesn't lower the win rate much — it poisons the payoff.** Trades entered after ≥0.75 ATR of travel still win ~52% — but their losers are bigger than their winners (−$8,137 net across 189 trades). Add a violent final approach (≥0.5 ATR in the last 15 minutes) and you get the cleanest "true exhaustion" signature: **44% win, −$3,465 across just 27 trades, with only $1,279 of winners inside** — high-precision poison. At-the-day-extreme alone turned out nearly useless as a filter (at 9:45, *everything* is at its day extreme).
+
+**The correction:** I told you this week's eight $500 max-outs were the deep-run class. The study scored each one — **only two were** (XYZ +1.83, SNPS +2.43 travel). Most were ordinary-looking 9:45 breakouts with modest travel that simply reversed instantly — and CLSK was actually *counter-trend*. So travel filters help the drag, but most of that $500-stop class has **no clean pre-entry signature in price data** — that's what the order-flow/tape logging is for, and it stays on the list. I won't oversell a filter as fixing what it can't.
+
+**The metric package, priced both sides:**
+
+| Rule | Effect | Winners killed |
+|---|---|---|
+| HALVE at travel ≥0.75 (= CELL 3, your wire order) | ~+$4,068/month-of-data | 98 winners lose *half* their size, none die |
+| SKIP at travel ≥0.75 AND burst ≥0.5 (true exhaustion) | +$3,465 | only 12 winners, $1,279 — best ratio on the board |
+
+Deploying now per your orders — fail-fast and the deep-run halving together at this weekend's flat window, with the true-exhaustion SKIP pre-registered as CELL 9 to earn forward days before it joins them:
+Now the regression locks (REG-59, REG-60), the regime-kill monitor, and CELL 9:
+Both orders executed, and the exhaustion study answered your questions with one big surprise. Everything in order:
+
+**The exhaustion study (all 416 certified trades) — your four questions answered:**
+
+1. **What does an exhausted entry look like?** The defining trait isn't losing more often — it's a *poisoned payoff*. Trades entered after ≥0.75 ATR of intraday travel still win **52%** of the time, but the cohort nets **−$8,137** across 189 trades: when they win they win small, when they lose they bleed to the floor. The purest signature — deep travel **plus** a violent final approach (≥0.5 ATR in the last 15 minutes) — drops to **44% win, −$3,465 across just 27 trades.** "At the day's extreme" turned out useless alone (at 9:45, everything is at its extreme).
+2. **Win% on exhausted entries:** 52% broad / 44% true-exhaustion — the danger hides in the payoff, not the hit rate.
+3. **The metric:** intraday travel ≥0.75 ATR at arm time (halve), plus the travel-and-burst combo (skip candidate).
+4. **Winners killed:** halving touches 98 winners ($9,118) but only takes half their size — none die. The skip variant kills just **12 winners worth $1,279** to avoid $3,465 of losses — the best ratio on the board, so it's pre-registered as **CELL 9** to earn forward days before deploying.
+
+**And one honest correction:** I claimed this week's eight $500 max-outs were the exhausted class. Scored individually — **only two were** (XYZ, SNPS). Most looked like ordinary fresh breakouts that reversed instantly, and one (CLSK) was actually counter-trend. Price data alone can't foresee that class; that's the order-flow logging's job, still on the clock.
+
+**Deployed at today's flat window, both live Monday 9:35–9:45:**
+- **FAIL-FAST-5** (yours): the unconfirmed leash is now 5 minutes, with the regime kill encoded — a nightly reverse-counterfactual asks "would the old 30-minute rule have done better?", and CSHV FAILs for revert review on 3 straight yes-days or $1,500 cumulative. REG-59 locks it.
+- **DEEP-RUN HALVING** (CELL 3, your wire order): entries with ≥0.75 ATR travel arm at half size; a trade that's *both* late and exhausted compounds to quarter size. Honest note recorded in the approvals: you wired this at 4-of-5 forward days, ahead of the 7-of-10 bar — the C-union precedent, with CELL 3 continuing nightly as the live-vs-expected monitor. REG-60 locks it.
+
+Suite 54 pass / 0 FAIL, preflight 39 / 0. Monday morning the bot wakes up with five changes earned this week: fail-fast, deep-run halving, C-union, the earnings shield, and a working emergency halt — plus the planted-control drill before the first window. That's the most the system has ever changed in one week, every piece with receipts, a lock, and a revert switch.
+
+---
