@@ -29015,3 +29015,24 @@ The 1 FAIL + 2 WARNs are the identical already-open trio: the governance FAIL, t
 Log entry appended and verified present, synced to the coordination repo, committed and pushed (`8ec82d4`), inbox `--ack`'d. Per the forward-test freeze: this run edited, committed, placed, cancelled, or restarted nothing on the trading path — read-only throughout.
 
 ---
+
+
+## Turn — 2026-07-20 18:04:59 ET
+
+**Rhett:**
+
+ok, didnt we put in a 30 minute rule? Meaning a stock that hasnt confirmed after 30 minutes is exited?
+
+**Claude Code:**
+
+Yes — and today's deploy didn't add a new rule, it **shortened that exact one**. Same rule, same machinery, new number:
+
+- **July 1:** we installed the rule you're remembering — any trade that hasn't confirmed (moved 0.15×ATR our way) within **30 minutes** gets exited. That 30 was calibrated against longer leashes (45/60 were tested and were worse); nobody ever tested *shorter*.
+- **July 14:** you asked why we sit in unproven trades at all — and the studies that followed showed winners confirm fast or not at all: the best trade that ever confirmed *after* the leash window made $81, while the trades dying between minute 5 and minute 30 were the single biggest loss bucket in the system (−$5,670 just last week).
+- **Today:** on your "approve failfast," that same clock went from **30 minutes to 5**. A trade now gets five minutes to prove itself or it's gone. Everything else about the rule is unchanged — it still only applies to *unconfirmed* trades (a confirmed trade still has no time limit at all), the $500 stop still sits underneath, and the exit will now read `TIME_EXIT_5M_UNCONFIRMED` in the logs instead of `30M`.
+
+And because shortening it 6× is aggressive, the deploy carries the pre-committed safety net: every night the system computes what the old 30-minute version *would* have earned on that day's trades, and if the old rule wins three days straight — or gets $1,500 ahead — CSHV throws a FAIL demanding a revert review. The revert itself is one constant back to 30.
+
+So Monday: unproven trades live 5 minutes, not 30. That's your idea, measured (+$3,943 over the last 10 sessions out-of-sample), locked (REG-59), and monitored (the regime kill).
+
+---
