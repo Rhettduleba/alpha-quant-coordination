@@ -29036,3 +29036,24 @@ And because shortening it 6× is aggressive, the deploy carries the pre-committe
 So Monday: unproven trades live 5 minutes, not 30. That's your idea, measured (+$3,943 over the last 10 sessions out-of-sample), locked (REG-59), and monitored (the regime kill).
 
 ---
+
+
+## Turn — 2026-07-20 18:11:48 ET
+
+**Rhett:**
+
+ok, so take the test you just ran regarding exhausted, what would the chnage be on the P&l if we would have exeted those trades after 5 minutes? Have me made sure the 5 minute exit wont kill winners?
+
+**Claude Code:**
+
+Both questions are answerable by joining yesterday's two datasets — the joint replay (per-trade fail-fast deltas) and the exhaustion study (per-trade travel). Checking structure and running the join:
+Aggregates only in the saved file — recomputing per-trade from the cached bars (fast now) with the exhaustion join:
+Both questions answered with the fullest accounting that exists — 410 of 416 certified trades, and the method validated to the penny against the live nightly cell where both have data.
+
+**Q1 — the 5-minute exit applied to the exhausted trades:** On the current config (7/06 onward), the exhausted cohort (≥0.75 ATR travel) went from **−$2,399 actual to −$638 under fail-fast — 73% of the exhaustion damage recovered.** And starting Monday the two rules you deployed *stack*: those same trades also arm at half size, so the remaining −$638 residual roughly halves again. The exhausted class gets hit twice — smaller position, shorter leash. (June-window context stays on the record: back then, exhausted trades eventually recovered and FF5 would have hurt — that's exactly what the regime-kill monitor watches for.)
+
+**Q2 — have we made sure it won't kill winners? The honest answer is no — and you should hear it plainly:** fail-fast **will clip 3 of every 4 winners.** Out-of-sample: 116 eventual winners; 30 confirmed fast enough to be untouched (+$3,890 kept whole); **86 get cut at minute 5 — they had +$7,699 and fail-fast keeps only +$1,779, a cost of −$5,921.** The priciest scalps have names: RIVN −$314, APP −$304, MRNA −$227. What we verified isn't winner-immunity — no unconfirmed-phase rule can have that — it's the **trade**: the same clock saves **+$13,707** on 116 losers, a 2.3-to-1 exchange worth +$7,786 net. That ratio, not immunity, is the entire case — plus the live regime-kill that fires if the exchange stops paying.
+
+Two useful things fell out of the digging. First, fail-fast's losing day-type now has a face: **gentle drift days** like Wednesday 7/15 (−$709 that day) — days when unproven trades wander back to scratch instead of bleeding. Rare in this stretch, but that's what the 3-bad-days trigger is for. And if you ever decide you'd rather preserve winners than maximize the total, the dial exists: the glide-path gauntlet cut far fewer winners at a lower overall take (+$2,503) — it stays measured in CELL form. Second, the rate-limit bug from yesterday has a sibling: ATR fetches have no disk cache, which silently zeroed the nightly scoring on 7/15 and thinned yesterday's replay. It's on the enforcement clock for Monday pre-open — cache module, 7/15 backfill, and a tripwire for silent zero-scored days.
+
+---
