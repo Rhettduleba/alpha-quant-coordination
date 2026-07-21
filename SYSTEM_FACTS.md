@@ -1,6 +1,6 @@
 # SYSTEM_FACTS — live mechanics, machine-generated from the running code/config/broker-truth
 
-> **Generated:** 2026-07-20 16:51:12 Eastern Daylight Time · **coordination-repo HEAD:** `22798a6` · by `strategy-research/system_facts.py` (read-only).
+> **Generated:** 2026-07-21 16:50:53 Eastern Daylight Time · **coordination-repo HEAD:** `bce0d74` · by `strategy-research/system_facts.py` (read-only).
 > Every value below is READ from a real source (the live import for the VALUE; a fresh file scan for the SOURCE file:line). Nothing is hand-typed. A field that can't be derived says `UNVERIFIED`.
 > If this contradicts memory, THIS wins — regenerate it (re-run the script) rather than trusting recall.
 
@@ -9,14 +9,14 @@
 |---|---|---|
 | Live exit mode | candle_1.4atr_chandelier | `tradestation-bot/risk_config.py:60` |
 | SAFE_MODE_ENFORCE (gate teeth) | False | `tradestation-bot/risk_config.py:220` |
-| consecutive_clean streak | 0 | `validation/clean_day_certifier.py:consecutive_clean()` |
+| consecutive_clean streak | 1 | `validation/clean_day_certifier.py:consecutive_clean()` |
 | Posture / freeze + last forward-test | human-maintained record (not a code constant) -- read the CURRENT STATE block | `SESSION_LOG.md (FINDINGS & TEST RESULTS LEDGER + CURRENT STATE)` |
 
 ## ENTRY
 | Fact | Live value | Source |
 |---|---|---|
 | Universe size today (published) | 141 | `ai-trading-strategy-agent/outputs/advisor_guidance/advisor_universe_latest.json:universe_size` |
-| Universe generated_at | 2026-07-20T07:30:34.907884-04:00 | `advisor_universe_latest.json:generated_at` |
+| Universe generated_at | 2026-07-21T07:30:33.588347-04:00 | `advisor_universe_latest.json:generated_at` |
 | Universe source | research_brain_v1 | `advisor_universe_latest.json:universe_source` |
 | Relative-strength pool size | not in the published artifact -- see research-brain build log | `UNVERIFIED` |
 | Re-arm path enabled (ORB_MULTISCAN) | True | `tradestation-bot/risk_config.py:76` |
@@ -44,7 +44,7 @@
 | Chandelier trail multiple | 1.4 x ATR (ratchet-favorable-only floor) | `tradestation-bot/candle_close_exit.py:60` |
 | Candle-close trail (post-confirm) | after confirm, exit on first opposite-color 1-min close; live exit = earlier of (chandelier) OR (candle-close) | `tradestation-bot/candle_close_exit.py:63-68 (chandelier_decision docstring)` |
 | Catastrophe stop (legacy candle_close mode) | 1.0 x ATR | `tradestation-bot/candle_close_exit.py:25` |
-| Unconfirmed time-stop (Loop 220, LIVE 2026-07-01) | 5 min -> flatten if STILL UNCONFIRMED (favorable excursion never crossed +0.15xATR); confirmed positions UNTOUCHED. Fires in exit_bot_v2 for every open position incl. TW-owned (before the lease); reason TIME_EXIT_<N>M_UNCONFIRMED (does not count toward the 2-stops/day breaker). SIM-only, reversible via UNCONFIRMED_TIME_STOP_ENABLED. | `tradestation-bot/risk_config.py:161` |
+| Unconfirmed time-stop (Loop 220, LIVE 2026-07-01) | 30 min -> flatten if STILL UNCONFIRMED (favorable excursion never crossed +0.15xATR); confirmed positions UNTOUCHED. Fires in exit_bot_v2 for every open position incl. TW-owned (before the lease); reason TIME_EXIT_<N>M_UNCONFIRMED (does not count toward the 2-stops/day breaker). SIM-only, reversible via UNCONFIRMED_TIME_STOP_ENABLED. | `tradestation-bot/risk_config.py:161` |
 | EOD forced-flatten time | 15:50 ET (3:50 PM) | `tradestation-bot/market_hours.py:74 + tradestation-bot/market_hours.py:75` |
 | Live exit OWNER (Loop 155, LIVE Mon 6/29) | Tape Watcher (tape_watcher --live-exit) fires exits tick-fast via the proven flatten_symbol + holds the exit_ownership lease; exit_bot_v2 DEFERS for TW-owned names. no-double-exit is STRUCTURAL (flatten re-reads live qty -> no-op on flat, no flip). Resting stop = always-on dead-man backstop; lease TTL reclaim (45s) on TW death. | `strategy-research/tape_watcher.py (run_live fire) + tradestation-bot/exit_ownership.py + exit_bot_v2 skip-guard` |
 | TW kill-switch (Loop 157) | create tradestation-bot/tw_abort.flag -> TW stands down + releases the lease (exit_bot_v2 resumes; resting stops stay); delete to resume. Read each cycle -- no restart/deploy. | `tradestation-bot/exit_ownership.py:abort_requested` |
@@ -53,11 +53,11 @@
 | Fact | Live value | Source |
 |---|---|---|
 | ** AS-OF | figures below are HISTORICAL (pre-Loop-155). Re-arm 0% is FIXED Loop 155 (LIVE Mon 6/29); re-arm coverage rises + latency drops from Monday once re-arm stops register + TW owns exits. | `SESSION_LOG.md Loop 155` |
-| Entries with a broker resting stop | 459/634 = 72.4% | `strategy-research/stop_coverage_audit.py (re-derived from broker_orders_unified.csv)` |
-| 9:35 cohort coverage | 251/255 = 98% | `stop_coverage_audit.py` |
-| Re-arm/late cohort coverage | 208/379 = 55% | `stop_coverage_audit.py` |
+| Entries with a broker resting stop | 474/649 = 73.0% | `strategy-research/stop_coverage_audit.py (re-derived from broker_orders_unified.csv)` |
+| 9:35 cohort coverage | 260/264 = 98% | `stop_coverage_audit.py` |
+| Re-arm/late cohort coverage | 214/385 = 56% | `stop_coverage_audit.py` |
 | Median placement latency | 258s (~4.3 min) | `stop_coverage_audit.py` |
-| PRIMARY protection mechanism | software poll (exit_bot_v2 + chandelier)  (mechanisms: {'resting_stop_HIT': 46, 'candle/chandelier': 524, 'eod_flatten': 64}) | `stop_coverage_audit.py exit-mechanism tally` |
+| PRIMARY protection mechanism | software poll (exit_bot_v2 + chandelier)  (mechanisms: {'resting_stop_HIT': 46, 'candle/chandelier': 539, 'eod_flatten': 64}) | `stop_coverage_audit.py exit-mechanism tally` |
 
 ## COSTS
 | Fact | Live value | Source |
