@@ -29112,3 +29112,71 @@ So yes — inverted, we'd have been green. But look *inside* the table before we
 So here's what's now in motion: **CELL 10** scores the full inverted book every night starting tomorrow — real forward evidence, no cherry-picked window. And the genuine prize is promoted to **Lead #1 on the engine's board: the fade/follow switch** — an ex-ante chop-vs-trend detector (opening-range expansion, prior-day range, first-30-minutes confirm rate) that decides each morning *which* book to trade. If that detector is findable, your one-line instinct — "we're very good at losing" — becomes the doorway to being good at winning in both tapes. The 6 PM engine owns the hunt from tonight, and every step of it will be on the Tune Journal page where you can watch the thinking.
 
 ---
+
+
+## Turn — 2026-07-21 09:11:30 ET
+
+**Rhett:**
+
+<scheduled-task name="alphaquant-alert-triage" file="C:\Users\Administrator\.claude\scheduled-tasks\alphaquant-alert-triage\SKILL.md">
+This is an automated run of a scheduled task. The user is not present to answer questions. For implementation details, execute autonomously without asking clarifying questions — make reasonable choices and note them in your output. "write" actions (e.g. MCP tools that send, post, create, update, or delete), only take them if the task file asks for that specific action. When in doubt, producing a report of what you found is the correct output.
+
+AUTONOMOUS ALERT TRIAGE — Alpha Quant (Rhett-approved 2026-06-22; Planning Track A). You are a scheduled Claude Code run on the Alpha Quant VPS (live root C:\AlphaQuant). GOAL: Rhett must NOT be the human pager-relay. You read the SAME actionable alerts he would, auto-suppress known-noise, and ESCALATE anything that genuinely needs a human — pre-diagnosed. The human gate is preserved.
+
+IMPORTANT — FORWARD-TEST FREEZE: autonomous code-fixing is DEFERRED right now (Planning Track B). You DO NOT edit or commit ANY code this run (not even non-watched). You TRIAGE + ESCALATE only. (Auto-fix re-enables after the OOS forward test via a reviewed whitelist.)
+
+SOURCE OF TRUTH: read C:\AlphaQuant\CODE_ALERT_TRIAGE_PLAYBOOK.md and follow it EXACTLY (re-read each run). Procedure:
+1. `git -C C:\repos\alpha-quant-coordination pull` (ignore errors). Read the top stamp of C:\AlphaQuant\SESSION_LOG.md and C:\AlphaQuant\CSHV_FINDINGS.md for current state.
+2. Run: C:\Users\Administrator\AppData\Local\Python\pythoncore-3.14-64\python.exe C:\AlphaQuant\tradestation-bot\code_alert_inbox.py --json  → the NEW actionable CRITICAL alerts since last ack (the feed is already severity-gated to CRIT + de-noised; benign WARNs are handled at source, not here).
+3. For each alert: if it is KNOWN-NOISE (reader pre-tags many; or a state already confirmed benign in SESSION_LOG) → no action. Otherwise ESCALATE it: import notifier (add C:\AlphaQuant\tradestation-bot to sys.path) and call notifier.send_notification(subject="CODE TRIAGE — needs you", body= plain-English diagnosis + the specific proposed fix + whether it needs Rhett's approval (watched/strategy/risk) or just a go-ahead, level="CRITICAL"). For a SAFE non-watched fix you would normally make, STILL escalate it with the proposed fix (do not auto-edit during the freeze).
+4. ALWAYS at the end: append a short dated entry to C:\AlphaQuant\SESSION_LOG.md (what fired + what you escalated, or 'inbox clean'), copy it to C:\repos\alpha-quant-coordination\SESSION_LOG.md, commit + push that repo, then run code_alert_inbox.py --ack to advance the cursor. If nothing actionable, do NOT notify Rhett (silence = handled) — still --ack + one-line log.
+
+HARD RULES (never autonomously): NEVER edit/commit any code during the forward test (escalate fixes instead). NEVER edit a WATCHED strategy file (risk_config.py, bot_loop.py, exit_bot_v2.py, candle_close_exit.py, advisor_filter_engine.py, symbol_universe.py, orb_runner.py, orb_multiscan.py, short_bot.py). NEVER change risk/sizing/universe/stops/time-windows. NEVER place/cancel/modify orders or touch positions. NEVER deploy a strategy change. NEVER restart run_bot/watchdog_supervisor. NEVER touch credentials/.env or refresh TS tokens excessively. WHEN IN DOUBT, ESCALATE — never act on the live/trading path.
+
+ENVIRONMENT: Python = C:\Users\Administrator\AppData\Local\Python\pythoncore-3.14-64\python.exe. Work in C:\AlphaQuant. Keep each run tight + conservative. Your job: keep Discord quiet for Rhett by surfacing ONLY what truly needs him, pre-diagnosed.
+</scheduled-task>
+
+**Claude Code:**
+
+I'll run the autonomous alert triage per the playbook. Let me start by pulling the coordination repo and reading current state.
+Now let me read the current state and the playbook.
+Now let me read the current state files and run the alert inbox.
+Current state noted. Note: the governance FAIL has **grown from 2 to 7 items** past review-by. Now let me run the alert inbox and scan the direct feeds.
+Pre-open run on a fresh trading morning (Tuesday 7/21, ~26 min to open). Inbox is non-empty: the governance FAIL has **grown 2→7 items**, the 8AM audit gate fired NOT GREEN again, and there's a 7/20 evening group mentioning a `tune_engine` second FAIL. I need to verify the trading legs before deciding page vs suppress. Let me scan the direct feeds and system health.
+Bot is healthy: heartbeat fresh (09:05:05, ~0s), loop 13144 advancing, PID 456 (the 7/18 restart pair). The one bot_alerts row today is a transient 500 (Bucket A). Auth storm still not recurring (last TS_AUTH_FAIL 7/15). Now let me inspect the 7 deferred items and confirm the trading legs are green.
+The 7 overdue items are all `claude`-owned governance/research/observability threads (atr-disk-cache, auth-storm-0715-postmortem now **3 days** overdue, tw-detection-fixes, order-flow-logging, confirm-scorecard, diurnal-confirm-scaling, test-symbol-in-journal) — **none are watched trading-path files, none touch risk/sizing/universe/stops**. Same class as yesterday's 9:05 AM page, but the count grew 2→7. Let me confirm the trading legs of the 8AM audit are green before deciding.
+The 7/20 19:45 group had a **second FAIL mentioning `tune_engine`** that's cut off — but current CSHV (09:00) shows only 1 FAIL, so it cleared overnight. Let me confirm what it was and that it's gone, plus check the full 8AM audit body for the A–D legs.
+The notifier feed shows **"Pre-open readiness: GO (bot will trade today)" at 09:00:03 today** — the independent readiness gate says the bot WILL trade. Let me get the full `tune_engine` FAIL text from the CRIT feed source and confirm it cleared.
+The 7/20 19:45 second FAIL was **`tune_engine_ran`: "NO tune-journal entry for today — the Daily Tune Engine did not run/finish"** on 7/20. It's not in today's 09:00 CSHV FAIL list, but a missed autonomous engine run is worth verifying. Let me check the tune engine's run history and the task state.
+Now I have a genuinely new finding: the **Daily Tune Engine died on a 401 OAuth token-expired error at 6:25 PM on 7/20** — the autonomous 6 PM learning run produced no journal. This is distinct from the governance rot. Let me confirm the bot's own auth is healthy (trading path unaffected) and locate the tune engine's auth path to propose a precise fix.
+Now the diagnosis is clear and **different from a broker issue**: the tune engine bat launches a headless `claude -p` session, and the 401 "OAuth access token has expired" is the **Claude Code CLI's own Anthropic auth** — not TradeStation. The trading path is completely unaffected (bot's TS auth clean since 7/15, loop advancing, readiness GO). But the autonomous Daily Tune Engine's first-ever trading-day run died and produced no analysis. Let me confirm the run history depth and that the bot's trading auth is independent/healthy.
+Everything is confirmed. Summary of findings for this pre-open run (Tuesday 7/21, ~9:06 AM ET):
+
+- **Bot trading path: healthy.** TS auth clean (0 `TS_AUTH_FAIL` since 7/16; all 727 are the 7/15 storm), heartbeat fresh (09:05:05), loop 13144 advancing, flat pre-open, independent readiness feed = "GO, bot will trade today" at 09:00. Today's only `bot_alerts` row is a transient 500 (Bucket A).
+- **NEW / actionable:** The **Daily Tune Engine's first-ever trading-day run (7/20 6:25 PM) died on a Claude-CLI 401 "OAuth access token has expired"** — the headless `claude -p` session's own Anthropic auth, *not* TradeStation. Zero successful tune-engine runs since it was created 7/18. Will recur tonight if the CLI token expires unattended.
+- **Worsening / already-open:** Governance `deferred_work_overdue` grew **2→7** items; 8AM audit gate + pre-open gate read NO-GO again purely from that governance rollup (bot still trades, gate is shadow).
+
+The tune engine failure is a genuinely new, actionable item → I'll escalate one CRITICAL page (folding in the worsened governance rot), per Bucket C. Let me send it.
+Page sent. Now let me append the SESSION_LOG entry, sync to the coordination repo, and ack the cursor. First the canonical ET stamp.
+Now sync to the coordination repo, commit + push, and ack the cursor.
+Triage run complete. Pushed and cursor advanced (4 alerts processed).
+
+## Alert Triage — 2026-07-21 ~9:10 AM ET (pre-open, ~20 min to open)
+
+**Result: 1 CRITICAL page sent, 2 items folded.**
+
+### What I found
+- **Inbox:** 4 actionable / 3 CRITICAL groups.
+- **`bot_alerts.jsonl` (direct scan, key `ts`):** 1 row today — a WARN transient 500 at 06:02 (explicitly *not* auth). Auth storm not recurring (last `TS_AUTH_FAIL` 7/15; 0 since 7/16).
+- **Bot health:** PID 456, heartbeat fresh (09:05:05), loop 13144 advancing, flat pre-open; independent readiness feed = **"GO, bot will trade today"** at 09:00.
+
+### Escalated (Bucket C — 1 page)
+1. **NEW — Daily Tune Engine died on a Claude-CLI 401 OAuth token expiry.** First scheduled trading-day run (7/20 6:25 PM) aborted with *"OAuth access token has expired"* → no tune journal. **0 successful runs since it was created 7/18.** Root cause is the headless `claude -p` session's own Anthropic auth, **not TradeStation** — trading path fully unaffected. Will recur tonight if the token expires unattended. Proposed fix (needs Rhett's go-ahead; credential setup, not touched during freeze): durable auth for the scheduled headless runs (`claude setup-token` or a dedicated `ANTHROPIC_API_KEY`), optional 401-retry in the bat.
+2. **Worsening (already-open) — governance rot.** `deferred_work_overdue` grew **2→7** items; 8AM audit + pre-open gate read NO-GO purely from that governance rollup. Bot still trades (shadow, `SAFE_MODE_ENFORCE=off`). Same fix pending: re-date the overdue `DEFERRED_WORK.yaml` items + structurally split CSHV trading-path vs governance FAILs before `SAFE_MODE_ENFORCE` is ever armed.
+
+### Bucket A (not paged)
+- Transient 500 at 06:02; the 7/20 19:45 `tune_engine_ran` FAIL (now diagnosed as Item 1, cleared from today's CSHV).
+
+Read-only throughout — nothing on the trading path edited/committed/restarted. SESSION_LOG updated, synced to coordination repo (`b29407a`, pushed), inbox `--ack`'d.
+
+---
