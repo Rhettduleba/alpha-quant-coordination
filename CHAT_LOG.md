@@ -30035,3 +30035,24 @@ Here's what today's training got — including the part where the trainer wasn't
 The engine's first memo lands on the Tune Journal page tonight; from tomorrow it fires at 6:02 with working credentials, and CSHV still stands guard behind it at 7:45. Two green facts to end on: the defense is measurably working — and the machine that's supposed to notice its own failures noticed both of tonight's before you had to.
 
 ---
+
+
+## Turn — 2026-07-22 18:54:43 ET
+
+**Rhett:**
+
+trading
+
+**Claude Code:**
+
+Everything you'd want in one picture:
+
+**Trading:** Today closed **green, +$476.63** — 15 trades, profit factor 3.36, first positive day since 7/15. Book flat, all six windows fired, clean flatten, day certified. The pattern held perfectly again: all 8 winners confirmed, all 7 losers never did — and notably, the loss side has shrunk to scratches (−$202 total across 7 losers, average −$29) because the halvings and shields are squeezing the damage. Two green facts in one week after ten red days.
+
+**The FAIL you may have seen at 6:40 is already cleared** — it was the deferral police correctly flagging *my* overdue backlog. Two items were closed on the spot with evidence: the 7/15 auth-storm postmortem (all 724 failures were overnight, 3:33–7:31 AM, self-healed two hours before the open, zero contact with any trade — a logging storm, not a trading event; an alert-dedup follow-up is queued) and the mystery TEST symbol (regression-suite test plants, tag `REG_TEST` — verified cosmetic; no analytics, no liveness check, no P&L touches them). The six remaining study items got honest new dates this week now that the thing that was supposed to do them nightly actually works. CSHV: **0 FAIL**.
+
+**And the milestone: the engine wrote its first memo tonight.** It's on your dashboard now — Tune Journal, 2026-07-22 — and it reads exactly like what you ordered: it studied all 15 trades individually (per-trade verdicts in a table), found today's sharpest pattern on its own — **the opening-window trades went 78% win / +$488 while the afternoon re-arm entries went 17% / −$12** — generated two tune ideas, tested both against the 475-trade certified baseline, and *closed both with receipts because they failed*. Nothing promoted, nothing deployed, no hand-waving — its first night's honest conclusion was "the current rules survived two challengers." That's the discipline working without either of us in the room. From tomorrow it fires at 6:02 automatically, with working credentials, and CSHV pages if it ever goes silent again.
+
+Read the memo when you have five minutes — it's written for you, and it's the first artifact this project has produced where the thinking, the testing, and the honesty all happened while nobody was watching.
+
+---
