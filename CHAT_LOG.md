@@ -29546,3 +29546,28 @@ Triage complete. Post-close run — **nothing new, no page sent** (silence = han
 **Nothing escalated.** The only open items are the governance FAIL and the Daily Tune Engine 401 OAuth item — both already on Rhett's plate from the 9:10 AM page; the OAuth item next matters at tonight's ~6 PM engine run. Per the forward-test freeze, this run was read-only — no code, orders, or restarts touched. SESSION_LOG updated, synced to coordination repo ([24d9a9e](https://github.com/Rhettduleba/alpha-quant-coordination/commit/24d9a9e)), inbox ack'd.
 
 ---
+
+
+## Turn — 2026-07-21 20:28:30 ET
+
+**Rhett:**
+
+my sonttrdaes equities, he is ging to explain his trading philosophy, and i want you to summarize, ask question back to him if need be and then we want tpo undertsand how we can apply of nessesdary to the quant.
+
+**Claude Code:**
+
+Welcome — genuinely glad to do this. A live trader's philosophy is exactly the kind of input this project converts well: your SNDK screenshots and "exit on the tape turning" instinct became three deployed rules, so there's a working pipeline from *trader's eye → tested metric → bot rule*.
+
+Go ahead and lay it out however it comes naturally — no structure required. As you talk, here's what I'll be listening for, because these are the pieces that translate directly into testable bot rules:
+
+- **What makes you pull the trigger** — what has to be true before you enter, and just as important, what makes you *pass* on a setup that looks good on the surface.
+- **How you know you're wrong** — the moment you bail on a trade, and whether that's a price level, a time limit, a feel for the tape, or something else.
+- **How you know you're right** — what lets you stay in a winner, and what tells you the move is done.
+- **Sizing** — when do you go bigger or smaller, and why.
+- **Days you don't trade** — how you recognize a market that isn't giving your setup.
+
+For context on the machine you're advising: it trades opening-range breakouts on high-volume movers, long and short, ~15–30 trades a day, every rule backtested against ~400 certified trades before it goes live. Its measured strength is that trades which "prove themselves" win 96% of the time; its measured weakness is that in choppy tape two-thirds of its entries never prove themselves and bleed. So anything in your philosophy about *telling a real move from a fake one early* — or reading whether the day itself is trending or chopping — hits our exact problem.
+
+The floor's yours. I'll summarize back what I hear, ask about anything ambiguous one question at a time, and then map each piece to either "already tested — here's what the data said," "new and testable — here's the study," or "human-only — this doesn't translate to code," so nothing gets politely nodded at and lost.
+
+---
