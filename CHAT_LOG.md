@@ -30011,3 +30011,27 @@ Triage complete. **Nothing escalated — no page sent to Rhett** (silence = hand
 Per the forward-test freeze + watched-files rules, this run was read-only throughout — edited/committed/placed/cancelled/restarted nothing on the trading path. SESSION_LOG updated and pushed to the coordination repo (commit `72f8903`); inbox cursor advanced.
 
 ---
+
+
+## Turn — 2026-07-22 18:42:30 ET
+
+**Rhett:**
+
+what did you get from todays training?
+
+**Claude Code:**
+
+Here's what today's training got — including the part where the trainer wasn't showing up, which you deserve first:
+
+**The confession and the fix.** The Daily Tune Engine had **never successfully run**. All three scheduled fires (Mon/Tue/Wed 6:02 PM) died in six seconds on an expired login — a scheduled task can't refresh the interactive sign-in the way a live session can. The watchdog I built for exactly this *worked* — CSHV paged CRITICAL at 7:45 PM last night — but there was no analyst alive at night to act on it, which was circular, since the engine *was* supposed to be that analyst. Fixed tonight: the launcher now authenticates with the project's API key, and the 6:37 PM test-fire is past the failure point and running as I write — tonight's journal will be its first real entry. And the audit reflex caught a second silent gap while I was in there: **CELL 10 (the inversion shadow) had been pre-registered on paper but never coded** — the exact "part two quietly deferred" disease, this time inside the deferral police themselves. It's coded and backfilled now.
+
+**What the training data actually says (the 4:50 chain never stopped working):**
+
+- **Today was green: +$477 on 15 trades** — first positive day since 7/15, and the first full day with every defensive tune live. The smaller book (15 trades vs 25–29 two weeks ago) is the halvings doing their job.
+- **Your fail-fast revert is now winning its scoreboard.** Monday the 5-minute rule would have been better (+$710); Tuesday was a wash (+$39); **today the 30-minute rule you restored beat the 5-minute version by $586.** Running total favors your revert. I gave you the Monday number straight when it went against you — this one goes straight in your favor.
+- **The inversion is failing its forward test, fast:** the flipped book lost −$4 Tuesday and **−$280 today while the real book made +$477.** Two days isn't a verdict, but it's exactly what the conditioning-bias warning predicted — the "invert and win" table was an artifact of a losing streak, not a strategy. CELL 10 keeps scoring; the fade/follow *switch* idea survives, but blind inversion is on its way to a receipted grave.
+- The reversal-tune race stays honestly unresolved (adaptive +$362 today, fixed-body +$262 yesterday — both still net-negative overall), and CELL 9's exhaustion-skip has only clipped winners so far (−$48, −$84) — early, watched, not touched.
+
+The engine's first memo lands on the Tune Journal page tonight; from tomorrow it fires at 6:02 with working credentials, and CSHV still stands guard behind it at 7:45. Two green facts to end on: the defense is measurably working — and the machine that's supposed to notice its own failures noticed both of tonight's before you had to.
+
+---
