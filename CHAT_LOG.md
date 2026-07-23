@@ -30096,3 +30096,54 @@ One thing logged but deliberately not paged, worth Rhett's eye when he's next in
 Per the forward-test freeze and watched-files rules, this run edited, committed, placed, cancelled, and restarted nothing on the trading path — read-only throughout. SESSION_LOG entry appended (stamp from canonical `et_now.py`), mirrored to `C:\repos\alpha-quant-coordination`, committed and pushed (`9d048a6`), inbox `--ack`'d and verified back to 0 pending.
 
 ---
+
+
+## Turn — 2026-07-23 10:05:47 ET
+
+**Rhett:**
+
+<scheduled-task name="alphaquant-alert-triage" file="C:\Users\Administrator\.claude\scheduled-tasks\alphaquant-alert-triage\SKILL.md">
+This is an automated run of a scheduled task. The user is not present to answer questions. For implementation details, execute autonomously without asking clarifying questions — make reasonable choices and note them in your output. "write" actions (e.g. MCP tools that send, post, create, update, or delete), only take them if the task file asks for that specific action. When in doubt, producing a report of what you found is the correct output.
+
+AUTONOMOUS ALERT TRIAGE — Alpha Quant (Rhett-approved 2026-06-22; Planning Track A). You are a scheduled Claude Code run on the Alpha Quant VPS (live root C:\AlphaQuant). GOAL: Rhett must NOT be the human pager-relay. You read the SAME actionable alerts he would, auto-suppress known-noise, and ESCALATE anything that genuinely needs a human — pre-diagnosed. The human gate is preserved.
+
+IMPORTANT — FORWARD-TEST FREEZE: autonomous code-fixing is DEFERRED right now (Planning Track B). You DO NOT edit or commit ANY code this run (not even non-watched). You TRIAGE + ESCALATE only. (Auto-fix re-enables after the OOS forward test via a reviewed whitelist.)
+
+SOURCE OF TRUTH: read C:\AlphaQuant\CODE_ALERT_TRIAGE_PLAYBOOK.md and follow it EXACTLY (re-read each run). Procedure:
+1. `git -C C:\repos\alpha-quant-coordination pull` (ignore errors). Read the top stamp of C:\AlphaQuant\SESSION_LOG.md and C:\AlphaQuant\CSHV_FINDINGS.md for current state.
+2. Run: C:\Users\Administrator\AppData\Local\Python\pythoncore-3.14-64\python.exe C:\AlphaQuant\tradestation-bot\code_alert_inbox.py --json  → the NEW actionable CRITICAL alerts since last ack (the feed is already severity-gated to CRIT + de-noised; benign WARNs are handled at source, not here).
+3. For each alert: if it is KNOWN-NOISE (reader pre-tags many; or a state already confirmed benign in SESSION_LOG) → no action. Otherwise ESCALATE it: import notifier (add C:\AlphaQuant\tradestation-bot to sys.path) and call notifier.send_notification(subject="CODE TRIAGE — needs you", body= plain-English diagnosis + the specific proposed fix + whether it needs Rhett's approval (watched/strategy/risk) or just a go-ahead, level="CRITICAL"). For a SAFE non-watched fix you would normally make, STILL escalate it with the proposed fix (do not auto-edit during the freeze).
+4. ALWAYS at the end: append a short dated entry to C:\AlphaQuant\SESSION_LOG.md (what fired + what you escalated, or 'inbox clean'), copy it to C:\repos\alpha-quant-coordination\SESSION_LOG.md, commit + push that repo, then run code_alert_inbox.py --ack to advance the cursor. If nothing actionable, do NOT notify Rhett (silence = handled) — still --ack + one-line log.
+
+HARD RULES (never autonomously): NEVER edit/commit any code during the forward test (escalate fixes instead). NEVER edit a WATCHED strategy file (risk_config.py, bot_loop.py, exit_bot_v2.py, candle_close_exit.py, advisor_filter_engine.py, symbol_universe.py, orb_runner.py, orb_multiscan.py, short_bot.py). NEVER change risk/sizing/universe/stops/time-windows. NEVER place/cancel/modify orders or touch positions. NEVER deploy a strategy change. NEVER restart run_bot/watchdog_supervisor. NEVER touch credentials/.env or refresh TS tokens excessively. WHEN IN DOUBT, ESCALATE — never act on the live/trading path.
+
+ENVIRONMENT: Python = C:\Users\Administrator\AppData\Local\Python\pythoncore-3.14-64\python.exe. Work in C:\AlphaQuant. Keep each run tight + conservative. Your job: keep Discord quiet for Rhett by surfacing ONLY what truly needs him, pre-diagnosed.
+</scheduled-task>
+
+**Claude Code:**
+
+I'll follow the triage playbook exactly. Starting with the state reads.
+CSHV is clean (FAIL=0, one governance WARN). Now the alert feed plus a direct `bot_alerts.jsonl` scan.
+Inbox is empty. Per the 7/16 blind-spot lesson, the notifier-fed inbox never sees `bot_alerts.jsonl` FAILs — scanning that directly.
+6 entries but only 3 stop-loss rows today — verifying no unprotected position before I call this clean.
+Bot alive (loop 21383, 20s fresh — advancing past CSHV's 21370). Everything reconciles. Writing the log entry.
+Now syncing to the coordination repo and advancing the cursor.
+**Alert triage 2026-07-23 ~10:04 AM ET — nothing escalated, no page sent.** Silence = handled, per the playbook.
+
+**Three feeds, all clean:**
+
+1. **`code_alert_inbox.py --json`** — 0 total / 0 actionable / 0 CRITICAL. Live CSHV (10:00:11 ET, market hours) = **OK=52 / WARN=1 / FAIL=0**. The single WARN is the same `[Governance] deferred_work_overdue` already in front of Rhett — not re-paged.
+
+2. **`bot_alerts.jsonl` scanned directly** (the 7/16 blind spot — this feed is invisible to the notifier-fed inbox) — 14 rows today, **all INFO, zero WARN/FAIL**. Opening sequence is textbook: scan start 09:35:41 → in-play gate OFF → 9:35 path intentionally gated (20 candidates, 0 submitted) → re-arm fired 6 entries at 09:45.
+
+3. **Bot liveness** — heartbeat 20s fresh, loop 21383 advancing (21370 at the 10:00 CSHV). SAFE_MODE off.
+
+**One thing I checked rather than assumed:** today shows 6 entry submissions but only 3 `ORB_SL_OK` rows. That gap reconciles exactly — 3 of 6 stop-limit entries filled, 1 has already round-tripped out, leaving 2 open. Broker truth on the same CSHV cycle confirms it: `rel_position_recon` "broker and bot agree both ways (2 positions reconciled)", `rel_exit_side` "all 2 position(s) protected", and the day's canonical reconciliation shows 1 RT at NET −$518.59. NWSA/BSX/SNDK simply never triggered. **No unprotected position.**
+
+**Auth storm still not recurring** — last `TS_AUTH_FAIL` remains 2026-07-15T07:31:09, zero since 7/16.
+
+**Logged, not paged (owner heads-up):** `atr-disk-cache` and `confirm-scorecard` are both due **today, 2026-07-23**. If untouched, `deferred_work_overdue` flips from WARN back to FAIL tomorrow morning. This is the second run in a row surfacing it — governance housekeeping, not a trading-path risk, so it stays off the pager.
+
+Per the forward-test freeze and watched-file rules, this run edited, committed, placed, cancelled, or restarted **nothing** on the trading path — read-only throughout. SESSION_LOG appended (stamped from canonical `et_now.py`), synced and pushed to the coordination repo at `f3a8a42`, inbox cursor `--ack`'d.
+
+---
