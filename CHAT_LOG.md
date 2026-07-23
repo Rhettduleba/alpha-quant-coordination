@@ -30193,3 +30193,48 @@ Every filled entry got its protective stop — no unprotected fill. I checked th
 Forward-test freeze respected: no code edited or committed, no orders/positions touched, no process restarted. `SESSION_LOG.md` updated, mirrored to the coordination repo and pushed ([08afb13](C:/repos/alpha-quant-coordination), `main...origin/main` in sync), cursor ack'd.
 
 ---
+
+
+## Turn — 2026-07-23 12:06:15 ET
+
+**Rhett:**
+
+<scheduled-task name="alphaquant-alert-triage" file="C:\Users\Administrator\.claude\scheduled-tasks\alphaquant-alert-triage\SKILL.md">
+This is an automated run of a scheduled task. The user is not present to answer questions. For implementation details, execute autonomously without asking clarifying questions — make reasonable choices and note them in your output. "write" actions (e.g. MCP tools that send, post, create, update, or delete), only take them if the task file asks for that specific action. When in doubt, producing a report of what you found is the correct output.
+
+AUTONOMOUS ALERT TRIAGE — Alpha Quant (Rhett-approved 2026-06-22; Planning Track A). You are a scheduled Claude Code run on the Alpha Quant VPS (live root C:\AlphaQuant). GOAL: Rhett must NOT be the human pager-relay. You read the SAME actionable alerts he would, auto-suppress known-noise, and ESCALATE anything that genuinely needs a human — pre-diagnosed. The human gate is preserved.
+
+IMPORTANT — FORWARD-TEST FREEZE: autonomous code-fixing is DEFERRED right now (Planning Track B). You DO NOT edit or commit ANY code this run (not even non-watched). You TRIAGE + ESCALATE only. (Auto-fix re-enables after the OOS forward test via a reviewed whitelist.)
+
+SOURCE OF TRUTH: read C:\AlphaQuant\CODE_ALERT_TRIAGE_PLAYBOOK.md and follow it EXACTLY (re-read each run). Procedure:
+1. `git -C C:\repos\alpha-quant-coordination pull` (ignore errors). Read the top stamp of C:\AlphaQuant\SESSION_LOG.md and C:\AlphaQuant\CSHV_FINDINGS.md for current state.
+2. Run: C:\Users\Administrator\AppData\Local\Python\pythoncore-3.14-64\python.exe C:\AlphaQuant\tradestation-bot\code_alert_inbox.py --json  → the NEW actionable CRITICAL alerts since last ack (the feed is already severity-gated to CRIT + de-noised; benign WARNs are handled at source, not here).
+3. For each alert: if it is KNOWN-NOISE (reader pre-tags many; or a state already confirmed benign in SESSION_LOG) → no action. Otherwise ESCALATE it: import notifier (add C:\AlphaQuant\tradestation-bot to sys.path) and call notifier.send_notification(subject="CODE TRIAGE — needs you", body= plain-English diagnosis + the specific proposed fix + whether it needs Rhett's approval (watched/strategy/risk) or just a go-ahead, level="CRITICAL"). For a SAFE non-watched fix you would normally make, STILL escalate it with the proposed fix (do not auto-edit during the freeze).
+4. ALWAYS at the end: append a short dated entry to C:\AlphaQuant\SESSION_LOG.md (what fired + what you escalated, or 'inbox clean'), copy it to C:\repos\alpha-quant-coordination\SESSION_LOG.md, commit + push that repo, then run code_alert_inbox.py --ack to advance the cursor. If nothing actionable, do NOT notify Rhett (silence = handled) — still --ack + one-line log.
+
+HARD RULES (never autonomously): NEVER edit/commit any code during the forward test (escalate fixes instead). NEVER edit a WATCHED strategy file (risk_config.py, bot_loop.py, exit_bot_v2.py, candle_close_exit.py, advisor_filter_engine.py, symbol_universe.py, orb_runner.py, orb_multiscan.py, short_bot.py). NEVER change risk/sizing/universe/stops/time-windows. NEVER place/cancel/modify orders or touch positions. NEVER deploy a strategy change. NEVER restart run_bot/watchdog_supervisor. NEVER touch credentials/.env or refresh TS tokens excessively. WHEN IN DOUBT, ESCALATE — never act on the live/trading path.
+
+ENVIRONMENT: Python = C:\Users\Administrator\AppData\Local\Python\pythoncore-3.14-64\python.exe. Work in C:\AlphaQuant. Keep each run tight + conservative. Your job: keep Discord quiet for Rhett by surfacing ONLY what truly needs him, pre-diagnosed.
+</scheduled-task>
+
+**Claude Code:**
+
+I'll start by re-reading the playbook and checking current state.
+**Alert triage 2026-07-23 ~12:04 PM ET — nothing escalated, no page sent.**
+
+**Feeds**
+1. `code_alert_inbox.py --json` → **0 total / 0 actionable / 0 CRITICAL** since the 10:04 AM ack (the 11:04 run also acked clean).
+2. `bot_alerts.jsonl` scanned directly (the inbox never sees this file) → 24 rows today: **23 INFO + 1 WARN**.
+3. Live CSHV (12:00:15 ET, market hours YES) → **OK=52 / WARN=1 / FAIL=0**.
+
+**The one new WARN — verified, not waved off.** `TS_API_TRANSIENT` at 11:40:26: a `504 Gateway Timeout` on the SIM `/v3/brokerage/accounts` fetch, self-tagged "transient, not auth." I checked rather than assumed (the 7/02 lesson): a scan of all 14 today-modified logs found **zero** other 5xx lines, and the bot worked straight through — two resting entry arms filled and got stops at 12:01:26 and 12:02:29, i.e. after the 504. Isolated transient → Bucket A.
+
+**Entry/stop reconciliation, done by hand.** 10 `ORB_V16_ENTRY_OK` arms (6 @ 09:45, 2 @ 10:35, 2 @ 11:35) vs 8 `ORB_SL_OK`. The 8 stop rows map one-to-one by quantity to 8 filled arms (20, 1249, 362, 145, 374, 278, 68, 12) — **every fill protected, no unprotected position.** The 2 unfilled arms (SELLSHORT 468 @ 42.65, BUY 68 @ 144.93) simply never triggered.
+
+**Broker truth (12:00 CSHV):** position recon agrees both ways (1 position), that position protected, phantom book $74,999 == real exposure $74,999, SAFE_MODE off, guardian alive 0 violations, deadman armed, 0 rejections in 30 min, daily review reconciles (5 RT, NET −$807.62 = gross −$769.01 minus broker-actual cost). Bot: PID 456, heartbeat fresh at 12:04:34, loop 21715 (up from 21383 at 10:04). Last `TS_AUTH_FAIL` still 2026-07-15 — auth storm not recurring.
+
+**Standing item, logged not paged (fourth restatement today):** the lone WARN is `deferred_work_overdue` — `atr-disk-cache` and `confirm-scorecard` are **due today**; untouched, they flip that check to FAIL tomorrow.
+
+Forward-test freeze respected: nothing edited, committed to the bot tree, ordered, cancelled, or restarted — read-only throughout. SESSION_LOG appended, mirrored and pushed to the coordination repo (`0182a0f`), inbox cursor ack'd.
+
+---
