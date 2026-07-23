@@ -30389,3 +30389,45 @@ The single WARN is the same benign `deferred_work_overdue` governance item. **Lo
 Forward-test freeze + watched-files respected: this run edited / committed / placed / cancelled / restarted **nothing** on the trading path — read-only throughout. SESSION_LOG entry appended, synced to the coordination repo (committed + pushed), and inbox `--ack`'d.
 
 ---
+
+
+## Turn — 2026-07-23 16:05:59 ET
+
+**Rhett:**
+
+<scheduled-task name="alphaquant-alert-triage" file="C:\Users\Administrator\.claude\scheduled-tasks\alphaquant-alert-triage\SKILL.md">
+This is an automated run of a scheduled task. The user is not present to answer questions. For implementation details, execute autonomously without asking clarifying questions — make reasonable choices and note them in your output. "write" actions (e.g. MCP tools that send, post, create, update, or delete), only take them if the task file asks for that specific action. When in doubt, producing a report of what you found is the correct output.
+
+AUTONOMOUS ALERT TRIAGE — Alpha Quant (Rhett-approved 2026-06-22; Planning Track A). You are a scheduled Claude Code run on the Alpha Quant VPS (live root C:\AlphaQuant). GOAL: Rhett must NOT be the human pager-relay. You read the SAME actionable alerts he would, auto-suppress known-noise, and ESCALATE anything that genuinely needs a human — pre-diagnosed. The human gate is preserved.
+
+IMPORTANT — FORWARD-TEST FREEZE: autonomous code-fixing is DEFERRED right now (Planning Track B). You DO NOT edit or commit ANY code this run (not even non-watched). You TRIAGE + ESCALATE only. (Auto-fix re-enables after the OOS forward test via a reviewed whitelist.)
+
+SOURCE OF TRUTH: read C:\AlphaQuant\CODE_ALERT_TRIAGE_PLAYBOOK.md and follow it EXACTLY (re-read each run). Procedure:
+1. `git -C C:\repos\alpha-quant-coordination pull` (ignore errors). Read the top stamp of C:\AlphaQuant\SESSION_LOG.md and C:\AlphaQuant\CSHV_FINDINGS.md for current state.
+2. Run: C:\Users\Administrator\AppData\Local\Python\pythoncore-3.14-64\python.exe C:\AlphaQuant\tradestation-bot\code_alert_inbox.py --json  → the NEW actionable CRITICAL alerts since last ack (the feed is already severity-gated to CRIT + de-noised; benign WARNs are handled at source, not here).
+3. For each alert: if it is KNOWN-NOISE (reader pre-tags many; or a state already confirmed benign in SESSION_LOG) → no action. Otherwise ESCALATE it: import notifier (add C:\AlphaQuant\tradestation-bot to sys.path) and call notifier.send_notification(subject="CODE TRIAGE — needs you", body= plain-English diagnosis + the specific proposed fix + whether it needs Rhett's approval (watched/strategy/risk) or just a go-ahead, level="CRITICAL"). For a SAFE non-watched fix you would normally make, STILL escalate it with the proposed fix (do not auto-edit during the freeze).
+4. ALWAYS at the end: append a short dated entry to C:\AlphaQuant\SESSION_LOG.md (what fired + what you escalated, or 'inbox clean'), copy it to C:\repos\alpha-quant-coordination\SESSION_LOG.md, commit + push that repo, then run code_alert_inbox.py --ack to advance the cursor. If nothing actionable, do NOT notify Rhett (silence = handled) — still --ack + one-line log.
+
+HARD RULES (never autonomously): NEVER edit/commit any code during the forward test (escalate fixes instead). NEVER edit a WATCHED strategy file (risk_config.py, bot_loop.py, exit_bot_v2.py, candle_close_exit.py, advisor_filter_engine.py, symbol_universe.py, orb_runner.py, orb_multiscan.py, short_bot.py). NEVER change risk/sizing/universe/stops/time-windows. NEVER place/cancel/modify orders or touch positions. NEVER deploy a strategy change. NEVER restart run_bot/watchdog_supervisor. NEVER touch credentials/.env or refresh TS tokens excessively. WHEN IN DOUBT, ESCALATE — never act on the live/trading path.
+
+ENVIRONMENT: Python = C:\Users\Administrator\AppData\Local\Python\pythoncore-3.14-64\python.exe. Work in C:\AlphaQuant. Keep each run tight + conservative. Your job: keep Discord quiet for Rhett by surfacing ONLY what truly needs him, pre-diagnosed.
+</scheduled-task>
+
+**Claude Code:**
+
+I'll run the autonomous alert triage per the playbook.
+**ALERT TRIAGE — 2026-07-23 ~4:04 PM ET (autonomous run #8, first post-close) — NOTHING ESCALATED, NO PAGE SENT.**
+
+Three feeds, all clean:
+
+1. **`code_alert_inbox.py --json`** → `0 total / 0 actionable / 0 CRITICAL` — nothing new since the 3:04 PM ack.
+2. **`bot_alerts.jsonl` scanned directly** (per the 7/16 blind-spot rule — the inbox is notifier-fed only): 7/23 = **26 rows, 25 INFO + 1 WARN**. One new row since 3:04 PM, and it's the one that matters: **`ORB_EOD_OK` @ 15:55:17 — `flattened 977310.2524 -> close`. The EOD flatten ran and succeeded** (EOD-flatten failure is a Bucket-C escalation class; it did not occur). The lone WARN is the same isolated `TS_API_TRANSIENT` 504 @ 11:40:26 — transient, non-auth, no recurrence in 4h20m → Bucket A. **0 FAIL-severity rows since 7/20**; last `TS_AUTH_FAIL` still 2026-07-15T07:31:09.
+3. **Live CSHV (16:00:11 ET)** = `OK=51 / WARN=1 / FAIL=0`. `rel_phantom_deploy_book` now **book $0 == real exposure $0** — the two resting, never-triggered stop-limit arms (BSX SELLSHORT + EMR BUY) that carried the $29,811 book all afternoon cleared on the 3:55 PM flatten/cancel, confirming it was never a phantom-book bug. `rel_position_recon` "broker and bot agree both ways (0 reconciled)", `rel_safe_mode_not_stuck` OFF, `rel_guardian_heartbeat` alive (0 violations), `bot_heartbeat_fresh` 10s, `trade_journal_growth` 2s.
+
+One nuance, not escalated: `eod_flat_at_close` reads **SKIP** because CSHV ran at 16:00:11, just before its own 4:05 PM certification window opens. The broker-sourced evidence already present (recon 0 both ways + exposure $0) says we're flat; the ~4:05 PM cycle formally certifies it.
+
+**Standing WARN, eighth restatement today, logged-not-paged:** `[Governance] deferred_work_overdue` — `atr-disk-cache` and `confirm-scorecard` were **due today (7/23) and went untouched**, so this check flips to FAIL tomorrow morning. It's a governance deadline, not a system fault, so per playbook it stays logged rather than paged — but it will be the first thing red tomorrow.
+
+Freeze respected: no code edited, no orders/positions touched, nothing on the trading path. SESSION_LOG entry written (ET from canonical `et_now.py`), mirrored to the coordination repo, pushed as `8c42449`, inbox cursor acked.
+
+---
