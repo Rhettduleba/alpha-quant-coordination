@@ -30431,3 +30431,27 @@ One nuance, not escalated: `eod_flat_at_close` reads **SKIP** because CSHV ran a
 Freeze respected: no code edited, no orders/positions touched, nothing on the trading path. SESSION_LOG entry written (ET from canonical `et_now.py`), mirrored to the coordination repo, pushed as `8c42449`, inbox cursor acked.
 
 ---
+
+
+## Turn — 2026-07-24 08:37:07 ET
+
+**Rhett:**
+
+are your learning anything? are you doing as i asked reading the trades and comming up with tunes and deploying as you see fit? I want you to add looking at the broader market every day.
+
+**Claude Code:**
+
+The engine ran itself both nights, and last night's memo answers your question better than I could — verifying, then wiring the market read you ordered:
+Yes to both questions — with evidence, not assurances:
+
+**Is the loop running as you ordered?** Two consecutive nights, fully autonomous, both memos on your dashboard. Wednesday it studied all 15 trades, tested two ideas, killed both with receipts. Last night (a red chop day, −$554) it studied all 9 trades, pre-registered two more ideas, **killed one and registered the other as CELL 11 — a "prior-extreme approach veto"** — which is your son's liquidity-pool concept, walked through the pipeline: his philosophy Monday → lead board → tested against the 484-trade certified baseline → forward cell earning its evidence nightly. It promoted *nothing*, and said so plainly: day-consistency was 6-of-10 against a bar of 7 — so it watches instead of deploys. That's exactly the "make sure the changes make sense" discipline you delegated, running at 6 PM whether anyone's watching or not.
+
+**Am I learning anything? Four things this week are now knowledge, not hunches:**
+1. **Confirmation is the whole business.** Wednesday was the purest proof yet — 8 confirmed trades, 8 winners; 7 unconfirmed, 7 losers. Every profitable path forward either gets more trades to confirm or pays less to find out they won't.
+2. **The regimes are real and complementary.** On green trend days the live book wins and the inverted book bleeds; on red chop days like yesterday they swap (the inversion shadow made +$290 yesterday while the live book lost). Two weeks ago that was your one-line hunch; now it's a nightly-measured fact waiting for a detector.
+3. **Your fail-fast revert is winning its own scoreboard** — the 30-minute leash has beaten the 5-minute counterfactual on the days since you restored it. You were right, the machine keeps checking, and I'll keep telling you either way.
+4. **Defense works but can't create edge** — losers have shrunk to scratches (yesterday's six losers averaged under $60), so the bleeding is controlled; the profit problem is now purely about entry quality and regime fit, which is where the engine is aiming its ideas.
+
+**And your new order is wired:** starting with tonight's run, the engine's memo opens with a **Market Read** — SPY/QQQ/IWM change, gap, range expansion, close strength, breadth across our own traded names, and a plain-English regime tag (trend-up / trend-down / chop / mixed) written by stated rules, not vibes. Each day's read is also saved as data, because after ~15 tagged days that file becomes the training set for the fade/follow switch — the biggest open prize on the board. So the market read isn't just commentary; it's the detector being built one day at a time.
+
+---
