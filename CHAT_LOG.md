@@ -30455,3 +30455,51 @@ Yes to both questions — with evidence, not assurances:
 **And your new order is wired:** starting with tonight's run, the engine's memo opens with a **Market Read** — SPY/QQQ/IWM change, gap, range expansion, close strength, breadth across our own traded names, and a plain-English regime tag (trend-up / trend-down / chop / mixed) written by stated rules, not vibes. Each day's read is also saved as data, because after ~15 tagged days that file becomes the training set for the fade/follow switch — the biggest open prize on the board. So the market read isn't just commentary; it's the detector being built one day at a time.
 
 ---
+
+
+## Turn — 2026-07-24 09:07:58 ET
+
+**Rhett:**
+
+<scheduled-task name="alphaquant-alert-triage" file="C:\Users\Administrator\.claude\scheduled-tasks\alphaquant-alert-triage\SKILL.md">
+This is an automated run of a scheduled task. The user is not present to answer questions. For implementation details, execute autonomously without asking clarifying questions — make reasonable choices and note them in your output. "write" actions (e.g. MCP tools that send, post, create, update, or delete), only take them if the task file asks for that specific action. When in doubt, producing a report of what you found is the correct output.
+
+AUTONOMOUS ALERT TRIAGE — Alpha Quant (Rhett-approved 2026-06-22; Planning Track A). You are a scheduled Claude Code run on the Alpha Quant VPS (live root C:\AlphaQuant). GOAL: Rhett must NOT be the human pager-relay. You read the SAME actionable alerts he would, auto-suppress known-noise, and ESCALATE anything that genuinely needs a human — pre-diagnosed. The human gate is preserved.
+
+IMPORTANT — FORWARD-TEST FREEZE: autonomous code-fixing is DEFERRED right now (Planning Track B). You DO NOT edit or commit ANY code this run (not even non-watched). You TRIAGE + ESCALATE only. (Auto-fix re-enables after the OOS forward test via a reviewed whitelist.)
+
+SOURCE OF TRUTH: read C:\AlphaQuant\CODE_ALERT_TRIAGE_PLAYBOOK.md and follow it EXACTLY (re-read each run). Procedure:
+1. `git -C C:\repos\alpha-quant-coordination pull` (ignore errors). Read the top stamp of C:\AlphaQuant\SESSION_LOG.md and C:\AlphaQuant\CSHV_FINDINGS.md for current state.
+2. Run: C:\Users\Administrator\AppData\Local\Python\pythoncore-3.14-64\python.exe C:\AlphaQuant\tradestation-bot\code_alert_inbox.py --json  → the NEW actionable CRITICAL alerts since last ack (the feed is already severity-gated to CRIT + de-noised; benign WARNs are handled at source, not here).
+3. For each alert: if it is KNOWN-NOISE (reader pre-tags many; or a state already confirmed benign in SESSION_LOG) → no action. Otherwise ESCALATE it: import notifier (add C:\AlphaQuant\tradestation-bot to sys.path) and call notifier.send_notification(subject="CODE TRIAGE — needs you", body= plain-English diagnosis + the specific proposed fix + whether it needs Rhett's approval (watched/strategy/risk) or just a go-ahead, level="CRITICAL"). For a SAFE non-watched fix you would normally make, STILL escalate it with the proposed fix (do not auto-edit during the freeze).
+4. ALWAYS at the end: append a short dated entry to C:\AlphaQuant\SESSION_LOG.md (what fired + what you escalated, or 'inbox clean'), copy it to C:\repos\alpha-quant-coordination\SESSION_LOG.md, commit + push that repo, then run code_alert_inbox.py --ack to advance the cursor. If nothing actionable, do NOT notify Rhett (silence = handled) — still --ack + one-line log.
+
+HARD RULES (never autonomously): NEVER edit/commit any code during the forward test (escalate fixes instead). NEVER edit a WATCHED strategy file (risk_config.py, bot_loop.py, exit_bot_v2.py, candle_close_exit.py, advisor_filter_engine.py, symbol_universe.py, orb_runner.py, orb_multiscan.py, short_bot.py). NEVER change risk/sizing/universe/stops/time-windows. NEVER place/cancel/modify orders or touch positions. NEVER deploy a strategy change. NEVER restart run_bot/watchdog_supervisor. NEVER touch credentials/.env or refresh TS tokens excessively. WHEN IN DOUBT, ESCALATE — never act on the live/trading path.
+
+ENVIRONMENT: Python = C:\Users\Administrator\AppData\Local\Python\pythoncore-3.14-64\python.exe. Work in C:\AlphaQuant. Keep each run tight + conservative. Your job: keep Discord quiet for Rhett by surfacing ONLY what truly needs him, pre-diagnosed.
+</scheduled-task>
+
+**Claude Code:**
+
+I'll run the autonomous alert triage per the playbook.
+Diagnosis is clear. Verifying bot state before escalating, then sending one page.
+**ALERT TRIAGE — 2026-07-24 ~9:05 AM ET — 🚨 ESCALATED (CRITICAL page sent)**
+
+**3 CRITICAL alerts, 2 groups, one root cause.**
+
+| | |
+|---|---|
+| Group 1 | CSHV FAIL `[Governance] deferred_work_overdue` (00:05, 06:10) — 3 items past `review_by: 2026-07-23`: `atr-disk-cache`, `confirm-scorecard`, `fossil-card-and-ipad-css` |
+| Group 2 | `8AM AUDIT GATE NOT GREEN` (08:01) — **A/B/C/D all OK**; only E fails, and E's entire content is the rollup of that same governance FAIL. Same for the 06:00 pre-open NO-GO. |
+
+**No trading-path defect.** Verified from source, not assumed — `outputs/audit_8am.log` 08:00:59: A 54 pass/0 FAIL (consecutive_clean=42), B 12/12 drill detectors fired, C 0 FAIL, D 39 PASS/0 FAIL. `bot_alerts.jsonl` scanned directly (7/16 blind-spot rule): 24h = 26 INFO + 1 WARN + **0 FAIL** (the WARN is the isolated 7/23 11:40 non-auth 504, no recurrence in ~21h). Bot alive at 09:06:16 — PID 456, loop 25264, heartbeat fresh, SAFE_MODE off. **Trading today is not blocked** (`SAFE_MODE_ENFORCE=off` → gate is shadow, bot trades anyway).
+
+**Why I paged this time** — yesterday's 8 runs logged-not-paged this same thread while it was a WARN, restating each time that these two items were due 7/23 and would flip to FAIL. They were untouched. It flipped, and it is now the **4th red 8AM gate in 5 sessions** (7/20, 7/21, 7/22, 7/24), every one on this item. A gate red for a non-trading reason trains us to ignore the gate. It also grows: **13 more items carry `review_by: 2026-07-24`** — untouched, the overdue list goes **3 → 16 tomorrow morning**.
+
+**Escalation asks for a per-item decision** — (a) do it / (b) re-date with a stated reason / (c) close it — with the recommendation that `atr-disk-cache` is the highest-value of the three (it gutted 369/416 ATR fetches, cut the 7/18 replay to 304 trades, silently zeroed 7/15 CELL scoring; non-watched, build-only). No watched file or risk/sizing/universe change is involved in any option.
+
+I deliberately did **not** re-date these myself — an unattended agent extending its own deadlines to silence its own monitor is precisely the failure the check exists to catch.
+
+Freeze respected: nothing edited, committed, placed, cancelled, or restarted on the trading path. SESSION_LOG entry written (stamp from canonical `et_now.py`), copied + committed + pushed to the coordination repo (`952ddc4`, branch in sync), inbox cursor advanced (3 alerts marked processed).
+
+---
