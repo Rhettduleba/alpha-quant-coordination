@@ -2,6 +2,8 @@
 
 > # ⭐ CURRENT STATE — 2026-06-27 ~7:25 AM ET (READ FIRST — full cold-start brief: `HANDOFF_2026-06-26_RAMP-UP.md`)
 >
+> **[WEEKLY BUILDER 2026-08-08 (Saturday flat window) — shipped `daily-252-nightly-refresher`.]** New `strategy-research/daily_252_refresh.py`: paced (@0.3s, single bounded retry, 7/18 rate-limit shape), FETCH-ONLY-MISSES nightly refresher that appends the latest COMPLETED session's daily bar to every stale `daily_252` cache file (the tune-engine step-0 TRADER'S-TAPE was reading candidates stale at 7/28 for a week — only 14/256 fresh). Weekend/holiday-aware target math; robust (keeps stale cache on fetch failure, idempotent); scope = existing cache files (new-symbol backfill stays the separate `daily252-thin-symbol-coverage` item). Wired into `run_daily_tune_engine.bat` BEFORE the engine (~6:02 PM ET), unguarded so it never blocks the tune run. VERIFIED: --self-test 18/18 offline (target-day incl. holiday/pre-close, merge dedup/drop-past-target/idempotent), --dry-run correctly reports target=2026-08-07 / 14 fresh / 242 stale. Live smoke hit a broker-side TS token-refresh 503 (the weekend auth outage escalated in the 9:39 AM triage) — code degraded gracefully, caches left byte-identical; live-SUCCESS append confirms on the next healthy nightly run. Regression suite 56/0/4 GREEN. Also CLOSED `daily-ohlc-cache-today-bar` (claude, due 8/04) by supersession: the `outputs/cache/daily_ohlc` dir it names is legacy (superseded by daily_252 on 7/28, only referenced by 7/27–7/28 per-day scripts; the "daily_ohlc" in current market_read is the fetch-function name, not the dir), and the today-bar grounding it wanted now exists on the active daily_252 cache via the refresher above. Did NOT touch watched files, SIM guards, or the advisor channel.
+>
 > **[ALERT TRIAGE 2026-08-08 ~9:39 AM ET - autonomous run - **ESCALATED 1 CRITICAL page (NEW finding: the TS token refresh has been failing for 92 minutes straight and the check named `token_cache_valid` reports it GREEN)**. Saturday; market closed, 0 positions, book $0. Also back-covered Friday 8/07, which no triage run ever saw.]** Three feeds. (1) `code_alert_inbox.py --json` = **9 total / 9 actionable / 9 CRITICAL** in 3 groups since the 8/06 12:50 PM cursor - all three are **Bucket A**: 7x `CSHV 1 FAIL` + 1x `CSHV 2 FAIL` are `Governance/deferred_work_overdue` on its 6.0h `_FAIL_REPAGE_HOURS` heartbeat (count drifted **20 -> 21 -> 22**, oldest still `atr-disk-cache` due 8/01, escalated 8/05, NOT re-paged), and the 8/07 08:01 `8AM AUDIT GATE NOT GREEN` is that identical FAIL relayed downstream (`E ORB entry gates: FAIL ( [FAIL] CSHV findings: ... FAIL=1)`), a state confirmed benign since 7/28. The one genuinely new line inside the 8/07 13:10 group - `dashboard_single_listener: 2 processes on 8765 (pids 11652, 13588)` - **self-resolved**; CSHV 09:30 reads `one listener (pid 2612)`. (2) **`bot_alerts.jsonl` scanned DIRECTLY** (7/16 blind-spot rule - and it is the entire reason this run found anything): 4,323 rows; 8/06 18 rows all INFO, 8/07 39 rows all INFO, **8/08 = 23 rows, ALL WARN, all `TS_API_TRANSIENT`**. (3) CSHV **09:30:10 = OK=49 / WARN=0 / FAIL=1 / INFO=0 / SKIP=7**, sole FAIL the deferred-work count.
 >
 > **ESCALATED (NEW): the bot has had NO valid TradeStation access token since 08:04:47 AM ET, every refresh has 503'd for 92+ minutes, and CSHV calls it green.** 23 `TS_API_TRANSIENT` WARNs, one per ~5 min, **unbroken 08:05:04 -> 09:36:17 and still firing**, every one `503 Service Temporarily Unavailable` on `https://signin.tradestation.com/oauth/token`. **This is not the usual blip:** the event has fired **29 times in the whole history of the log and 19 of those are today** - every prior day is an isolated singleton (8/01 Sat 1, 8/05 Wed 1). **Proven from the cache, not inferred:** `token_cache.json` `saved_at` **07:44:47**, `expires_at` **08:04:47** (20-min TS lifetime), and the first 503 landed **08:05:04 - 17 seconds after expiry**. The signin **host is up** (unauthenticated GET returns 405 + an AWS WAF page), so this is the `/oauth/token` endpoint specifically - most likely TS weekend auth maintenance or a WAF rule now challenging server-to-server refreshes. **Not self-inflicted:** `http_request` (ts_client.py:58) has no retry loop and `ensure_token` (L176-182) early-returns while a token is live, so we are not rate-limiting ourselves.
@@ -15242,3 +15244,177 @@ _Diagnostic, in-sample. These days are in-sample for any un-promoted rule; a str
 ---
 
 > **[DAILY TUNE ENGINE 2026-08-07 ~6:0X PM ET — autonomous nightly run — ✅ COMPLETE, 1 SHADOW CELL REGISTERED (CELL17), NO LIVE CHANGE.]** Studied the day: **−$1,043.93 (14 RT, 4W/10L, 7% confirm) — worst day in weeks + largest TAIL-FREE loss on record** on a broad quiet grind-UP (SPY +0.61%, QQQ +1.17%, IWM +1.11%, VIX −1.65%, range 0.58× = 3rd straight contraction, CHOP by rule) with **92.9% EOD breadth** (13/14 names right by close). We were directionally right and STILL bled because the book was **9 shorts into a grind-UP** and got wiggled out early (1/14 confirmed) — LESSON #2 side-vs-tape failure the SPY-only CELL12 gap proxy missed (SPY gapped only +0.32% → CELL12 INERT while QQQ +0.77%/IWM +0.74% cleared). Shorts −$835 = essentially the whole loss. **Prediction graded: regime RIGHT (3 straight, CHOP SPY +0.61% in band), P&L BADLY WRONG (−$1,044 vs −$300..+$550)** — the 8/06 "low-range → low |P&L|" model FALSIFIED (same 0.58× range as 8/06's −$5, but 14 trades/9 shorts vs 4 → magnitude = trade count × side-vs-tape, NOT range); cells graded 4/4 (CELL10 mirror-fix held: inversion +$563 on our loss). Two pre-registered ideas on the 631-trade certified baseline (diversity quota met: veto + timing): **IDEA 1 (MULTI-INDEX GAP SIDE-vs-TAPE HALVE — ≥2 of SPY/QQQ/IWM gap ≥+0.4% → halve shorts / ≤−0.4% → halve longs) REGISTERED forward as CELL17** — clears the bar on ALL THREE windows incl RECENT (HALVE G=0.4: FULL +$3,612 N=146 cut/save 0.463 / OOS +$1,354 0.399 / RECENT +$1,163 0.392), the direct daily-bar fix for CELL12's LESSON #10 failure (would've halved all 9 shorts today, +$417); overlap vs CELL12 114/118 subsumed +32 incremental; wired + spec addendum + registry, accrues from 8/08 EOD (first fire Mon 8/11). **IDEA 2 (Friday halve) CLOSED** (FF5-fails full 0.62 + recent 0.986) — but its weekday map surfaced the real disease: **MONDAY −$54.31/tr N=177 −$9,613, the worst weekday by far** (Tue/Wed positive) → NEW LESSON #19 lead. Deployed-tune scoreboard: no retirement flag; notable — **FF5's edge over the live leash flipped hard positive (+$847 today)** after 8/06's decay note (regime-dependence watch). Red-team (rotation → live deep-run halve): intact, low-signal day (contracted range). LESSONS.md: 5 edits (#1 hard-correction/#2/#10/#11 + new #19). Certified→631 (+14, all clean). Registry→75. **Day ended NON-CLEAN but NOT a trading defect** — the 5 FAIL incidents are all governance/infra (4× deferred_work_overdue = Saturday WeeklyBuilder's job + 1 transient dashboard-orphan already self-cleared); bot ran 14/14 compliant, broker-FLAT, zero bot_alerts FAILs. 4:50 chain verified complete + reconciles to broker truth exactly. Re-dated NOTHING overdue (Standing Rule #0). **Sunday 8/09 = weekly deep-synthesis run.** **No live behavior changed; SIM-only guards + one-way advisor channel + typed schema untouched; no deploy.** Journal: `outputs/tune_journal/2026-08-07.md`; report: `tune_ideas_2026-08-07.json`; ctx: `market_context/2026-08-07.json`. — autonomous daily-tune run
+
+---
+**TURN 2026-08-08 ~10:55 AM ET (Sat) — Rhett's "few trades / horrible deployment Friday" question → week autopsy + FOUR dead autonomous seats found & fixed:**
+1. **WEEK FACTS (certified/debrief):** 8/05 six trades +$152 peak 9.9% BP; 8/06 four trades −$5 peak 5.0%; 8/07 (Fri) FOURTEEN trades −$1,044 peak 22.4%. The no-trading days were Wed/Thu, not Friday. Cause Wed/Thu = tape: three straight range-contraction days (SPY −0.20%/−0.16%, range 0.97×/0.58× of 20d), window candidates collapsed to 21/16 (vs 51 Friday). Momentum gate skipped ZERO all week (trace-verified) — not the new gates. Friday afternoon deployment died to reentry_capped(1/name/day)+already_working — all 23 afternoon candidates were repeat names; cap is evidence-backed (9/9 re-entry variants negative).
+2. **8/4 TW candle-verify fix PROVEN in production:** 617 candle_fire_suppressed vs 14 live exits 8/5–8/7 — tick-candle false reversals were epidemic, now caught. Found+fixed REG-62 leak: planted TWTESTX suite events wrote into live tw_shadow.jsonl (7/29 X3 class) — log_event now no-op'd during the test; suite line-count-neutral verified; 56 pass/0 FAIL/4 skip (4th = weekend REG-23).
+3. **SILENT-RUNNER SWEEP (memory rule) → 3 dead runners + 1 MISSING task, ALL FIXED + PROVEN:** (a) run_intraday_triage.bat — NO key loader, 401 on EVERY run ever; loader added; first successful triage run completed (log shows reasoned exit-silent output). (b) run_review_prewarm.bat — mangled path (AlphaQuantun_review_prewarm.ps1) still broken since 8/03 (~all runs, Last Result −196608); rewritten; exit 0 → this is why review clicks could still feel slow. (c) run_weekly_builder.bat — no loader, 401 both Saturdays; loader added; task re-run (running). (d) AlphaQuant_PreMarketBrief task MISSING from scheduler + bat lacked loader → Morning Call NEVER ran once; bat fixed, task recreated weekdays 8:47 AM.
+4. **INVARIANT ENCODED (the durable fix from the 8/05 memory):** CSHV scheduled_task_results — reads schtasks Last Result for 10 critical tasks; missing=FAIL, bad result=FAIL; allowlist 0/267009/267011/267014 (+"1" for CSHV itself, exits 1 by design on findings). Verified FAIL→(fixes)→OK live. Memory project_headless_claude_401_runners updated to RESOLVED.
+5. Friday loss mechanics (from engine journal): 9 shorts into a broad quiet up-grind (92.9% EOD breadth, 7% confirm) — engine registered CELL17 multi-index side-vs-tape halve (clears bar all 3 windows, +$417 on Friday's shorts) + Monday-worst-weekday finding (−$54/tr N=177).
+Files: run_intraday_triage.bat, run_review_prewarm.bat, run_weekly_builder.bat, run_premarket_brief.bat, system_health_verifier.py (scheduled_task_results), regression_suite.py (REG-62 log-pollution guard), memory x2. No watched trading file touched.
+
+---
+**TURN 2026-08-08 ~11:40 AM ET (Sat) — WEEKLY BUILDER autonomous run — 3 deferred items cleared, overdue 22→19, suite GREEN, NO watched file touched:**
+- **tune-engine-crash-resilience (DONE, review_by 8/06):** (a) `run_daily_tune_engine.bat` now RETRIES ONCE on a non-zero exit (subroutine + if-not-errorlevel, 20s wait, one retry only) — stub-tested fail→retry→success stops, always-fail runs exactly 2 attempts then logs final failure; covers the 7/31 Bun "Failed to start HTTP Client thread" panic that produced no journal + no alert. (b) CSHV `tune_engine_ran` now LOOKS BACK — asserts the most-recent prior trading day's `tune_journal/<date>.md` exists regardless of whether today is a trading day (floor 7/21); tested it FAILs on the real 7/31 hole when run at 8/01 & 8/03 (the weekend that hid it), quiet on good days/today.
+- **opex-calendar-tags (DONE, review_by 8/01):** `certified_trades.py._calendar_tags(day)` tags every round-trip with `dow` / `opex_day` (3rd-Friday monthly expiration) / `opex_week` / `quad_witch` — pure calendar math. 7/17/2026 → all 16 certified opex_day=True/dow=Fri; baseline regenerated UNCHANGED at 631/4 (additive); dow histogram Mon=177 independently matches the tune engine's MONDAY N=177 finding (cross-check). Studies can now bucket by weekday + OpEx.
+- **capture-utilization-split (DONE, review_by 8/01):** added additive `deploy_controller.book_split()` — filled (held) / working-entry (deploying) / working-exit (protective order OPPOSITE a held position, not new capital); `book_from`/`admit` UNCHANGED (no live-behavior change). `capture_utilization` records + reports the split; unit-tested offline (bucket exactness + invariant book_split.total==book_from.total); also fixed a pre-existing NameError that made `--report` dead (dc never imported). First live split row = next RTH snapshot.
+- **Gate:** regression suite 56 pass / 0 FAIL / 4 skip GREEN before+after; deploy_controller dry-run OK; CSHV module loads, tune_engine_ran OK today. Preflight's only non-governance FAILs are a transient TradeStation OAuth **503** (external infra, Saturday). Remaining overdue are owned by others / gated / need the Planning seat or live API. Files: `run_daily_tune_engine.bat`, `system_health_verifier.py` (tune_engine_ran look-back), `strategy-research/certified_trades.py`, `deploy_controller.py`, `capture_utilization.py`, `DEFERRED_WORK.yaml`. Changes are on disk + tested; left UNCOMMITTED (no commit requested; tree stays clean/green). No SIM guard, advisor-channel schema, or watched trading file touched.
+
+
+## EOD SUMMARY — 2026-08-08
+
+_Auto-generated by eod_debrief.py at 2026-08-08 4:51 PM ET · broker-truth sourced · 0 round-trip(s)_
+
+## A · DID THE SYSTEM RUN CORRECTLY TODAY?
+
+**Funnel (broker-truth + candidate log):** universe scanned ~530 -> candidates evaluated 0 -> passed in-play gate 0 -> selected 0 -> symbols FILLED 0.
+
+**Re-arm windows (multiscan_trace):**
+- (no re-arm trace entries today)
+
+**Incidents today:** 5 {'FAIL': 5}.
+**SAFE_MODE:** currently off (no engage today unless an incident above shows it)
+
+**Gate drove entries:** INCONCLUSIVE/FAIL rc=1 -- [INCONCLUSIVE] no candidate-log rows for 2026-08-08 — gate did not run / no scan yet.
+  _(NOTE: verify_gate_drove_entries validates only the 9:35 path; re-arm fills are NOT in the 9:35 SELECTED set by design, so it reports FAIL on re-arm-heavy days. The per-day gate-integrity signal is the gate_not_failing_open reliability check.)_
+
+**Broker reconciliation at close:** FLAT (0 positions, 0 working); position_recon=OK (broker and bot agree both ways (0 position(s) reconciled))
+
+## A2 · STRATEGY-RULE & IN-PLAY COMPLIANCE (did we trade to the rules?)
+
+- no closed round-trips today (nothing to check)
+
+## B · PER-TRADE LEDGER (one row per round-trip; broker-truth)
+
+| # | sym | side | occ | entry(act/intend) | slip bps | delay m | gate (RelVol·mv%·RSvSPY·$tier·mcap·win) | shares | gross$ | 0.15ATR lvl | conf | EXIT REASON/time/px | hold m | MFE | MAE | leftHold$ | gP&L | comm | netP&L | R | order IDs |
+|--|--|--|--|--|--|--|--|--|--|--|--|--|--|--|--|--|--|--|--|--|--|
+
+## C · COST & EXECUTION SUMMARY (edge-survival line)
+
+- Total commission (broker-actual): $0.00  ·  fees: $0.00
+- Commission 0.00 bps + fees 0.00 bps of $1 notional = **0.00 bps avg cost**
+- Avg entry slippage: n/a (adverse +)
+- Slippage trend (prior 10d, adverse + bps): [1.9, 1.8, 1.6, 2.0, 2.5, 1.5, 1.1, 2.4, 0.9, 1.3] · trailing avg 1.7 bps
+- no trades
+
+## D · AGGREGATE  *(context, not a verdict — building toward N>=30)*
+
+- no closed round-trips today
+
+## E · ANOMALIES & DIVERGENCES CODE FLAGGED
+
+- none flagged by code today
+
+## F · PROVENANCE / FIELD-AVAILABILITY MAP
+
+| field | source | note |
+|--|--|--|
+| symbol/side/shares/order IDs/status | BROKER-TRUTH | broker_orders_unified.csv raw_order_json |
+| actual entry/exit price + time | BROKER-TRUTH | FilledPrice/ExecutionPrice + OpenedDateTime (UTC) |
+| intended entry trigger price | LOGGED | signal_trigger_px / intended_price / StopPrice |
+| intended/submission time | LOGGED | submit_time (ET) -- proxy for arm time, not breakout-detect time |
+| entry delay / slippage bps | DERIVED | actual vs intended (above) |
+| commission (per trade) | BROKER-ACTUAL | raw_order_json CommissionFee, summed entry+exit |
+| fees (per trade) | BROKER-ACTUAL | raw_order_json UnbundledRouteFee (0 today) |
+| gross/net P&L, net R | DERIVED | from broker fills + commission; R uses 0.15xATR (9:35 only) |
+| gate ctx (RelVol/move%/RSvSPY/$tier/mcap) | LOGGED (9:35 only) | orb_candidate_log.jsonl selected names; RE-ARM names NOT in candidate log |
+| 0.15xATR protective level | DERIVED (9:35 only) | ATR from orb_daily_state entries_submitted; re-arm ATR NOT-logged |
+| confirm fired? | LOGGED (9:35 only) | bot_alerts ORB_CONFIRM_SWAP; re-arm confirm not tracked |
+| exit type (EOD vs synthetic) | DERIVED | by exit time; fine reason (candle-close vs hard-stop) NOT joined (in bot_alerts) |
+| MFE / MAE | DERIVED from 1-min bars | barcharts over hold window; NOT logged natively (REG-08 INERT without this) |
+| broker-flat + position recon | BROKER-TRUTH (asserted) | reliability_checks.fetch_truth + check_position_recon |
+
+_Never fabricated: any field above marked NOT-logged/NOT-computed is shown as such in the rows._
+
+## G — FADE vs BREAKOUT counterfactual (TUNE-01; context, NOT a verdict — building toward N)
+
+_No breakout candidates logged for the day._
+## H · CAPITAL DEPLOYMENT (by hour + idle attribution)
+
+_(no utilization snapshots for the day)_
+
+**Idle-capital attribution** (why capital sat idle vs the $400k cap; RE-ARM windows):
+- **Qualified trades refused for CAPITAL today: 0** (peak idle below cap $0; gross demand upper-bound $0 at $25k/name). _The only number that justifies raising the deploy target._
+
+- STALE-SLOT (separate; DEPLOYED-but-stuck, NOT idle): $0 in 0 red name(s) held to EOD-flatten -- a tighter exit would have freed the slot.
+- _thin-signal + self-throttle = idle (cap-deployed) per window. Thin-signal idle is CORRECT (no qualified candidate wanted it -- NOT a defect, no floor implied); self-throttle is fixable (our caps). The 9:35 path deploys first; this covers the re-arm windows in the trace._
+
+## I · LOSER ATTRIBUTION (exit-reason x confirm x side)
+
+- no closed round-trips today
+
+## TRADE AUTOPSY — 2026-08-08
+
+_READ-ONLY post-close autopsy · broker-truth sourced · 0 round-trip(s) · generated 2026-08-08 4:51 PM ET_
+
+**Reconciliation:** book NET $0.00 vs broker truth $0.00 (gross $0.00) -> MATCH
+
+### Per-round-trip ledger (one row per RT)
+
+| # | sym | side | path | entry fill | net$ | conf | early MAE 1/2/3/5m (xATR) | early MFE 1/2/3/5m (xATR) | hold m | exit reason | EODflat | rev->bleed |
+|--|--|--|--|--|--|--|--|--|--|--|--|--|
+
+### Day summary — confirmed vs unconfirmed
+
+- CONFIRMED: N=0 · net $0.00 · win None%
+- UNCONFIRMED: N=0 · net $0.00 · win None%
+- **Day net $0.00**
+
+### THE GIVEBACK LINE (3 PM -> close)
+
+- By ~3:00 PM: 0 RT completed = $0.00 (intraday peak).
+- At close: 0 RT = $0.00.
+- **Given back: $0.00** across the 0 late-closer(s) (completed after 3:00 PM, net $0.00).
+
+Per late-closer — early-reversal BLEEDER vs WINNER that gave back into the EOD flatten:
+
+| sym | side | exit | net$ | bucket |
+|--|--|--|--|--|
+
+- BLEEDER bucket sum: $0.00 (0 RT)
+- WINNER-gaveback bucket sum: $0.00 (0 RT)
+
+### LENS A — early-reversal losers
+
+- Day losers: 0 · total loser net $0.00
+- Early-reversal losers: 0 · net $0.00
+- Of those, LATE-CLOSERS (exit after 3:00 PM) in the giveback: 0 · net $0.00
+
+### LENS B — MUST-NOT-CUT: early exit at K=0.75xATR adverse-before-confirm (full book)
+
+_Pinned-bar real-time method (l1_mustnotcut_audit), K pinned at 0.75 (never tighter). EARLY-POLL CAVEAT: the live monitor is blind in the first ~5 min, so these are what an IDEAL early-poll would do, NOT what today's live bot could have fired._
+
+- **Bleeders cut: 0 · $ saved $0.00**
+- **Confirmed winners clipped: 0 · $ given up $0.00**
+- **THREE-SIDED net-of-cost: $0.00** (= saved $0.00 − winners given up $0.00)
+- coverage: 0 safe (never crossed K before confirm), 0 NOT-AVAILABLE (no pin/atr), 0 intrabar-ambiguous (counted worst-case against the leash)
+
+### LENS C — MU-class check (cluster vs one extended/gap-top trade)
+
+- no losers today
+
+### CUMULATIVE TALLY (across available days)
+
+- Days: 2026-06-18, 2026-06-22, 2026-06-23, 2026-06-24, 2026-06-25, 2026-06-26
+- Confirmed N=70 · unconfirmed N=39 · confirm-NA N=14 (progress toward N>=30 confirmed: 70/30)
+- Cumulative early-exit-at-0.75 three-sided net-of-cost: **$458.54**
+- One-trade-dominance guard: WITHOUT the single biggest trade (2026-06-25/MU (bleeder saved), $810.09): **$-351.55**
+
+| date | confirmed N | unconfirmed N | three-sided net$ |
+|--|--|--|--|
+| 2026-06-18 | 7 | 5 | $0.00 |
+| 2026-06-22 | 12 | 4 | $0.00 |
+| 2026-06-23 | 7 | 4 | $0.00 |
+| 2026-06-24 | 14 | 7 | $52.76 |
+| 2026-06-25 | 15 | 8 | $392.76 |
+| 2026-06-26 | 15 | 11 | $13.02 |
+
+### Caveats
+
+- confirm = polled flag -> segment clean-fail vs poll-near-miss (a trade can miss confirm by a hair).
+- EARLY-POLL CAVEAT: the live monitor is blind in the first ~5 min, so Lens B's early-exit numbers are "what an IDEAL early-poll would do," NOT what today's live bot could have fired -- read them as a ceiling, not a live-achievable result.
+
+_Diagnostic, in-sample. These days are in-sample for any un-promoted rule; a streak of confirming days accumulates N toward >=30 but does not promote anything -- promotion still requires a locked rule + fresh OOS forward test + the gauntlet._
+
+---
