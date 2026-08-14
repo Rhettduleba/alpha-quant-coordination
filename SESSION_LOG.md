@@ -2,6 +2,10 @@
 
 > # ⭐ CURRENT STATE — 2026-06-27 ~7:25 AM ET (READ FIRST — full cold-start brief: `HANDOFF_2026-06-26_RAMP-UP.md`)
 >
+> **[ALERT TRIAGE 2026-08-14 ~10:38 AM ET — autonomous intraday run — **NO PAGE SENT (silence = handled)**. Nothing new; the only actionable item is the SAME two chronic CSHV Governance FAILs, already paged ~26 min ago.]** Three feeds. (1) `code_alert_inbox.py --json` = **1 total / 1 actionable / 1 CRITICAL** — the recurring "CSHV 2 FAIL" rollup (`deferred_work_overdue` + `scheduled_task_results`, first/last_ts 10:10:13 ET); cursor acked (1 processed). (2) **`bot_alerts.jsonl` scanned DIRECTLY** (blind-spot rule; live path `C:\AlphaQuant\bot_alerts.jsonl`): last 2h = **39 rows, ALL severity=INFO, 0 WARN / 0 FAIL** — normal active trading (20× `ORB_V16_ENTRY_OK` + 14× `ORB_SL_OK` stop-arms paired, + the gated 9:35 scan); 0 auth failures, 0 rejections. (3) CSHV 10:35:13 = **OK=53 / WARN=1 / FAIL=2**. **THE TWO FAILS — both known, neither new, neither a trading risk:** (a) `deferred_work_overdue` = **20** items (oldest `atr-disk-cache` due 8/01), escalated 8/05, awaiting Rhett; (b) `scheduled_task_results` = `AlphaQuant_PreopenReadiness=1`, the known benign week-old `chain_audit` L2 `<250-distinct-name` post-close false-BREAK, Bucket-B fix already in Rhett's inbox (freeze). `cshv_fail_paged.json` = both names, ts **1786716613 (~10:10 ET, 26 min ago)** → per one-page-per-finding, **did not re-page**. WARN `pre_open_gate_ran` NO-GO is the downstream relay; bot NOT held (`SAFE_MODE_ENFORCE=off`→shadow). **Bot verified healthy NOW (broker truth first):** heartbeat alive=true, **loop 13798** (pid 6564 stable), last_seen 10:37:27 fresh; SAFE_MODE off (auto-cleared 06:05:04); CSHV `rel_position_recon` clean both ways + `rel_exit_side` protected + auth 2/2 + 11 RT reconcile to broker truth (NET $343.28). **DISCIPLINE:** read-only apart from this line + the cursor ack — edited/committed to source: nothing; placed/cancelled/modified orders: nothing; touched watched files or run_bot/watchdog: nothing (forward-test freeze). ET stamp from canonical `et_now.py` (**2026-08-14 ~10:38 AM ET**).
+>
+> **[DAILY TUNE ENGINE 2026-08-13 ~6:0X PM ET — autonomous nightly run — ✅ COMPLETE. SECOND straight green on a CHOP-tag tape; both ideas CLOSED, nothing promoted, no live behavior changed.]** Studied all 16 broker-truth round-trips (NET **+$390.03**, 10W/6L, reconciles MATCH). **Market read: TAG CHOP** (SPY +0.70% but no range expansion, 0.74× = **7th straight contraction**) yet net GREEN on a broad grind-up (all 3 indices up, QQQ +1.16% led, breadth 93.8%) — the confirm law won on MAGNITUDE again (**7 confirmed candle-closes +$687.10 / 100% win** vs 8 unconfirmed 30m-time-stops −$292.42; tail-free, largest loss NEM −$177). Day split by SIDE: LONG book **+$579.50** rode the up-tape, SHORT book **−$189.46** fought it — but CELL17 was INERT (open gaps <0.4% despite the up close). **Prediction grades:** stream A (evening) **reclaimed the P&L SIGN** (called mildly-positive ~+$150, got +$390) after two losses to stream B; stream B's specific-risk "tech goes flat/stale-tilt" graded **WRONG** — it built the thesis on QQQ +0.03% at 8:49 AM (19 min of thin pre-open tape) and QQQ closed +1.16%, the day's leader (→ LESSON #11: don't over-read thin pre-open leadership). **Two ideas** on the 709-trade certified baseline (diversity: 1 side-vs-tape veto + 1 costs), **BOTH CLOSED:** Idea 1 (lower CELL17 gap threshold to 0.25) — would catch today but the incremental fires it adds are 61.7% WINNERS (FF5-fails 0.588/0.578/0.613), the proxy can't be fixed by sensitivity (→ LESSON #21); Idea 2 (≥$200 high-priced cohort halve, LESSON #6's biggest-$-bleed) — FULL −$5,777 but FF5-fails 0.754 and RECENT REVERSED to +$899, cost/price-alone stays exhausted (→ LESSON #6). **The night's repeated finding:** SECOND straight green-leaning day the whole property-keyed halve family inverted (CELL13 −$119, CELL15 −$207, CELL14 −$77, FF5 −$412) → LESSON #4 hardened. CELL8 cushion-harvest RECOVERED to +$32 (2nd green point after 8/12's −$110). **Promotion:** none at the bar — CELL1 dropped to 6/10 after today's −$328. Red-team (rotation → live deep-run halve CELL3): intact, cum +$1,267, recent-5 +$206, 0 winners cut today. LESSONS.md: 6 edits (#1/#4/#6/#11/#21/#22). Certified→709 (+16, all clean); ledger 27 days; registry→87. **Day ended NON-CLEAN but NOT a trading defect** — the CSHV FAILs are the standing governance backlog (deferred_work_overdue 20 items + AlphaQuant_PreopenReadiness=1, the downstream relay) = the Saturday WeeklyBuilder's job, NOT the tune engine's to fake-clear (Standing Rule #0); bot ran 16/16 compliant, broker-FLAT, recon OK. 4:50 chain verified complete + reconciles to broker truth exactly (+$390.04). Nothing re-dated; nothing new deferred. **Tomorrow 8/14 (Friday, NOT OpEx):** lean CHOP-to-mild-GREEN on the grind-up coil (P(8th contraction) ~50%), P&L −$700…+$900 ~+$200, watch whether near-52w-high longs keep winning (extension cells mis-firing on grind-ups). **No live behavior changed; SIM-only guards + one-way advisor channel + typed schema untouched; no flag flipped; no deploy.** Journal: `outputs/tune_journal/2026-08-13.md`; report: `tune_ideas_2026-08-13.json`; ctx: `market_context/2026-08-13.json`. ET from `et_now.py`.
+>
 > **[ALERT TRIAGE 2026-08-13 ~12:42 PM ET — autonomous intraday run — **NO PAGE SENT (silence = handled)**. Nothing new; same two chronic CSHV Governance FAILs (already paged 03:55 ET), and today's added L5 `will-fail` verified benign against broker truth.]** Three feeds. (1) `code_alert_inbox.py --json` = **0 total / 0 actionable** (cursor already current). (2) **`bot_alerts.jsonl` scanned DIRECTLY** (blind-spot rule; live path `C:\AlphaQuant\bot_alerts.jsonl`): last 2h = **10 rows, ALL severity=INFO, 0 WARN / 0 FAIL** (normal `ORB_V16_ENTRY_OK`; all-time taxonomy has FAIL rows but **0 in-window**). (3) CSHV 12:35:15 = **OK=53 / WARN=1 / FAIL=2** — the SAME two: `deferred_work_overdue` (20 items, oldest `atr-disk-cache` due 8/01, escalated 8/05, awaiting Rhett) + `scheduled_task_results` (`AlphaQuant_PreopenReadiness=1`). **Ran `preopen_readiness.py` live to root-cause the exit-1 (NOT an encoding crash — clean exit 1, 0 stderr):** today's verdict is **NOT READY — 2 will-fail** = (a) CHAIN L2 coverage (the known post-close `<250-distinct-name` false-BREAK class, already Bucket-B-proposed to Rhett) + (b) **NEW today: CHAIN L5 = "30 ORB orders; 1 REJECTED — SNDK: Invalid Stop Price - Stop Price must be above current market."** **Verified against broker truth (`broker_orders_unified.csv`, highest available source):** the rejected SNDK order is a **BUY entry** stop, `status=REJECTED`, **`quantity=0`** — no fill, **no position created, no protection gap**; the day's other SNDK orders are clean BUY/SELL FILLED round-trips (15/15, 14/14). This is the benign single-order "buy-stop already through market at submit" class, **not** an exit/stop-protection reject and **not** a rejection burst (1 of 30). `cshv_fail_paged.json` = both names, ts 03:55 ET → per one-page-per-finding, **did not re-page**. WARN `pre_open_gate_ran` NO-GO is the downstream relay of the two FAILs; bot NOT held (`SAFE_MODE_ENFORCE=off`→shadow). **Bot verified healthy NOW (broker truth first):** heartbeat alive=true, **loop 10115** climbing (10096→10115), pid 6564 stable, last_seen 12:41:53 fresh; **2 open positions — `rel_position_recon` clean both ways, `rel_exit_side` both protected**; SAFE_MODE off; no rejections/scan-halts in last 30 min; auth 2/2; 9 RT reconcile to broker truth (NET $330.41). **DISCIPLINE:** read-only apart from this line — edited/committed to source: nothing; placed/cancelled/modified orders: nothing; touched watched files or run_bot/watchdog: nothing (forward-test freeze). Ran `preopen_readiness.py` (read-only diagnostic) once. ET stamp from canonical `et_now.py` (**2026-08-13 ~12:42 PM ET**).
 >
 > **[ALERT TRIAGE 2026-08-13 ~9:37 AM ET — autonomous intraday run — **NO PAGE SENT (silence = handled)**. Nothing new; both CSHV FAILs are the same two chronic governance items, already escalated + already paged 03:55 ET.]** Three feeds. (1) `code_alert_inbox.py --json` = **4 total / 4 actionable / 4 CRITICAL** in 2 groups, all rollups of the SAME two CSHV Governance FAILs ("CSHV 2 FAIL" ×3 + the 8AM audit-gate NOT-GREEN, itself just the CSHV rollup); cursor acked (4 processed). (2) **`bot_alerts.jsonl` scanned DIRECTLY** (blind-spot rule; live path `C:\AlphaQuant\bot_alerts.jsonl`): last 2h = **5 rows, ALL severity=INFO, 0 WARN / 0 FAIL** — the expected 9:35 gated scan (`ORB_SCAN_DONE submitted=0 candidates=77 … 9:35 path intentionally gated -- expected`), 0 auth failures. (3) CSHV 09:35:13 = **OK=53 / WARN=1 / FAIL=2**. **THE TWO FAILS — both known, neither new, neither a trading risk.** (a) `deferred_work_overdue` = 20 items (oldest `atr-disk-cache` due 8/01), escalated 8/05, 4 `gated_rhett`, awaiting Rhett. (b) `scheduled_task_results` = `AlphaQuant_PreopenReadiness=1` — the benign week-old `chain_audit` L2 `<250-distinct-name` post-close false-BREAK (8/12 16:20 run: "101 names evaluated at open; 47 candidate-rows relvol>=1.5"); the 09:00 run returns PLUMBING GO (0 will-fail), only the post-close 16:20 task RED's by construction. Bucket-B fix already in Rhett's inbox (freeze). WARN `pre_open_gate_ran` NO-GO is the downstream relay of these two; bot NOT held (`SAFE_MODE_ENFORCE=off`→shadow). `cshv_fail_paged.json` = both names, ts 03:55 ET → per one-page-per-finding, **did not re-page**. **Bot verified healthy NOW (broker truth first):** heartbeat alive=true, **loop 9611** climbing, pid 6564 stable, last_seen 09:40:32 fresh; **0 open positions** (`rel_position_recon` clean both ways), SAFE_MODE off, no rejections, no scan-failure halts, auth 2/2. **DISCIPLINE:** read-only apart from this line + the cursor ack — edited/committed to source: nothing; placed/cancelled/modified orders: nothing; touched watched files or run_bot/watchdog: nothing (forward-test freeze). ET stamp from canonical `et_now.py` (**2026-08-13 ~9:37 AM ET**).
@@ -16674,6 +16678,8 @@ _Diagnostic, in-sample. These days are in-sample for any un-promoted rule; a str
 
 - **[ALERT TRIAGE 2026-08-13 ~10:40 AM ET — scheduled autonomous run — NO PAGE (both FAILs known/benign, no trading risk).]** Inbox: 1 CRITICAL group (`CSHV 2 FAIL check(s)`, 09:55). CSHV 10:35 run = OK=53 WARN=1 FAIL=2 INFO=1 SKIP=2; both FAILs Governance. **bot_alerts.jsonl scanned DIRECTLY** (7/16 blind-spot rule): last 2h = 25 rows, ALL INFO, 0 FAIL/WARN/ERROR. Trading system verified HEALTHY via broker-truth checks: rel_position_recon agrees both ways (1 pos), rel_exit_side all protected, rel_safe_mode_not_stuck off, phantom-book $78,986==$78,986, heartbeat 6s, bot cycling loop 9763 (entered EOG short 10:35). **FAIL #1 `deferred_work_overdue`** (20 items past review-by, oldest atr-disk-cache 8/01) = the SAME governance backlog under the 7/28 standing-suppression rule (L12625: do NOT re-page unless a NEW non-governance FAIL appears or a trading check flips) → SILENT, Bucket A. **FAIL #2 `scheduled_task_results = AlphaQuant_PreopenReadiness=1`** = a FALSE-FAIL, diagnosed: the CSHV `PER_TASK_OK` allowlist (system_health_verifier.py:2338) covers `AlphaQuant_PreOpenGate:{"1"}` but NOT `AlphaQuant_PreopenReadiness`, whose **4:20 PM post-close** daily run exits 1 by design (its lone [RED] is the `CHAIN L2 coverage+movers` post-close audit artifact — evaluating the day that already happened); the **09:00 pre-open** run — the one that matters — is `PLUMBING GO / 0 will-fail / exit 0` every day (8/11,8/12,8/13 verified in preopen_readiness.log). The pre-open gate NO-GO does NOT hold the bot (SAFE_MODE_ENFORCE=off→shadow, trades anyway by design). **PROPOSED FIX for the next interactive/builder session (not a page, non-watched, non-trading, forward-test freeze → NOT auto-applied):** add `"AlphaQuant_PreopenReadiness": {"1"}` to `PER_TASK_OK` in system_health_verifier.py:2338 (same class as the 8/08 PreOpenGate allowlist entry), which clears FAIL #2 at source. Per freeze + watched-files: this run edited/committed to source / placed / cancelled / restarted NOTHING — read-only throughout. ET from canonical et_now.py. No Rhett ping (silence = handled). Inbox --ack'd. — autonomous intraday triage
 
+- **[ALERT TRIAGE 2026-08-14 ~9:37 AM ET — scheduled autonomous run — NO PAGE (recurrence of the same two known-benign governance FAILs; no trading risk).]** Inbox: 5 CRITICAL alerts / 3 groups, all downstream of CSHV FAIL=2 (`CSHV 2 FAIL`, `CSHV 3 FAIL`=yesterday's 4 PM `clean_day_certified` incident now back to INFO/clean, `8AM AUDIT GATE NOT GREEN`). CSHV 09:35 run = OK=53 WARN=1 FAIL=2 INFO=1 SKIP=2. **bot_alerts.jsonl scanned DIRECTLY** (7/16 blind-spot rule): last 2h = 5 rows, ALL INFO, 0 FAIL/WARN/ERROR (bot mid 9:35 ORB scan, gated by design). Trading system verified HEALTHY via broker-truth: rel_position_recon agrees both ways (0 pos), rel_exit_side 0 open, rel_safe_mode_not_stuck off, phantom-book $0==$0, heartbeat 18s, bot cycling loop 13625. **FAIL #1 `deferred_work_overdue`** (20 items past review-by, oldest atr-disk-cache 8/01) = SAME governance backlog under the 7/28 standing-suppression rule (L12625) → SILENT, Bucket A. **FAIL #2 `scheduled_task_results = AlphaQuant_PreopenReadiness=1`** = the diagnosed FALSE-FAIL (4:20 PM post-close run exits 1 by design; the 09:00 pre-open run is PLUMBING GO/exit 0 and does NOT hold the bot — SAFE_MODE_ENFORCE=off→shadow) — verified against preopen_readiness.log (8/13 4:20 PM run = "PLUMBING GO — 59 checks, 0 will-fail"). Recorded fix (add `"AlphaQuant_PreopenReadiness":{"1"}` to `PER_TASK_OK` in system_health_verifier.py:2338) remains DEFERRED to a builder session per the forward-test freeze → NOT auto-applied. No NEW non-governance FAIL, no trading check flipped, nothing novel. Per freeze + watched-files: read-only throughout — edited/committed to source / placed / cancelled / restarted NOTHING. ET from canonical et_now.py. No Rhett ping (silence = handled). Inbox --ack'd. — autonomous intraday triage
+
 
 ## EOD SUMMARY — 2026-08-13
 
@@ -16935,6 +16941,305 @@ _Pinned-bar real-time method (l1_mustnotcut_audit), K pinned at 0.75 (never tigh
 - Top loser: NEM short $-176.61 = 35.5% of the day's loss $-498.16 (scan_move -2.55%)
 - Gap-tops (|scan_move| >= 12.0%) among losers: 0
 - **CLUSTER: the loss is spread across 6 losers (top NEM only 35.5%); not a single MU-class trade.**
+
+### CUMULATIVE TALLY (across available days)
+
+- Days: 2026-06-18, 2026-06-22, 2026-06-23, 2026-06-24, 2026-06-25, 2026-06-26
+- Confirmed N=70 · unconfirmed N=39 · confirm-NA N=14 (progress toward N>=30 confirmed: 70/30)
+- Cumulative early-exit-at-0.75 three-sided net-of-cost: **$458.54**
+- One-trade-dominance guard: WITHOUT the single biggest trade (2026-06-25/MU (bleeder saved), $810.09): **$-351.55**
+
+| date | confirmed N | unconfirmed N | three-sided net$ |
+|--|--|--|--|
+| 2026-06-18 | 7 | 5 | $0.00 |
+| 2026-06-22 | 12 | 4 | $0.00 |
+| 2026-06-23 | 7 | 4 | $0.00 |
+| 2026-06-24 | 14 | 7 | $52.76 |
+| 2026-06-25 | 15 | 8 | $392.76 |
+| 2026-06-26 | 15 | 11 | $13.02 |
+
+### Caveats
+
+- confirm = polled flag -> segment clean-fail vs poll-near-miss (a trade can miss confirm by a hair).
+- EARLY-POLL CAVEAT: the live monitor is blind in the first ~5 min, so Lens B's early-exit numbers are "what an IDEAL early-poll would do," NOT what today's live bot could have fired -- read them as a ceiling, not a live-achievable result.
+
+_Diagnostic, in-sample. These days are in-sample for any un-promoted rule; a streak of confirming days accumulates N toward >=30 but does not promote anything -- promotion still requires a locked rule + fresh OOS forward test + the gauntlet._
+
+---
+
+
+## EOD SUMMARY — 2026-08-14
+
+_Auto-generated by eod_debrief.py at 2026-08-14 4:50 PM ET · broker-truth sourced · 23 round-trip(s)_
+
+## A · DID THE SYSTEM RUN CORRECTLY TODAY?
+
+**Funnel (broker-truth + candidate log):** universe scanned ~530 -> candidates evaluated 97 -> passed in-play gate 8 -> selected 43 -> symbols FILLED 23.
+
+**Re-arm windows (multiscan_trace):**
+- 9:45 AM: armed 3, refused 0
+- 9:45 AM: armed 3, refused 0
+- 9:45 AM: armed 13, refused 0
+- 10:35 AM: armed 7, refused 6 ({'reentry_capped': 6})
+- 11:35 AM: armed 1, refused 13 ({'reentry_capped': 13})
+- 12:35 PM: armed 3, refused 13 ({'reentry_capped': 12, 'already_held_or_working': 1})
+- 1:35 PM: armed 2, refused 13 ({'reentry_capped': 12, 'already_held_or_working': 1})
+- 2:35 PM: armed 0, refused 13 ({'reentry_capped': 11, 'already_held_or_working': 2})
+
+**Incidents today:** 6 {'FAIL': 6}.
+**SAFE_MODE:** currently off (no engage today unless an incident above shows it)
+
+**Gate drove entries:** INCONCLUSIVE/FAIL rc=1 -- VERDICT: FAIL — gate_enforced is False; gate ran in SHADOW. Set ORB_INPLAY_GATE=True.
+  _(NOTE: verify_gate_drove_entries validates only the 9:35 path; re-arm fills are NOT in the 9:35 SELECTED set by design, so it reports FAIL on re-arm-heavy days. The per-day gate-integrity signal is the gate_not_failing_open reliability check.)_
+
+**Broker reconciliation at close:** FLAT (0 positions, 0 working); position_recon=OK (broker and bot agree both ways (0 position(s) reconciled))
+
+## A2 · STRATEGY-RULE & IN-PLAY COMPLIANCE (did we trade to the rules?)
+
+- **Q1 — Did the bot trade exactly to the strategy rules on every trade?**  **YES**  (23/23 trades compliant)
+- **Q2 — Did the bot trade the in-play-identified symbols?**  **YES**  (23/23 in the in-play list)
+- Context: 23/23 entries came from RE-ARM windows, which are UNGATED by the in-play gate by design (re-arm/fresh-breakout path) -- counted as in-play because they were on the armed list, but they did not have to clear the 9:35 RelVol/move thresholds.
+- Exit-rule breakdown: EXIT_TIME_STOP_UNCONFIRMED×15, EXIT_CANDLE_CLOSE_TRAIL×8
+
+## B · PER-TRADE LEDGER (one row per round-trip; broker-truth)
+
+| # | sym | side | occ | entry(act/intend) | slip bps | delay m | gate (RelVol·mv%·RSvSPY·$tier·mcap·win) | shares | gross$ | 0.15ATR lvl | conf | EXIT REASON/time/px | hold m | MFE | MAE | leftHold$ | gP&L | comm | netP&L | R | order IDs |
+|--|--|--|--|--|--|--|--|--|--|--|--|--|--|--|--|--|--|--|--|--|--|
+| 1 | SNDK | BUY | 1 | 1625.72/1625.00 | 4 | 0.0 | 2.9·6.1%·6.0%·LARGE_DVOL·mega·0945 | 12 | 19,509 | 1603.99 | no | candle-close/10:09AM/1646.68 | 24 | 41.47 | 25.01 | -56 | 251.52 | 2.00 | 249.52 | 0.10 | 967263210/967278997 |
+| 2 | TSN | BUY | 1 | 58.20/58.23 | -5 | 0.0 | 2.8·3.1%·3.0%·SMALL_DVOL·large·0945 | 343 | 19,963 | 57.95 | no | 30m-time-stop/10:20AM/58.36 | 36 | 0.30 | 0.34 | -62 | 54.88 | 6.86 | 48.02 | 0.06 | 967263223/967286660 |
+| 3 | TSLA | BUY | 1 | 347.80/347.80 | 0 | 0.0 | 2.0·2.3%·2.2%·LARGE_DVOL·mega·0945 | 56 | 19,477 | 346.21 | no | candle-close/9:59AM/349.33 | 14 | 2.55 | 2.21 | -395 | 85.68 | 2.00 | 83.68 | 0.10 | 967263229/967272499 |
+| 4 | CPRT | BUY | 1 | 30.42/30.40 | 7 | 0.0 | 1.9·2.9%·2.8%·SMALL_DVOL·large·0945 | 328 | 9,978 | 30.28 | no | candle-close/10:21AM/30.72 | 36 | 0.52 | 0.23 | 292 | 98.40 | 6.56 | 91.84 | 0.22 | 967263254/967286915 |
+| 5 | MSTR | SELLSHORT | 1 | 93.66/93.70 | 4 | 0.0 | 1.8·-3.0%·-3.1%·MID_DVOL·large·0945 | 212 | 19,856 | 94.39 | no | candle-close/10:05AM/93.03 | 20 | 0.94 | 0.65 | -6 | 133.56 | 4.24 | 129.32 | 0.09 | 967263268/967276759 |
+| 6 | AMD | BUY | 1 | 496.96/496.81 | 3 | 0.0 | 1.8·2.6%·2.5%·LARGE_DVOL·mega·0945 | 40 | 19,878 | 492.81 | no | candle-close/9:54AM/498.09 | 9 | 4.48 | 3.75 | 658 | 45.20 | 2.00 | 43.20 | 0.03 | 967263295/967269993 |
+| 7 | F | BUY | 1 | 14.17/14.17 | 0 | 0.0 | 2.1·1.6%·1.5%·SMALL_DVOL·large·0945 | 1411 | 19,994 | 14.10 | no | 30m-time-stop/10:22AM/14.17 | 37 | 0.07 | 0.06 | 282 | 0.00 | 20.93 | -20.93 | -0.02 | 967263290/967287759 |
+| 8 | VST | BUY | 1 | 149.81/149.77 | 2 | 0.0 | 2.1·1.9%·1.8%·SMALL_DVOL·large·0945 | 133 | 19,924 | 148.82 | no | 30m-time-stop/10:32AM/148.37 | 47 | 0.37 | 2.18 | -31 | -191.07 | 2.66 | -193.73 | -0.16 | 967263280/967294274 |
+| 9 | FCX | SELLSHORT | 1 | 66.59/66.61 | 3 | 0.0 | 1.8·-0.1%·-0.2%·SMALL_DVOL·large·0945 | 300 | 19,977 | 66.93 | no | 30m-time-stop/10:15AM/67.06 | 31 | 0.21 | 0.70 | 171 | -141.00 | 6.00 | -147.00 | -0.15 | 967263314/967282865 |
+| 10 | NOW | SELLSHORT | 1 | 123.70/123.73 | 2 | 0.0 | 1.1·-2.7%·-2.8%·MID_DVOL·large·0945 | 160 | 19,792 | 124.59 | no | candle-close/9:54AM/123.23 | 9 | 1.26 | 0.43 | -128 | 75.20 | 3.20 | 72.00 | 0.05 | 967263328/967269951 |
+| 11 | INTU | SELLSHORT | 1 | 349.51/349.54 | 1 | 0.0 | 1.3·-2.1%·-2.1%·MID_DVOL·large·0945 | 28 | 9,786 | 351.47 | no | candle-close/9:58AM/349.89 | 13 | 1.99 | 3.10 | 116 | -10.64 | 2.00 | -12.64 | -0.02 | 967263318/967271971 |
+| 12 | LITE | BUY | 1 | 939.29/939.15 | 1 | 0.0 | 1.6·6.3%·6.4%·LARGE_DVOL·large·1035 | 21 | 19,725 | 927.63 | no | 30m-time-stop/11:06AM/933.93 | 31 | 7.71 | 7.24 | -164 | -112.56 | 2.00 | -114.56 | -0.05 | 967296108/967310413 |
+| 13 | AVGO | SELLSHORT | 1 | 396.22/396.25 | 1 | 0.0 | 2.3·-4.8%·-4.6%·LARGE_DVOL·mega·1035 | 25 | 9,906 | 398.43 | no | candle-close/11:28AM/393.66 | 53 | 3.42 | 3.25 | 15 | 64.00 | 2.00 | 62.00 | 0.12 | 967296106/967319708 |
+| 14 | GLW | BUY | 1 | 166.00/165.98 | 1 | 0.0 | 1.5·4.4%·4.6%·LARGE_DVOL·large·1035 | 120 | 19,920 | 164.57 | no | 30m-time-stop/11:06AM/165.06 | 31 | 1.09 | 1.03 | 102 | -112.80 | 2.40 | -115.20 | -0.07 | 967296111/967310387 |
+| 15 | CTSH | SELLSHORT | 1 | 58.66/58.67 | 2 | 0.0 | 1.6·-1.1%·-0.9%·MID_DVOL·large·1035 | 340 | 19,944 | 59.06 | no | 30m-time-stop/11:06AM/58.96 | 31 | 0.04 | 0.38 | 51 | -102.00 | 6.80 | -108.80 | -0.08 | 967296121/967310359 |
+| 16 | STX | BUY | 1 | 960.38/959.99 | 4 | 0.0 | 1.3·4.0%·4.1%·LARGE_DVOL·mega·1035 | 20 | 19,208 | 950.26 | no | 30m-time-stop/11:13AM/958.82 | 38 | 9.14 | 9.19 | 298 | -31.10 | 2.00 | -33.10 | -0.02 | 967296118/967313452 |
+| 17 | CRWD | SELLSHORT | 1 | 219.68/219.70 | 1 | 0.0 | 1.3·-2.5%·-2.4%·MID_DVOL·large·1035 | 45 | 9,886 | 220.97 | no | 30m-time-stop/11:09AM/219.45 | 34 | 0.82 | 1.12 | 114 | 10.35 | 2.00 | 8.35 | 0.02 | 967296124/967312120 |
+| 18 | COIN | SELLSHORT | 1 | 148.40/148.42 | 1 | 0.0 | 0.9·-3.2%·-3.1%·MID_DVOL·large·1035 | 134 | 19,886 | 149.60 | no | 30m-time-stop/11:25AM/149.01 | 50 | 0.29 | 1.07 | 66 | -81.74 | 2.68 | -84.42 | -0.06 | 967296131/967318457 |
+| 19 | RIVN | SELLSHORT | 1 | 15.50/15.50 | -0 | 0.0 | 1.3·-1.9%·-1.6%·SMALL_DVOL·large·1135 | 645 | 9,998 | 15.61 | no | 30m-time-stop/3:30PM/15.51 | 235 | 0.03 | 0.15 | 90 | -6.45 | 11.74 | -18.19 | -0.03 | 967323138/967378406 |
+| 20 | UAL | SELLSHORT | 1 | 125.28/125.33 | 4 | 0.0 | 1.7·-0.4%·-0.3%·MID_DVOL·large·1235 | 79 | 9,897 | 125.86 | no | 30m-time-stop/1:14PM/124.85 | 40 | 0.68 | 0.54 | -41 | 33.97 | 2.00 | 31.97 | 0.08 | 967343315/967351604 |
+| 21 | CIEN | SELLSHORT | 1 | 425.00/424.96 | -1 | 0.0 | 0.8·-4.0%·-3.8%·LARGE_DVOL·large·1235 | 23 | 9,775 | 429.09 | no | 30m-time-stop/1:09PM/423.62 | 35 | 1.74 | 1.63 | -116 | 31.74 | 2.00 | 29.74 | 0.03 | 967343316/967350552 |
+| 22 | NCLH | SELLSHORT | 1 | 19.07/19.07 | -0 | 0.0 | 0.9·-2.4%·-2.1%·MID_DVOL·mid·1335 | 524 | 9,993 | 19.18 | no | 30m-time-stop/2:06PM/19.04 | 31 | 0.11 | 0.01 | 16 | 15.72 | 10.29 | 5.43 | 0.01 | 967355068/967361029 |
+| 23 | HAL | BUY | 1 | 34.49/34.49 | 0 | 0.0 | 0.9·4.8%·5.1%·MID_DVOL·large·1335 | 144 | 4,967 | 34.36 | no | 30m-time-stop/3:23PM/34.49 | 108 | 0.03 | 0.21 | -10 | 0.00 | 2.88 | -2.88 | -0.02 | 967355067/967377027 |
+
+## C · COST & EXECUTION SUMMARY (edge-survival line)
+
+- Total commission (broker-actual): $107.24  ·  fees: $0.00
+- Commission 2.97 bps + fees 0.00 bps of $361,236 notional = **2.97 bps avg cost**
+- Avg entry slippage: 1.6 bps (adverse +)
+- Slippage trend (prior 10d, adverse + bps): [2.5, 1.5, 1.1, 2.4, 0.9, 1.3, 2.1, 1.2, 1.0, 2.1] · trailing avg 1.6 bps · today 1.6 (in line vs trailing)
+- Per-trade avg cost: $4.66 (23 round-trips)
+
+## D · AGGREGATE  *(context, not a verdict — building toward N>=30)*
+
+- N=23 · win rate 52% (12W/11L)
+- GROSS day P&L $110.86 · **NET day P&L $3.62**
+- Gross expectancy $4.82/trade · Net expectancy $0.16/trade
+- Net profit factor 1.00
+- Avg win $71.26 · avg loss $-77.40
+- Largest win $249.52 · largest loss $-193.73
+- Long/short split: 11L / 12S
+
+- **Confirmation** (favorable MFE vs 0.15xATR14, fixed 30-min window · cross-day-consistent, incl re-arm): **7/23 confirmed within 30 min** (30%) · 10/23 ever-in-hold · gap 3 = trades the 30-min time-stop cut before they confirmed
+
+
+**Split — context, not a verdict; building toward N>=30 per bucket:**
+- PATH 9:35-gated:  N=11 · win 64% · net $343 ($31/trade, 17.3 bps)
+- PATH re-arm:      N=12 · win 42% · net $-340 ($-28/trade, -20.8 bps)
+- OCC 1st-entry:    N=23 · win 52% · net $4 ($0/trade, 0.1 bps)
+- OCC re-entry(2+): N=0
+- RECONCILE: path sum $3.62 + occ sum $3.62 == day net $3.62 -> OK
+
+- Capital utilization: PEAK deployed: $296,318  (78.0% of $380,000 target)  at 09:56 (8 pos + 9 working)
+
+## E · ANOMALIES & DIVERGENCES CODE FLAGGED
+
+- 2 'Invalid Stop Price' reject(s) (stale-level race; broker refused a chase): ['S', 'MU']
+- AMD: peak $663 post-exit / held-to-EOD $658 -- see PROP-EXIT-FALSE-STOPOUT
+- STX: peak $423 post-exit / held-to-EOD $298 -- see PROP-EXIT-FALSE-STOPOUT
+- F: peak $381 post-exit / held-to-EOD $282 -- see PROP-EXIT-FALSE-STOPOUT
+- CPRT: peak $335 post-exit / held-to-EOD $292 -- see PROP-EXIT-FALSE-STOPOUT
+- MSTR: peak $288 post-exit / held-to-EOD $-6 -- but reverted by EOD (transient peak tick, NOT a real edge loss)
+- marginability shadow: 23 armed names all STOCK/no-restrictions -> 4x assumption held (broker is the per-symbol authority; SHADOW, before-live gate OFF)
+
+## F · PROVENANCE / FIELD-AVAILABILITY MAP
+
+| field | source | note |
+|--|--|--|
+| symbol/side/shares/order IDs/status | BROKER-TRUTH | broker_orders_unified.csv raw_order_json |
+| actual entry/exit price + time | BROKER-TRUTH | FilledPrice/ExecutionPrice + OpenedDateTime (UTC) |
+| intended entry trigger price | LOGGED | signal_trigger_px / intended_price / StopPrice |
+| intended/submission time | LOGGED | submit_time (ET) -- proxy for arm time, not breakout-detect time |
+| entry delay / slippage bps | DERIVED | actual vs intended (above) |
+| commission (per trade) | BROKER-ACTUAL | raw_order_json CommissionFee, summed entry+exit |
+| fees (per trade) | BROKER-ACTUAL | raw_order_json UnbundledRouteFee (0 today) |
+| gross/net P&L, net R | DERIVED | from broker fills + commission; R uses 0.15xATR (9:35 only) |
+| gate ctx (RelVol/move%/RSvSPY/$tier/mcap) | LOGGED (9:35 only) | orb_candidate_log.jsonl selected names; RE-ARM names NOT in candidate log |
+| 0.15xATR protective level | DERIVED (9:35 only) | ATR from orb_daily_state entries_submitted; re-arm ATR NOT-logged |
+| confirm fired? | LOGGED (9:35 only) | bot_alerts ORB_CONFIRM_SWAP; re-arm confirm not tracked |
+| exit type (EOD vs synthetic) | DERIVED | by exit time; fine reason (candle-close vs hard-stop) NOT joined (in bot_alerts) |
+| MFE / MAE | DERIVED from 1-min bars | barcharts over hold window; NOT logged natively (REG-08 INERT without this) |
+| broker-flat + position recon | BROKER-TRUTH (asserted) | reliability_checks.fetch_truth + check_position_recon |
+
+_Never fabricated: any field above marked NOT-logged/NOT-computed is shown as such in the rows._
+
+## G — FADE vs BREAKOUT counterfactual (TUNE-01; context, NOT a verdict — building toward N)
+
+_N=43 candidates today (deduped by symbol) -> fade_breakout_log.jsonl (append-only, OOS accumulation). R = signed move in the breakout direction / ATR; fade_R = -breakout_R. context, NOT a verdict -- building toward a permutation test._
+
+- @EOD: mean breakout_R = 0.003; breakout won (R>0) 22/43 (if breakout_R<0 the FADE would have paid).
+- by cap bucket (mean breakout_R @EOD): large=-0.0 (n34), mega=-0.06 (n7), mid=0.31 (n2)
+## H · CAPITAL DEPLOYMENT (by hour + idle attribution)
+
+**Deployed book by hour (peak; filled positions + working orders):**
+
+| hour | deployed | % of $400k cap | pos+working |
+|--|--|--|--|
+| 9AM | $296,318 | 74% | 8+9 |
+| 10AM | $227,064 | 57% | 6+7 |
+| 11AM | $20,231 | 5% | 1+1 |
+| 12PM | $55,211 | 14% | 2+4 |
+| 1PM | $40,384 | 10% | 1+4 |
+| 2PM | $24,715 | 6% | 1+3 |
+| 3PM | $25,465 | 6% | 1+2 |
+
+**Idle-capital attribution** (why capital sat idle vs the $400k cap; RE-ARM windows):
+- **Qualified trades refused for CAPITAL today: 0** (peak idle below cap $390,002; gross demand upper-bound $0 at $25k/name). _The only number that justifies raising the deploy target._
+
+| window | deployed | idle vs cap | thin-signal | self-throttle | refused cap/slot/reentry |
+|--|--|--|--|--|--|
+| 0945 | $237,561 | $162,439 | $162,439 | $0 | 0/0/0 |
+| 1035 | $118,468 | $281,532 | $131,532 | $150,000 | 0/0/6 |
+| 1135 | $9,998 | $390,002 | $65,002 | $325,000 | 0/0/13 |
+| 1235 | $34,639 | $365,361 | $65,361 | $300,000 | 0/0/12 |
+| 1335 | $29,923 | $370,077 | $70,077 | $300,000 | 0/0/12 |
+| 1435 | $19,930 | $380,070 | $105,070 | $275,000 | 0/0/11 |
+
+- STALE-SLOT (separate; DEPLOYED-but-stuck, NOT idle): $0 in 0 red name(s) held to EOD-flatten -- a tighter exit would have freed the slot.
+- _thin-signal + self-throttle = idle (cap-deployed) per window. Thin-signal idle is CORRECT (no qualified candidate wanted it -- NOT a defect, no floor implied); self-throttle is fixable (our caps). The 9:35 path deploys first; this covers the re-arm windows in the trace._
+
+## I · LOSER ATTRIBUTION (exit-reason x confirm x side)
+
+**1. Losers by SIDE:**
+- LONG losers 6 ($-480.40) · SHORT losers 5 ($-371.05) · total losing $-851.45 over 11 trade(s)
+
+| sym | side | confirm | exit | hold m | net$ |
+|--|--|--|--|--|--|
+| VST | long | no | 30m-time-stop | 47 | $-193.73 |
+| FCX | short | no | 30m-time-stop | 31 | $-147.00 |
+| GLW | long | no | 30m-time-stop | 31 | $-115.20 |
+| LITE | long | no | 30m-time-stop | 31 | $-114.56 |
+| CTSH | short | no | 30m-time-stop | 31 | $-108.80 |
+| COIN | short | no | 30m-time-stop | 50 | $-84.42 |
+| STX | long | no | 30m-time-stop | 38 | $-33.10 |
+| F | long | no | 30m-time-stop | 37 | $-20.93 |
+| RIVN | short | no | 30m-time-stop | 235 | $-18.19 |
+| INTU | short | yes | candle-close | 13 | $-12.64 |
+| HAL | long | no | 30m-time-stop | 108 | $-2.88 |
+
+**2. ALL trades by EXIT REASON x CONFIRM (partitions every round-trip):**
+| exit reason | confirm | n | win% | net$ | avg hold m |
+|--|--|--|--|--|--|
+| 30m-time-stop | no | 15 | 33% | $-715.30 | 54 |
+| candle-close | yes | 8 | 88% | $718.92 | 22 |
+- _partition check: cells sum to 23 == N 23_
+
+**3. BLEEDER FLAG — unconfirmed-rides-to-EOD-flatten (the named target class):**
+- 0 trade(s), net $0.00, avg hold 0m
+
+**4. MUST-NOT-CUT CONTROL — winners a tightening rule must spare (longest-held first):**
+| sym | side | confirm | exit | hold m | net$ |
+|--|--|--|--|--|--|
+| AVGO | short | yes | candle-close | 53 | $62.00 |
+| UAL | short | no | 30m-time-stop | 40 | $31.97 |
+| TSN | long | no | 30m-time-stop | 36 | $48.02 |
+| CPRT | long | yes | candle-close | 36 | $91.84 |
+| CIEN | short | no | 30m-time-stop | 35 | $29.74 |
+| CRWD | short | no | 30m-time-stop | 34 | $8.35 |
+
+## TRADE AUTOPSY — 2026-08-14
+
+_READ-ONLY post-close autopsy · broker-truth sourced · 23 round-trip(s) · generated 2026-08-14 4:50 PM ET_
+
+**Reconciliation:** book NET $3.62 vs broker truth $3.62 (gross $110.86) -> MATCH
+
+### Per-round-trip ledger (one row per RT)
+
+| # | sym | side | path | entry fill | net$ | conf | early MAE 1/2/3/5m (xATR) | early MFE 1/2/3/5m (xATR) | hold m | exit reason | EODflat | rev->bleed |
+|--|--|--|--|--|--|--|--|--|--|--|--|--|
+| 1 | SNDK | long | 9:35 | 9:45 AM | $249.52 | Y* | 0.044/0.132/0.173/0.173 | 0.036/0.036/0.036/0.068 | 24 | candle-close | n | n |
+| 2 | TSN | long | 9:35 | 9:45 AM | $48.02 | N | 0.153/0.202/0.202/0.208 | 0.0/0.0/0.0/0.0 | 36 | 30m-time-stop | n | n |
+| 3 | TSLA | long | 9:35 | 9:45 AM | $83.68 | Y* | 0.043/0.135/0.146/0.146 | 0.091/0.091/0.091/0.112 | 14 | candle-close | n | n |
+| 4 | CPRT | long | 9:35 | 9:45 AM | $91.84 | Y* | 0.255/0.255/0.255/0.255 | 0.0/0.067/0.067/0.067 | 36 | candle-close | n | n |
+| 5 | MSTR | short | 9:35 | 9:45 AM | $129.32 | Y* | 0.121/0.127/0.127/0.134 | 0.0/0.0/0.0/0.0 | 20 | candle-close | n | n |
+| 6 | AMD | long | 9:35 | 9:45 AM | $43.20 | N | na/na/0.0/0.0 | na/na/0.002/0.002 | 9 | candle-close | n | n |
+| 7 | F | long | 9:35 | 9:45 AM | $-20.93 | N | 0.125/0.125/0.125/0.125 | 0.0/0.0/0.0/0.0 | 37 | 30m-time-stop | n | n |
+| 8 | VST | long | 9:35 | 9:45 AM | $-193.73 | N | 0.136/0.142/0.142/0.142 | 0.0/0.0/0.0/0.0 | 47 | 30m-time-stop | n | n |
+| 9 | FCX | short | 9:35 | 9:45 AM | $-147.00 | N | 0.009/0.009/0.009/0.009 | 0.0/0.0/0.0/0.0 | 31 | 30m-time-stop | n | n |
+| 10 | NOW | short | 9:35 | 9:45 AM | $72.00 | N | 0.0/0.0/0.0/0.0 | 0.0/0.0/0.0/0.0 | 9 | candle-close | n | n |
+| 11 | INTU | short | 9:35 | 9:45 AM | $-12.64 | Y* | 0.13/0.152/0.237/0.237 | 0.0/0.0/0.0/0.037 | 13 | candle-close | n | n |
+| 12 | LITE | long | re-arm 10:35AM | 10:35 AM | $-114.56 | N | 0.075/0.075/0.075/0.075 | 0.032/0.086/0.099/0.099 | 31 | 30m-time-stop | n | n |
+| 13 | AVGO | short | re-arm 10:35AM | 10:35 AM | $62.00 | Y* | 0.126/0.149/0.173/0.189 | 0.0/0.0/0.0/0.0 | 53 | candle-close | n | n |
+| 14 | GLW | long | re-arm 10:35AM | 10:35 AM | $-115.20 | N | 0.056/0.056/0.056/0.056 | 0.016/0.06/0.115/0.115 | 31 | 30m-time-stop | n | n |
+| 15 | CTSH | short | re-arm 10:35AM | 10:35 AM | $-108.80 | N | 0.022/0.033/0.074/0.074 | 0.007/0.007/0.007/0.007 | 31 | 30m-time-stop | n | n |
+| 16 | STX | long | re-arm 10:35AM | 10:35 AM | $-33.10 | N | 0.049/0.097/0.097/0.097 | 0.0/0.0/0.0/0.0 | 38 | 30m-time-stop | n | n |
+| 17 | CRWD | short | re-arm 10:35AM | 10:35 AM | $8.35 | N | 0.075/0.108/0.117/0.117 | 0.0/0.0/0.0/0.009 | 34 | 30m-time-stop | n | n |
+| 18 | COIN | short | re-arm 10:35AM | 10:35 AM | $-84.42 | N | 0.086/0.098/0.112/0.133 | 0.0/0.0/0.0/0.0 | 50 | 30m-time-stop | n | n |
+| 19 | RIVN | short | re-arm 11:35AM | 11:35 AM | $-18.19 | N | 0.057/0.071/0.071/0.071 | 0.0/0.0/0.0/0.0 | 235 | 30m-time-stop | n | n |
+| 20 | UAL | short | re-arm 12:35PM | 12:35 PM | $31.97 | N | 0.141/0.141/0.141/0.141 | 0.0/0.0/0.0/0.0 | 40 | 30m-time-stop | n | n |
+| 21 | CIEN | short | re-arm 12:35PM | 12:35 PM | $29.74 | N | 0.017/0.039/0.06/0.06 | 0.0/0.0/0.0/0.012 | 35 | 30m-time-stop | n | n |
+| 22 | NCLH | short | re-arm 1:35PM | 1:35 PM | $5.43 | N | 0.0/0.0/0.0/0.0 | 0.0/0.0/0.0/0.0 | 31 | 30m-time-stop | n | n |
+| 23 | HAL | long | re-arm 1:35PM | 1:35 PM | $-2.88 | N | 0.058/0.069/0.081/0.092 | 0.0/0.0/0.0/0.0 | 108 | 30m-time-stop | n | n |
+
+### Day summary — confirmed vs unconfirmed
+
+- CONFIRMED: N=0 · net $0.00 · win None%
+- UNCONFIRMED: N=17 · net $-600.10 · win 41.2%
+- **Day net $3.62**
+
+### THE GIVEBACK LINE (3 PM -> close)
+
+- By ~3:00 PM: 21 RT completed = $24.69 (intraday peak).
+- At close: 23 RT = $3.62.
+- **Given back: $21.07** across the 2 late-closer(s) (completed after 3:00 PM, net $-21.07).
+
+Per late-closer — early-reversal BLEEDER vs WINNER that gave back into the EOD flatten:
+
+| sym | side | exit | net$ | bucket |
+|--|--|--|--|--|
+| RIVN | short | 3:30 PM | $-18.19 | early-reversal BLEEDER |
+| HAL | long | 3:23 PM | $-2.88 | early-reversal BLEEDER |
+
+- BLEEDER bucket sum: $-21.07 (2 RT)
+- WINNER-gaveback bucket sum: $0.00 (0 RT)
+
+### LENS A — early-reversal losers
+
+- Day losers: 11 · total loser net $-851.45
+- Early-reversal losers (unconfirmed + early adverse + held-long/flattened): 0 · net $0.00 (-0.0% of the day's loss)
+- Of those, LATE-CLOSERS (exit after 3:00 PM) in the giveback: 0 · net $0.00
+
+### LENS B — MUST-NOT-CUT: early exit at K=0.75xATR adverse-before-confirm (full book)
+
+_Pinned-bar real-time method (l1_mustnotcut_audit), K pinned at 0.75 (never tighter). EARLY-POLL CAVEAT: the live monitor is blind in the first ~5 min, so these are what an IDEAL early-poll would do, NOT what today's live bot could have fired._
+
+- **Bleeders cut: 0 · $ saved $0.00**
+- **Confirmed winners clipped: 0 · $ given up $0.00**
+- **THREE-SIDED net-of-cost: $0.00** (= saved $0.00 − winners given up $0.00)
+- coverage: 0 safe (never crossed K before confirm), 23 NOT-AVAILABLE (no pin/atr), 0 intrabar-ambiguous (counted worst-case against the leash)
+
+### LENS C — MU-class check (cluster vs one extended/gap-top trade)
+
+- Top loser: VST long $-193.73 = 22.8% of the day's loss $-851.45 (scan_move 1.91%)
+- Gap-tops (|scan_move| >= 12.0%) among losers: 0
+- **CLUSTER: the loss is spread across 11 losers (top VST only 22.8%); not a single MU-class trade.**
 
 ### CUMULATIVE TALLY (across available days)
 
