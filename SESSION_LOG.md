@@ -2,6 +2,8 @@
 
 > # ⭐ CURRENT STATE — 2026-06-27 ~7:25 AM ET (READ FIRST — full cold-start brief: `HANDOFF_2026-06-26_RAMP-UP.md`)
 >
+> **[WEEKLY BUILDER 2026-08-15 ~10:25 AM ET — autonomous Saturday flat-window run — ✅ 3 deferred items CLOSED; regression + preflight GREEN; no live behavior changed.]** Worked the DEFERRED_WORK queue (owner=claude/weekly-builder, oldest review_by first); all non-watched, no watched file touched, no flag flipped, SIM guards + one-way advisor channel + typed schema untouched. **(1) `deployed-tune-scoreboard-persistent` (mine as weekly builder) DONE** — new `strategy-research/deployed_tune_scoreboard.py`: a PERSISTENT promise-anchored cumulative series (`outputs/tune_journal/deployed_tune_scoreboard.jsonl` + `.md`) that rolls up the per-day BROKER_TRUTH live deltas already in the daily ledgers into cumulative n/delta/pos-days per deployed tune vs its promotion promise. C-union (edge_ledger `C_union`, live 7/15) = +$761.33/N=134 and deep-run (cell3 proxy, live 7/18) = +$459.69/N=86, both ON-TRACK, EXACT-verified against an independent ledger sum; the 30m leash / earnings shield / momentum gate are baseline/refuse-only and are recorded NO-DELTA-SERIES with provenance (no number fabricated, RULE #0). Deterministic/idempotent (hash-stable); `--self-test` 15/15 PASS; wired into `run_daily_tune_engine.bat` after the engine (unguarded, own log). **(2) `premarket-artifact-missing` DONE (resolved-by-verification)** — the seat IS now scheduled + emitting: task `AlphaQuant_PreMarketBrief` runs `run_premarket_brief.bat` daily 8:47 AM (Last Result=0), producing both the human `.md` and the typed JSON (`outputs/market_context/<date>_premarket.json`) every trading day 8/10–8/14; the fade/follow grade stream the 8/02 synthesis said was empty now has 5 days. No code change needed. **(3) `unclassified-0701-exits` DONE (resolved-by-verification)** — new `strategy-research/verify_pre_tw_exits.py`: all 180 filled round-trips in the pre-TW-live era (6/19–7/05) carry a recognized BROKER exit order type, **0 unresolvable** → 177 Limit + 3 StopMarket = 123 candle-close/54 EOD-flatten/3 resting-stop, exactly the deployed `candle_1.4atr_chandelier` profile; the "unclassified" label was a journal-write gap, NOT missing broker truth. Honest label: sub-reason is DERIVED from order type, not journal-proven. Artifact `outputs/testing_baseline/pre_tw_exit_verification.md(+.json)`, re-runnable (exits non-zero if a future regen surfaces an unexplained exit). **GREEN GATE:** regression suite **56 pass / 0 FAIL / 4 skip** (consecutive_clean=64); preflight `preopen_readiness.py` **PLUMBING GO** (RC=0); `runner_bat_lint` **OK** (bat edit clean). CSHV `deferred_work_overdue` 22→19. **Investigated but out-of-scope:** the `scheduled_task_results` FAIL (`AlphaQuant_PreopenReadiness=1`) is the known Friday-real-data honest "NOT READY" verdict (SNDK Invalid-Stop-Price + L2 coverage), self-clears on the weekend run — not a code bug; I did NOT alter preopen/chain semantics. Discipline: edited source = the 3 new files + `run_daily_tune_engine.bat` + `DEFERRED_WORK.yaml` + this log; placed/cancelled orders = nothing; touched watched files or run_bot/watchdog = nothing.
+>
 > **[ALERT TRIAGE 2026-08-14 ~10:38 AM ET — autonomous intraday run — **NO PAGE SENT (silence = handled)**. Nothing new; the only actionable item is the SAME two chronic CSHV Governance FAILs, already paged ~26 min ago.]** Three feeds. (1) `code_alert_inbox.py --json` = **1 total / 1 actionable / 1 CRITICAL** — the recurring "CSHV 2 FAIL" rollup (`deferred_work_overdue` + `scheduled_task_results`, first/last_ts 10:10:13 ET); cursor acked (1 processed). (2) **`bot_alerts.jsonl` scanned DIRECTLY** (blind-spot rule; live path `C:\AlphaQuant\bot_alerts.jsonl`): last 2h = **39 rows, ALL severity=INFO, 0 WARN / 0 FAIL** — normal active trading (20× `ORB_V16_ENTRY_OK` + 14× `ORB_SL_OK` stop-arms paired, + the gated 9:35 scan); 0 auth failures, 0 rejections. (3) CSHV 10:35:13 = **OK=53 / WARN=1 / FAIL=2**. **THE TWO FAILS — both known, neither new, neither a trading risk:** (a) `deferred_work_overdue` = **20** items (oldest `atr-disk-cache` due 8/01), escalated 8/05, awaiting Rhett; (b) `scheduled_task_results` = `AlphaQuant_PreopenReadiness=1`, the known benign week-old `chain_audit` L2 `<250-distinct-name` post-close false-BREAK, Bucket-B fix already in Rhett's inbox (freeze). `cshv_fail_paged.json` = both names, ts **1786716613 (~10:10 ET, 26 min ago)** → per one-page-per-finding, **did not re-page**. WARN `pre_open_gate_ran` NO-GO is the downstream relay; bot NOT held (`SAFE_MODE_ENFORCE=off`→shadow). **Bot verified healthy NOW (broker truth first):** heartbeat alive=true, **loop 13798** (pid 6564 stable), last_seen 10:37:27 fresh; SAFE_MODE off (auto-cleared 06:05:04); CSHV `rel_position_recon` clean both ways + `rel_exit_side` protected + auth 2/2 + 11 RT reconcile to broker truth (NET $343.28). **DISCIPLINE:** read-only apart from this line + the cursor ack — edited/committed to source: nothing; placed/cancelled/modified orders: nothing; touched watched files or run_bot/watchdog: nothing (forward-test freeze). ET stamp from canonical `et_now.py` (**2026-08-14 ~10:38 AM ET**).
 >
 > **[DAILY TUNE ENGINE 2026-08-13 ~6:0X PM ET — autonomous nightly run — ✅ COMPLETE. SECOND straight green on a CHOP-tag tape; both ideas CLOSED, nothing promoted, no live behavior changed.]** Studied all 16 broker-truth round-trips (NET **+$390.03**, 10W/6L, reconciles MATCH). **Market read: TAG CHOP** (SPY +0.70% but no range expansion, 0.74× = **7th straight contraction**) yet net GREEN on a broad grind-up (all 3 indices up, QQQ +1.16% led, breadth 93.8%) — the confirm law won on MAGNITUDE again (**7 confirmed candle-closes +$687.10 / 100% win** vs 8 unconfirmed 30m-time-stops −$292.42; tail-free, largest loss NEM −$177). Day split by SIDE: LONG book **+$579.50** rode the up-tape, SHORT book **−$189.46** fought it — but CELL17 was INERT (open gaps <0.4% despite the up close). **Prediction grades:** stream A (evening) **reclaimed the P&L SIGN** (called mildly-positive ~+$150, got +$390) after two losses to stream B; stream B's specific-risk "tech goes flat/stale-tilt" graded **WRONG** — it built the thesis on QQQ +0.03% at 8:49 AM (19 min of thin pre-open tape) and QQQ closed +1.16%, the day's leader (→ LESSON #11: don't over-read thin pre-open leadership). **Two ideas** on the 709-trade certified baseline (diversity: 1 side-vs-tape veto + 1 costs), **BOTH CLOSED:** Idea 1 (lower CELL17 gap threshold to 0.25) — would catch today but the incremental fires it adds are 61.7% WINNERS (FF5-fails 0.588/0.578/0.613), the proxy can't be fixed by sensitivity (→ LESSON #21); Idea 2 (≥$200 high-priced cohort halve, LESSON #6's biggest-$-bleed) — FULL −$5,777 but FF5-fails 0.754 and RECENT REVERSED to +$899, cost/price-alone stays exhausted (→ LESSON #6). **The night's repeated finding:** SECOND straight green-leaning day the whole property-keyed halve family inverted (CELL13 −$119, CELL15 −$207, CELL14 −$77, FF5 −$412) → LESSON #4 hardened. CELL8 cushion-harvest RECOVERED to +$32 (2nd green point after 8/12's −$110). **Promotion:** none at the bar — CELL1 dropped to 6/10 after today's −$328. Red-team (rotation → live deep-run halve CELL3): intact, cum +$1,267, recent-5 +$206, 0 winners cut today. LESSONS.md: 6 edits (#1/#4/#6/#11/#21/#22). Certified→709 (+16, all clean); ledger 27 days; registry→87. **Day ended NON-CLEAN but NOT a trading defect** — the CSHV FAILs are the standing governance backlog (deferred_work_overdue 20 items + AlphaQuant_PreopenReadiness=1, the downstream relay) = the Saturday WeeklyBuilder's job, NOT the tune engine's to fake-clear (Standing Rule #0); bot ran 16/16 compliant, broker-FLAT, recon OK. 4:50 chain verified complete + reconciles to broker truth exactly (+$390.04). Nothing re-dated; nothing new deferred. **Tomorrow 8/14 (Friday, NOT OpEx):** lean CHOP-to-mild-GREEN on the grind-up coil (P(8th contraction) ~50%), P&L −$700…+$900 ~+$200, watch whether near-52w-high longs keep winning (extension cells mis-firing on grind-ups). **No live behavior changed; SIM-only guards + one-way advisor channel + typed schema untouched; no flag flipped; no deploy.** Journal: `outputs/tune_journal/2026-08-13.md`; report: `tune_ideas_2026-08-13.json`; ctx: `market_context/2026-08-13.json`. ET from `et_now.py`.
@@ -17240,6 +17242,166 @@ _Pinned-bar real-time method (l1_mustnotcut_audit), K pinned at 0.75 (never tigh
 - Top loser: VST long $-193.73 = 22.8% of the day's loss $-851.45 (scan_move 1.91%)
 - Gap-tops (|scan_move| >= 12.0%) among losers: 0
 - **CLUSTER: the loss is spread across 11 losers (top VST only 22.8%); not a single MU-class trade.**
+
+### CUMULATIVE TALLY (across available days)
+
+- Days: 2026-06-18, 2026-06-22, 2026-06-23, 2026-06-24, 2026-06-25, 2026-06-26
+- Confirmed N=70 · unconfirmed N=39 · confirm-NA N=14 (progress toward N>=30 confirmed: 70/30)
+- Cumulative early-exit-at-0.75 three-sided net-of-cost: **$458.54**
+- One-trade-dominance guard: WITHOUT the single biggest trade (2026-06-25/MU (bleeder saved), $810.09): **$-351.55**
+
+| date | confirmed N | unconfirmed N | three-sided net$ |
+|--|--|--|--|
+| 2026-06-18 | 7 | 5 | $0.00 |
+| 2026-06-22 | 12 | 4 | $0.00 |
+| 2026-06-23 | 7 | 4 | $0.00 |
+| 2026-06-24 | 14 | 7 | $52.76 |
+| 2026-06-25 | 15 | 8 | $392.76 |
+| 2026-06-26 | 15 | 11 | $13.02 |
+
+### Caveats
+
+- confirm = polled flag -> segment clean-fail vs poll-near-miss (a trade can miss confirm by a hair).
+- EARLY-POLL CAVEAT: the live monitor is blind in the first ~5 min, so Lens B's early-exit numbers are "what an IDEAL early-poll would do," NOT what today's live bot could have fired -- read them as a ceiling, not a live-achievable result.
+
+_Diagnostic, in-sample. These days are in-sample for any un-promoted rule; a streak of confirming days accumulates N toward >=30 but does not promote anything -- promotion still requires a locked rule + fresh OOS forward test + the gauntlet._
+
+---
+
+> **[DAILY TUNE ENGINE 2026-08-14 ~6:0X PM ET — autonomous nightly run — ✅ COMPLETE, NO NEW CELL, NO LIVE CHANGE, NOTHING AT THE PROMOTION BAR.]** Studied the day: **+$3.62 (23 RT, 12W/11L, 30% confirm) — the FLAT control** on a MIXED, ultra-quiet **8th-straight range-contraction** (SPY −0.20%, QQQ −0.14%, IWM +0.52%, VIX 14.25 near cycle lows) with **breadth 100% (23/23 names right by close)** yet ~zero P&L because the exit-cut sorted perfectly but symmetrically: **8 confirmed candle-closes +$718.92 (88% win) vs 15 unconfirmed 30-min time-stops −$715.30 (33% win)**, tail-free (largest loss VST −$194, a cluster not a tail). The direct mirror of 7/29 — being right by close ≠ P&L; confirm-SURVIVAL captures a tape and the 30-min leash cut 15 names that closed the right way (LESSON #1 ceiling, loosening barred by #4). 9:35 path +$343 (64%) vs re-arm −$340 (42%) — the 10:35 cohort the drag (LESSON #13 confirm-skew). **BOTH prediction streams graded — calibration HELD on a genuinely flat day:** evening (8/13) regime PARTIAL (called mild-green, got flat-mixed) / P&L RIGHT (+$3.62 in −$700..+$900) / confirm RIGHT (<40%) / cells CELL17-inert/CELL14-neg/CELL18-no-fire all RIGHT; pre-market (8:47 AM) regime PARTIAL (tech tilt faded QQQ +0.27%→−0.14%) but its **GAP-FADE `specific_risk` was PRESCIENT** — the tech gap faded, **MU got an Invalid-Stop-Price reject (too hot to chase)**, the book ate 15 unconfirmed time-stops exactly as flagged (its 2nd prescient specific-risk in 4). Two pre-registered ideas on the 732-trade certified baseline (diversity: veto + timing/regime), **BOTH CLOSED:** IDEA 1 (RED-gap opening-short halve — the 8/11 OOS-confirm night) — the RED-gap toxicity is REAL/OOS-confirmed (−$32.32/tr n=45; 8/11's −$92/tr was small-sample-inflated) but the halve **FF5-FAILS 0.734/0.795** (60%-winner-dense = LESSON #18 wall); the stable edge is the **FLAT-gap opening short +$101.64/tr, 80% win** (→ LESSON #16/#18 updated). IDEA 2 (low-VIX<15 day halve) — **BACKWARDS**: low-VIX days are net-POSITIVE (+$467, cut/save 1.167 → halving clips winners), the bleed is on VIX≥15 days; confounded (4 recent low-VIX days, OOS empty) but kills the deploy idea (→ **new LESSON #25**: VIX-level alone is not a halve lever). **Promotion: nothing at the N≥30 + ≥7/10-forward bar** (best 6/10: CELL1 FF5-barred, CELL8 strengthening last-5 +$491, CELL4). Deployed-tune scoreboard: no retirement flag; **WATCH — the LIVE deep-run halve (CELL3) clipped winners −$88.86** (first clear winner-clip in a while; the flat-day property-halve inversion, LESSON #4 extended to flat/mixed), cum +$1,178 healthy; CELL8 the flat-day exception +$129.79 (regime-general now green/red/flat). Red-team (rotation → C-union): intact but red-day-concentrated + qualitative-only — the actionable gap is still the missing persistent C-union series (deferred `deployed-tune-scoreboard-persistent`). LESSONS.md: 6 edits (#1/#4/#11/#16/#22 + new #25). Certified→732 (+23, all clean). Registry→89. **Day ended NON-CLEAN but NOT a trading defect** — the 6 FAIL incidents are the SAME 2 governance CSHV FAILs (deferred_work_overdue 20 items + PreopenReadiness=1, the latter caused by the former via a shadow pre-open NO-GO) logged 3× during the day; bot ran 23/23 compliant, broker-FLAT, recon OK, 0 bot_alerts FAILs. Root cause = the deferred backlog → **tomorrow (Sat 8/15) the AlphaQuant_WeeklyBuilder task clears it** (playbook 7.8); nothing re-dated tonight (Standing Rule #0 + the untracked-invalid-YAML registry). Small-fix mandate NOT triggered (nothing blocked tonight; all freeze-safe). 4:50 chain verified complete + reconciles to broker truth exactly (+$3.62). **Sun 8/16 = weekly deep-synthesis run** (makes the authoritative Monday 8/17 call — Monday is the worst weekday, LESSON #19, and CELL18 fires). **No live behavior changed; SIM-only guards + one-way advisor channel + typed schema untouched; no flag flipped; no deploy.** Journal: `outputs/tune_journal/2026-08-14.md`; report: `tune_ideas_2026-08-14.json`; ctx: `market_context/2026-08-14.json`. — autonomous daily-tune run
+
+
+## EOD SUMMARY — 2026-08-15
+
+_Auto-generated by eod_debrief.py at 2026-08-15 4:50 PM ET · broker-truth sourced · 0 round-trip(s)_
+
+## A · DID THE SYSTEM RUN CORRECTLY TODAY?
+
+**Funnel (broker-truth + candidate log):** universe scanned ~530 -> candidates evaluated 0 -> passed in-play gate 0 -> selected 0 -> symbols FILLED 0.
+
+**Re-arm windows (multiscan_trace):**
+- (no re-arm trace entries today)
+
+**Incidents today:** 5 {'FAIL': 5}.
+**SAFE_MODE:** currently off (no engage today unless an incident above shows it)
+
+**Gate drove entries:** INCONCLUSIVE/FAIL rc=1 -- [INCONCLUSIVE] no candidate-log rows for 2026-08-15 — gate did not run / no scan yet.
+  _(NOTE: verify_gate_drove_entries validates only the 9:35 path; re-arm fills are NOT in the 9:35 SELECTED set by design, so it reports FAIL on re-arm-heavy days. The per-day gate-integrity signal is the gate_not_failing_open reliability check.)_
+
+**Broker reconciliation at close:** FLAT (0 positions, 0 working); position_recon=OK (broker and bot agree both ways (0 position(s) reconciled))
+
+## A2 · STRATEGY-RULE & IN-PLAY COMPLIANCE (did we trade to the rules?)
+
+- no closed round-trips today (nothing to check)
+
+## B · PER-TRADE LEDGER (one row per round-trip; broker-truth)
+
+| # | sym | side | occ | entry(act/intend) | slip bps | delay m | gate (RelVol·mv%·RSvSPY·$tier·mcap·win) | shares | gross$ | 0.15ATR lvl | conf | EXIT REASON/time/px | hold m | MFE | MAE | leftHold$ | gP&L | comm | netP&L | R | order IDs |
+|--|--|--|--|--|--|--|--|--|--|--|--|--|--|--|--|--|--|--|--|--|--|
+
+## C · COST & EXECUTION SUMMARY (edge-survival line)
+
+- Total commission (broker-actual): $0.00  ·  fees: $0.00
+- Commission 0.00 bps + fees 0.00 bps of $1 notional = **0.00 bps avg cost**
+- Avg entry slippage: n/a (adverse +)
+- Slippage trend (prior 10d, adverse + bps): [1.5, 1.1, 2.4, 0.9, 1.3, 2.1, 1.2, 1.0, 2.1, 1.6] · trailing avg 1.5 bps
+- no trades
+
+## D · AGGREGATE  *(context, not a verdict — building toward N>=30)*
+
+- no closed round-trips today
+
+## E · ANOMALIES & DIVERGENCES CODE FLAGGED
+
+- none flagged by code today
+
+## F · PROVENANCE / FIELD-AVAILABILITY MAP
+
+| field | source | note |
+|--|--|--|
+| symbol/side/shares/order IDs/status | BROKER-TRUTH | broker_orders_unified.csv raw_order_json |
+| actual entry/exit price + time | BROKER-TRUTH | FilledPrice/ExecutionPrice + OpenedDateTime (UTC) |
+| intended entry trigger price | LOGGED | signal_trigger_px / intended_price / StopPrice |
+| intended/submission time | LOGGED | submit_time (ET) -- proxy for arm time, not breakout-detect time |
+| entry delay / slippage bps | DERIVED | actual vs intended (above) |
+| commission (per trade) | BROKER-ACTUAL | raw_order_json CommissionFee, summed entry+exit |
+| fees (per trade) | BROKER-ACTUAL | raw_order_json UnbundledRouteFee (0 today) |
+| gross/net P&L, net R | DERIVED | from broker fills + commission; R uses 0.15xATR (9:35 only) |
+| gate ctx (RelVol/move%/RSvSPY/$tier/mcap) | LOGGED (9:35 only) | orb_candidate_log.jsonl selected names; RE-ARM names NOT in candidate log |
+| 0.15xATR protective level | DERIVED (9:35 only) | ATR from orb_daily_state entries_submitted; re-arm ATR NOT-logged |
+| confirm fired? | LOGGED (9:35 only) | bot_alerts ORB_CONFIRM_SWAP; re-arm confirm not tracked |
+| exit type (EOD vs synthetic) | DERIVED | by exit time; fine reason (candle-close vs hard-stop) NOT joined (in bot_alerts) |
+| MFE / MAE | DERIVED from 1-min bars | barcharts over hold window; NOT logged natively (REG-08 INERT without this) |
+| broker-flat + position recon | BROKER-TRUTH (asserted) | reliability_checks.fetch_truth + check_position_recon |
+
+_Never fabricated: any field above marked NOT-logged/NOT-computed is shown as such in the rows._
+
+## G — FADE vs BREAKOUT counterfactual (TUNE-01; context, NOT a verdict — building toward N)
+
+_No breakout candidates logged for the day._
+## H · CAPITAL DEPLOYMENT (by hour + idle attribution)
+
+_(no utilization snapshots for the day)_
+
+**Idle-capital attribution** (why capital sat idle vs the $400k cap; RE-ARM windows):
+- **Qualified trades refused for CAPITAL today: 0** (peak idle below cap $0; gross demand upper-bound $0 at $25k/name). _The only number that justifies raising the deploy target._
+
+- STALE-SLOT (separate; DEPLOYED-but-stuck, NOT idle): $0 in 0 red name(s) held to EOD-flatten -- a tighter exit would have freed the slot.
+- _thin-signal + self-throttle = idle (cap-deployed) per window. Thin-signal idle is CORRECT (no qualified candidate wanted it -- NOT a defect, no floor implied); self-throttle is fixable (our caps). The 9:35 path deploys first; this covers the re-arm windows in the trace._
+
+## I · LOSER ATTRIBUTION (exit-reason x confirm x side)
+
+- no closed round-trips today
+
+## TRADE AUTOPSY — 2026-08-15
+
+_READ-ONLY post-close autopsy · broker-truth sourced · 0 round-trip(s) · generated 2026-08-15 4:50 PM ET_
+
+**Reconciliation:** book NET $0.00 vs broker truth $0.00 (gross $0.00) -> MATCH
+
+### Per-round-trip ledger (one row per RT)
+
+| # | sym | side | path | entry fill | net$ | conf | early MAE 1/2/3/5m (xATR) | early MFE 1/2/3/5m (xATR) | hold m | exit reason | EODflat | rev->bleed |
+|--|--|--|--|--|--|--|--|--|--|--|--|--|
+
+### Day summary — confirmed vs unconfirmed
+
+- CONFIRMED: N=0 · net $0.00 · win None%
+- UNCONFIRMED: N=0 · net $0.00 · win None%
+- **Day net $0.00**
+
+### THE GIVEBACK LINE (3 PM -> close)
+
+- By ~3:00 PM: 0 RT completed = $0.00 (intraday peak).
+- At close: 0 RT = $0.00.
+- **Given back: $0.00** across the 0 late-closer(s) (completed after 3:00 PM, net $0.00).
+
+Per late-closer — early-reversal BLEEDER vs WINNER that gave back into the EOD flatten:
+
+| sym | side | exit | net$ | bucket |
+|--|--|--|--|--|
+
+- BLEEDER bucket sum: $0.00 (0 RT)
+- WINNER-gaveback bucket sum: $0.00 (0 RT)
+
+### LENS A — early-reversal losers
+
+- Day losers: 0 · total loser net $0.00
+- Early-reversal losers: 0 · net $0.00
+- Of those, LATE-CLOSERS (exit after 3:00 PM) in the giveback: 0 · net $0.00
+
+### LENS B — MUST-NOT-CUT: early exit at K=0.75xATR adverse-before-confirm (full book)
+
+_Pinned-bar real-time method (l1_mustnotcut_audit), K pinned at 0.75 (never tighter). EARLY-POLL CAVEAT: the live monitor is blind in the first ~5 min, so these are what an IDEAL early-poll would do, NOT what today's live bot could have fired._
+
+- **Bleeders cut: 0 · $ saved $0.00**
+- **Confirmed winners clipped: 0 · $ given up $0.00**
+- **THREE-SIDED net-of-cost: $0.00** (= saved $0.00 − winners given up $0.00)
+- coverage: 0 safe (never crossed K before confirm), 0 NOT-AVAILABLE (no pin/atr), 0 intrabar-ambiguous (counted worst-case against the leash)
+
+### LENS C — MU-class check (cluster vs one extended/gap-top trade)
+
+- no losers today
 
 ### CUMULATIVE TALLY (across available days)
 
