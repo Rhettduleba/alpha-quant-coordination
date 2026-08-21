@@ -1,6 +1,6 @@
 # SYSTEM_FACTS — live mechanics, machine-generated from the running code/config/broker-truth
 
-> **Generated:** 2026-08-20 16:51:08 Eastern Daylight Time · **coordination-repo HEAD:** `2bad209` · by `strategy-research/system_facts.py` (read-only).
+> **Generated:** 2026-08-21 16:51:06 Eastern Daylight Time · **coordination-repo HEAD:** `f36a7ea` · by `strategy-research/system_facts.py` (read-only).
 > Every value below is READ from a real source (the live import for the VALUE; a fresh file scan for the SOURCE file:line). Nothing is hand-typed. A field that can't be derived says `UNVERIFIED`.
 > If this contradicts memory, THIS wins — regenerate it (re-run the script) rather than trusting recall.
 
@@ -16,7 +16,7 @@
 | Fact | Live value | Source |
 |---|---|---|
 | Universe size today (published) | 143 | `ai-trading-strategy-agent/outputs/advisor_guidance/advisor_universe_latest.json:universe_size` |
-| Universe generated_at | 2026-08-20T07:30:32.105930-04:00 | `advisor_universe_latest.json:generated_at` |
+| Universe generated_at | 2026-08-21T07:30:33.227765-04:00 | `advisor_universe_latest.json:generated_at` |
 | Universe source | research_brain_v1 | `advisor_universe_latest.json:universe_source` |
 | Relative-strength pool size | not in the published artifact -- see research-brain build log | `UNVERIFIED` |
 | Re-arm path enabled (ORB_MULTISCAN) | True | `tradestation-bot/risk_config.py:76` |
@@ -53,11 +53,11 @@
 | Fact | Live value | Source |
 |---|---|---|
 | ** AS-OF | figures below are HISTORICAL (pre-Loop-155). Re-arm 0% is FIXED Loop 155 (LIVE Mon 6/29); re-arm coverage rises + latency drops from Monday once re-arm stops register + TW owns exits. | `SESSION_LOG.md Loop 155` |
-| Entries with a broker resting stop | 846/1022 = 82.8% | `strategy-research/stop_coverage_audit.py (re-derived from broker_orders_unified.csv)` |
-| 9:35 cohort coverage | 435/440 = 99% | `stop_coverage_audit.py` |
-| Re-arm/late cohort coverage | 411/582 = 71% | `stop_coverage_audit.py` |
-| Median placement latency | 268s (~4.5 min) | `stop_coverage_audit.py` |
-| PRIMARY protection mechanism | software poll (exit_bot_v2 + chandelier)  (mechanisms: {'resting_stop_HIT': 50, 'candle/chandelier': 903, 'eod_flatten': 69}) | `stop_coverage_audit.py exit-mechanism tally` |
+| Entries with a broker resting stop | 872/1048 = 83.2% | `strategy-research/stop_coverage_audit.py (re-derived from broker_orders_unified.csv)` |
+| 9:35 cohort coverage | 449/454 = 99% | `stop_coverage_audit.py` |
+| Re-arm/late cohort coverage | 423/594 = 71% | `stop_coverage_audit.py` |
+| Median placement latency | 274s (~4.6 min) | `stop_coverage_audit.py` |
+| PRIMARY protection mechanism | software poll (exit_bot_v2 + chandelier)  (mechanisms: {'resting_stop_HIT': 50, 'candle/chandelier': 929, 'eod_flatten': 69}) | `stop_coverage_audit.py exit-mechanism tally` |
 
 ## COSTS
 | Fact | Live value | Source |
