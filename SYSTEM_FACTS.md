@@ -1,6 +1,6 @@
 # SYSTEM_FACTS — live mechanics, machine-generated from the running code/config/broker-truth
 
-> **Generated:** 2026-08-21 16:51:06 Eastern Daylight Time · **coordination-repo HEAD:** `f36a7ea` · by `strategy-research/system_facts.py` (read-only).
+> **Generated:** 2026-08-22 16:50:51 Eastern Daylight Time · **coordination-repo HEAD:** `5f9302c` · by `strategy-research/system_facts.py` (read-only).
 > Every value below is READ from a real source (the live import for the VALUE; a fresh file scan for the SOURCE file:line). Nothing is hand-typed. A field that can't be derived says `UNVERIFIED`.
 > If this contradicts memory, THIS wins — regenerate it (re-run the script) rather than trusting recall.
 
