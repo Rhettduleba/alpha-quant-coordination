@@ -21910,3 +21910,316 @@ _Pinned-bar real-time method (l1_mustnotcut_audit), K pinned at 0.75 (never tigh
 _Diagnostic, in-sample. These days are in-sample for any un-promoted rule; a streak of confirming days accumulates N toward >=30 but does not promote anything -- promotion still requires a locked rule + fresh OOS forward test + the gauntlet._
 
 ---
+
+---
+**TURN 2026-09-01 ~7:00 PM ET — Rhett: "build a system that works... make any changes you think will work."**
+Four experiments, all free, all read-only. NO trading change deployed — because nothing tested beat what we already do once realistic costs were applied. Receipts below.
+1. **CEILING TEST (the most important number this project has produced):** perfect-hindsight exits on our EXISTING entries = **+$221,695** (N=898). The entries DO move: 65.3% reach +0.15 ATR, 48.4% reach +0.25, 19.3% reach +0.5, median MFE 0.24 ATR. **The entries are not the problem; we convert +$221,695 of available movement into -$11,621.**
+2. **WHOLE-STACK EXIT REBUILD (exit_stack_rebuild.py, new):** re-simulated from entry, loss side tightened + winner side loosened together. Reproduction of the live stack lands -$10,237 vs actual -$11,621 (~12% -- simulator credible). Every rebuild variant cuts the bleed 40-57% (best -$4,982) but NONE is profitable, and all made the PAYOFF RATIO WORSE (0.53-0.64 vs actual 0.74) -- they raise win rate by letting losers run to a wider stop.
+3. **BRACKET GRID (fixed limit target + stop, 30 combos):** first positive configs ever found on the full baseline -- 0.25 tgt/0.30 stop = +$2,119, ridge confirmed at neighbours. **KILLED BY SLIPPAGE:** 0.01 ATR/side -> -$1,896; 0.02 -> -$5,910. Corrected the test (a limit target does NOT slip; only the stop does): best = 0.35/0.35, +$1,812 at 1c slip and POSITIVE IN BOTH HALVES (h1 +$697 / h2 +$1,114), but -$388 at 2c slip. **The entire edge is thinner than one cent per share.**
+4. **OVERLAY TEST (what a real deploy would look like):** adding a limit target to the CURRENT stack does nothing (+$394 to -$715) because the one-candle trail and 30m leash already exit before any target is reached. The bracket only works if it REPLACES them -- a wholesale exit rewrite, which lands at breakeven, not profit.
+5. **RUNNER CLASSIFIER (runner_classifier_study.py, new; sklearn installed locally, free):** first ML test on this project. Pre-entry features only, split BY DATE (no leakage). **OUT-OF-SAMPLE AUC = 0.670** (0.50 = chance) -- REAL signal exists; strongest feature by far is minutes_in (earlier entries run more), then position-in-day-range and 15-min compression. **BUT it does not convert to money:** top-15% by model score = -$651, top-25% = -$864, all 244 test trades = +$246, versus ACTUAL +$1,031 on those same trades. A 34-36% hit rate cannot carry a symmetric 0.35/0.35 bracket that needs ~50%.
+   SELF-CORRECTION LOGGED: my first classifier P&L was WRONG (counted every non-target trade as a full stop loss when most time out near flat at 15:50). Caught before reporting; numbers above use simulated bracket P&L per trade.
+**CONCLUSION (the honest diagnosis, first time quantified):** the movement is there (+$221k ceiling) and the entry carries real signal (AUC 0.67), but our average edge per trade is comparable to our transaction cost. Profitability requires ONE of: (a) a materially better classifier -- the current one uses crude price-action features and has NEVER been fed relvol, dollar-volume, gap, 52-week position or market regime, all of which we already collect; (b) larger moves per trade (different timeframe/instrument); or (c) lower cost per trade (limit exits instead of market stops).
+Files: exit_stack_rebuild.py, runner_classifier_study.py (both new), sklearn 1.9.0 installed. NO watched trading file touched. NO token-spending task re-enabled.
+
+---
+**TURN 2026-09-02 — enriched classifier (Rhett: "do it"). NEGATIVE RESULT, reported straight.**
+1. **entry_context.jsonl is a DEAD STUB** -- 55 rows, 6/23-6/25 only (joins 55 of 898 certified). Unusable; features computed from primary sources instead (cleaner, no leakage ambiguity).
+2. **Built runner_classifier_v2.py** with everything the system collects but never modelled: scanner relvol / dollar_vol / SPREAD_PCT / EST_SLIPPAGE_BPS / exhaustion / chg_open / rng_pct (matched to the scan run at-or-BEFORE entry), 52-week position, distance from 20/50/200 DMA, gap vs prior close, prior-day range, SPY drift at the entry minute, plus v1's price-action set. 26 features. Leakage discipline: prior-days-only daily rows, at-or-before scanner rows, median imputation fitted on TRAIN only, split BY DATE.
+3. **RESULT: the richer features made it WORSE.** OOS AUC logistic **0.658** and grad-boost **0.629**, versus **v1's 0.670** on crude price features alone. P&L by model rank is non-monotonic (grad-boost top-15% +$1,317 but top-25% -$1,085) = noise, not signal.
+4. **AND in every single configuration the CURRENT LIVE RULES BEAT THE BRACKET**: on the 244 test trades, actual +$1,031 vs bracket +$246; no model-selected subset beat taking everything with the existing exits.
+5. **DIAGNOSIS: we are DATA-limited, not feature-limited.** 660 usable trades, only ~181 positives, against 26 features -- textbook overfitting. The one driver that survives BOTH versions is `minutes_in` (negative): earlier entries run more. Everything else is unstable.
+6. **The real next step (not yet run):** stop training only on the ~660 trades we TOOK. The scanner logged its top-20 every 30 min for ~55 trading days = on the order of 10-17k candidate observations, every one labelable with 1-min bars. That is a 15-25x larger training set from data already on disk; cost is ~15-25 min of PACED bar fetching (honor the 7/18 rate-limit lesson -- disk-first, 0.3s spacing).
+Files: runner_classifier_v2.py (new). NO trading change. NO token task re-enabled.
+
+
+## EOD SUMMARY — 2026-09-02
+
+_Auto-generated by eod_debrief.py at 2026-09-02 4:50 PM ET · broker-truth sourced · 19 round-trip(s)_
+
+## A · DID THE SYSTEM RUN CORRECTLY TODAY?
+
+**Funnel (broker-truth + candidate log):** universe scanned ~530 -> candidates evaluated 133 -> passed in-play gate 19 -> selected 40 -> symbols FILLED 19.
+
+**Re-arm windows (multiscan_trace):**
+- 9:45 AM: armed 4, refused 0
+- 9:45 AM: armed 1, refused 0
+- 9:45 AM: armed 13, refused 0
+- 10:35 AM: armed 4, refused 8 ({'already_held_or_working': 4, 'reentry_capped': 4})
+- 11:35 AM: armed 3, refused 9 ({'reentry_capped': 6, 'already_held_or_working': 3})
+- 12:35 PM: armed 1, refused 11 ({'reentry_capped': 10, 'already_held_or_working': 1})
+- 1:35 PM: armed 1, refused 11 ({'reentry_capped': 10, 'already_held_or_working': 1})
+- 2:35 PM: armed 1, refused 8 ({'reentry_capped': 7, 'opposing_momentum -0.15ATR/15m': 1})
+
+**Incidents today:** 3 {'FAIL': 3}.
+**SAFE_MODE:** currently off (no engage today unless an incident above shows it)
+
+**Gate drove entries:** INCONCLUSIVE/FAIL rc=1 -- VERDICT: FAIL — gate_enforced is False; gate ran in SHADOW. Set ORB_INPLAY_GATE=True.
+  _(NOTE: verify_gate_drove_entries validates only the 9:35 path; re-arm fills are NOT in the 9:35 SELECTED set by design, so it reports FAIL on re-arm-heavy days. The per-day gate-integrity signal is the gate_not_failing_open reliability check.)_
+
+**Broker reconciliation at close:** FLAT (0 positions, 0 working); position_recon=OK (broker and bot agree both ways (0 position(s) reconciled))
+
+## A2 · STRATEGY-RULE & IN-PLAY COMPLIANCE (did we trade to the rules?)
+
+- **Q1 — Did the bot trade exactly to the strategy rules on every trade?**  **YES**  (19/19 trades compliant)
+- **Q2 — Did the bot trade the in-play-identified symbols?**  **YES**  (19/19 in the in-play list)
+- Context: 19/19 entries came from RE-ARM windows, which are UNGATED by the in-play gate by design (re-arm/fresh-breakout path) -- counted as in-play because they were on the armed list, but they did not have to clear the 9:35 RelVol/move thresholds.
+- Exit-rule breakdown: EXIT_CANDLE_CLOSE_TRAIL×11, EXIT_TIME_STOP_UNCONFIRMED×8
+
+## B · PER-TRADE LEDGER (one row per round-trip; broker-truth)
+
+| # | sym | side | occ | entry(act/intend) | slip bps | delay m | gate (RelVol·mv%·RSvSPY·$tier·mcap·win) | shares | gross$ | 0.15ATR lvl | conf | EXIT REASON/time/px | hold m | MFE | MAE | leftHold$ | gP&L | comm | netP&L | R | order IDs |
+|--|--|--|--|--|--|--|--|--|--|--|--|--|--|--|--|--|--|--|--|--|--|
+| 1 | INCY | BUY | 1 | 128.94/128.92 | 1 | 0.0 | 2.5·3.1%·3.0%·SMALL_DVOL·large·0945 | 77 | 9,928 | 128.48 | no | 30m-time-stop/10:15AM/127.34 | 30 | 0.12 | 1.51 | 115 | -122.81 | 2.00 | -124.81 | -0.38 | 969741931/969760793 |
+| 2 | DDOG | SELLSHORT | 1 | 213.01/213.12 | 5 | 0.0 | 2.4·-4.3%·-4.5%·MID_DVOL·large·0945 | 93 | 19,810 | 214.69 | no | 30m-time-stop/10:44AM/216.33 | 59 | 0.37 | 3.62 | 661 | -308.76 | 2.00 | -310.76 | -0.21 | 969741911/969773435 |
+| 3 | TMUS | BUY | 1 | 184.40/184.40 | 0 | 0.0 | 2.9·1.1%·1.0%·MID_DVOL·mega·0945 | 108 | 19,915 | 183.84 | no | candle-close/9:58AM/185.01 | 13 | 0.80 | 0.52 | 245 | 65.88 | 2.16 | 63.72 | 0.11 | 969741943/969749623 |
+| 4 | FCX | BUY | 1 | 75.06/75.07 | -1 | 0.0 | 1.6·3.5%·3.4%·MID_DVOL·large·0945 | 133 | 9,983 | 74.67 | no | candle-close/10:14AM/75.10 | 29 | 0.58 | 0.71 | -152 | 5.32 | 2.66 | 2.66 | 0.01 | 969741960/969759517 |
+| 5 | RDDT | BUY | 1 | 150.33/150.29 | 3 | 0.0 | 1.7·3.8%·3.7%·SMALL_DVOL·UNKNOWN·0945 | 66 | 9,922 | 149.18 | no | candle-close/9:51AM/151.01 | 6 | 1.30 | 0.84 | 469 | 44.88 | 2.00 | 42.88 | 0.06 | 969741955/969745751 |
+| 6 | PLTR | SELLSHORT | 1 | 174.17/174.22 | 3 | 0.0 | 2.2·-2.5%·-2.7%·LARGE_DVOL·mega·0945 | 114 | 19,855 | 175.16 | no | candle-close/10:24AM/173.52 | 39 | 1.26 | 3.40 | 463 | 74.10 | 2.28 | 71.82 | 0.07 | 969741953/969764909 |
+| 7 | CRWD | SELLSHORT | 1 | 207.13/207.15 | 1 | 0.0 | 1.3·-3.6%·-3.7%·MID_DVOL·large·0945 | 96 | 19,884 | 208.91 | no | candle-close/10:06AM/205.75 | 21 | 2.73 | 1.47 | 225 | 132.48 | 2.00 | 130.48 | 0.08 | 969741984/969755166 |
+| 8 | MRNA | SELLSHORT | 1 | 149.02/149.04 | 1 | 0.0 | 1.6·-2.5%·-2.6%·MID_DVOL·large·0945 | 134 | 19,969 | 151.33 | no | 30m-time-stop/10:42AM/149.67 | 57 | 1.81 | 3.76 | -158 | -87.10 | 2.68 | -89.78 | -0.03 | 969741971/969772628 |
+| 9 | GD | SELLSHORT | 1 | 364.48/364.64 | 4 | 0.0 | 1.5·-1.3%·-1.4%·SMALL_DVOL·large·0945 | 27 | 9,841 | 365.39 | no | candle-close/10:02AM/364.22 | 17 | 1.56 | 0.83 | 3 | 7.02 | 2.00 | 5.02 | 0.02 | 969742004/969752663 |
+| 10 | PCG | SELLSHORT | 1 | 12.96/12.95 | -8 | 0.0 | 1.1·-7.6%·-7.8%·MID_DVOL·large·0945 | 772 | 10,005 | 13.07 | no | candle-close/9:54AM/12.83 | 9 | 0.23 | 0.12 | -386 | 100.36 | 13.26 | 87.10 | 0.11 | 969741994/969747336 |
+| 11 | NOW | SELLSHORT | 1 | 139.52/139.59 | 5 | 0.0 | 1.4·-2.0%·-2.1%·MID_DVOL·large·0945 | 143 | 19,951 | 140.43 | no | candle-close/10:25AM/138.93 | 40 | 1.14 | 2.06 | 316 | 84.37 | 2.86 | 81.51 | 0.07 | 969741999/969765217 |
+| 12 | SOFI | BUY | 1 | 17.82/17.82 | 0 | 0.0 | 1.3·4.1%·3.6%·MID_DVOL·large·1035 | 561 | 9,997 | 17.70 | no | 30m-time-stop/11:06AM/17.85 | 31 | 0.08 | 0.09 | -6 | 16.83 | 10.73 | 6.10 | 0.01 | 969769730/969781887 |
+| 13 | BBY | BUY | 1 | 86.48/86.47 | 1 | 0.0 | 1.8·4.3%·3.8%·MID_DVOL·large·1035 | 115 | 9,945 | 86.01 | no | 30m-time-stop/11:09AM/86.22 | 34 | 0.28 | 0.33 | 87 | -29.90 | 2.30 | -32.20 | -0.06 | 969769727/969782657 |
+| 14 | TTD | BUY | 1 | 14.17/14.17 | 0 | 0.0 | 1.5·2.4%·1.9%·SMALL_DVOL·mid·1035 | 705 | 9,990 | 14.09 | no | candle-close/10:54AM/14.23 | 19 | 0.11 | 0.08 | 219 | 42.30 | 12.46 | 29.84 | 0.06 | 969769738/969777254 |
+| 15 | PAYX | SELLSHORT | 1 | 123.64/123.68 | 3 | 0.0 | 1.2·-1.5%·-2.0%·SMALL_DVOL·large·1035 | 161 | 19,906 | 124.06 | no | 30m-time-stop/12:19PM/123.91 | 104 | 0.06 | 1.02 | -13 | -43.47 | 3.22 | -46.69 | -0.07 | 969769748/969801909 |
+| 16 | NVDA | BUY | 1 | 226.40/226.39 | 0 | 0.0 | 1.5·3.9%·3.3%·LARGE_DVOL·mega·1135 | 22 | 4,981 | 225.58 | no | candle-close/11:57AM/227.33 | 22 | 1.48 | 0.63 | -65 | 20.46 | 2.00 | 18.46 | 0.11 | 969791146/969797215 |
+| 17 | STX | SELLSHORT | 1 | 790.45/790.52 | 1 | 0.0 | 1.1·-2.8%·-3.4%·LARGE_DVOL·mega·1135 | 12 | 9,485 | 797.48 | no | 30m-time-stop/12:21PM/796.43 | 46 | 2.33 | 9.24 | -145 | -71.76 | 2.00 | -73.76 | -0.09 | 969791159/969802274 |
+| 18 | XYZ | BUY | 1 | 81.60/81.57 | 4 | 0.0 | 0.8·4.7%·4.3%·MID_DVOL·large·1235 | 61 | 4,978 | 81.22 | no | candle-close/12:59PM/82.00 | 24 | 0.46 | 0.10 | 28 | 24.40 | 2.00 | 22.40 | 0.10 | 969805111/969811211 |
+| 19 | S | SELLSHORT | 1 | 19.73/19.73 | -0 | 0.0 | 0.7·-4.3%·-4.6%·SMALL_DVOL·mid·1335 | 252 | 4,972 | 19.90 | no | 30m-time-stop/2:05PM/19.61 | 31 | 0.14 | 0.02 | -15 | 30.24 | 5.04 | 25.20 | 0.06 | 969818049/969824843 |
+
+## C · COST & EXECUTION SUMMARY (edge-survival line)
+
+- Total commission (broker-actual): $75.66  ·  fees: $0.00
+- Commission 3.11 bps + fees 0.00 bps of $243,318 notional = **3.11 bps avg cost**
+- Avg entry slippage: 1.3 bps (adverse +)
+- Slippage trend (prior 10d, adverse + bps): [0.6, 1.4, 1.0, 0.4, 1.0, 1.0, 1.5, 1.2, 1.0, 1.3] · trailing avg 1.0 bps · today 1.3 (worse vs trailing)
+- Per-trade avg cost: $3.98 (19 round-trips)
+
+## D · AGGREGATE  *(context, not a verdict — building toward N>=30)*
+
+- N=19 · win rate 68% (13W/6L)
+- GROSS day P&L $-15.17 · **NET day P&L $-90.82**
+- Gross expectancy $-0.80/trade · Net expectancy $-4.78/trade
+- Net profit factor 0.87
+- Avg win $45.17 · avg loss $-113.00
+- Largest win $130.48 · largest loss $-310.76
+- Long/short split: 9L / 10S
+
+- **Confirmation** (favorable MFE vs 0.15xATR14, fixed 30-min window · cross-day-consistent, incl re-arm): **9/19 confirmed within 30 min** (47%) · 11/19 ever-in-hold · gap 2 = trades the 30-min time-stop cut before they confirmed
+
+
+**Split — context, not a verdict; building toward N>=30 per bucket:**
+- PATH 9:35-gated:  N=11 · win 73% · net $-40 ($-4/trade, -2.4 bps)
+- PATH re-arm:      N=8 · win 62% · net $-51 ($-6/trade, -6.8 bps)
+- OCC 1st-entry:    N=19 · win 68% · net $-91 ($-5/trade, -3.7 bps)
+- OCC re-entry(2+): N=0
+- RECONCILE: path sum $-90.82 + occ sum $-90.82 == day net $-90.82 -> OK
+
+- Capital utilization: PEAK deployed: $242,763  (63.9% of $380,000 target)  at 09:56 (5 pos + 11 working)
+
+## E · ANOMALIES & DIVERGENCES CODE FLAGGED
+
+- PLTR: peak $890 post-exit / held-to-EOD $463 -- see PROP-EXIT-FALSE-STOPOUT
+- DDOG: peak $754 post-exit / held-to-EOD $661 -- see PROP-EXIT-FALSE-STOPOUT
+- CRWD: peak $494 post-exit / held-to-EOD $225 -- see PROP-EXIT-FALSE-STOPOUT
+- RDDT: peak $479 post-exit / held-to-EOD $469 -- see PROP-EXIT-FALSE-STOPOUT
+- MRNA: peak $419 post-exit / held-to-EOD $-158 -- but reverted by EOD (transient peak tick, NOT a real edge loss)
+- NOW: peak $365 post-exit / held-to-EOD $316 -- see PROP-EXIT-FALSE-STOPOUT
+- TMUS: peak $330 post-exit / held-to-EOD $245 -- see PROP-EXIT-FALSE-STOPOUT
+- BBY: peak $255 post-exit / held-to-EOD $87 -- but reverted by EOD (transient peak tick, NOT a real edge loss)
+- TTD: peak $254 post-exit / held-to-EOD $219 -- see PROP-EXIT-FALSE-STOPOUT
+- marginability shadow: 19 armed names all STOCK/no-restrictions -> 4x assumption held (broker is the per-symbol authority; SHADOW, before-live gate OFF)
+
+## F · PROVENANCE / FIELD-AVAILABILITY MAP
+
+| field | source | note |
+|--|--|--|
+| symbol/side/shares/order IDs/status | BROKER-TRUTH | broker_orders_unified.csv raw_order_json |
+| actual entry/exit price + time | BROKER-TRUTH | FilledPrice/ExecutionPrice + OpenedDateTime (UTC) |
+| intended entry trigger price | LOGGED | signal_trigger_px / intended_price / StopPrice |
+| intended/submission time | LOGGED | submit_time (ET) -- proxy for arm time, not breakout-detect time |
+| entry delay / slippage bps | DERIVED | actual vs intended (above) |
+| commission (per trade) | BROKER-ACTUAL | raw_order_json CommissionFee, summed entry+exit |
+| fees (per trade) | BROKER-ACTUAL | raw_order_json UnbundledRouteFee (0 today) |
+| gross/net P&L, net R | DERIVED | from broker fills + commission; R uses 0.15xATR (9:35 only) |
+| gate ctx (RelVol/move%/RSvSPY/$tier/mcap) | LOGGED (9:35 only) | orb_candidate_log.jsonl selected names; RE-ARM names NOT in candidate log |
+| 0.15xATR protective level | DERIVED (9:35 only) | ATR from orb_daily_state entries_submitted; re-arm ATR NOT-logged |
+| confirm fired? | LOGGED (9:35 only) | bot_alerts ORB_CONFIRM_SWAP; re-arm confirm not tracked |
+| exit type (EOD vs synthetic) | DERIVED | by exit time; fine reason (candle-close vs hard-stop) NOT joined (in bot_alerts) |
+| MFE / MAE | DERIVED from 1-min bars | barcharts over hold window; NOT logged natively (REG-08 INERT without this) |
+| broker-flat + position recon | BROKER-TRUTH (asserted) | reliability_checks.fetch_truth + check_position_recon |
+
+_Never fabricated: any field above marked NOT-logged/NOT-computed is shown as such in the rows._
+
+## G — FADE vs BREAKOUT counterfactual (TUNE-01; context, NOT a verdict — building toward N)
+
+_N=40 candidates today (deduped by symbol) -> fade_breakout_log.jsonl (append-only, OOS accumulation). R = signed move in the breakout direction / ATR; fade_R = -breakout_R. context, NOT a verdict -- building toward a permutation test._
+
+- @EOD: mean breakout_R = -0.003; breakout won (R>0) 17/40 (if breakout_R<0 the FADE would have paid).
+- by cap bucket (mean breakout_R @EOD): UNKNOWN=1.03 (n1), large=-0.06 (n30), mega=-0.02 (n7), mid=0.43 (n2)
+## H · CAPITAL DEPLOYMENT (by hour + idle attribution)
+
+**Deployed book by hour (peak; filled positions + working orders):**
+
+| hour | deployed | % of $400k cap | pos+working |
+|--|--|--|--|
+| 9AM | $242,763 | 61% | 5+11 |
+| 10AM | $105,523 | 26% | 2+4 |
+| 11AM | $99,203 | 25% | 3+6 |
+| 12PM | $39,322 | 10% | 1+4 |
+| 1PM | $39,894 | 10% | 1+4 |
+| 2PM | $34,547 | 9% | 0+4 |
+| 3PM | $34,547 | 9% | 0+4 |
+
+**Idle-capital attribution** (why capital sat idle vs the $400k cap; RE-ARM windows):
+- **Qualified trades refused for CAPITAL today: 0** (peak idle below cap $365,478; gross demand upper-bound $0 at $25k/name). _The only number that justifies raising the deploy target._
+
+| window | deployed | idle vs cap | thin-signal | self-throttle | refused cap/slot/reentry |
+|--|--|--|--|--|--|
+| 0945 | $193,863 | $206,137 | $206,137 | $0 | 0/0/0 |
+| 1035 | $155,175 | $244,825 | $144,825 | $100,000 | 0/0/4 |
+| 1135 | $63,930 | $336,070 | $186,070 | $150,000 | 0/0/6 |
+| 1235 | $34,526 | $365,474 | $115,474 | $250,000 | 0/0/10 |
+| 1335 | $34,522 | $365,478 | $115,478 | $250,000 | 0/0/10 |
+| 1435 | $34,529 | $365,471 | $190,471 | $175,000 | 0/0/7 |
+
+- STALE-SLOT (separate; DEPLOYED-but-stuck, NOT idle): $0 in 0 red name(s) held to EOD-flatten -- a tighter exit would have freed the slot.
+- _thin-signal + self-throttle = idle (cap-deployed) per window. Thin-signal idle is CORRECT (no qualified candidate wanted it -- NOT a defect, no floor implied); self-throttle is fixable (our caps). The 9:35 path deploys first; this covers the re-arm windows in the trace._
+
+## I · LOSER ATTRIBUTION (exit-reason x confirm x side)
+
+**1. Losers by SIDE:**
+- LONG losers 2 ($-157.01) · SHORT losers 4 ($-520.99) · total losing $-678.00 over 6 trade(s)
+
+| sym | side | confirm | exit | hold m | net$ |
+|--|--|--|--|--|--|
+| DDOG | short | no | 30m-time-stop | 59 | $-310.76 |
+| INCY | long | no | 30m-time-stop | 30 | $-124.81 |
+| MRNA | short | no | 30m-time-stop | 57 | $-89.78 |
+| STX | short | no | 30m-time-stop | 46 | $-73.76 |
+| PAYX | short | no | 30m-time-stop | 104 | $-46.69 |
+| BBY | long | no | 30m-time-stop | 34 | $-32.20 |
+
+**2. ALL trades by EXIT REASON x CONFIRM (partitions every round-trip):**
+| exit reason | confirm | n | win% | net$ | avg hold m |
+|--|--|--|--|--|--|
+| 30m-time-stop | no | 8 | 25% | $-646.70 | 49 |
+| candle-close | yes | 11 | 100% | $555.89 | 22 |
+- _partition check: cells sum to 19 == N 19_
+
+**3. BLEEDER FLAG — unconfirmed-rides-to-EOD-flatten (the named target class):**
+- 0 trade(s), net $0.00, avg hold 0m
+
+**4. MUST-NOT-CUT CONTROL — winners a tightening rule must spare (longest-held first):**
+| sym | side | confirm | exit | hold m | net$ |
+|--|--|--|--|--|--|
+| NOW | short | yes | candle-close | 40 | $81.51 |
+| PLTR | short | yes | candle-close | 39 | $71.82 |
+| SOFI | long | no | 30m-time-stop | 31 | $6.10 |
+| S | short | no | 30m-time-stop | 31 | $25.20 |
+| FCX | long | yes | candle-close | 29 | $2.66 |
+| XYZ | long | yes | candle-close | 24 | $22.40 |
+
+## TRADE AUTOPSY — 2026-09-02
+
+_READ-ONLY post-close autopsy · broker-truth sourced · 19 round-trip(s) · generated 2026-09-02 4:50 PM ET_
+
+**Reconciliation:** book NET $-90.81 vs broker truth $-90.81 (gross $-15.16) -> MATCH
+
+### Per-round-trip ledger (one row per RT)
+
+| # | sym | side | path | entry fill | net$ | conf | early MAE 1/2/3/5m (xATR) | early MFE 1/2/3/5m (xATR) | hold m | exit reason | EODflat | rev->bleed |
+|--|--|--|--|--|--|--|--|--|--|--|--|--|
+| 1 | INCY | long | 9:35 | 9:45 AM | $-124.81 | N | 0.077/0.189/0.327/0.343 | 0.038/0.038/0.038/0.038 | 30 | 30m-time-stop | n | n |
+| 2 | DDOG | short | 9:35 | 9:45 AM | $-310.76 | N | 0.183/0.183/0.242/0.242 | 0.0/0.0/0.0/0.0 | 59 | 30m-time-stop | n | n |
+| 3 | TMUS | long | 9:35 | 9:45 AM | $63.72 | Y* | 0.096/0.096/0.096/0.096 | 0.075/0.091/0.091/0.091 | 13 | candle-close | n | n |
+| 4 | FCX | long | 9:35 | 9:45 AM | $2.66 | Y* | 0.121/0.121/0.121/0.121 | 0.004/0.004/0.004/0.039 | 29 | candle-close | n | n |
+| 5 | RDDT | long | 9:35 | 9:45 AM | $42.88 | Y* | 0.057/0.057/0.057/0.057 | 0.031/0.038/0.104/0.169 | 6 | candle-close | n | n |
+| 6 | PLTR | short | 9:35 | 9:45 AM | $71.82 | Y* | 0.324/0.354/0.369/0.424 | 0.0/0.0/0.0/0.0 | 39 | candle-close | n | n |
+| 7 | CRWD | short | 9:35 | 9:45 AM | $130.48 | N | 0.018/0.018/0.018/0.018 | 0.0/0.0/0.0/0.0 | 21 | candle-close | n | n |
+| 8 | MRNA | short | 9:35 | 9:45 AM | $-89.78 | N | 0.13/0.136/0.204/0.204 | 0.0/0.0/0.0/0.0 | 57 | 30m-time-stop | n | n |
+| 9 | GD | short | 9:35 | 9:45 AM | $5.02 | N | 0.002/0.002/0.002/0.002 | 0.0/0.0/0.0/0.0 | 17 | candle-close | n | n |
+| 10 | PCG | short | 9:35 | 9:45 AM | $87.10 | N | na/0.02/0.02/0.02 | na/0.0/0.0/0.0 | 9 | candle-close | n | n |
+| 11 | NOW | short | 9:35 | 9:45 AM | $81.51 | Y* | 0.145/0.152/0.162/0.22 | 0.0/0.0/0.0/0.0 | 40 | candle-close | n | n |
+| 12 | SOFI | long | re-arm 10:35AM | 10:35 AM | $6.10 | N | na/0.018/0.018/0.018 | na/0.0/0.0/0.0 | 31 | 30m-time-stop | n | n |
+| 13 | BBY | long | re-arm 10:35AM | 10:35 AM | $-32.20 | N | 0.105/0.105/0.105/0.105 | 0.0/0.0/0.0/0.0 | 34 | 30m-time-stop | n | n |
+| 14 | TTD | long | re-arm 10:35AM | 10:35 AM | $29.84 | Y* | 0.149/0.149/0.149/0.149 | 0.0/0.0/0.037/0.074 | 19 | candle-close | n | n |
+| 15 | PAYX | short | re-arm 10:35AM | 10:35 AM | $-46.69 | N | 0.075/0.143/0.2/0.25 | 0.0/0.0/0.0/0.0 | 104 | 30m-time-stop | n | Y |
+| 16 | NVDA | long | re-arm 11:35AM | 11:35 AM | $18.46 | Y* | 0.115/0.115/0.115/0.115 | 0.0/0.0/0.0/0.0 | 22 | candle-close | n | n |
+| 17 | STX | short | re-arm 11:35AM | 11:35 AM | $-73.76 | N | 0.094/0.132/0.132/0.132 | 0.0/0.0/0.0/0.0 | 46 | 30m-time-stop | n | n |
+| 18 | XYZ | long | re-arm 12:35PM | 12:35 PM | $22.40 | Y* | 0.039/0.039/0.039/0.039 | 0.0/0.0/0.0/0.023 | 24 | candle-close | n | n |
+| 19 | S | short | re-arm 1:35PM | 1:35 PM | $25.20 | N | 0.009/0.009/0.009/0.009 | 0.0/0.0/0.0/0.0 | 31 | 30m-time-stop | n | n |
+
+### Day summary — confirmed vs unconfirmed
+
+- CONFIRMED: N=0 · net $0.00 · win None%
+- UNCONFIRMED: N=11 · net $-424.10 · win 45.5%
+- **Day net $-90.81**
+
+### THE GIVEBACK LINE (3 PM -> close)
+
+- By ~3:00 PM: 19 RT completed = $-90.81 (intraday peak).
+- At close: 19 RT = $-90.81.
+- **Given back: $0.00** across the 0 late-closer(s) (completed after 3:00 PM, net $0.00).
+
+Per late-closer — early-reversal BLEEDER vs WINNER that gave back into the EOD flatten:
+
+| sym | side | exit | net$ | bucket |
+|--|--|--|--|--|
+
+- BLEEDER bucket sum: $0.00 (0 RT)
+- WINNER-gaveback bucket sum: $0.00 (0 RT)
+
+### LENS A — early-reversal losers
+
+- Day losers: 6 · total loser net $-678.00
+- Early-reversal losers (unconfirmed + early adverse + held-long/flattened): 1 · net $-46.69 (6.9% of the day's loss)
+- Of those, LATE-CLOSERS (exit after 3:00 PM) in the giveback: 0 · net $0.00
+
+| sym | side | conf | exit | hold m | net$ |
+|--|--|--|--|--|--|
+| PAYX | short | N | 12:19 PM | 104 | $-46.69 |
+
+### LENS B — MUST-NOT-CUT: early exit at K=0.75xATR adverse-before-confirm (full book)
+
+_Pinned-bar real-time method (l1_mustnotcut_audit), K pinned at 0.75 (never tighter). EARLY-POLL CAVEAT: the live monitor is blind in the first ~5 min, so these are what an IDEAL early-poll would do, NOT what today's live bot could have fired._
+
+- **Bleeders cut: 0 · $ saved $0.00**
+- **Confirmed winners clipped: 0 · $ given up $0.00**
+- **THREE-SIDED net-of-cost: $0.00** (= saved $0.00 − winners given up $0.00)
+- coverage: 0 safe (never crossed K before confirm), 19 NOT-AVAILABLE (no pin/atr), 0 intrabar-ambiguous (counted worst-case against the leash)
+
+### LENS C — MU-class check (cluster vs one extended/gap-top trade)
+
+- Top loser: DDOG short $-310.76 = 45.8% of the day's loss $-678.00 (scan_move -4.35%)
+- Gap-tops (|scan_move| >= 12.0%) among losers: 0
+- **CLUSTER: the loss is spread across 6 losers (top DDOG only 45.8%); not a single MU-class trade.**
+
+### CUMULATIVE TALLY (across available days)
+
+- Days: 2026-06-18, 2026-06-22, 2026-06-23, 2026-06-24, 2026-06-25, 2026-06-26
+- Confirmed N=70 · unconfirmed N=39 · confirm-NA N=14 (progress toward N>=30 confirmed: 70/30)
+- Cumulative early-exit-at-0.75 three-sided net-of-cost: **$458.54**
+- One-trade-dominance guard: WITHOUT the single biggest trade (2026-06-25/MU (bleeder saved), $810.09): **$-351.55**
+
+| date | confirmed N | unconfirmed N | three-sided net$ |
+|--|--|--|--|
+| 2026-06-18 | 7 | 5 | $0.00 |
+| 2026-06-22 | 12 | 4 | $0.00 |
+| 2026-06-23 | 7 | 4 | $0.00 |
+| 2026-06-24 | 14 | 7 | $52.76 |
+| 2026-06-25 | 15 | 8 | $392.76 |
+| 2026-06-26 | 15 | 11 | $13.02 |
+
+### Caveats
+
+- confirm = polled flag -> segment clean-fail vs poll-near-miss (a trade can miss confirm by a hair).
+- EARLY-POLL CAVEAT: the live monitor is blind in the first ~5 min, so Lens B's early-exit numbers are "what an IDEAL early-poll would do," NOT what today's live bot could have fired -- read them as a ceiling, not a live-achievable result.
+
+_Diagnostic, in-sample. These days are in-sample for any un-promoted rule; a streak of confirming days accumulates N toward >=30 but does not promote anything -- promotion still requires a locked rule + fresh OOS forward test + the gauntlet._
+
+---
