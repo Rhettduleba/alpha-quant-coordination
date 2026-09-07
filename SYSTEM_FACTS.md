@@ -1,6 +1,6 @@
 # SYSTEM_FACTS — live mechanics, machine-generated from the running code/config/broker-truth
 
-> **Generated:** 2026-09-06 16:50:50 Eastern Daylight Time · **coordination-repo HEAD:** `098f770` · by `strategy-research/system_facts.py` (read-only).
+> **Generated:** 2026-09-07 16:50:49 Eastern Daylight Time · **coordination-repo HEAD:** `b6c88e6` · by `strategy-research/system_facts.py` (read-only).
 > Every value below is READ from a real source (the live import for the VALUE; a fresh file scan for the SOURCE file:line). Nothing is hand-typed. A field that can't be derived says `UNVERIFIED`.
 > If this contradicts memory, THIS wins — regenerate it (re-run the script) rather than trusting recall.
 
@@ -9,14 +9,14 @@
 |---|---|---|
 | Live exit mode | candle_1.4atr_chandelier | `tradestation-bot/risk_config.py:60` |
 | SAFE_MODE_ENFORCE (gate teeth) | False | `tradestation-bot/risk_config.py:220` |
-| consecutive_clean streak | 28 | `validation/clean_day_certifier.py:consecutive_clean()` |
+| consecutive_clean streak | 27 | `validation/clean_day_certifier.py:consecutive_clean()` |
 | Posture / freeze + last forward-test | human-maintained record (not a code constant) -- read the CURRENT STATE block | `SESSION_LOG.md (FINDINGS & TEST RESULTS LEDGER + CURRENT STATE)` |
 
 ## ENTRY
 | Fact | Live value | Source |
 |---|---|---|
-| Universe size today (published) | 142 | `ai-trading-strategy-agent/outputs/advisor_guidance/advisor_universe_latest.json:universe_size` |
-| Universe generated_at | 2026-09-04T07:30:34.080518-04:00 | `advisor_universe_latest.json:generated_at` |
+| Universe size today (published) | 146 | `ai-trading-strategy-agent/outputs/advisor_guidance/advisor_universe_latest.json:universe_size` |
+| Universe generated_at | 2026-09-07T07:30:33.461485-04:00 | `advisor_universe_latest.json:generated_at` |
 | Universe source | research_brain_v1 | `advisor_universe_latest.json:universe_source` |
 | Relative-strength pool size | not in the published artifact -- see research-brain build log | `UNVERIFIED` |
 | Re-arm path enabled (ORB_MULTISCAN) | True | `tradestation-bot/risk_config.py:76` |

@@ -23124,3 +23124,207 @@ _Pinned-bar real-time method (l1_mustnotcut_audit), K pinned at 0.75 (never tigh
 _Diagnostic, in-sample. These days are in-sample for any un-promoted rule; a streak of confirming days accumulates N toward >=30 but does not promote anything -- promotion still requires a locked rule + fresh OOS forward test + the gauntlet._
 
 ---
+
+---
+**TURN 2026-09-07 — Rhett's pivot: mega-caps + his own 3-candle rule. FIRST POSITIVE GROSS EDGE IN THE PROJECT.**
+1. **THE UNIVERSE WAS THE ORIGINAL SIN (measured).** relvol>=2 mathematically selects THIN names (only thin stocks double their volume). Mega-caps are 6.3% of our 898 trades; their median relvol when surfaced is 1.38 vs our 2.0 bar. Cost comparison: MEGA spread 0.025% / $5.7B ADV / 3.49% daily range vs OUR NAMES 0.097% / $0.32B / 4.11%. **Same volatility, 1/4 the spread, 18x the depth.** $400k round trip: $334 mega vs $1,557 ours. We spent 4 months trying to out-tune a spread 4x wider than necessary.
+2. **DATA EXPANSION DONE:** fetched 1,852 new symbol-days (19 min, paced, 0 rate-limit incidents) -> 3,233 scanner (sym,day) pairs now cached; 18,400 candidate observations available (28x the 660 we trained on).
+3. **RHETT'S 3-CANDLE RULE TESTED EXACTLY AS DESCRIBED** (3 decisive same-direction 1-min candles -> buy at market next open -> sell at market when it turns; 9 variants; mega-caps only; 671 symbol-days / 61 days; cost $54 round trip per $100k, measured). ALL VARIANTS NET NEGATIVE (best -$106,996 on 2,047 trades). **BUT separating signal from toll: costs paid $216k-$259k while GROSS (pre-cost) is POSITIVE on the tightest exit -- R2 trail 0.05%: +$84,398 gross = +$17.60/trade over 4,796 trades.** That is the FIRST positive gross edge this project has produced.
+4. **TWO HARD CONSTRAINTS ON IT:** (a) +$17.60 on $100k = 0.0176%, while round-trip SPREAD ALONE is 0.05% -- the edge is ~1/3 of the toll, and this does NOT improve with size (spread is linear in notional). (b) **MOMENTUM FADES, IT DOES NOT CONTINUE:** gross by hold length = +$17.60 (0.05% trail, median hold <1 min) -> -$7.63 (0.10%) -> -$19.29 (0.20%, median 5 min). After 3 strong candles these names pull back. Consistent with the July inversion study.
+5. **RUNNING NOW:** the implied test -- same signal traded in the OPPOSITE direction (FADE) across 5 trail widths, plus FOLLOW controls, reporting GROSS and NET separately.
+Files: expand_bars_cache.py, candidate_dataset_study.py, megacap_candle_study.py, three_candle_momentum_study.py, three_candle_fade_study.py (all new). NO trading change. NO token task re-enabled.
+
+---
+**TURN 2026-09-07 (cont) — RHETT'S CANDLE HYPOTHESIS: DEFINITIVELY FALSIFIED. Two of my own bugs caught and corrected en route.**
+1. **TEST B (clean, no path assumptions): candle features have ZERO predictive power in mega-caps.** 11 mega-caps x 61 days, features from CLOSED bars only (body ratio, upper/lower wick ratios, direction run, range vs 20-bar avg, 5/15/30-min returns, position in day range, distance off session hi/lo, time), label = first-touch of +/-band. Three bands, two model families:
+   | band | N | test N | AUC logistic | AUC grad-boost |
+   | 0.15% | 201,593 | 79,799 | 0.480 | 0.504 |
+   | 0.25% | 163,064 | 58,479 | 0.476 | 0.496 |
+   | 0.40% | 103,090 | 32,071 | 0.489 | 0.484 |
+   **0.50 = chance; several below it.** With 80k out-of-sample rows this is CONCLUSIVE, not underpowered. Every confidence slice loses after the $54 toll (-$37 to -$229/trade). One cell (boost/0.25%/top-1% longs, 70% hit, +$46/tr) is 1 of 36 on a model with AUC 0.496 = slice noise; explicitly NOT reported as hope.
+2. **TEST A (Rhett's exact rule) -- TWO OF MY BUGS FOUND, both by the same sanity check: FOLLOW and FADE cannot BOTH be profitable.**
+   - BUG 1: trailing stop referenced the SAME bar it was tested against (assumed catching the intrabar high then exiting on the pullback inside that minute). Look-ahead.
+   - BUG 2: stop fills priced AT the stop, ignoring bars that GAPPED through it -- understated every loss (stops are how losers end), symmetrically in both directions.
+   - Effect: gross/trade went +$32.53 -> +$2.27 (follow) and +$31.46 -> +$1.10 (fade) after fixes. **93% of the apparent "edge" was my own bugs.** I had already reported the buggy +$17.60 to Rhett as "the first positive gross edge in the project" -- CORRECTED to him explicitly, twice.
+   - CORRECTED VERDICT: gross edge ~$2/trade vs a $54 round-trip toll; all 14 variants net -$116k to -$270k. The no-trail control (close-against, +$1.56 gross) was honest through all three runs.
+3. **STANDING LESSON (permanent): run every directional strategy BOTH WAYS. If long and short are both profitable, it is a bug, not a discovery.** This caught two today. Cheap, decisive, and should precede any future edge claim.
+4. **UNTOUCHED BY ANY OF IT -- the cost/universe finding (from QUOTES, not simulation):** mega-caps 0.025% spread / $5.7B ADV / 3.49% daily range vs our traded names 0.097% / $0.32B / 4.11%. Same volatility, 1/4 the toll, 18x the depth. The relvol>=2 filter mathematically routes us into the most expensive instruments available. This is the one actionable result of the day.
+5. NOT YET RUN: candidate_dataset_study.py (the 18,400-observation expansion on the ORB entry mechanic with scanner/liquidity/52-week features -- different question from candles). Bars are now fetched and cached; it is ready whenever wanted.
+Files: megacap_candle_study.py, three_candle_momentum_study.py, three_candle_fade_study.py (+2 bug fixes), expand_bars_cache.py, candidate_dataset_study.py. NO trading change. NO token task re-enabled.
+
+---
+**TURN 2026-09-07 (cont) — Rhett's margin correction KILLED my overnight proposal; and the binding constraint is revealed as SAMPLE SIZE, not ideas.**
+1. **RHETT'S CORRECTION (he was right, I mispriced it):** his account = $100k cash, 4x INTRADAY buying power FREE if flat at close; overnight is Reg T 2x AND borrows at margin interest. I proposed an overnight-drift system without pricing either. Repriced: $200k max overnight (not $400k), borrow $100k, interest ~$39/night at 10% (grossed up for weekend carry), spread $20 -> **NET $79/night = $393/week** (best case $470/wk at 6%). Against a $2,000 target. **Overnight sleeve DEAD for this account.** Structural implication he surfaced: HIS ACCOUNT PAYS HIM TO BE FLAT AT CLOSE (4x free vs 2x financed) -- day-trading is the economically correct shape here.
+2. **Overnight/intraday asymmetry is nonetheless REAL in the data:** over 44 sessions SPY buy-and-hold -0.49% while SPY overnight +3.02% and SPY intraday -3.52%. Basket excess over SPY +3.49% but t=1.40 (not significant) and 64% of it from 3 days -> the stock-selection overlay is luck; the clock effect is the phenomenon. SPY overnight t=0.79 on 44 sessions.
+3. **GAP CONTINUATION (intraday, flat-at-close, event-driven): NULL.** 11,346 stock-days. Gaps >=3% traded in the gap direction: mean -0.083%, **t=-0.65**. Extreme buckets hint at reversal (>+5% gap -> -0.17% intraday; <-5% -> +0.28%) but n=132-149, not significant.
+4. **TIME-OF-DAY (the strongest feature in every classifier): NULL.** SPY+QQQ, 61 sessions, 6 blocks each. Consistent directional shape (mornings +, afternoons -) but the best |t| across 12 tests is 1.58 (SPY 15:30-16:00). 12 tests, best t=1.58 = exactly what noise produces.
+5. **THE REAL FINDING OF THE DAY -- A RESEARCH-DESIGN FAILURE THAT IS MINE:** with 61 sessions and a ~0.2% daily sigma, detecting a 0.03%/day effect at t=2 needs **~180 sessions**. We have 61. So the structural nulls above are **UNDERPOWERED, NOT DISPROVEN** -- I have been writing "no edge" where the correct statement is "this dataset cannot resolve an edge of the size Rhett wants." The candle result (AUC 0.48 on 200k samples) IS conclusive; the daily-frequency structural tests are not. **We have been researching on 3 months of history when the broker will serve years.** Next action: pull multi-year daily + extended intraday history, then re-run every structural test with real statistical power.
+Files: no new trading code. NO trading change. NO token task re-enabled.
+
+
+## EOD SUMMARY — 2026-09-07
+
+_Auto-generated by eod_debrief.py at 2026-09-07 4:50 PM ET · broker-truth sourced · 0 round-trip(s)_
+
+## A · DID THE SYSTEM RUN CORRECTLY TODAY?
+
+**Funnel (broker-truth + candidate log):** universe scanned ~530 -> candidates evaluated 0 -> passed in-play gate 0 -> selected 0 -> symbols FILLED 0.
+
+**Re-arm windows (multiscan_trace):**
+- (no re-arm trace entries today)
+
+**Incidents today:** 5 {'FAIL': 5}.
+**SAFE_MODE:** currently off (no engage today unless an incident above shows it)
+
+**Gate drove entries:** INCONCLUSIVE/FAIL rc=1 -- [INCONCLUSIVE] no candidate-log rows for 2026-09-07 — gate did not run / no scan yet.
+  _(NOTE: verify_gate_drove_entries validates only the 9:35 path; re-arm fills are NOT in the 9:35 SELECTED set by design, so it reports FAIL on re-arm-heavy days. The per-day gate-integrity signal is the gate_not_failing_open reliability check.)_
+
+**Broker reconciliation at close:** FLAT (0 positions, 0 working); position_recon=OK (broker and bot agree both ways (0 position(s) reconciled))
+
+## A2 · STRATEGY-RULE & IN-PLAY COMPLIANCE (did we trade to the rules?)
+
+- no closed round-trips today (nothing to check)
+
+## B · PER-TRADE LEDGER (one row per round-trip; broker-truth)
+
+| # | sym | side | occ | entry(act/intend) | slip bps | delay m | gate (RelVol·mv%·RSvSPY·$tier·mcap·win) | shares | gross$ | 0.15ATR lvl | conf | EXIT REASON/time/px | hold m | MFE | MAE | leftHold$ | gP&L | comm | netP&L | R | order IDs |
+|--|--|--|--|--|--|--|--|--|--|--|--|--|--|--|--|--|--|--|--|--|--|
+
+## C · COST & EXECUTION SUMMARY (edge-survival line)
+
+- Total commission (broker-actual): $0.00  ·  fees: $0.00
+- Commission 0.00 bps + fees 0.00 bps of $1 notional = **0.00 bps avg cost**
+- Avg entry slippage: n/a (adverse +)
+- Slippage trend (prior 10d, adverse + bps): [0.4, 1.0, 1.0, 1.5, 1.2, 1.0, 1.3, 1.3, 2.4, 2.0] · trailing avg 1.3 bps
+- no trades
+
+## D · AGGREGATE  *(context, not a verdict — building toward N>=30)*
+
+- no closed round-trips today
+
+## E · ANOMALIES & DIVERGENCES CODE FLAGGED
+
+- none flagged by code today
+
+## F · PROVENANCE / FIELD-AVAILABILITY MAP
+
+| field | source | note |
+|--|--|--|
+| symbol/side/shares/order IDs/status | BROKER-TRUTH | broker_orders_unified.csv raw_order_json |
+| actual entry/exit price + time | BROKER-TRUTH | FilledPrice/ExecutionPrice + OpenedDateTime (UTC) |
+| intended entry trigger price | LOGGED | signal_trigger_px / intended_price / StopPrice |
+| intended/submission time | LOGGED | submit_time (ET) -- proxy for arm time, not breakout-detect time |
+| entry delay / slippage bps | DERIVED | actual vs intended (above) |
+| commission (per trade) | BROKER-ACTUAL | raw_order_json CommissionFee, summed entry+exit |
+| fees (per trade) | BROKER-ACTUAL | raw_order_json UnbundledRouteFee (0 today) |
+| gross/net P&L, net R | DERIVED | from broker fills + commission; R uses 0.15xATR (9:35 only) |
+| gate ctx (RelVol/move%/RSvSPY/$tier/mcap) | LOGGED (9:35 only) | orb_candidate_log.jsonl selected names; RE-ARM names NOT in candidate log |
+| 0.15xATR protective level | DERIVED (9:35 only) | ATR from orb_daily_state entries_submitted; re-arm ATR NOT-logged |
+| confirm fired? | LOGGED (9:35 only) | bot_alerts ORB_CONFIRM_SWAP; re-arm confirm not tracked |
+| exit type (EOD vs synthetic) | DERIVED | by exit time; fine reason (candle-close vs hard-stop) NOT joined (in bot_alerts) |
+| MFE / MAE | DERIVED from 1-min bars | barcharts over hold window; NOT logged natively (REG-08 INERT without this) |
+| broker-flat + position recon | BROKER-TRUTH (asserted) | reliability_checks.fetch_truth + check_position_recon |
+
+_Never fabricated: any field above marked NOT-logged/NOT-computed is shown as such in the rows._
+
+## G — FADE vs BREAKOUT counterfactual (TUNE-01; context, NOT a verdict — building toward N)
+
+_No breakout candidates logged for the day._
+## H · CAPITAL DEPLOYMENT (by hour + idle attribution)
+
+**Deployed book by hour (peak; filled positions + working orders):**
+
+| hour | deployed | % of $400k cap | pos+working |
+|--|--|--|--|
+| 9AM | $0 | 0% | 0+0 |
+| 10AM | $0 | 0% | 0+0 |
+| 11AM | $0 | 0% | 0+0 |
+| 12PM | $0 | 0% | 0+0 |
+| 1PM | $0 | 0% | 0+0 |
+| 2PM | $0 | 0% | 0+0 |
+| 3PM | $0 | 0% | 0+0 |
+
+**Idle-capital attribution** (why capital sat idle vs the $400k cap; RE-ARM windows):
+- **Qualified trades refused for CAPITAL today: 0** (peak idle below cap $0; gross demand upper-bound $0 at $25k/name). _The only number that justifies raising the deploy target._
+
+- STALE-SLOT (separate; DEPLOYED-but-stuck, NOT idle): $0 in 0 red name(s) held to EOD-flatten -- a tighter exit would have freed the slot.
+- _thin-signal + self-throttle = idle (cap-deployed) per window. Thin-signal idle is CORRECT (no qualified candidate wanted it -- NOT a defect, no floor implied); self-throttle is fixable (our caps). The 9:35 path deploys first; this covers the re-arm windows in the trace._
+
+## I · LOSER ATTRIBUTION (exit-reason x confirm x side)
+
+- no closed round-trips today
+
+## TRADE AUTOPSY — 2026-09-07
+
+_READ-ONLY post-close autopsy · broker-truth sourced · 0 round-trip(s) · generated 2026-09-07 4:50 PM ET_
+
+**Reconciliation:** book NET $0.00 vs broker truth $0.00 (gross $0.00) -> MATCH
+
+### Per-round-trip ledger (one row per RT)
+
+| # | sym | side | path | entry fill | net$ | conf | early MAE 1/2/3/5m (xATR) | early MFE 1/2/3/5m (xATR) | hold m | exit reason | EODflat | rev->bleed |
+|--|--|--|--|--|--|--|--|--|--|--|--|--|
+
+### Day summary — confirmed vs unconfirmed
+
+- CONFIRMED: N=0 · net $0.00 · win None%
+- UNCONFIRMED: N=0 · net $0.00 · win None%
+- **Day net $0.00**
+
+### THE GIVEBACK LINE (3 PM -> close)
+
+- By ~3:00 PM: 0 RT completed = $0.00 (intraday peak).
+- At close: 0 RT = $0.00.
+- **Given back: $0.00** across the 0 late-closer(s) (completed after 3:00 PM, net $0.00).
+
+Per late-closer — early-reversal BLEEDER vs WINNER that gave back into the EOD flatten:
+
+| sym | side | exit | net$ | bucket |
+|--|--|--|--|--|
+
+- BLEEDER bucket sum: $0.00 (0 RT)
+- WINNER-gaveback bucket sum: $0.00 (0 RT)
+
+### LENS A — early-reversal losers
+
+- Day losers: 0 · total loser net $0.00
+- Early-reversal losers: 0 · net $0.00
+- Of those, LATE-CLOSERS (exit after 3:00 PM) in the giveback: 0 · net $0.00
+
+### LENS B — MUST-NOT-CUT: early exit at K=0.75xATR adverse-before-confirm (full book)
+
+_Pinned-bar real-time method (l1_mustnotcut_audit), K pinned at 0.75 (never tighter). EARLY-POLL CAVEAT: the live monitor is blind in the first ~5 min, so these are what an IDEAL early-poll would do, NOT what today's live bot could have fired._
+
+- **Bleeders cut: 0 · $ saved $0.00**
+- **Confirmed winners clipped: 0 · $ given up $0.00**
+- **THREE-SIDED net-of-cost: $0.00** (= saved $0.00 − winners given up $0.00)
+- coverage: 0 safe (never crossed K before confirm), 0 NOT-AVAILABLE (no pin/atr), 0 intrabar-ambiguous (counted worst-case against the leash)
+
+### LENS C — MU-class check (cluster vs one extended/gap-top trade)
+
+- no losers today
+
+### CUMULATIVE TALLY (across available days)
+
+- Days: 2026-06-18, 2026-06-22, 2026-06-23, 2026-06-24, 2026-06-25, 2026-06-26
+- Confirmed N=70 · unconfirmed N=39 · confirm-NA N=14 (progress toward N>=30 confirmed: 70/30)
+- Cumulative early-exit-at-0.75 three-sided net-of-cost: **$458.54**
+- One-trade-dominance guard: WITHOUT the single biggest trade (2026-06-25/MU (bleeder saved), $810.09): **$-351.55**
+
+| date | confirmed N | unconfirmed N | three-sided net$ |
+|--|--|--|--|
+| 2026-06-18 | 7 | 5 | $0.00 |
+| 2026-06-22 | 12 | 4 | $0.00 |
+| 2026-06-23 | 7 | 4 | $0.00 |
+| 2026-06-24 | 14 | 7 | $52.76 |
+| 2026-06-25 | 15 | 8 | $392.76 |
+| 2026-06-26 | 15 | 11 | $13.02 |
+
+### Caveats
+
+- confirm = polled flag -> segment clean-fail vs poll-near-miss (a trade can miss confirm by a hair).
+- EARLY-POLL CAVEAT: the live monitor is blind in the first ~5 min, so Lens B's early-exit numbers are "what an IDEAL early-poll would do," NOT what today's live bot could have fired -- read them as a ceiling, not a live-achievable result.
+
+_Diagnostic, in-sample. These days are in-sample for any un-promoted rule; a streak of confirming days accumulates N toward >=30 but does not promote anything -- promotion still requires a locked rule + fresh OOS forward test + the gauntlet._
+
+---
