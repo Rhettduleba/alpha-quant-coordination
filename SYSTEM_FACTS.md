@@ -1,6 +1,6 @@
 # SYSTEM_FACTS — live mechanics, machine-generated from the running code/config/broker-truth
 
-> **Generated:** 2026-09-21 16:51:47 Eastern Daylight Time · **coordination-repo HEAD:** `6e869ea` · by `strategy-research/system_facts.py` (read-only).
+> **Generated:** 2026-09-22 16:50:55 Eastern Daylight Time · **coordination-repo HEAD:** `5de1dc4` · by `strategy-research/system_facts.py` (read-only).
 > Every value below is READ from a real source (the live import for the VALUE; a fresh file scan for the SOURCE file:line). Nothing is hand-typed. A field that can't be derived says `UNVERIFIED`.
 > If this contradicts memory, THIS wins — regenerate it (re-run the script) rather than trusting recall.
 
@@ -9,14 +9,14 @@
 |---|---|---|
 | Live exit mode | candle_1.4atr_chandelier | `tradestation-bot/risk_config.py:60` |
 | SAFE_MODE_ENFORCE (gate teeth) | False | `tradestation-bot/risk_config.py:227` |
-| consecutive_clean streak | 4 | `validation/clean_day_certifier.py:consecutive_clean()` |
+| consecutive_clean streak | 5 | `validation/clean_day_certifier.py:consecutive_clean()` |
 | Posture / freeze + last forward-test | human-maintained record (not a code constant) -- read the CURRENT STATE block | `SESSION_LOG.md (FINDINGS & TEST RESULTS LEDGER + CURRENT STATE)` |
 
 ## ENTRY
 | Fact | Live value | Source |
 |---|---|---|
 | Universe size today (published) | 143 | `ai-trading-strategy-agent/outputs/advisor_guidance/advisor_universe_latest.json:universe_size` |
-| Universe generated_at | 2026-09-21T07:30:32.874807-04:00 | `advisor_universe_latest.json:generated_at` |
+| Universe generated_at | 2026-09-22T07:30:32.220970-04:00 | `advisor_universe_latest.json:generated_at` |
 | Universe source | research_brain_v1 | `advisor_universe_latest.json:universe_source` |
 | Relative-strength pool size | not in the published artifact -- see research-brain build log | `UNVERIFIED` |
 | Re-arm path enabled (ORB_MULTISCAN) | True | `tradestation-bot/risk_config.py:76` |
@@ -53,11 +53,11 @@
 | Fact | Live value | Source |
 |---|---|---|
 | ** AS-OF | figures below are HISTORICAL (pre-Loop-155). Re-arm 0% is FIXED Loop 155 (LIVE Mon 6/29); re-arm coverage rises + latency drops from Monday once re-arm stops register + TW owns exits. | `SESSION_LOG.md Loop 155` |
-| Entries with a broker resting stop | 1174/1351 = 86.9% | `strategy-research/stop_coverage_audit.py (re-derived from broker_orders_unified.csv)` |
-| 9:35 cohort coverage | 585/590 = 99% | `stop_coverage_audit.py` |
-| Re-arm/late cohort coverage | 589/761 = 77% | `stop_coverage_audit.py` |
+| Entries with a broker resting stop | 1178/1355 = 86.9% | `strategy-research/stop_coverage_audit.py (re-derived from broker_orders_unified.csv)` |
+| 9:35 cohort coverage | 587/592 = 99% | `stop_coverage_audit.py` |
+| Re-arm/late cohort coverage | 591/763 = 77% | `stop_coverage_audit.py` |
 | Median placement latency | 258s (~4.3 min) | `stop_coverage_audit.py` |
-| PRIMARY protection mechanism | software poll (exit_bot_v2 + chandelier)  (mechanisms: {'resting_stop_HIT': 51, 'candle/chandelier': 1229, 'eod_flatten': 71}) | `stop_coverage_audit.py exit-mechanism tally` |
+| PRIMARY protection mechanism | software poll (exit_bot_v2 + chandelier)  (mechanisms: {'resting_stop_HIT': 51, 'candle/chandelier': 1233, 'eod_flatten': 71}) | `stop_coverage_audit.py exit-mechanism tally` |
 
 ## COSTS
 | Fact | Live value | Source |
