@@ -270,7 +270,7 @@
 >
 > Per forward-test freeze + watched-files rules this run edited / committed to source / placed / cancelled / restarted **nothing**; no watched file opened for write; read-only throughout apart from this log entry. ET from canonical `et_now.py`. Cursor acked.
 >
-> **[ALERT TRIAGE 2026-08-05 ~3:05 PM ET - autonomous run - **NO PAGE SENT (silence = handled)**. Late-afternoon run; book FLAT, bot cycling, one resting unfilled entry arm. The thing I chased this run is the one open question the 2:03 PM run left on the table: I asserted the 3:55 PM EOD pass would cancel the resting AEP arm - this run I went and **proved it at the order-payload level instead of trusting a downstream sweeper**.]** Three feeds. (1) `code_alert_inbox.py --json` = **0 total / 0 actionable / 0 CRITICAL** since the 12:50:11 PM cursor. (2) **`bot_alerts.jsonl` scanned DIRECTLY** (7/16 blind-spot rule; `C:\AlphaQuantot_alerts.jsonl`, severity key `severity`): 4,246 rows, **19 today - 18 INFO + 1 WARN**, and **still zero new rows since 11:35:18** (file mtime 11:35:18, now ~3.5h); the sole WARN is unchanged - the single 10:04:58 `TS_API_TRANSIENT` DNS blip triaged Bucket A at 11:07, no recurrence. (3) CSHV **15:00:13 = OK=52 / WARN=1 / FAIL=1 / INFO=1 / SKIP=2**, identical in substance to 14:00: sole FAIL = `Governance/deferred_work_overdue` (**still 19** overdue, oldest `atr-disk-cache` due 8/01 - count AND oldest both unchanged, so nothing new aged out) already escalated 9:07 AM with root cause + proposed fix; sole WARN = `pre_open_gate_ran` NO-GO merely relaying it. **No re-page due:** `outputslerts\cshv_fail_paged.json` ts = **12:50:11 PM** with `names` unchanged (`["deferred_work_overdue"]`), and `_FAIL_REPAGE_HOURS = 6.0` puts the next by-design heartbeat at ~6:50 PM. Bucket A, no action.
+> **[ALERT TRIAGE 2026-08-05 ~3:05 PM ET - autonomous run - **NO PAGE SENT (silence = handled)**. Late-afternoon run; book FLAT, bot cycling, one resting unfilled entry arm. The thing I chased this run is the one open question the 2:03 PM run left on the table: I asserted the 3:55 PM EOD pass would cancel the resting AEP arm - this run I went and **proved it at the order-payload level instead of trusting a downstream sweeper**.]** Three feeds. (1) `code_alert_inbox.py --json` = **0 total / 0 actionable / 0 CRITICAL** since the 12:50:11 PM cursor. (2) **`bot_alerts.jsonl` scanned DIRECTLY** (7/16 blind-spot rule; `C:\AlphaQuant\bot_alerts.jsonl`, severity key `severity`): 4,246 rows, **19 today - 18 INFO + 1 WARN**, and **still zero new rows since 11:35:18** (file mtime 11:35:18, now ~3.5h); the sole WARN is unchanged - the single 10:04:58 `TS_API_TRANSIENT` DNS blip triaged Bucket A at 11:07, no recurrence. (3) CSHV **15:00:13 = OK=52 / WARN=1 / FAIL=1 / INFO=1 / SKIP=2**, identical in substance to 14:00: sole FAIL = `Governance/deferred_work_overdue` (**still 19** overdue, oldest `atr-disk-cache` due 8/01 - count AND oldest both unchanged, so nothing new aged out) already escalated 9:07 AM with root cause + proposed fix; sole WARN = `pre_open_gate_ran` NO-GO merely relaying it. **No re-page due:** `outputs\alerts\cshv_fail_paged.json` ts = **12:50:11 PM** with `names` unchanged (`["deferred_work_overdue"]`), and `_FAIL_REPAGE_HOURS = 6.0` puts the next by-design heartbeat at ~6:50 PM. Bucket A, no action.
 >
 > **THE AEP OVERNIGHT QUESTION IS CLOSED AT THE SOURCE, NOT AT THE SWEEPER.** A stop-limit entry that has rested unfilled since its 11:35:18 arm - **~3h30m** as of this run - only matters if it can survive the close and fill unmanaged tomorrow, so I read the submission payload rather than relying on the EOD pass: **`orb_orders.py` builds every entry with `"TimeInForce": {"Duration": "DAY"}`** (lines 63 / 222 / 357, and the module header states it outright - `Duration: "DAY" (auto-cancel at session close)`); `orb_runner.py:1147` matches. **So order `965621111` is broker-side auto-cancelled at the close even if the 3:55 PM EOD pass never fires** - the exposure is bounded by the venue, not by our own cleanup code. That removes the single-point-of-failure I had implicitly accepted at 2:03 PM. (Note for contrast: **exits** are deliberately NOT DAY-only - `exit_orders.py:110-131` flips protective orders to **GCP at ~3:58 PM** so a real position stays covered past the bell. Entries expire, protection persists - correct asymmetry.)
 >
@@ -358,7 +358,7 @@
 >
 > **[ALERT TRIAGE 2026-08-02 ~8:39 AM ET - autonomous run - ESCALATED 1 CRITICAL page, 2 NEW real failures, both in the AUTONOMY layer, neither on the trading path.]** Inbox since the 7/31 08:45 cursor: 9 alerts / 9 actionable / 2 CRITICAL groups. Eight are the standing `Governance/deferred_work_overdue` FAIL (Bucket A, escalated 7/31 9:09 AM - NOT re-paged), but its count grew **4 -> 14 items** (oldest now `atr-disk-cache`, due 8/01) and I chased WHY instead of accepting it as more of the same - which surfaced both new failures. **ITEM 1 - the Daily Tune Engine SKIPPED Friday 7/31, a TRADING day.** `outputs/tune_journal/2026-07-31.md` does not exist (journals run 7/29, 7/30, GAP, 8/01); the 7/31 19:45 CSHV `tune_engine_ran` FAIL landed after my 1:04 PM run, so this is its first surfacing. `engine_runs.log` Fri 07/31 18:02:01 shows the claude CLI dying 1.5s in on a **Bun v1.3.14 runtime panic** - "Failed to start HTTP Client thread: Unexpected" - **NOT the old 401** (that 7/22 fix is holding; Sat 8/01 18:02 authenticated and completed normally). No retry exists, and the scheduled task still reported Result=0, so only CSHV saw it. Cost: Friday post-close tune analysis + the Friday IDEA-HUNT memo for 7/31 were never produced. **ITEM 2 - `AlphaQuant_WeeklyBuilder` has NEVER successfully run; its first-ever fire (Sat 8/01 10:07 AM) died Result=1** with `builder_runs.log` containing exactly one line: "401 OAuth access token has expired." **Root cause proven by diff:** `run_daily_tune_engine.bat` carries the 7/22 fix (a FOR loop loading ANTHROPIC_API_KEY from `tradestation-bot\.env` before calling claude); `run_weekly_builder.bat` (created 7/29) NEVER got that block and calls claude bare, falling back to the stored interactive OAuth login that cannot refresh under a scheduled task. ANTHROPIC_API_KEY verified present in .env, so the fix will work. **This is precisely why the governance FAIL is compounding:** the builder is the mechanism that burns down `DEFERRED_WORK.yaml`, it never ran, and the next attempt is Sat 8/08 - which will fail identically. **PROPOSED (both non-watched .bat files, escalated NOT applied per the forward-test freeze):** (1) a retry-once wrapper in the tune-engine bat when today's journal is missing; (2) copy the 3-line ANTHROPIC_API_KEY loader into the builder bat, plus Rhett's yes/no on hand-firing the builder today (Sunday, flat) rather than waiting for 8/08 - I will NOT trigger it unasked because the builder edits and deploys code. **Plus 2 invariant gaps I recommend closing:** (3) there is NO CSHV check that the weekly builder ran (grep-confirmed: `chk_tune_engine_ran` exists, no builder equivalent) - its first run failed and the only symptom was slow governance rot; (4) `chk_tune_engine_ran` inspects TODAY only (7:45 PM -> midnight on a trading day), so Friday's miss self-healed into silence at midnight - it should look back to the most recent completed trading day. **Rest of the system verified healthy this run:** CSHV 08:35:10 = **OK=48 / WARN=0 / FAIL=1 / SKIP=7** (the lone FAIL is the governance one), bot **heartbeat 9s old**, `rel_position_recon` broker and bot agree both ways (0 positions), SAFE_MODE off, deadman beacon armed + healthy, universe 530 names, token cache 2/2 valid. **`bot_alerts.jsonl` scanned DIRECTLY** (7/16 blind-spot rule; `C:\AlphaQuant\bot_alerts.jsonl`, severity key `severity`): 4,130 rows, **24 rows since 7/31, 23 INFO + 1 WARN** - the WARN is a single `TS_API_TRANSIENT` 500 on 8/01 14:30 (Bucket A). Newest non-INFO row in the whole file is still the 7/29 14:57:24 planted `DEDUP_SELFTEST` FAIL - no recurrence. ET from canonical `et_now.py`. Per forward-test freeze + watched-files: this run edited / committed / placed / cancelled / restarted **nothing** on the trading path.**
 >
-> **[ALERT TRIAGE 2026-07-31 ~1:04 PM ET - autonomous run - NOTHING NEW ESCALATED, NO PAGE SENT (silence = handled). The inbox went from 0 actionable at 12:08 to 1 CRITICAL, and the thing I checked was whether that 1 was genuinely new or the same 9:09 AM finding re-fired by the 12:30 CSHV run - it is the same one, byte for byte.]** Three feeds. (1) `code_alert_inbox.py --json` = **1 total / 1 actionable / 1 CRITICAL**: subject `CSHV 1 FAIL check(s)`, first=last ts 2026-07-31 12:30:12 ET, sample = `[Governance] deferred_work_overdue: 4 deferred item(s) past review-by (oldest: manual-close-sweeper(due 2026-07-24))` - the IDENTICAL FAIL escalated at 9:09 AM and re-confirmed benign-to-re-page at 11:04 and 12:08. Per playbook **Bucket A**: one page per finding, not one page per CSHV cycle. **No re-page.** (2) **`bot_alerts.jsonl` scanned DIRECTLY** (7/16 blind-spot rule; `C:\AlphaQuantot_alerts.jsonl`, severity key `severity`): 4,127 rows, **21 rows today, ALL severity=INFO, zero WARN/FAIL/CRITICAL**. **Zero new rows since the 12:08 run** - newest row in the file is still `ORB_SL_OK` 10:50:43, now 2h14m stale, which is EXPECTED and not a liveness problem: the book went flat at 11:21 and there are no positions to emit stop-check rows for. Newest non-INFO row in the entire file remains the 7/29 14:57:24 planted `DEDUP_SELFTEST` FAIL - still no recurrence. (3) **CSHV 13:00:11 = OK=51 / WARN=1 / FAIL=1 / INFO=1 / SKIP=2** - same two findings: `Governance/deferred_work_overdue` FAIL and the `pre_open_gate_ran` WARN that only relays it (gate NO-GO, bot NOT held because SAFE_MODE_ENFORCE=off -> shadow). **I did not settle for absence-of-alerts; I verified the positive liveness checks this run:** bot cycling at loop 54232 with an 18-20s heartbeat; `rel_position_recon` broker and bot agree BOTH ways (0 positions); `rel_exit_side` 0 open; `rel_phantom_deploy_book` book $118,976 == real exposure $118,976; `rel_safe_mode_not_stuck` off; `invariant_guardian` alive 0 min ago, 0 violations; `deadman_beacon` armed + 3m fresh; `report_integrity` 5 round-trips net==gross-cost with direction + fidelity labels consistent; `daily_review_reconciles_broker_truth` 5 RT NET $69.53; `broker_order_rejections_recent` and `scan_failure_rate_recent` both clean for the last 30 min. **Nothing new for Rhett.** The two items already on his plate are unchanged and still awaiting his go-ahead: (a) the REG-26/REG-36 safe_mode sandbox fix, and (b) disposition of the 4 overdue deferred items (oldest manual-close-sweeper, due 7/24) - that FAIL is what keeps the pre-open gate at NO-GO each morning. Cursor acked.
+> **[ALERT TRIAGE 2026-07-31 ~1:04 PM ET - autonomous run - NOTHING NEW ESCALATED, NO PAGE SENT (silence = handled). The inbox went from 0 actionable at 12:08 to 1 CRITICAL, and the thing I checked was whether that 1 was genuinely new or the same 9:09 AM finding re-fired by the 12:30 CSHV run - it is the same one, byte for byte.]** Three feeds. (1) `code_alert_inbox.py --json` = **1 total / 1 actionable / 1 CRITICAL**: subject `CSHV 1 FAIL check(s)`, first=last ts 2026-07-31 12:30:12 ET, sample = `[Governance] deferred_work_overdue: 4 deferred item(s) past review-by (oldest: manual-close-sweeper(due 2026-07-24))` - the IDENTICAL FAIL escalated at 9:09 AM and re-confirmed benign-to-re-page at 11:04 and 12:08. Per playbook **Bucket A**: one page per finding, not one page per CSHV cycle. **No re-page.** (2) **`bot_alerts.jsonl` scanned DIRECTLY** (7/16 blind-spot rule; `C:\AlphaQuant\bot_alerts.jsonl`, severity key `severity`): 4,127 rows, **21 rows today, ALL severity=INFO, zero WARN/FAIL/CRITICAL**. **Zero new rows since the 12:08 run** - newest row in the file is still `ORB_SL_OK` 10:50:43, now 2h14m stale, which is EXPECTED and not a liveness problem: the book went flat at 11:21 and there are no positions to emit stop-check rows for. Newest non-INFO row in the entire file remains the 7/29 14:57:24 planted `DEDUP_SELFTEST` FAIL - still no recurrence. (3) **CSHV 13:00:11 = OK=51 / WARN=1 / FAIL=1 / INFO=1 / SKIP=2** - same two findings: `Governance/deferred_work_overdue` FAIL and the `pre_open_gate_ran` WARN that only relays it (gate NO-GO, bot NOT held because SAFE_MODE_ENFORCE=off -> shadow). **I did not settle for absence-of-alerts; I verified the positive liveness checks this run:** bot cycling at loop 54232 with an 18-20s heartbeat; `rel_position_recon` broker and bot agree BOTH ways (0 positions); `rel_exit_side` 0 open; `rel_phantom_deploy_book` book $118,976 == real exposure $118,976; `rel_safe_mode_not_stuck` off; `invariant_guardian` alive 0 min ago, 0 violations; `deadman_beacon` armed + 3m fresh; `report_integrity` 5 round-trips net==gross-cost with direction + fidelity labels consistent; `daily_review_reconciles_broker_truth` 5 RT NET $69.53; `broker_order_rejections_recent` and `scan_failure_rate_recent` both clean for the last 30 min. **Nothing new for Rhett.** The two items already on his plate are unchanged and still awaiting his go-ahead: (a) the REG-26/REG-36 safe_mode sandbox fix, and (b) disposition of the 4 overdue deferred items (oldest manual-close-sweeper, due 7/24) - that FAIL is what keeps the pre-open gate at NO-GO each morning. Cursor acked.
 >
 > **[ALERT TRIAGE 2026-07-31 ~12:08 PM ET - autonomous run - NOTHING NEW ESCALATED, NO PAGE SENT (silence = handled). The day went FLAT at 11:21 and the alert log has been silent for 78 minutes, so the thing I chased is the one exit that no feed claimed: who closed GOOG and GOOGL at 10:55, when the trade journal has no EXIT_ORDER row for either?]** Three feeds. (1) `code_alert_inbox.py --json` = **0 total / 0 actionable / 0 CRITICAL** - nothing new since the 11:04 AM ack. (2) **`bot_alerts.jsonl` scanned DIRECTLY** (7/16 blind-spot rule; live path `C:\AlphaQuant\bot_alerts.jsonl`, severity key `severity`): 4,127 rows, **21 rows today, ALL severity=INFO, zero WARN/FAIL/CRITICAL** - **zero new rows since the 11:04 run**; newest row in the file is still `ORB_SL_OK` 10:50:43. Newest non-INFO row in the entire file remains the 7/29 14:57:24 planted `DEDUP_SELFTEST` FAIL - no recurrence. (3) **CSHV 12:00:12 = OK=51 / WARN=1 / FAIL=1 / INFO=1 / SKIP=2** - byte-for-byte the SAME two findings escalated at 9:09 AM (`Governance/deferred_work_overdue` FAIL, 4 items past review-by, oldest manual-close-sweeper due 7/24; `pre_open_gate_ran` WARN which only relays that FAIL). Per playbook **Bucket A** I did NOT re-page - one page per finding, not one per run. Both still await Rhett go-ahead (REG-26/REG-36 safe_mode sandbox fix; disposition of the 4 overdue deferred items). **WHAT CHANGED SINCE 11:04 - the book closed out completely: 3 open positions -> 0, and 2 round trips -> 5.** **THE THING I CHASED: two of the five exits were fired by a path that writes NO `EXIT_ORDER` row.** `trade_journal.csv` has exactly THREE exit rows today, all `TIME_EXIT_30M_UNCONFIRMED` - WDC SELL 36 @552.22 (11:06:06 SUBMITTED -> 11:06:07 FILLED), U BUYTOCOVER 322 @31.06 (11:17:30 -> 11:17:32), ANET SELL 112 @177.04 (11:20:45 -> 11:20:46); ages tie exactly (WDC filled 10:36:05 -> 30.0m; U 10:47:30 -> 30.0m; ANET 10:50:43 -> 30.0m). GOOG and GOOGL exited at 10:55 with **no journal row at all**, and a repo-wide grep for exit order id `964939826` hit `broker_orders_unified.csv` and NOTHING else - which on its face reads as an unaccounted exit path. **It is not, and I proved the owner rather than inferring it:** `tw_shadow.jsonl` logs **`live_exit_fired` GOOG 14:55:02Z and GOOGL 14:55:05Z (= 10:55 ET), reason `CANDLE_CLOSE_REVERSAL (phase2)`, `confirmed: true`, `flat: true`, `filled: true`, `attempts: 1`** - i.e. the DEPLOYED `candle_1.4atr_chandelier` managed exit firing on the 10:55 five-minute candle close, on the only two positions that had reached CONFIRMED. (`would_fire_exit` rows two seconds earlier carry the same reason, avg_price 347.75/348.22, hold 1013s/1016s.) The Tape Watcher exit path journals to `tw_shadow.jsonl`, not to `trade_journal.csv` - the same split established on 7/30 - so the missing EXIT_ORDER rows are the documented shape, not a logging gap. Net: **the two exits with a real edge were the managed exit doing its job; the other three were the 30-minute unconfirmed time-stop.** **All 5 round trips reconciled to BROKER TRUTH by hand** (`broker_orders_unified.csv`, 15 rows today, `fill_price` column): GOOG long 28 347.75->350.44 **+$75.32**; GOOGL long 27 348.22->350.67 **+$66.15**; WDC long 36 549.00->552.22 **+$115.92**; U short 322 30.95->31.06 **-$35.42**; ANET long 112 178.27->177.04 **-$137.76** = gross **+$84.21**, which ties **to the penny** to CSHV `daily_review_reconciles_broker_truth` (5 RT, NET **+$69.53** = gross $84.21 - broker-actual cost); `report_integrity` 5 RT consistent. **All 5 protective StopMarkets show `UROUT`** (OCO cancelled on the exit fill) - no orphaned stops, 0 rejected orders. **Flat is established three ways:** `rel_exit_side` 0 open positions, `rel_position_recon` broker and bot agree both ways (0 positions), and 5 exit fills in the ledger. **The $118,976 still on `rel_phantom_deploy_book` is NOT a phantom** - book == real exposure, and real is computed from the LIVE broker working-orders fetch: it is the six 9:45 arms (MRVL/COHR/LITE/VRT/ORCL/GLW) that never filled and are still working, unchanged since 10:06 AM. That they survive 2+ hours is configured, not a leak (`ORB_ENTRY_MAX_AGE_MIN = 0` = disabled), and they are cancelled at 3:55 PM by the EOD pass. **I ran the falsifying read on the quiet 11:35 window rather than assuming 'no candidates':** `multiscan_trace` shows 1135 `dry_run=false`, **10 slots free, 4 candidates, armed 0** - U/ANET/WDC all `reentry_capped (1/name/day)` and MRVL `already_held_or_working`. Intentional design, not a dead scanner. **ONE new log line I checked and am classifying, not escalating:** `tw_shadow.jsonl` carries a **`lease_write_err` at 10:45:25 ET** - `[WinError 5] Access is denied: tw_exit_ownership.json.tmp -> tw_exit_ownership.json`, i.e. the atomic replace on the exit-ownership lease lost a race. **Bounded and self-recovered:** it is a recurring low-rate transient (**13 occurrences across 10 separate days since 7/8**, 1-3/day, incl. 7/30), the lease file is writing normally again (mtime 12:08:13, heartbeat current, `owned: [ANET, U, WDC]`), no `.tmp` orphan remains, and the lease is **fail-open** - a stale lease can only make exit_bot_v2 stop deferring, never leave a position unexited, with `flatten_symbol`'s live-qty re-read as the no-double-exit guard. Today it caused no harm: the exits AFTER it fired correctly from both paths. (The `owned` list naming three now-closed names is the known cosmetic staleness - `ensure_watched` only ADDS.) Also benign: 84 `stream_gap` rows today (U 48 / ANET 36), **max 39s, none over 60s**. Process/plumbing green: run_bot alive **loop 54,088, pid 456** (from 53,898 at 11:04), heartbeat 18s, deadman armed+healthy (ping OK:200, last_drill 12/12), invariant_guardian alive 0 violations, all 8 scheduled tasks present, SAFE_MODE off, `rel_universe_not_shrunk` 530 names, `token_cache_valid` 2/2, no broker rejections in 30 min, no scan-failure halts, 11 entry-arms today so `rel_alive_but_not_trading` reads TRADING. **NO CODE EDITED, no orders/positions touched, no watched file opened for write (forward-test freeze respected; watched files read-only only).** **SELF-CAUGHT WRITE BUG (fixed in place this run):** my first draft of this entry wrote the log path through a non-raw Python string, so the \b in \bot_alerts.jsonl was interpreted as a BACKSPACE (0x08) control byte and the file carried `C:\AlphaQuant<0x08>ot_alerts.jsonl`. Strict-utf8 readback still PASSED (0x08 is valid UTF-8), which is exactly why the 7/30 'unreadable input must FAIL not WARN' lesson generalizes: a clean encode is not a clean write. Repaired to the literal path and re-verified zero control bytes in this entry. Note the SAME artifact is baked into several earlier entries (7/30 shows `C:\AlphaQuantot_alerts.jsonl` and `outputs\lerts\`) - left as-is rather than rewriting committed history; the standing fix is to build every Windows path in these writes with a raw string or chr(92). ET from canonical `et_now.py`. Cursor advanced via `--ack`.
 >
@@ -371,7 +371,7 @@
 >
 > **[ALERT TRIAGE 2026-07-30 ~4:04 PM ET - autonomous run - NOTHING NEW ESCALATED, NO PAGE SENT (silence = handled). Seventh run today and the FIRST post-close one, so the thing I chased was the close itself: did the day actually end flat, and did the one still-unfilled entry arm die before the bell?]** Three feeds. (1) `code_alert_inbox.py --json` = **0 total / 0 actionable / 0 CRITICAL** - nothing new since the 3:06 PM ack. (2) **`bot_alerts.jsonl` scanned DIRECTLY** (7/16 blind-spot rule; live path `C:\AlphaQuant\bot_alerts.jsonl`, severity key `severity`): 4,106 rows, **23 rows today, ALL severity=INFO, zero WARN/FAIL/CRITICAL**. Two new rows since the 3:06 PM run, both benign and both expected: `ORB_SL_OK SL SELL qty=586 @ 7.68` at 15:08:20 (BB filled and got its protective stop) and `ORB_EOD_OK flattened 977072.813 -> close` at 15:55:19. Newest non-INFO row in the whole file is STILL the 7/29 14:57:24 `DEDUP_SELFTEST` FAIL (deliberately planted, escalated 7/29 3:10 PM) - byte-identical, no recurrence. (3) **CSHV 16:00:09 = OK=51 / WARN=1 / FAIL=0 / INFO=1 / SKIP=3.** The lone WARN is the SAME `Governance/deferred_work_overdue` utf-8 0x97 unparseable-registry finding **already escalated CRITICAL at 9:05 AM today**; per playbook **Bucket A** I did **NOT** re-page (one page per finding, not one per run). Proposed fix still pending Rhett: a monitor that cannot read its own input must **FAIL, not WARN**; rewrite `DEFERRED_WORK.yaml` as clean UTF-8; strip single quotes in the `review_by` parse. **CLOSE-OUT VERIFICATION (broker truth, not inference):** `broker_orders_unified.csv` shows **25 orders today - 16 FILLED / 9 UROUT / 0 REJECTED** (no rejection burst of any class). **8 completed round trips** - SNDK, ORCL, WDAY, NKE, MARA, CLSK, DKNG, BB - each exit paired with a sibling-leg UROUT, which is the normal OCO-cancel shape, not an error. **The 10:35 AMD arm went `UROUT` at 15:50:21**, i.e. cancelled ~5 minutes AHEAD of `eod_t = 15:55` - that is the exact behavior I predicted from reading `orb_orders.cancel_all_open_orb_orders` in the 3:06 PM run, now confirmed against the order ledger rather than the source. **One correction to that 3:06 PM entry:** I called BB an unfilled arm; it did NOT stay unfilled - it filled at 15:08:20 @ 8.53 and closed at 15:38:39 @ 8.46 (-$0.07 x 586 = about -$41 gross), so only ONE arm (AMD) was actually live-unfilled into the close. **Flat is established three independent ways:** CSHV 16:00:09 `rel_position_recon` = 'broker and bot agree both ways (0 positions)', `rel_exit_side` = '0 open positions', and the 15:55:19 `ORB_EOD_OK` flatten - plus `rel_safe_mode_not_stuck` = SAFE_MODE off. `eod_flat_at_close` reads SKIP only because CSHV ran at 16:00:09, before its own 4:05 PM window; the formal flat-certification lands on the next CSHV run, and the three reads above already settle it. Bot re-read live at 16:04:32 (**alive, loop 50,706, pid 456**, advancing from 50,538 at the 15:04 read). `daily_trade_state.json`: `single_trade_breaker_tripped=false`, worst single-trade loss seen today -$55.57 - nowhere near any breaker. **Net: nothing novel, nothing ambiguous, nothing escalated, no page sent.**
 >
-> **[ALERT TRIAGE 2026-07-30 ~3:06 PM ET - autonomous run - NOTHING NEW ESCALATED, NO PAGE SENT (silence = handled). Sixth intraday run; ONE new event since the 2:07 PM run - a fresh entry arm - so I chased whether it is legitimate and what happens to it at the close.]** Three feeds. (1) `code_alert_inbox.py --json` = **0 total / 0 actionable / 0 CRITICAL** - nothing new since the 2:07 PM ack. (2) **`bot_alerts.jsonl` scanned DIRECTLY** (7/16 blind-spot rule; note the live path is `C:\AlphaQuantot_alerts.jsonl`, NOT `outputslerts\`; severity key is `severity`, not `level`): 4,104 rows, **21 rows today, ALL severity=INFO, zero WARN/FAIL/CRITICAL**. Exactly **one new row since the 2:07 PM run**: `ORB_V16_ENTRY_OK` **BB BUY qty=586 stop=8.53 limit=8.53 (5.0bps collar) at 14:35:25**. Newest non-INFO row in the whole file is still the 7/29 14:57:24 `DEDUP_SELFTEST` FAIL (deliberately planted, escalated 7/29 3:10 PM) - byte-identical, no recurrence. (3) **CSHV 15:00:11 = OK=52 / WARN=1 / FAIL=0 / INFO=1 / SKIP=2**; bot re-read live at 15:04:45 (**alive, loop 50,538, pid 456**, advancing from 50,368 at the 14:04 read) and `deadman_beacon.json` at 15:00:19 (**armed, healthy, ping OK:200, last_drill 12/12, heartbeat age 9.2s**). The lone WARN is the SAME `Governance/deferred_work_overdue` utf-8 0x97 unparseable-registry finding **already escalated CRITICAL at 9:05 AM today** - re-verified byte-for-byte for the sixth run running: `DEFERRED_WORK.yaml` mtime still **2026-07-29 18:29:44**, length still **10,213 bytes**, byte 9717 still **0x97**. Nothing regressed or spread; proposed fix (a monitor that cannot read its own input must **FAIL, not WARN**; rewrite the YAML as clean UTF-8; strip single quotes in the `review_by` parse) still pending Rhett. Per playbook **Bucket A** I did **NOT** re-page - one page per finding, not one per run. **WHAT I CHASED THIS RUN: is the 2:35 PM BB arm legitimate, and do the TWO now-working unfilled entry arms (AMD from 10:35, BB from 14:35) leave anything exposed into the close?** (a) **The BB arm is configured behavior, not a late-day leak:** `orb_multiscan.py:6` defines the re-arm windows as **10:35..14:35** and `ORB_SCAN_WINDOWS = ["0945","1035","1135","1235","1335","1435"]` (`risk_config.py:85`) - **1435 is the LAST window of the day**, so a 14:35:25 arm is the final scheduled scan, not an out-of-window submit. `multiscan_trace` for today confirms the shape: 0945 armed 4, 1035 armed 4, 1135/1235/1335 armed 0 (candidates present, slots/gates held), **1435 cand 2 -> armed 1**, `book_before long $9,964 -> book_after long $14,963`, `active_before 1`. (b) **The size is the sizedown gate working, not a full-size late bet:** 586 x 8.53 = **$4,999**, i.e. HALF the ~$10k unit - `SIZEDOWN_LATE_WINDOWS = {"1135","1235","1335","1435"}` (`orb_multiscan.py:115`) puts 1435 in the late>=11:00 half-size class (PROP-SIZEDOWN-C-UNION), and the $14,963 book = AMD $9,964 + BB $4,999 proves the half unit was actually applied at submit, not just intended. (c) **Both arms ARE cancelled before the close - I read the cancel path rather than trusting the name:** `orb_runner.py:1245` sets `eod_t = 15:55`, and `run_eod_flatten` (`orb_runner.py:1114-1176`) calls `orb_orders.cancel_all_open_orb_orders` FIRST and flattens positions SECOND. Critically, that function (`orb_orders.py:427-469`) filters **only on order STATUS** (OPN/SENT/ACK/WORKING) over the full `/brokerage/accounts/{id}/orders` list - it does **NOT** filter by the `ORBMS<window>_<side>` tag despite the docstring saying "tagged as ORB". That matters here: the multiscan-tagged AMD and BB arms are cancelled by it anyway, so an unfilled arm **cannot** survive 3:55 PM and fill into the next session. (d) **The one bounded window I will name honestly:** the same status-only filter also cancels the resting protective STOPs on any OPEN position at 3:55 PM, and the flatten market orders are submitted in the loop immediately after - so there is a **seconds-long unprotected gap** between cancel and flatten for any position still open at 3:55. That is the designed EOD sequence (cancel-then-flatten), not a defect, and today it is moot: **the account is flat** - all four 9:45 names and all three filled 10:35 names already exited (last `ORB_SL_OK` DKNG 11:40:17), leaving only the two UNFILLED arms, which have no position and therefore no stop to cancel. (e) **AMD arm unchanged and still explained:** 4.5 hours working is configured, not a leak - `risk_config.py:322` `ORB_ENTRY_MAX_AGE_MIN = 0  # 0 = disabled`, and `orb_runner.py:936-961` only cancels a still-WORKING entry when that value is `> 0`. **Net: no FAIL anywhere, bot advancing, deadman armed, one new arm fully explained and covered at the close, nothing new for Rhett.** Ack advanced; the 9:05 AM utf-8 escalation remains the ONLY open item from today.
+> **[ALERT TRIAGE 2026-07-30 ~3:06 PM ET - autonomous run - NOTHING NEW ESCALATED, NO PAGE SENT (silence = handled). Sixth intraday run; ONE new event since the 2:07 PM run - a fresh entry arm - so I chased whether it is legitimate and what happens to it at the close.]** Three feeds. (1) `code_alert_inbox.py --json` = **0 total / 0 actionable / 0 CRITICAL** - nothing new since the 2:07 PM ack. (2) **`bot_alerts.jsonl` scanned DIRECTLY** (7/16 blind-spot rule; note the live path is `C:\AlphaQuant\bot_alerts.jsonl`, NOT `outputs\alerts\`; severity key is `severity`, not `level`): 4,104 rows, **21 rows today, ALL severity=INFO, zero WARN/FAIL/CRITICAL**. Exactly **one new row since the 2:07 PM run**: `ORB_V16_ENTRY_OK` **BB BUY qty=586 stop=8.53 limit=8.53 (5.0bps collar) at 14:35:25**. Newest non-INFO row in the whole file is still the 7/29 14:57:24 `DEDUP_SELFTEST` FAIL (deliberately planted, escalated 7/29 3:10 PM) - byte-identical, no recurrence. (3) **CSHV 15:00:11 = OK=52 / WARN=1 / FAIL=0 / INFO=1 / SKIP=2**; bot re-read live at 15:04:45 (**alive, loop 50,538, pid 456**, advancing from 50,368 at the 14:04 read) and `deadman_beacon.json` at 15:00:19 (**armed, healthy, ping OK:200, last_drill 12/12, heartbeat age 9.2s**). The lone WARN is the SAME `Governance/deferred_work_overdue` utf-8 0x97 unparseable-registry finding **already escalated CRITICAL at 9:05 AM today** - re-verified byte-for-byte for the sixth run running: `DEFERRED_WORK.yaml` mtime still **2026-07-29 18:29:44**, length still **10,213 bytes**, byte 9717 still **0x97**. Nothing regressed or spread; proposed fix (a monitor that cannot read its own input must **FAIL, not WARN**; rewrite the YAML as clean UTF-8; strip single quotes in the `review_by` parse) still pending Rhett. Per playbook **Bucket A** I did **NOT** re-page - one page per finding, not one per run. **WHAT I CHASED THIS RUN: is the 2:35 PM BB arm legitimate, and do the TWO now-working unfilled entry arms (AMD from 10:35, BB from 14:35) leave anything exposed into the close?** (a) **The BB arm is configured behavior, not a late-day leak:** `orb_multiscan.py:6` defines the re-arm windows as **10:35..14:35** and `ORB_SCAN_WINDOWS = ["0945","1035","1135","1235","1335","1435"]` (`risk_config.py:85`) - **1435 is the LAST window of the day**, so a 14:35:25 arm is the final scheduled scan, not an out-of-window submit. `multiscan_trace` for today confirms the shape: 0945 armed 4, 1035 armed 4, 1135/1235/1335 armed 0 (candidates present, slots/gates held), **1435 cand 2 -> armed 1**, `book_before long $9,964 -> book_after long $14,963`, `active_before 1`. (b) **The size is the sizedown gate working, not a full-size late bet:** 586 x 8.53 = **$4,999**, i.e. HALF the ~$10k unit - `SIZEDOWN_LATE_WINDOWS = {"1135","1235","1335","1435"}` (`orb_multiscan.py:115`) puts 1435 in the late>=11:00 half-size class (PROP-SIZEDOWN-C-UNION), and the $14,963 book = AMD $9,964 + BB $4,999 proves the half unit was actually applied at submit, not just intended. (c) **Both arms ARE cancelled before the close - I read the cancel path rather than trusting the name:** `orb_runner.py:1245` sets `eod_t = 15:55`, and `run_eod_flatten` (`orb_runner.py:1114-1176`) calls `orb_orders.cancel_all_open_orb_orders` FIRST and flattens positions SECOND. Critically, that function (`orb_orders.py:427-469`) filters **only on order STATUS** (OPN/SENT/ACK/WORKING) over the full `/brokerage/accounts/{id}/orders` list - it does **NOT** filter by the `ORBMS<window>_<side>` tag despite the docstring saying "tagged as ORB". That matters here: the multiscan-tagged AMD and BB arms are cancelled by it anyway, so an unfilled arm **cannot** survive 3:55 PM and fill into the next session. (d) **The one bounded window I will name honestly:** the same status-only filter also cancels the resting protective STOPs on any OPEN position at 3:55 PM, and the flatten market orders are submitted in the loop immediately after - so there is a **seconds-long unprotected gap** between cancel and flatten for any position still open at 3:55. That is the designed EOD sequence (cancel-then-flatten), not a defect, and today it is moot: **the account is flat** - all four 9:45 names and all three filled 10:35 names already exited (last `ORB_SL_OK` DKNG 11:40:17), leaving only the two UNFILLED arms, which have no position and therefore no stop to cancel. (e) **AMD arm unchanged and still explained:** 4.5 hours working is configured, not a leak - `risk_config.py:322` `ORB_ENTRY_MAX_AGE_MIN = 0  # 0 = disabled`, and `orb_runner.py:936-961` only cancels a still-WORKING entry when that value is `> 0`. **Net: no FAIL anywhere, bot advancing, deadman armed, one new arm fully explained and covered at the close, nothing new for Rhett.** Ack advanced; the 9:05 AM utf-8 escalation remains the ONLY open item from today.
 >
 > **[ALERT TRIAGE 2026-07-30 ~2:07 PM ET - autonomous run - NOTHING NEW ESCALATED, NO PAGE SENT (silence = handled). Fifth intraday run; the account is flat and quiet, so I chased the ONE piece of live risk still on the book: the AMD entry arm that has been working unfilled for 3.5 hours.]** Three feeds. (1) `code_alert_inbox.py --json` = **0 total / 0 actionable / 0 CRITICAL** - nothing new since the 1:08 PM ack. (2) **`bot_alerts.jsonl` scanned DIRECTLY** (7/16 blind-spot rule; severity key is `severity`, NOT `level`): 4,103 rows, **20 rows today, ALL severity=INFO, zero WARN/FAIL/CRITICAL** - **zero new rows since the 12:06 run**; newest row in the file is still `ORB_SL_OK` DKNG 11:40:17. Newest non-INFO row in the entire file remains the **7/29 14:57:24 `DEDUP_SELFTEST` FAIL** (deliberately planted self-test, escalated 7/29 3:10 PM) - byte-identical, no recurrence. (3) **CSHV 14:00:11 = OK=52 / WARN=1 / FAIL=0 / INFO=1 / SKIP=2**; bot re-read live at 14:04:26 (**alive, loop 50,368, pid 456**, advancing from 50,199 at the 13:04 read) and `outputs/validation/deadman_beacon.json` re-read at 14:05:13 (**armed, healthy, ping OK:200, last_drill 12/12, heartbeat age 4.3s**). The lone WARN is the SAME `Governance/deferred_work_overdue` "registry unparseable: 'utf-8' codec can't decode byte 0x97 in position 9717" **already escalated CRITICAL at 9:05 AM today** - re-verified byte-for-byte for the fifth run running: `DEFERRED_WORK.yaml` mtime still **2026-07-29 18:29:44**, length still **10,213 bytes**, byte at offset 9717 still **0x97**. Nothing regressed or spread; the proposed fix (a monitor that cannot read its own input must **FAIL, not WARN**; rewrite the YAML as clean UTF-8; strip single quotes in the `review_by` parse) is still pending Rhett. Per playbook **Bucket A** I did **NOT** re-page - one page per finding, not one per run. **THE THING I CHASED THIS RUN: the AMD entry arm (BUY 20 @ stop 498.20 / limit 498.45, submitted 10:35:15) is still WORKING after 3.5 hours - is it real, why has nothing cancelled it, and what happens if it fills into the close?** I did not take the green check on faith. **(a) It is genuinely live at the broker, not a stale local record:** `rel_phantom_deploy_book` computes `real` from `_independent_exposure(truth)` where `truth["working"]` is the LIVE broker orders fetch (`reliability_checks.py:98-149`), and it reported **real exposure $9,969 == 20 x 498.45** at 14:00:11 - so the broker still holds the working order. It is correctly ABSENT from `broker_orders_unified.csv` (21 rows today, all terminal FILLED/UROUT states), which is why a symbol-grep for AMD there returns nothing. `multiscan_trace` independently agrees: `active_before: 1`, `book_before/after long $9,964` (= 20 x 498.20, the stop reference; the $5 delta vs $9,969 is stop-price vs limit-price reference, both accounted). **(b) Nothing cancelled it because the stale-entry killer is deliberately OFF:** `risk_config.py:322` `ORB_ENTRY_MAX_AGE_MIN = 0  # 0 = disabled` - built Loop 46, RETRACTED by Planning (`apply_slot_cap.py:24`), and `orb_runner.py:936-961` only cancels a still-WORKING entry when that value is `> 0`. So a 3.5-hour-old arm surviving is **configured behavior, not a leak**. **(c) The close is covered, with a bounded window I am naming explicitly:** `bot_loop.py:281-288` blocks NEW entries after the 3:30 PM cutoff but does **not** cancel orders already working; `eod_watchdog.py` is a no-op until the **3:50 PM** forced-flatten window (`:385-387`), then `run_flatten_pass` step 1 calls `cancel_open_entry_orders` (`:290-292`) which classifies entries via `order_action(order)` -> `Legs[0].BuyOrSell` - the 5/28 fix for the bug where every working entry was silently classified NOT-an-entry and the EOD cancel pass cancelled nothing (`:128-133`). So the AMD arm is cancelled at 3:50 PM, and **the only exposure window is 3:30-3:50 PM**, where a fill would be caught by the same pass's step 3 `flatten_all_positions` plus the final flat verification. That is the designed backstop, so **no page** - but it is the one thing on today's board that is not yet closed, and I will re-verify the AMD arm is gone after 3:50. **Scanner windows re-checked rather than assumed:** the new **1335** window ran `dry_run=false` with **15 slots free**, **2 candidates, armed 0** - ORCL and CLSK both `reentry_capped (1/name/day)`, identical in shape to 1135/1235. Intentional design, not a dead scanner. **No new trading activity since 12:10:32** - `trade_journal.csv` (live copy under `tradestation-bot\`, NOT the stale 6/25 root copy) shows only `EXIT_SCAN / NO_POSITION` and watchdog heartbeat rows through 14:05:15. Day tally unchanged: **8 entry arms -> 7 filled -> 7 protective stops armed -> 7 round trips closed -> 1 arm still working**; gross **+$433.93**, CSHV `daily_review_reconciles_broker_truth` **7 RT NET +$380.68**, `report_integrity` consistent. Rest of the live-risk surface green: `rel_exit_side` **0 open positions**, `rel_position_recon` **broker and bot agree both ways**, `rel_safe_mode_not_stuck` SAFE_MODE off, `rel_guardian_heartbeat` alive 0 violations, `rel_alive_but_not_trading` 8 arms today, `rel_universe_not_shrunk` 530 names, `rel_gate_not_failing_open` gate OFF by config, `broker_order_rejections_recent` none in 30 min, `scan_failure_rate_recent` no halts, `token_cache_valid` 2/2, `pre_open_gate_ran` GO-WITH-WARNINGS (06:00), `shadow_kill_window_sealed` 18 days hash-intact, `eod_flat_at_close` correctly SKIP (before 4:05 PM). (`clean_day_certified` INFO reads `consecutive_clean(prior trading days)=7` - the known mislabelled counter that includes the in-progress day and oscillates. Not a signal.) **Nothing needed Rhett this run.** ET from canonical `et_now.py`. **Forward-test freeze + watched-files respected: this run edited / committed / placed / cancelled / restarted NOTHING on the trading path - read-only throughout; SESSION_LOG + coordination-repo sync only.** Cursor advanced via `--ack`. - autonomous alert-triage run
 >
@@ -388,7 +388,7 @@
 > **[ALERT TRIAGE 2026-07-30 ~10:06 AM ET - autonomous run - NOTHING NEW ESCALATED, NO PAGE SENT (silence = handled). First intraday run after this morning's 9:05 escalation.]** Three feeds. (1) `code_alert_inbox.py --json` = **0 total / 0 actionable / 0 CRITICAL**. (2) **`bot_alerts.jsonl` scanned DIRECTLY** (7/16 blind-spot rule) - 4,096 rows, **13 rows today, ALL severity=INFO, zero WARN/FAIL/CRITICAL**; they are the normal open sequence: `ORB_SCAN_START` 09:35:31 -> `ORB_935_GATED` (9:35 path intentionally disabled, 20 candidates logged / 0 submitted - expected) -> `ORB_SCAN_DONE` (155 candidates, 0 submitted) -> **4x `ORB_V16_ENTRY_OK` at 09:45:19-20** (ORCL BUY 160 @ stop 124.95; SNDK BUY 16 @ 1195.25; NKE SELLSHORT 241 @ 41.44; WDAY SELLSHORT 129 @ 154.04, all 5.0bps collars) -> **4x `ORB_SL_OK`** (SNDK 09:46:02, ORCL 09:46:46, WDAY 09:49:36, NKE 09:55:17). **4 entries, 4 stops - every fill got its protective order; no naked position at any point.** (3) **CSHV 10:00:10 = OK=52 / WARN=1 / FAIL=0.** The lone WARN is the SAME `Governance/deferred_work_overdue` "registry unparseable: 'utf-8' codec can't decode byte 0x97 at position 9717" **already escalated CRITICAL at 9:05 AM today** - re-verified unchanged: `DEFERRED_WORK.yaml` mtime is still **2026-07-29 18:29:44** and the 0x97 byte is still at offset 9717, so nothing has regressed or spread and the proposed fix (unreadable-input must FAIL not WARN; rewrite the YAML as clean UTF-8; strip single-quotes in the `review_by` parse) is still pending Rhett. **Per playbook Bucket A (state already confirmed in SESSION_LOG) I did NOT re-page** - one page per finding, not one per run. Live-risk feeds all green: `rel_exit_side` **all 2 open position(s) protected**, `rel_position_recon` broker and bot agree both ways, `rel_phantom_deploy_book` book $60,637 == real exposure $60,637, `daily_review_reconciles_broker_truth` 2 RT NET **+$280.40**, `broker_order_rejections_recent` none in 30 min, `token_cache_valid` 2/2, `rel_safe_mode_not_stuck` SAFE_MODE off, `deadman_beacon` armed 0m fresh, `shadow_reconciles_broker_truth` 8/8 within tol, `report_integrity` consistent, heartbeat alive **loop 49698** (10:05:13, 0m old). (`clean_day_certified` INFO shows `consecutive_clean=0` - that is the KNOWN mislabeled counter that includes the in-progress day and oscillates intraday; it read 7 at 08:45 pre-open. Not a signal.) **No code edited, no orders/positions touched, no watched file opened for write.** Cursor acked.
 >
 >
-> **[ALERT TRIAGE 2026-07-30 ~9:05 AM ET - autonomous run - ESCALATED CRITICAL (1 finding): a MONITOR WENT BLIND and silently unblocked the pre-open gate.]** Three feeds. (1) `code_alert_inbox.py --json` = **0 total / 0 actionable / 0 CRITICAL**. (2) **`bot_alerts.jsonl` scanned DIRECTLY** (7/16 blind-spot rule) at `C:\AlphaQuantot_alerts.jsonl` - 4,083 rows, **0 rows today**; verified this is NORMAL, not a signal (per-day first-row times: 7/22-7/23-7/27-7/28-7/29 all start 09:35, only 7/21 and 7/24 had a single pre-9:30 row). (3) **CSHV 09:00:12 = OK=52 / WARN=1 / FAIL=0** - and the lone WARN is the finding. **ESCALATED: `Governance/deferred_work_overdue` = "registry unparseable: utf-8 codec cant decode byte 0x97 in position 9717".** `DEFERRED_WORK.yaml` was written **7/29 6:29 PM** carrying a **cp1252 ANSI em-dash 0x97 at line 209** (inside the new `daily-252-nightly-refresher` entry); `chk_deferred_work_overdue` reads `encoding="utf-8"` STRICT, so the read raises and the check can no longer see **ANY** overdue item. I reconstructed it read-only (cp1252 decode, **file NOT modified**) and ran the checks own parse logic: **true verdict = FAIL, 4 items past review_by** - `v-gate-input-nulls`(7/28, open, claude), `tw-journal-write-gap`(7/24, gated_rhett), `manual-close-sweeper`(7/24, gated_rhett), `tailscale-sharing`(7/28, gated_rhett); 11 more due 8/01-8/02; overdue is genuinely **down 18 -> 4**. **The consequence is provable side-by-side in `outputs/reports/pre_open_gate_run.log`: the PRIOR run had `[FAIL][CRITICAL] cshv::deferred_work_overdue` (18 past review-by) -> NO-GO -> "SAFE_MODE ENGAGED by pre_open_gate"; TODAY 06:00:02 the same check contributes only a WARN (48 OK/1 WARN/0 FAIL) -> `GO-WITH-WARNINGS`, 0 CRITICAL FAIL -> "notification suppressed (GO = no action needed)".** The gate flipped NO-GO->GO and the page to Rhett was suppressed because the monitor stopped being able to READ, not because anything was fixed - the exact broken-check-reads-as-healthy failure mode the playbook warns about. **Trading risk today: effectively none** - `SAFE_MODE_ENFORCE=False` so even the prior NO-GO was shadow-only, and the 4 items are governance debt (3 of 4 gated on Rhett), not live-risk states. Rest green: regression 54 pass/0 FAIL, `config_drift` matches approved `candle_1.4atr_chandelier`, `trading_path_alive` heartbeat fresh, `invariant_guardian` 0 violations, deadman armed, SAFE_MODE off, `clean_day_gate_status.json` 08:45:17 **verdict GO / nogo=[] / warn=[]**, `consecutive_clean=7`, bot cycling loop 49474 - the 9:45 window will trade normally. **PROPOSED FIX (escalated, NOT applied - forward-test freeze; `system_health_verifier.py` is non-watched):** (1) **the invariant** - a monitor that cannot read its own input must **FAIL, not WARN** (unreadable must never read as healthy): flip the unparseable AND missing-registry branches WARN->FAIL and read with `errors="replace"` so a stray ANSI byte cant blind it; (2) rewrite the YAML as clean UTF-8, **root cause = a PowerShell `Set-Content`/`Add-Content` write defaulting to the system ANSI codepage** (must pass `-Encoding utf8`; worth a standing rule for every agent writing a repo file); (3) minor - that writer also emitted `review_by` SINGLE-quoted while all others are unquoted, and the parsers `strip(chr34)` only strips double quotes, so `fromisoformat` throws and the item is counted `(no review_by)` overdue - **fail-safe (over-reports, does not hide)**, but it will mis-flag the valid 8/02 item once fix 1 lands; strip both quote chars. **NO code edited, no orders/positions touched, no watched file opened for write.**
+> **[ALERT TRIAGE 2026-07-30 ~9:05 AM ET - autonomous run - ESCALATED CRITICAL (1 finding): a MONITOR WENT BLIND and silently unblocked the pre-open gate.]** Three feeds. (1) `code_alert_inbox.py --json` = **0 total / 0 actionable / 0 CRITICAL**. (2) **`bot_alerts.jsonl` scanned DIRECTLY** (7/16 blind-spot rule) at `C:\AlphaQuant\bot_alerts.jsonl` - 4,083 rows, **0 rows today**; verified this is NORMAL, not a signal (per-day first-row times: 7/22-7/23-7/27-7/28-7/29 all start 09:35, only 7/21 and 7/24 had a single pre-9:30 row). (3) **CSHV 09:00:12 = OK=52 / WARN=1 / FAIL=0** - and the lone WARN is the finding. **ESCALATED: `Governance/deferred_work_overdue` = "registry unparseable: utf-8 codec cant decode byte 0x97 in position 9717".** `DEFERRED_WORK.yaml` was written **7/29 6:29 PM** carrying a **cp1252 ANSI em-dash 0x97 at line 209** (inside the new `daily-252-nightly-refresher` entry); `chk_deferred_work_overdue` reads `encoding="utf-8"` STRICT, so the read raises and the check can no longer see **ANY** overdue item. I reconstructed it read-only (cp1252 decode, **file NOT modified**) and ran the checks own parse logic: **true verdict = FAIL, 4 items past review_by** - `v-gate-input-nulls`(7/28, open, claude), `tw-journal-write-gap`(7/24, gated_rhett), `manual-close-sweeper`(7/24, gated_rhett), `tailscale-sharing`(7/28, gated_rhett); 11 more due 8/01-8/02; overdue is genuinely **down 18 -> 4**. **The consequence is provable side-by-side in `outputs/reports/pre_open_gate_run.log`: the PRIOR run had `[FAIL][CRITICAL] cshv::deferred_work_overdue` (18 past review-by) -> NO-GO -> "SAFE_MODE ENGAGED by pre_open_gate"; TODAY 06:00:02 the same check contributes only a WARN (48 OK/1 WARN/0 FAIL) -> `GO-WITH-WARNINGS`, 0 CRITICAL FAIL -> "notification suppressed (GO = no action needed)".** The gate flipped NO-GO->GO and the page to Rhett was suppressed because the monitor stopped being able to READ, not because anything was fixed - the exact broken-check-reads-as-healthy failure mode the playbook warns about. **Trading risk today: effectively none** - `SAFE_MODE_ENFORCE=False` so even the prior NO-GO was shadow-only, and the 4 items are governance debt (3 of 4 gated on Rhett), not live-risk states. Rest green: regression 54 pass/0 FAIL, `config_drift` matches approved `candle_1.4atr_chandelier`, `trading_path_alive` heartbeat fresh, `invariant_guardian` 0 violations, deadman armed, SAFE_MODE off, `clean_day_gate_status.json` 08:45:17 **verdict GO / nogo=[] / warn=[]**, `consecutive_clean=7`, bot cycling loop 49474 - the 9:45 window will trade normally. **PROPOSED FIX (escalated, NOT applied - forward-test freeze; `system_health_verifier.py` is non-watched):** (1) **the invariant** - a monitor that cannot read its own input must **FAIL, not WARN** (unreadable must never read as healthy): flip the unparseable AND missing-registry branches WARN->FAIL and read with `errors="replace"` so a stray ANSI byte cant blind it; (2) rewrite the YAML as clean UTF-8, **root cause = a PowerShell `Set-Content`/`Add-Content` write defaulting to the system ANSI codepage** (must pass `-Encoding utf8`; worth a standing rule for every agent writing a repo file); (3) minor - that writer also emitted `review_by` SINGLE-quoted while all others are unquoted, and the parsers `strip(chr34)` only strips double quotes, so `fromisoformat` throws and the item is counted `(no review_by)` overdue - **fail-safe (over-reports, does not hide)**, but it will mis-flag the valid 8/02 item once fix 1 lands; strip both quote chars. **NO code edited, no orders/positions touched, no watched file opened for write.**
 >
 >
 > **[ALERT TRIAGE 2026-07-29 ~4:07 PM ET - autonomous run - NOTHING ESCALATED, NO PAGE SENT (silence = handled). First post-close run; the day closed CLEAN.]** Three feeds. (1) `code_alert_inbox.py --json` = **0 total / 0 actionable / 0 CRITICAL** - nothing new since the 3:10 PM ack (re-checked twice during the run). (2) **`bot_alerts.jsonl` scanned DIRECTLY** (7/16 blind-spot rule; severity key is `severity`, NOT `level`): 4,083 rows; today 7/29 = **24 rows, 23 INFO + 1 FAIL**. The lone FAIL is the SAME `DEDUP_SELFTEST` 14:57:24 planted row **already escalated in full at 3:10 PM** - byte-identical, no recurrence, **Bucket A -> deliberately NOT re-paged**. One NEW row since 3:10 and it is the one you want to see: **`ORB_EOD_OK` 15:55:12 pid 9964, `flattened 977375.751 -> close`, `cancelled: 0`** - EOD flatten succeeded. (3) **CSHV re-ran at 16:05:09 = OK=52 / WARN=1 / FAIL=1 / INFO=0 / SKIP=2** and the EOD-only check has now flipped from SKIP to green: **`eod_flat_at_close` = OK, 'Account flat at EOD'** (it was SKIP 'before 4:05 PM' at the 16:00 run). `rel_exit_side` **0 open positions**, `rel_position_recon` **agrees both ways (0 reconciled)**, `rel_phantom_deploy_book` **book $0 == real exposure $0**, deadman armed, SAFE_MODE off, `invariant_guardian` 16:00:03 alive 0 violations, `rel_eod_review_written` correctly pre-5 PM window. **DAY CERTIFIED CLEAN - I ran `clean_day_certifier.certify_day('2026-07-29')` directly rather than reading the rollup:** `clean=True, failed=[]`, all five conditions OK (report_integrity 8 trades 0 FAIL/0 WARN; broker_flat_eod 'flat at EOD (8 symbols net 0)'; no_critical_incident; position_recon; gate_enforced). `consecutive_clean=6` with 7/29 now True (7/29,7/28,7/27,7/24,7/23,7/22 clean; 7/21 the last False). **FOLLOW-UP ON THE 3:10 PM ESCALATED FINDING 2 - resolved BETTER than escalated, so not re-paged:** the planted `DEDUP_SELFTEST` row does occupy **1 of the 5** soft-blip slots exactly as predicted (`no_critical_incident` reads **'0 system-fault incidents; 4 transient soft blip(s) (< 5, tolerated)'** vs `_STORM_THRESHOLD` 5), but it did **NOT** block certification today - today certifies clean. The exempt-bucket fix stays on Rhett's queue as a latent-risk item (a permanently burned slot), not an active fault. **All 8 round trips reconciled to BROKER TRUTH by hand, not inferred** (`broker_orders_unified.csv`, 25 rows today): TPR short 134 148.49->148.28 **+$28.14**; SNOW long 69 284.30->281.35 **-$203.55**; ADBE long 18 263.20->263.65 **+$8.10**; IBKR short 57 86.95->86.69 **+$14.82**; BLDR short 72 69.02->69.12 **-$7.20**; CAT short 6 782.90->791.00 **-$48.60**; PATH long 784 12.75->12.69 **-$47.04**; EXPE long 16 311.40->310.18 **-$19.52** = gross **-$274.85**, which ties **to the penny** to CSHV `daily_review_reconciles_broker_truth` (8 RT, gross **-$274.85**, NET **-$302.94**); `report_integrity` 8 RT consistent. **Every one of the 8 protective StopMarkets shows `UROUT`** (OCO cancelled on the exit fill) - no orphaned stops; the last unfilled resting arm (**CAH** BUY 85 @234.02) went **UROUT 15:50:35** in the pre-flatten cancel sweep, which is why the 15:55 flatten reports `cancelled: 0`. **I ran the falsifying read on the quiet last hour instead of assuming 'no candidates':** `multiscan_trace` today has **9 traces ending at 14:35:19** and there is **no 15:35 window** - confirmed at source, `risk_config.ORB_SCAN_WINDOWS = ['0945','1035','1135','1235','1335','1435']`, and 7/27 + 7/28 both likewise end at 1435. **1435 is the last window by design, not a silent scanner death.** The 2:35 PM window armed PATH (784, sizedown `late>=11:00+at_20d_high`) + EXPE (16, `late>=11:00+at_20d_high+deep_run 1.97ATR`); both filled, both stopped-in within ~3 min, both exited on limit 15:08:45 / 15:09:09. **Governance FAIL improving, not re-paged:** `deferred_work_overdue` is **4 items, down from 18** this morning - and read directly from `DEFERRED_WORK.yaml`, **3 of the 4 are `gated_rhett`** (`tw-journal-write-gap`, `manual-close-sweeper`, `tailscale-sharing`) with only **one `open`** item left (`v-gate-input-nulls`, due 7/28). So the residual CSHV FAIL is now essentially **Rhett-blocked, not work-blocked** - already on his queue from the 9:06 AM page. The lone WARN (`pre_open_gate_ran` NO-GO) is that same item's stale 8AM rollup, still quoting the morning's 18-item text. **Nothing needed Rhett this run.** ET from canonical `et_now.py`. **Forward-test freeze + watched-files respected: this run edited / committed / placed / cancelled / restarted NOTHING on the trading path - read-only throughout; SESSION_LOG + coordination-repo sync only.** Inbox --ack'd. - autonomous alert-triage run
@@ -26991,6 +26991,446 @@ _Pinned-bar real-time method (l1_mustnotcut_audit), K pinned at 0.75 (never tigh
 - Top loser: COP short $-857.31 = 100.0% of the day's loss $-857.31 (scan_move -1.49%)
 - Gap-tops (|scan_move| >= 12.0%) among losers: 0
 - **ONE-TRADE-DOMINANT: COP alone is 100.0% of the day's loss (MU-class single-trade, not a broad cluster).**
+
+### CUMULATIVE TALLY (across available days)
+
+- Days: 2026-06-18, 2026-06-22, 2026-06-23, 2026-06-24, 2026-06-25, 2026-06-26
+- Confirmed N=70 · unconfirmed N=39 · confirm-NA N=14 (progress toward N>=30 confirmed: 70/30)
+- Cumulative early-exit-at-0.75 three-sided net-of-cost: **$458.54**
+- One-trade-dominance guard: WITHOUT the single biggest trade (2026-06-25/MU (bleeder saved), $810.09): **$-351.55**
+
+| date | confirmed N | unconfirmed N | three-sided net$ |
+|--|--|--|--|
+| 2026-06-18 | 7 | 5 | $0.00 |
+| 2026-06-22 | 12 | 4 | $0.00 |
+| 2026-06-23 | 7 | 4 | $0.00 |
+| 2026-06-24 | 14 | 7 | $52.76 |
+| 2026-06-25 | 15 | 8 | $392.76 |
+| 2026-06-26 | 15 | 11 | $13.02 |
+
+### Caveats
+
+- confirm = polled flag -> segment clean-fail vs poll-near-miss (a trade can miss confirm by a hair).
+- EARLY-POLL CAVEAT: the live monitor is blind in the first ~5 min, so Lens B's early-exit numbers are "what an IDEAL early-poll would do," NOT what today's live bot could have fired -- read them as a ceiling, not a live-achievable result.
+
+_Diagnostic, in-sample. These days are in-sample for any un-promoted rule; a streak of confirming days accumulates N toward >=30 but does not promote anything -- promotion still requires a locked rule + fresh OOS forward test + the gauntlet._
+
+---
+
+---
+**TURN 2026-09-22 5:30 PM ET — COP -$857 autopsy -> FOUR defects, all mine, all fixed.**
+COP short 10:37:32 @125.53, out 11:07:35 @126.59 via the 30-MIN TIME STOP. Never confirmed. Rhett: "why didn't we get out right away after the bounce?"
+1. **DEFECT 1 -- I ONLY WIRED HALF THE EXIT PATH.** exit_bot_v2 line 457 (LONG) passes minutes_held; line 602 (SHORT) did not. COP was a SHORT, so the tightening floor could never engage there. Live for six days. **REG-65 was too weak to catch it** -- it tested whether "minutes_held" appeared ANYWHERE in the file, which the long path satisfied. FIXED: short path wired; REG-65 now regex-matches EACH call site and asserts both pass trade age.
+2. **DEFECT 2 -- THE STRONG-REVERSAL THRESHOLD WAS INERT.** Measured the real distribution of 1-min candle bodies (155,387 candles): median **0.0158 ATR**, 90th pct 0.054, 99th pct 0.146. My deployed 0.20 sat at the **99.6th percentile -- 0.43% of candles**. The "0% winner-cut" I reported as safety was inactivity. Re-tested where it actually fires: 0.05 -> -$3,438 (94% cut, FAILS) | 0.08 -> +$1,967 (63%, FAILS) | 0.10 -> +$4,124 (39%) | **0.15 -> +$6,286 (13%, BEST)** | 0.20 -> +$6,058 (10%, near-inert). **RECALIBRATED to 0.15.** Honest scale: the tightening floor contributes +$5,680 of that; the candle rule adds ~$600 over 898 trades (4 extra fires) -- marginal, not the centrepiece I presented.
+3. **DEFECT 3 -- THE ATR RESEARCH CACHE WAS FOUR WEEKS STALE, AND I FOUND IT BY ACCIDENT.** TW used ATR 3.2507 for COP; my research cache said 2.3371. daily_252 was **frozen at 2026-08-25**; mean |error| across 10 traded names **37.2%** (MRNA +136%, VLO +50%, SNDK -44%, AMD -38%). CAUSAL CHAIN: the refresher lived INSIDE run_daily_tune_engine.bat; that seat was disabled 8/26 for the token stop; free Python died because it was bolted to a paid seat. SCOPE (honest): **live trading unaffected** (the bot reads a fresh API each cycle); certified-era studies fine (that data ends 8/24, cache covered through 8/25); **corrupted = any analysis on dates after 8/25, including my own COP numbers earlier today.** FIXED: cache refreshed (255 symbols -> current to 9/22); **run_daily_252_refresh.bat created as a STANDALONE free task (AlphaQuant_Daily252Refresh, weekdays 4:45 PM)** so free work is never coupled to a paid seat again; **new CSHV check `atr_cache_fresh` FAILs if the newest bar is >4 days old.**
+4. **DEFECT 4 -- TW fired a redundant exit.** tw_shadow shows would_fire_exit at 11:32:57 with `filled: false` -- 25 minutes AFTER exit_bot_v2 had already flattened COP on the 30-min stop at 11:07:35. TW was still tracking a closed position. Logged for the tw-detection-fixes deferred item.
+5. **HONEST VERDICT ON COP ITSELF: my rules would NOT have saved it even fully wired.** With the correct ATR (3.25) the 0.25x floor sits at ~126.65, first touched ~11:32; the 30-minute time stop fired first at 11:07. And the biggest green body in the whole trade was $0.31 = 0.095 ATR, under even the recalibrated 0.15. COP needed a tighter *time* leash or not to be entered -- not these rules.
+6. Suite re-run after all changes. Market closed (5:30 PM) throughout -- watched-file edits at a flat window.
+
+---
+
+## 2026-09-22 5:21 PM ET -- REG-65 recalibration lock + the facts sheet was missing both unconfirmed rules
+
+**What happened.** After I moved `UNCONFIRMED_CANDLE_BODY_ATR` from 0.20 to 0.15 (the measured
+optimum), REG-65 went RED. The test was right to fire -- it guards that threshold -- but its bound
+was a hardcoded 0.20 written before I had measured what a 1-minute body actually is. Same stale-test
+pattern as REG-03/REG-07 (9/15) and REG-04.
+
+**Fixed, in order:**
+
+1. **REG-65 bound is now a BAND, not a floor at the old value.** FAIL below 0.10 (at 0.08 the
+   winner-cut is 63%, at 0.05 it is 94% -- both past the FF5 50% bar) and FAIL above 0.20 (only
+   0.43% of 1-min candles reach 0.20, so the rule goes inert). Deployed value 0.15 sits inside.
+   Measured ladder recorded in the code comment: 0.05 -> 94% cut | 0.08 -> 63% | 0.10 -> 39% |
+   **0.15 -> 13% and best net (+$6,286)** | 0.20 -> near-inert.
+2. **REG-65's PASS message no longer lies.** It printed "0.20xATR body exit" as a literal string
+   while the deployed value was 0.15. A green check that states the wrong number is how a false
+   belief survives. Now interpolated from the module.
+3. **Swept every consumer of the constant** (the 6/24 standing rule). Only `candle_close_exit.py`
+   reads it; the regression now reads it dynamically. No other hardcoded 0.20 in live code.
+4. **SYSTEM_FACTS had NO row for either unconfirmed rule.** Both have been live since 9/20 and the
+   live-truth sheet did not mention them -- so anyone (including a cold me) reading the sheet would
+   have concluded the 30-min time-stop was the only unconfirmed protection. Added two
+   SOURCE-DERIVED rows (body threshold and the tightening ladder both read from the module, not
+   typed), so they cannot drift from the code the way the REG-65 message did.
+
+**Why the gap existed.** I added the rules to the exit path, the reason codes, the compliance
+checker, the debrief buckets and the regression suite -- but not to the facts sheet, because
+nothing FAILED when I skipped it. That is the same defect class as the 8/08 note in memory: checks
+and documents that assert what they never validate. The two new rows are generated from the
+constants, so the generator fails loudly if the constants disappear.
+
+**Verification:** regression **61 pass / 0 FAIL / 3 skip**, consecutive_clean=103. SYSTEM_FACTS
+regenerated and both rows confirmed present at lines 47-48 reading 0.15 and the 10/20-min ladder.
+Market closed throughout (after 4:00 PM ET) -- every watched-file touch was at a flat window.
+
+---
+
+## 2026-09-22 5:32 PM ET -- cleared both CSHV FAILs; the "22 overdue" was mostly a broken check
+
+Went after the two standing CSHV FAILs instead of logging them again.
+
+**1. Two dashboards were serving the same port.** pids 12892 (08:29 AM, the scheduled task) and
+6484 (05:07 PM, a manual launch without --no-browser) were BOTH bound to 127.0.0.1:8765. Windows
+permits that, and requests split nondeterministically between them -- so roughly half of Rhett's
+clicks were answered by an 8-hour-old process. **This is a strong candidate for the dashboard "lag"
+and stale-looking pages he has reported repeatedly.** Stopped both, restarted from the task; one
+listener (pid 13248), serving (401 = the Loop-164 Basic-Auth gate, i.e. correct). CSHV green.
+
+**2. The pre-open gate has been NO-GO on a check that measured the wrong thing.**
+`AlphaQuant_PreopenReadiness` exited 1 because chain_audit **L2** was RED. L2 said it measured
+"names EVALUATED at the open" and demanded >=250 of the ~530 universe. orb_runner writes candidate
+rows `for c in candidates` -- only names that SURVIVED every filter. Measured survivor range over
+the last month: **76 to 450 per day** (9/22 = 76, 9/18 = 450). So it went RED on ordinary days.
+  - L2 renamed **survivors+movers**, floored at `TOP_N_BY_RELVOL` (20) -- below that the book
+    genuinely cannot be filled, which is the real failure this level should catch.
+  - Added **L2b universe coverage**, which asserts the protection that actually exists
+    (`MIN_SCAN_COVERAGE=0.50`, Loop 64) by checking for ORB_SCAN_DEGRADED alerts.
+  - Proven both directions: 9/22 -> both PASS, preopen_readiness **exit 0, PLUMBING GO, 74
+    validated, 0 will-fail**. 2026-06-19 (the real degraded day) -> L2b BREAKs citing
+    "coverage=1% no_data=527/530, last 09:49" and L2 BREAKs at 14 survivors.
+  - Note 6/19 armed at 09:49, one minute inside COVERAGE_RETRY_UNTIL 09:50 -- the "never miss the
+    day" escape hatch armed a book from a 1%-coverage scan. L2b now makes that visible.
+
+**3. DEFERRED_WORK.yaml was not valid YAML, and the check could not tell.** Ten `what:` values were
+unquoted plain scalars wrapped across lines containing ": " -- yaml.safe_load raised at line 61,
+while CSHV cheerfully reported "22 items" because it parsed the file with a hand-rolled line regex.
+Re-quoted all ten; the file parses (37 items). Then rebuilt the check:
+  - parses with **real YAML**, and an unreadable registry is now **FAIL, not WARN** -- the 2026-07-30
+    rule, which was born in this exact file and was still violated by it;
+  - separates **rotted (mine)** from **blocked on Rhett/external** (gated_rhett / gated_external /
+    before_live). Those are still surfaced, but they no longer pin the gate at NO-GO forever, which
+    is how a gate gets ignored;
+  - path switched to forward slashes and made injectable for a **planted-failure self-test**.
+
+**The planted test immediately caught a bug I had just written.** Switching to yaml means
+`review_by: 2026-08-01` comes back as a `datetime.date` OBJECT, not a string; the old regex parser
+always returned strings. `fromisoformat(date_obj)` raises -- which would have marked **all 37 items
+"no review_by" -> overdue**. Fixed to accept both. 7 planted cases now behave correctly.
+
+**Count went 22 -> 15 rotted + 5 blocked on Rhett**, with 2 genuinely CLOSED on evidence:
+`wmi-degraded-needs-service-restart` (box rebooted 8/08, Winmgmt Running, Get-CimInstance and PS
+process scans verified working today) and `preopen-readiness-task-failing` (root cause above).
+
+**I also re-created the mangled-path bug mid-edit** -- `C:\AlphaQuant\bot_alerts.jsonl` became
+`C:\AlphaQuantot_alerts.jsonl` because `\b` is a backspace. Fourth occurrence of that class.
+Caught by a control-character scan, fixed with forward slashes, and the file is now verified to
+contain zero control characters.
+
+**Verification:** regression 61 pass / 0 FAIL / 3 skip; chain audit 12 PASS / 0 BREAK;
+preopen_readiness exit 0; dashboard single listener. Market closed throughout.
+**Still open: 15 rotted deferrals** (atr-disk-cache oldest, due 8/01) -- surfaced to Rhett, not
+silently ground through.
+
+**ADDENDUM (+1 permanent invariant, per the standing rule that every bug earns one).** Added CSHV
+check **governance_docs_clean**: zero-tolerance control-character lint over SESSION_LOG.md,
+DEFERRED_WORK.yaml, SYSTEM_FACTS.md, OPEN_ITEMS.md and CLAUDE.md. Code was already linted
+(runner_bat_lint, the regression suite); the DOCUMENTS were not, which is why a mangled path sat in
+SESSION_LOG.md across five entries unnoticed. It reads BYTES rather than text -- the first version
+claimed to catch the lone-CR shape and silently could not, because read_text() translates a lone CR
+to a newline before the scan ever sees it. That was the same "asserts what it never validates"
+defect the check exists to prevent, caught by its own planted test. Six planted cases pass:
+backspace FAIL, BEL FAIL, lone-CR FAIL, normal CRLF OK, non-utf8 FAIL, clean-with-tab OK.
+SESSION_LOG.md itself had 8 control characters (6 backspace, 2 BEL) from earlier entries describing
+these very bugs; all restored to the literal text that was meant, verified 0 remaining on disk.
+
+**CSHV now: 1 FAIL left -- deferred_work_overdue, 15 genuinely rotted items.** That one is real
+work, not a broken check, and it stays red until the work is done.
+
+---
+
+## 2026-09-22 8:46 PM ET -- SHUTDOWN. Packaged for migration off the VPS.
+
+Rhett is moving the system to his own machine and shelving it. Wrote MIGRATION_README.md at the
+repo root so it can be resumed later without re-deriving a year of context.
+
+**The bottom line, computed from the certified baseline rather than asserted:** 898 trades,
+2026-06-22 to 2026-08-25, **net -$11,621**, -$12.94/trade, 52.1% win rate, profit factor 0.80,
+20 up days / 26 down.
+
+**The one diagnostic worth carrying forward.** The win rate is 52.1% -- above a coin flip, so the
+entries are not random. The system loses on PAYOFF RATIO: avg win $101 vs avg loss $137 = 0.74.
+At a 52.1% hit rate breakeven needs about 0.92. So the whole deficit is ~0.18 of payoff ratio and
+it sits in EXIT management, not entry selection -- which is exactly where every independent study
+on this system pointed. It is the only promising thread never exhausted.
+
+**README contents:** the bottom-line numbers; the full table of what was tested and FAILED (so
+nobody re-runs them); what measured positive; what was never tested (LOCATION filter, timeframes
+above 30-min, the arm-window path tag); every live config value read from source; the 37 enabled /
+12 intentionally-disabled task split with the warning not to "fix" the disabled cost seats; the
+robocopy line; .env key names (values excluded); the data inventory; the 15 open defects; and an
+honest assessment section that says plainly the losses are not a bug.
+
+**Integrity-verified before packaging** (13 artifacts): certified_trades.json 898 trades,
+broker_orders_unified.csv 4,511 rows, adv_lookup.json 194 symbols, DEFERRED_WORK.yaml valid YAML
+37 items, bars_1m 3,716 files, bars_1m_vol 895, atr14_daily 312, daily_252 256, SESSION_LOG 2.88 MB
+utf-8 clean, bot_alerts 1.54 MB. One finding: **outputs/shadow/ is EMPTY** -- the real ledger is
+outputs/edge_shadow/shadow_cells_ledger.jsonl (54 rows, updated today). My first draft of the
+README pointed at the wrong path; corrected before shipping. Also corrected an overstated "66
+regression tests" to the true 64 checks.
+
+**Final diagnostic:** regression 61 pass / 0 FAIL / 3 skip; chain audit 12 PASS / 0 BREAK;
+CSHV 1 FAIL (deferred_work_overdue, 15 genuinely open items -- real work, not a broken check).
+Git: 418 commits, HEAD 9a9784e, uncommitted working-tree changes present and NOT committed
+(no instruction to). 876 MB after excluding .venv / node_modules / __pycache__.
+
+
+## EOD SUMMARY — 2026-09-23
+
+_Auto-generated by eod_debrief.py at 2026-09-23 4:50 PM ET · broker-truth sourced · 14 round-trip(s)_
+
+## A · DID THE SYSTEM RUN CORRECTLY TODAY?
+
+**Funnel (broker-truth + candidate log):** universe scanned ~530 -> candidates evaluated 75 -> passed in-play gate 14 -> selected 34 -> symbols FILLED 14.
+
+**Re-arm windows (multiscan_trace):**
+- 9:45 AM: armed 2, refused 0
+- 9:45 AM: armed 2, refused 0
+- 9:45 AM: armed 4, refused 12 ({'over_extended 2.21ATR': 1, 'slots_exhausted': 11})
+- 10:35 AM: armed 4, refused 7 ({'reentry_capped': 3, 'over_extended 3.00ATR': 1, 'slots_exhausted': 3})
+- 11:35 AM: armed 3, refused 10 ({'reentry_capped': 3, 'over_extended 1.60ATR': 1, 'slots_exhausted': 6})
+- 12:35 PM: armed 2, refused 12 ({'over_extended 4.43ATR': 1, 'reentry_capped': 5, 'already_held_or_working': 1, 'opposing_momentum -0.15ATR/15m': 1, 'below_liquidity_floor $352M/da': 1, 'slots_exhausted': 3})
+- 1:35 PM: armed 1, refused 12 ({'over_extended 3.99ATR': 1, 'reentry_capped': 8, 'over_extended 1.69ATR': 1, 'below_liquidity_floor $352M/da': 1, 'already_held_or_working': 1})
+- 2:35 PM: armed 2, refused 12 ({'over_extended 3.62ATR': 1, 'over_extended 1.70ATR': 1, 'reentry_capped': 7, 'below_liquidity_floor $314M/da': 1, 'already_held_or_working': 1, 'below_liquidity_floor $352M/da': 1})
+
+**Incidents today:** 4 {'FAIL': 4}.
+**SAFE_MODE:** currently off (no engage today unless an incident above shows it)
+
+**Gate drove entries:** INCONCLUSIVE/FAIL rc=1 -- VERDICT: FAIL — gate_enforced is False; gate ran in SHADOW. Set ORB_INPLAY_GATE=True.
+  _(NOTE: verify_gate_drove_entries validates only the 9:35 path; re-arm fills are NOT in the 9:35 SELECTED set by design, so it reports FAIL on re-arm-heavy days. The per-day gate-integrity signal is the gate_not_failing_open reliability check.)_
+
+**Broker reconciliation at close:** FLAT (0 positions, 0 working); position_recon=OK (broker and bot agree both ways (0 position(s) reconciled))
+
+## A2 · STRATEGY-RULE & IN-PLAY COMPLIANCE (did we trade to the rules?)
+
+- **Q1 — Did the bot trade exactly to the strategy rules on every trade?**  **YES**  (14/14 trades compliant)
+- **Q2 — Did the bot trade the in-play-identified symbols?**  **YES**  (14/14 in the in-play list)
+- Context: 14/14 entries came from RE-ARM windows, which are UNGATED by the in-play gate by design (re-arm/fresh-breakout path) -- counted as in-play because they were on the armed list, but they did not have to clear the 9:35 RelVol/move thresholds.
+- Exit-rule breakdown: EXIT_TIME_STOP_UNCONFIRMED×7, EXIT_CANDLE_CLOSE_TRAIL×6, EXIT_UNCONFIRMED_TIGHTENED×1
+
+## B · PER-TRADE LEDGER (one row per round-trip; broker-truth)
+
+| # | sym | side | occ | entry(act/intend) | slip bps | delay m | gate (RelVol·mv%·RSvSPY·$tier·mcap·win) | shares | gross$ | 0.15ATR lvl | conf | EXIT REASON/time/px | hold m | MFE | MAE | leftHold$ | gP&L | comm | netP&L | R | order IDs |
+|--|--|--|--|--|--|--|--|--|--|--|--|--|--|--|--|--|--|--|--|--|--|
+| 1 | APP | SELLSHORT | 1 | 309.19/309.20 | 0 | 0.0 | 5.2·-5.7%·-5.5%·MID_DVOL·large·0945 | 323 | 99,868 | 311.61 | no | candle-close/10:05AM/306.27 | 20 | 4.42 | 2.30 | -2,943 | 943.16 | 6.46 | 936.70 | 0.13 | 972244673/972257142 |
+| 2 | PLTR | BUY | 1 | 193.30/193.33 | -2 | 0.0 | 3.1·4.2%·4.4%·LARGE_DVOL·mega·0945 | 129 | 24,936 | 192.30 | no | candle-close/10:07AM/188.61 | 23 | 0.07 | 4.73 | 408 | -605.01 | 2.58 | -607.59 | -0.51 | 972244681/972258621 |
+| 3 | SMCI | BUY | 1 | 41.68/41.67 | 2 | 0.0 | 4.1·0.1%·0.3%·MID_DVOL·large·0945 | 2399 | 99,990 | 41.36 | no | candle-close/10:07AM/42.30 | 22 | 1.02 | 0.19 | -2,063 | 1487.38 | 32.79 | 1454.59 | 0.21 | 972244700/972258190 |
+| 4 | NEM | SELLSHORT | 1 | 122.02/122.02 | -0 | 0.0 | 1.6·-4.0%·-3.8%·SMALL_DVOL·large·0945 | 819 | 99,934 | 122.54 | no | candle-close/9:55AM/121.55 | 10 | 0.95 | 0.34 | -1,654 | 384.93 | 13.83 | 371.10 | 0.09 | 972244704/972251749 |
+| 5 | BX | SELLSHORT | 1 | 119.59/119.47 | -10 | -0.0 | 2.1·-3.2%·-2.8%·MID_DVOL·large·1035 | 837 | 100,097 | 120.14 | no | candle-close/11:07AM/119.44 | 32 | 0.83 | 1.09 | 151 | 125.47 | 14.04 | 111.42 | 0.03 | 972274608/972287422 |
+| 6 | RDDT | SELLSHORT | 1 | 148.81/148.83 | 1 | 0.0 | 1.3·-4.0%·-3.5%·MID_DVOL·UNKNOWN·1035 | 670 | 99,703 | 149.96 | no | 30m-time-stop/11:13AM/149.76 | 38 | 0.77 | 1.03 | -1,487 | -636.50 | 12.04 | -648.54 | -0.09 | 972274614/972289069 |
+| 7 | META | BUY | 1 | 748.25/748.29 | -1 | 0.0 | 1.6·1.5%·2.0%·LARGE_DVOL·mega·1035 | 107 | 80,063 | 744.76 | no | 30m-time-stop/11:05AM/747.84 | 30 | 3.00 | 4.43 | -378 | -43.87 | 2.14 | -46.01 | -0.01 | 972274629/972286985 |
+| 8 | O | SELLSHORT | 1 | 55.45/55.45 | -0 | 0.0 | 1.6·-1.8%·-1.3%·MID_DVOL·large·1135 | 900 | 49,905 | 55.59 | no | 30m-time-stop/12:06PM/55.61 | 31 | 0.01 | 0.21 | -9 | -144.00 | 14.80 | -158.80 | -0.14 | 972296960/972305648 |
+| 9 | CRWD | BUY | 1 | 260.60/260.60 | 0 | 0.0 | 1.5·4.1%·4.6%·LARGE_DVOL·large·1135 | 190 | 49,514 | 258.84 | no | candle-close/12:02PM/261.87 | 27 | 2.04 | 1.15 | 114 | 241.30 | 3.80 | 237.50 | 0.08 | 972296959/972304714 |
+| 10 | BA | BUY | 1 | 202.05/201.99 | 3 | 0.0 | 1.3·2.0%·2.6%·LARGE_DVOL·large·1235 | 246 | 49,704 | 201.24 | no | 30m-time-stop/1:13PM/201.33 | 38 | 0.55 | 0.80 | -384 | -177.12 | 4.92 | -182.04 | -0.10 | 972313270/972324828 |
+| 11 | HOOD | BUY | 1 | 125.55/125.55 | 0 | -0.0 | 1.3·0.9%·1.5%·LARGE_DVOL·large·1235 | 202 | 25,361 | 124.59 | no | 30m-time-stop/1:27PM/124.83 | 52 | 0.08 | 1.31 | -428 | -145.44 | 4.04 | -149.48 | -0.08 | 972313275/972327949 |
+| 12 | SNPS | BUY | 1 | 415.28/415.10 | 4 | 0.0 | 1.1·1.3%·2.0%·MID_DVOL·large·1335 | 120 | 49,834 | 413.29 | no | 30m-time-stop/2:13PM/417.21 | 38 | 2.37 | 1.02 | -488 | 231.60 | 2.40 | 229.20 | 0.10 | 972329667/972339083 |
+| 13 | NWSA | SELLSHORT | 1 | 28.41/28.42 | 4 | 0.0 | 1.4·-2.8%·-2.1%·MID_DVOL·large·1435 | 879 | 24,972 | 28.51 | no | candle-close/3:10PM/28.28 | 35 | 0.17 | 0.09 | 132 | 114.27 | 14.55 | 99.72 | 0.13 | 972343606/972351785 |
+| 14 | CMG | BUY | 1 | 32.92/32.90 | 6 | -0.0 | 1.1·0.7%·1.4%·MID_DVOL·large·1435 | 1519 | 50,005 | 32.75 | no | 30m-time-stop/3:45PM/32.76 | 70 | 0.01 | 0.27 | -61 | -243.04 | 22.23 | -265.27 | -0.11 | 972343610/972360253 |
+
+## C · COST & EXECUTION SUMMARY (edge-survival line)
+
+- Total commission (broker-actual): $150.62  ·  fees: $0.00
+- Commission 1.67 bps + fees 0.00 bps of $903,887 notional = **1.67 bps avg cost**
+- Avg entry slippage: 0.6 bps (adverse +)
+- Slippage trend (prior 10d, adverse + bps): [0.5, 1.0, 1.4, 2.8, 1.7, 1.9, 1.4, 2.2, 1.9, 3.0] · trailing avg 1.8 bps · today 0.6 (better vs trailing)
+- Per-trade avg cost: $10.76 (14 round-trips)
+
+## D · AGGREGATE  *(context, not a verdict — building toward N>=30)*
+
+- N=14 · win rate 50% (7W/7L)
+- GROSS day P&L $1,533.13 · **NET day P&L $1,382.51**
+- Gross expectancy $109.51/trade · Net expectancy $98.75/trade
+- Net profit factor 1.67
+- Avg win $491.46 · avg loss $-293.96
+- Largest win $1,454.59 · largest loss $-648.54
+- Long/short split: 8L / 6S
+
+- **Confirmation** (favorable MFE vs 0.15xATR14, fixed 30-min window · cross-day-consistent, incl re-arm): **6/14 confirmed within 30 min** (43%) · 7/14 ever-in-hold · gap 1 = trades the 30-min time-stop cut before they confirmed
+
+
+**Split — context, not a verdict; building toward N>=30 per bucket:**
+- PATH 9:35-gated:  N=4 · win 75% · net $2,155 ($539/trade, 66.4 bps)
+- PATH re-arm:      N=10 · win 40% · net $-772 ($-77/trade, -13.3 bps)
+- OCC 1st-entry:    N=14 · win 50% · net $1,383 ($99/trade, 15.3 bps)
+- OCC re-entry(2+): N=0
+- RECONCILE: path sum $1,382.51 + occ sum $1,382.51 == day net $1,382.51 -> OK
+
+- Capital utilization: PEAK deployed: $559,646  (147.3% of $380,000 target)  at 10:56 (2 pos + 4 working)
+
+## E · ANOMALIES & DIVERGENCES CODE FLAGGED
+
+- META: peak $1,247 post-exit / held-to-EOD $-378 -- but reverted by EOD (transient peak tick, NOT a real edge loss)
+- PLTR: peak $668 post-exit / held-to-EOD $408 -- see PROP-EXIT-FALSE-STOPOUT
+- SNPS: peak $427 post-exit / held-to-EOD $-488 -- but reverted by EOD (transient peak tick, NOT a real edge loss)
+- BX: peak $343 post-exit / held-to-EOD $151 -- see PROP-EXIT-FALSE-STOPOUT
+- NEM: peak $278 post-exit / held-to-EOD $-1,654 -- but reverted by EOD (transient peak tick, NOT a real edge loss)
+- RDDT: peak $268 post-exit / held-to-EOD $-1,487 -- but reverted by EOD (transient peak tick, NOT a real edge loss)
+- SMCI: peak $264 post-exit / held-to-EOD $-2,063 -- but reverted by EOD (transient peak tick, NOT a real edge loss)
+- CRWD: peak $251 post-exit / held-to-EOD $114 -- see PROP-EXIT-FALSE-STOPOUT
+- APP: peak $239 post-exit / held-to-EOD $-2,943 -- but reverted by EOD (transient peak tick, NOT a real edge loss)
+- marginability shadow: 14 armed names all STOCK/no-restrictions -> 4x assumption held (broker is the per-symbol authority; SHADOW, before-live gate OFF)
+
+## F · PROVENANCE / FIELD-AVAILABILITY MAP
+
+| field | source | note |
+|--|--|--|
+| symbol/side/shares/order IDs/status | BROKER-TRUTH | broker_orders_unified.csv raw_order_json |
+| actual entry/exit price + time | BROKER-TRUTH | FilledPrice/ExecutionPrice + OpenedDateTime (UTC) |
+| intended entry trigger price | LOGGED | signal_trigger_px / intended_price / StopPrice |
+| intended/submission time | LOGGED | submit_time (ET) -- proxy for arm time, not breakout-detect time |
+| entry delay / slippage bps | DERIVED | actual vs intended (above) |
+| commission (per trade) | BROKER-ACTUAL | raw_order_json CommissionFee, summed entry+exit |
+| fees (per trade) | BROKER-ACTUAL | raw_order_json UnbundledRouteFee (0 today) |
+| gross/net P&L, net R | DERIVED | from broker fills + commission; R uses 0.15xATR (9:35 only) |
+| gate ctx (RelVol/move%/RSvSPY/$tier/mcap) | LOGGED (9:35 only) | orb_candidate_log.jsonl selected names; RE-ARM names NOT in candidate log |
+| 0.15xATR protective level | DERIVED (9:35 only) | ATR from orb_daily_state entries_submitted; re-arm ATR NOT-logged |
+| confirm fired? | LOGGED (9:35 only) | bot_alerts ORB_CONFIRM_SWAP; re-arm confirm not tracked |
+| exit type (EOD vs synthetic) | DERIVED | by exit time; fine reason (candle-close vs hard-stop) NOT joined (in bot_alerts) |
+| MFE / MAE | DERIVED from 1-min bars | barcharts over hold window; NOT logged natively (REG-08 INERT without this) |
+| broker-flat + position recon | BROKER-TRUTH (asserted) | reliability_checks.fetch_truth + check_position_recon |
+
+_Never fabricated: any field above marked NOT-logged/NOT-computed is shown as such in the rows._
+
+## G — FADE vs BREAKOUT counterfactual (TUNE-01; context, NOT a verdict — building toward N)
+
+_N=34 candidates today (deduped by symbol) -> fade_breakout_log.jsonl (append-only, OOS accumulation). R = signed move in the breakout direction / ATR; fade_R = -breakout_R. context, NOT a verdict -- building toward a permutation test._
+
+- @EOD: mean breakout_R = -0.207; breakout won (R>0) 10/34 (if breakout_R<0 the FADE would have paid).
+- by cap bucket (mean breakout_R @EOD): UNKNOWN=-0.34 (n1), large=-0.21 (n31), mega=-0.14 (n2)
+## H · CAPITAL DEPLOYMENT (by hour + idle attribution)
+
+**Deployed book by hour (peak; filled positions + working orders):**
+
+| hour | deployed | % of $400k cap | pos+working |
+|--|--|--|--|
+| 9AM | $448,090 | 112% | 3+3 |
+| 10AM | $559,646 | 140% | 2+4 |
+| 11AM | $322,705 | 81% | 2+4 |
+| 12PM | $247,726 | 62% | 1+4 |
+| 1PM | $222,403 | 56% | 1+3 |
+| 2PM | $225,551 | 56% | 1+4 |
+| 3PM | $222,185 | 56% | 1+3 |
+
+**Idle-capital attribution** (why capital sat idle vs the $400k cap; RE-ARM windows):
+- **Qualified trades refused for CAPITAL today: 0** (peak idle below cap $225,352; gross demand upper-bound $0 at $100k/name). _The only number that justifies raising the deploy target._
+
+| window | deployed | idle vs cap | thin-signal | self-throttle | refused cap/slot/reentry |
+|--|--|--|--|--|--|
+| 0945 | $324,712 | $75,288 | $0 | $75,288 | 0/11/0 |
+| 1035 | $379,630 | $20,370 | $0 | $20,370 | 0/3/3 |
+| 1135 | $224,255 | $175,745 | $0 | $175,745 | 0/6/3 |
+| 1235 | $199,886 | $200,114 | $0 | $200,114 | 0/3/5 |
+| 1335 | $174,648 | $225,352 | $0 | $225,352 | 0/0/8 |
+| 1435 | $199,792 | $200,208 | $0 | $200,208 | 0/0/7 |
+
+- STALE-SLOT (separate; DEPLOYED-but-stuck, NOT idle): $0 in 0 red name(s) held to EOD-flatten -- a tighter exit would have freed the slot.
+- _thin-signal + self-throttle = idle (cap-deployed) per window. Thin-signal idle is CORRECT (no qualified candidate wanted it -- NOT a defect, no floor implied); self-throttle is fixable (our caps). The 9:35 path deploys first; this covers the re-arm windows in the trace._
+
+## I · LOSER ATTRIBUTION (exit-reason x confirm x side)
+
+**1. Losers by SIDE:**
+- LONG losers 5 ($-1,250.39) · SHORT losers 2 ($-807.34) · total losing $-2,057.73 over 7 trade(s)
+
+| sym | side | confirm | exit | hold m | net$ |
+|--|--|--|--|--|--|
+| RDDT | short | no | 30m-time-stop | 38 | $-648.54 |
+| PLTR | long | yes | unconf-tightened-floor | 23 | $-607.59 |
+| CMG | long | no | 30m-time-stop | 70 | $-265.27 |
+| BA | long | no | 30m-time-stop | 38 | $-182.04 |
+| O | short | no | 30m-time-stop | 31 | $-158.80 |
+| HOOD | long | no | 30m-time-stop | 52 | $-149.48 |
+| META | long | no | 30m-time-stop | 30 | $-46.01 |
+
+**2. ALL trades by EXIT REASON x CONFIRM (partitions every round-trip):**
+| exit reason | confirm | n | win% | net$ | avg hold m |
+|--|--|--|--|--|--|
+| 30m-time-stop | no | 7 | 14% | $-1,220.94 | 42 |
+| candle-close | yes | 6 | 100% | $3,211.03 | 24 |
+| unconf-tightened-floor | yes | 1 | 0% | $-607.59 | 23 |
+- _partition check: cells sum to 14 == N 14_
+
+**3. BLEEDER FLAG — unconfirmed-rides-to-EOD-flatten (the named target class):**
+- 0 trade(s), net $0.00, avg hold 0m
+
+**4. MUST-NOT-CUT CONTROL — winners a tightening rule must spare (longest-held first):**
+| sym | side | confirm | exit | hold m | net$ |
+|--|--|--|--|--|--|
+| SNPS | long | no | 30m-time-stop | 38 | $229.20 |
+| NWSA | short | yes | candle-close | 35 | $99.72 |
+| BX | short | yes | candle-close | 32 | $111.42 |
+| CRWD | long | yes | candle-close | 27 | $237.50 |
+| SMCI | long | yes | candle-close | 22 | $1,454.59 |
+| APP | short | yes | candle-close | 20 | $936.70 |
+
+## TRADE AUTOPSY — 2026-09-23
+
+_READ-ONLY post-close autopsy · broker-truth sourced · 14 round-trip(s) · generated 2026-09-23 4:51 PM ET_
+
+**Reconciliation:** book NET $1,382.50 vs broker truth $1,382.50 (gross $1,533.13) -> MATCH
+
+### Per-round-trip ledger (one row per RT)
+
+| # | sym | side | path | entry fill | net$ | conf | early MAE 1/2/3/5m (xATR) | early MFE 1/2/3/5m (xATR) | hold m | exit reason | EODflat | rev->bleed |
+|--|--|--|--|--|--|--|--|--|--|--|--|--|
+| 1 | APP | short | 9:35 | 9:45 AM | $936.70 | N | na/na/na/0.014 | na/na/na/0.0 | 20 | candle-close | n | n |
+| 2 | PLTR | long | 9:35 | 9:45 AM | $-607.59 | NOT-AVAILABLE | 0.269/0.269/0.278/0.278 | 0.0/0.0/0.0/0.0 | 23 | unclassified | n | n |
+| 3 | SMCI | long | 9:35 | 9:45 AM | $1,454.59 | Y* | 0.062/0.062/0.09/0.09 | 0.038/0.038/0.038/0.095 | 22 | candle-close | n | n |
+| 4 | NEM | short | 9:35 | 9:45 AM | $371.10 | Y* | 0.077/0.077/0.077/0.077 | 0.046/0.112/0.175/0.175 | 10 | candle-close | n | n |
+| 5 | BX | short | re-arm 10:35AM | 10:35 AM | $111.42 | Y* | 0.123/0.188/0.251/0.251 | 0.0/0.0/0.0/0.0 | 32 | candle-close | n | n |
+| 6 | RDDT | short | re-arm 10:35AM | 10:35 AM | $-648.54 | N | 0.084/0.084/0.084/0.084 | 0.0/0.0/0.0/0.0 | 38 | 30m-time-stop | n | n |
+| 7 | META | long | re-arm 10:35AM | 10:35 AM | $-46.01 | N | 0.003/0.003/0.003/0.003 | 0.0/0.0/0.0/0.0 | 30 | 30m-time-stop | n | n |
+| 8 | O | short | re-arm 11:35AM | 11:35 AM | $-158.80 | N | 0.054/0.054/0.054/0.054 | 0.0/0.011/0.011/0.011 | 31 | 30m-time-stop | n | n |
+| 9 | CRWD | long | re-arm 11:35AM | 11:35 AM | $237.50 | Y* | 0.073/0.098/0.098/0.098 | 0.0/0.0/0.0/0.0 | 27 | candle-close | n | n |
+| 10 | BA | long | re-arm 12:35PM | 12:35 PM | $-182.04 | N | 0.083/0.083/0.083/0.083 | 0.0/0.0/0.0/0.0 | 38 | 30m-time-stop | n | n |
+| 11 | HOOD | long | re-arm 12:35PM | 12:35 PM | $-149.48 | N | 0.059/0.059/0.059/0.059 | 0.0/0.0/0.0/0.0 | 52 | 30m-time-stop | n | n |
+| 12 | SNPS | long | re-arm 1:35PM | 1:35 PM | $229.20 | N | 0.041/0.05/0.074/0.074 | 0.0/0.0/0.0/0.0 | 38 | 30m-time-stop | n | n |
+| 13 | NWSA | short | re-arm 2:35PM | 2:35 PM | $99.72 | Y* | 0.031/0.031/0.031/0.031 | 0.0/0.0/0.0/0.031 | 35 | candle-close | n | n |
+| 14 | CMG | long | re-arm 2:35PM | 2:35 PM | $-265.27 | N | 0.072/0.072/0.072/0.09 | 0.0/0.0/0.0/0.0 | 70 | 30m-time-stop | n | n |
+
+### Day summary — confirmed vs unconfirmed
+
+- CONFIRMED: N=0 · net $0.00 · win None%
+- UNCONFIRMED: N=8 · net $-284.24 · win 25.0%
+- CONFIRM-NA (occ>1 poll-ambiguous): N=1 · net $-607.59
+- **Day net $1,382.50**
+
+### THE GIVEBACK LINE (3 PM -> close)
+
+- By ~3:00 PM: 12 RT completed = $1,548.05 (intraday peak).
+- At close: 14 RT = $1,382.50.
+- **Given back: $165.55** across the 2 late-closer(s) (completed after 3:00 PM, net $-165.55).
+
+Per late-closer — early-reversal BLEEDER vs WINNER that gave back into the EOD flatten:
+
+| sym | side | exit | net$ | bucket |
+|--|--|--|--|--|
+| CMG | long | 3:45 PM | $-265.27 | early-reversal BLEEDER |
+| NWSA | short | 3:10 PM | $99.72 | other late-closer |
+
+- BLEEDER bucket sum: $-265.27 (1 RT)
+- WINNER-gaveback bucket sum: $0.00 (0 RT)
+- other late-closers sum: $99.72 (1 RT)
+
+### LENS A — early-reversal losers
+
+- Day losers: 7 · total loser net $-2,057.73
+- Early-reversal losers (unconfirmed + early adverse + held-long/flattened): 0 · net $0.00 (-0.0% of the day's loss)
+- Of those, LATE-CLOSERS (exit after 3:00 PM) in the giveback: 0 · net $0.00
+
+### LENS B — MUST-NOT-CUT: early exit at K=0.75xATR adverse-before-confirm (full book)
+
+_Pinned-bar real-time method (l1_mustnotcut_audit), K pinned at 0.75 (never tighter). EARLY-POLL CAVEAT: the live monitor is blind in the first ~5 min, so these are what an IDEAL early-poll would do, NOT what today's live bot could have fired._
+
+- **Bleeders cut: 0 · $ saved $0.00**
+- **Confirmed winners clipped: 0 · $ given up $0.00**
+- **THREE-SIDED net-of-cost: $0.00** (= saved $0.00 − winners given up $0.00)
+- coverage: 0 safe (never crossed K before confirm), 14 NOT-AVAILABLE (no pin/atr), 0 intrabar-ambiguous (counted worst-case against the leash)
+
+### LENS C — MU-class check (cluster vs one extended/gap-top trade)
+
+- Top loser: RDDT short $-648.54 = 31.5% of the day's loss $-2,057.73 (scan_move -4.03%)
+- Gap-tops (|scan_move| >= 12.0%) among losers: 0
+- **CLUSTER: the loss is spread across 7 losers (top RDDT only 31.5%); not a single MU-class trade.**
 
 ### CUMULATIVE TALLY (across available days)
 
